@@ -1,0 +1,12 @@
+server:
+  port: 8080
+  app_name: erp
+  secret_key: secret_key
+
+database:
+  type: postgres
+  host: localhost
+  port: 5432
+  user: postgres
+  password: balakutak
+  name: erp_db
