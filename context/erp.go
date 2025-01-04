@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +20,7 @@ type ERPContext struct {
 	FinanceService   interface{} // Contoh: FinanceService
 	OrderService     interface{} // Contoh: OrderService
 	// Tambahkan service lainnya di sini
+	EmailSender *thirdparty.SMTPSender
 
 	SkipMigration bool // SkipMigration adalah flag untuk menentukan apakah migrasi dijalankan atau tidak
 }
