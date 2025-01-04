@@ -33,6 +33,3 @@ func (u *ContactModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 // Migrate menjalankan migrasi database untuk model contact
-func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&ContactModel{})
-}

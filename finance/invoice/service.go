@@ -1,25 +1,54 @@
 package invoice
 
 import (
-	"time"
+	"net/http"
 
-	"github.com/AMETORY/ametory-erp-modules/company"
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
+	"gorm.io/gorm"
 )
 
-type InvoiceModel struct {
-	utils.BaseModel
-	Code            string               `json:"code"`
-	Description     string               `json:"description"`
-	Notes           string               `json:"notes"`
-	Total           float64              `json:"total"`
-	Subtotal        float64              `json:"subtotal"`
-	TotalBeforeTax  float64              `json:"total_before_tax"`
-	TotalBeforeDisc float64              `json:"total_before_disc"`
-	Status          string               `json:"status"`
-	InvoiceDate     time.Time            `json:"invoice_date"`
-	DueDate         time.Time            `json:"due_date"`
-	PaymentTerms    string               `json:"payment_terms"`
-	CompanyID       string               `json:"company_id"`
-	Company         company.CompanyModel `gorm:"foreignKey:CompanyID"`
+type InvoiceService struct {
+	db *gorm.DB
+}
+
+func NewInvoiceService(db *gorm.DB) *InvoiceService {
+	return &InvoiceService{db: db}
+}
+
+func (s *InvoiceService) CreateInvoice(data *InvoiceModel) error {
+	return s.db.Create(data).Error
+}
+
+func (s *InvoiceService) UpdateInvoice(id string, data *InvoiceModel) error {
+	return s.db.Where("id = ?", id).Updates(data).Error
+}
+
+func (s *InvoiceService) DeleteInvoice(id string) error {
+	return s.db.Where("id = ?", id).Delete(&InvoiceModel{}).Error
+}
+
+func (s *InvoiceService) GetInvoiceByID(id string) (*InvoiceModel, error) {
+	var invoice InvoiceModel
+	err := s.db.Where("id = ?", id).First(&invoice).Error
+	return &invoice, err
+}
+
+func (s *InvoiceService) GetInvoiceByCode(code string) (*InvoiceModel, error) {
+	var invoice InvoiceModel
+	err := s.db.Where("code = ?", code).First(&invoice).Error
+	return &invoice, err
+}
+
+func (s *InvoiceService) GetInvoices(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("invoices.description LIKE ? OR invoices.code LIKE ? ",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	stmt = stmt.Model(&InvoiceModel{})
+	page := pg.With(stmt).Request(request).Response(&[]InvoiceModel{})
+	return page, nil
 }

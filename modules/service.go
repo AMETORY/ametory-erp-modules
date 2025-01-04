@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/auth"
 	"github.com/AMETORY/ametory-erp-modules/company"
+	"github.com/AMETORY/ametory-erp-modules/contact"
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"gorm.io/gorm"
 )
@@ -23,6 +24,8 @@ func RegisterService(serviceName string, db *gorm.DB, skipMigrate bool) (Service
 		return company.NewCompanyService(db, skipMigrate), nil
 	case "finance":
 		return finance.NewFinanceService(db, skipMigrate), nil
+	case "contact":
+		return contact.NewContactService(db, skipMigrate), nil
 
 	default:
 		return nil, fmt.Errorf("service '%s' tidak ditemukan", serviceName)

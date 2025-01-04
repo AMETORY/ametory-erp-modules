@@ -9,11 +9,18 @@ import (
 )
 
 type ContactService struct {
-	db *gorm.DB
+	db            *gorm.DB
+	SkipMigration bool
 }
 
-func NewContactService(db *gorm.DB) *ContactService {
-	return &ContactService{db: db}
+func NewContactService(db *gorm.DB, skipMigrate bool) *ContactService {
+	var contactService = ContactService{db: db}
+	if !skipMigrate {
+		if err := contactService.Migrate(); err != nil {
+			return nil
+		}
+	}
+	return &contactService
 }
 
 // CreateContact membuat contact baru
@@ -102,7 +109,7 @@ func (s *ContactService) UpdateContact(id uint, data *ContactModel) (*ContactMod
 }
 
 // GetContacts mengambil semua contact dengan pagination
-func (s *ContactService) GetContacts(request http.Request, search string, isCustomer, isVendor, isSupplier bool) (paginate.Page, error) {
+func (s *ContactService) GetContacts(request http.Request, search string, isCustomer, isVendor, isSupplier *bool) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
@@ -113,8 +120,27 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 			"%"+search+"%",
 		)
 	}
-	stmt = stmt.Where("is_customer = ? AND is_vendor = ? AND is_supplier = ?", isCustomer, isVendor, isSupplier)
+	if isCustomer != nil {
+		stmt = stmt.Where("is_customer = ?", isCustomer)
+	}
+	if isVendor != nil {
+		stmt = stmt.Where("is_vendor = ?", isVendor)
+	}
+	if isSupplier != nil {
+		stmt = stmt.Where("is_supplier = ?", isSupplier)
+	}
 	stmt = stmt.Model(&ContactModel{})
 	page := pg.With(stmt).Request(request).Response(&[]ContactModel{})
 	return page, nil
+}
+
+func (s *ContactService) Migrate() error {
+	if s.SkipMigration {
+		return nil
+	}
+	return s.db.AutoMigrate(&ContactModel{})
+}
+
+func (s *ContactService) DB() *gorm.DB {
+	return s.db
 }
