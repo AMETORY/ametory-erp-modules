@@ -3,7 +3,9 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
 )
 
@@ -29,11 +31,17 @@ func (s *AuthService) Register(username, email, password string) (*UserModel, er
 		return nil, err
 	}
 
+	// Generate verification token
+	verificationToken := utils.RandString(32)
+	verificationTokenExpiredAt := time.Now().AddDate(0, 0, 7) // 7 hari
+
 	// Buat user baru
 	user := UserModel{
-		Username: username,
-		Email:    email,
-		Password: hashedPassword,
+		Username:                   username,
+		Email:                      email,
+		Password:                   hashedPassword,
+		VerificationToken:          verificationToken,
+		VerificationTokenExpiredAt: &verificationTokenExpiredAt,
 	}
 
 	// Simpan ke database
@@ -84,11 +92,30 @@ func (s *AuthService) ForgotPassword(email string) error {
 	return nil
 }
 
-func (s *AuthService) Migrate() error {
+// Verification memverifikasi token reset password
+func (s *AuthService) Verification(token, newPassword string) error {
+	var user UserModel
 
-	return s.db.AutoMigrate(&UserModel{})
-}
+	// Cari user berdasarkan token
+	if err := s.db.Where("verification_token = ?", token).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("invalid token")
+		}
+		return err
+	}
 
-func (s *AuthService) DB() *gorm.DB {
-	return s.db
+	// Verifikasi apakah token belum expired
+	if time.Now().After(*user.VerificationTokenExpiredAt) {
+		return errors.New("token has expired")
+	}
+	now := time.Now()
+
+	user.VerificationToken = "" // Hapus token
+	user.VerificationTokenExpiredAt = nil
+	user.VerifiedAt = &now
+
+	if err := s.db.Save(&user).Error; err != nil {
+		return err
+	}
+	return nil
 }

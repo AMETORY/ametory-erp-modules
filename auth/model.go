@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"time"
+
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -10,9 +12,12 @@ import (
 // UserModel adalah model database untuk user
 type UserModel struct {
 	utils.BaseModel
-	Username string `gorm:"unique;not null"`
-	Email    string `gorm:"unique;not null"`
-	Password string `gorm:"not null"`
+	Username                   string     `gorm:"unique;not null"`
+	Email                      string     `gorm:"unique;not null"`
+	Password                   string     `gorm:"not null"`
+	VerifiedAt                 *time.Time `gorm:"index"`
+	VerificationToken          string
+	VerificationTokenExpiredAt *time.Time `gorm:"index"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {
@@ -43,4 +48,13 @@ func HashPassword(password string) (string, error) {
 // CheckPassword memverifikasi password dengan hash yang tersimpan
 func CheckPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+}
+
+func (s *AuthService) Migrate() error {
+
+	return s.db.AutoMigrate(&UserModel{})
+}
+
+func (s *AuthService) DB() *gorm.DB {
+	return s.db
 }
