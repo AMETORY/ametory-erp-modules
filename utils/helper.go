@@ -18,3 +18,21 @@ func RandString(n int) string {
 	}
 	return string(b)
 }
+
+// CreateUsernameFromFullName creates a username from a full name
+func CreateUsernameFromFullName(fullName string) string {
+	letters := []rune(fullName)
+	username := make([]rune, 0)
+	for _, letter := range letters {
+		if letter == ' ' {
+			continue
+		}
+		username = append(username, letter)
+	}
+	if len(username) > 25 {
+		username = username[:25]
+	}
+	username = append(username, '-')
+	username = append(username, []rune(RandString(5))...)
+	return string(username)
+}

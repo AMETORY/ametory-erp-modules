@@ -9,11 +9,13 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Server   ServerConfig   `mapstructure:"server"`
+	Email    EmailConfig    `mapstructure:"email"`
 }
 
 var App *Config
@@ -62,8 +64,10 @@ func InitDB(cfg *Config) (*gorm.DB, error) {
 	default:
 		return nil, fmt.Errorf("database type tidak didukung: %s", cfg.Database.Type)
 	}
+	db, err := gorm.Open(dialector, &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 
-	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("gagal menghubungkan ke database: %v", err)
 	}

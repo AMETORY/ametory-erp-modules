@@ -1,0 +1,18 @@
+### Register
+POST http://localhost:8080/v1/auth/register
+Content-Type: application/json
+
+{
+    "email": "ametsuramet@gmail.com",
+    "full_name": "Amet Suramet"
+}
+
+
+### Login
+POST http://localhost:8080/v1/auth/login
+Content-Type: application/json
+
+{
+    "email": "ametsuramet@gmail.com",
+    "password": "klicUWbHhrZLeEBLGBUC"
+}

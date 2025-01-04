@@ -12,7 +12,8 @@ import (
 // UserModel adalah model database untuk user
 type UserModel struct {
 	utils.BaseModel
-	Username                   string     `gorm:"unique;not null"`
+	FullName                   string     `gorm:"not null"`
+	Username                   string     `gorm:"unique"`
 	Email                      string     `gorm:"unique;not null"`
 	Password                   string     `gorm:"not null"`
 	VerifiedAt                 *time.Time `gorm:"index"`

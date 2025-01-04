@@ -24,7 +24,7 @@ func NewAuthService(db *gorm.DB) *AuthService {
 }
 
 // Register membuat user baru
-func (s *AuthService) Register(username, email, password string) (*UserModel, error) {
+func (s *AuthService) Register(fullname, username, email, password string) (*UserModel, error) {
 	// Hash password
 	hashedPassword, err := HashPassword(password)
 	if err != nil {
@@ -37,6 +37,7 @@ func (s *AuthService) Register(username, email, password string) (*UserModel, er
 
 	// Buat user baru
 	user := UserModel{
+		FullName:                   fullname,
 		Username:                   username,
 		Email:                      email,
 		Password:                   hashedPassword,
@@ -62,6 +63,10 @@ func (s *AuthService) Login(usernameOrEmail, password string) (*UserModel, error
 			return nil, errors.New("user not found")
 		}
 		return nil, err
+	}
+	// Periksa apakah user sudah terverifikasi
+	if user.VerifiedAt == nil {
+		return nil, errors.New("user not verified")
 	}
 
 	// Verifikasi password
