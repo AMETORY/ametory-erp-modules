@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/order/sales"
 	"gorm.io/gorm"
 )
@@ -15,9 +16,15 @@ type OrderService struct {
 
 func NewOrderService(ctx *context.ERPContext) *OrderService {
 	fmt.Println("INIT ORDER SERVICE")
+	var financeService *finance.FinanceService
+	financeSrv, ok := ctx.FinanceService.(*finance.FinanceService)
+	if ok {
+		financeService = financeSrv
+	}
+
 	var service = OrderService{
 		ctx:          ctx,
-		SalesService: sales.NewSalesService(ctx.DB, ctx),
+		SalesService: sales.NewSalesService(ctx.DB, ctx, financeService),
 	}
 	err := service.Migrate()
 	if err != nil {

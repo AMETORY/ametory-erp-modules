@@ -9,6 +9,25 @@ import (
 	"gorm.io/gorm"
 )
 
+// AccountType adalah enum untuk tipe account
+type AccountType string
+
+const (
+	ASSET            AccountType = "ASSET"
+	LIABILITY        AccountType = "LIABILITY"
+	EQUITY           AccountType = "EQUITY"
+	REVENUE          AccountType = "REVENUE"
+	EXPENSE          AccountType = "EXPENSE"
+	COST             AccountType = "COST"
+	PAYABLE          AccountType = "PAYABLE"
+	RECEIVABLE       AccountType = "RECEIVABLE"
+	CONTRA_ASSET     AccountType = "CONTRA_ASSET"
+	CONTRA_LIABILITY AccountType = "CONTRA_LIABILITY"
+	CONTRA_EQUITY    AccountType = "CONTRA_EQUITY"
+	CONTRA_REVENUE   AccountType = "CONTRA_REVENUE"
+	CONTRA_EXPENSE   AccountType = "CONTRA_EXPENSE"
+)
+
 // AccountModel adalah model database untuk account
 type AccountModel struct {
 	utils.BaseModel
@@ -21,7 +40,7 @@ type AccountModel struct {
 	IsAccountReport       bool                 `json:"is_account_report" bson:"is_account_report" gorm:"-"`
 	IsCashflowReport      bool                 `json:"is_cashflow_report" bson:"is_cashflow_report" gorm:"-"`
 	IsPDF                 bool                 `json:"is_pdf" bson:"is_pdf" gorm:"-"`
-	Type                  string               `json:"type" bson:"type"`
+	Type                  AccountType          `json:"type" bson:"type"`
 	Category              string               `json:"category" bson:"category"`
 	CashflowGroup         string               `json:"cashflow_group" bson:"cashflow_group"`
 	CashflowSubGroup      string               `json:"cashflow_subgroup" bson:"cashflow_group"`

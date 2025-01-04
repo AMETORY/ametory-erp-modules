@@ -3,8 +3,12 @@ package sales
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/finance"
+	"github.com/AMETORY/ametory-erp-modules/finance/account"
+	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
 	"github.com/morkid/paginate"
@@ -12,16 +16,122 @@ import (
 )
 
 type SalesService struct {
-	ctx *context.ERPContext
-	db  *gorm.DB
+	ctx            *context.ERPContext
+	db             *gorm.DB
+	financeService *finance.FinanceService
 }
 
-func NewSalesService(db *gorm.DB, ctx *context.ERPContext) *SalesService {
-	return &SalesService{db: db, ctx: ctx}
+func NewSalesService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService) *SalesService {
+	return &SalesService{db: db, ctx: ctx, financeService: financeService}
 }
 
 func (s *SalesService) CreateSales(data *SalesModel) error {
-	return s.db.Create(data).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := s.db.Create(data).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+		paid := 0.0
+		for _, v := range data.Items {
+			if v.SaleAccountID != nil {
+				s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+					Date:               data.SalesDate,
+					AccountID:          v.SaleAccountID,
+					Description:        "Penjualan " + data.SalesNumber,
+					Notes:              data.Description,
+					TransactionRefID:   &data.ID,
+					TransactionRefType: "sales",
+				}, v.Total)
+			}
+			if v.AssetAccountID != nil {
+				s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+					Date:               data.SalesDate,
+					AccountID:          v.AssetAccountID,
+					Description:        "Penjualan " + data.SalesNumber,
+					Notes:              data.Description,
+					TransactionRefID:   &data.ID,
+					TransactionRefType: "sales",
+				}, v.Total)
+				acc, err := s.financeService.AccountService.GetAccountByID(*v.AssetAccountID)
+				if err != nil {
+					return err
+				}
+				if acc.Type == account.ASSET {
+					paid += v.Total
+				}
+			}
+
+		}
+		if paid > 0 {
+			data.Paid = paid
+			if err := tx.Save(data).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		if paid < data.Total {
+			data.Status = "partial"
+			if err := tx.Save(data).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		return nil
+	})
+
+}
+
+func (s *SalesService) CreatePayment(salesID string, date time.Time, amount float64, accountReceivableID *string, accountAssetID string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+
+		var data SalesModel
+		if err := tx.Where("id = ?", salesID).First(&data).Error; err != nil {
+			return err
+		}
+
+		if data.Paid+amount > data.Total {
+			return errors.New("amount is greater than total")
+		}
+
+		if err := s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+			Date:               date,
+			AccountID:          &accountAssetID,
+			Description:        "Pembayaran " + data.SalesNumber,
+			Notes:              data.Description,
+			TransactionRefID:   &data.ID,
+			TransactionRefType: "sales",
+		}, amount); err != nil {
+			return err
+		}
+		if accountReceivableID != nil {
+			if err := s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+				Date:               date,
+				AccountID:          accountReceivableID,
+				Description:        "Pembayaran " + data.SalesNumber,
+				Notes:              data.Description,
+				TransactionRefID:   &data.ID,
+				TransactionRefType: "sales",
+			}, -amount); err != nil {
+				return err
+			}
+		}
+
+		data.Paid += amount
+		if err := tx.Save(data).Error; err != nil {
+			return err
+		}
+
+		if data.Paid == data.Total {
+			data.Status = "paid"
+			if err := tx.Save(data).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (s *SalesService) UpdateSales(id string, data *SalesModel) error {
@@ -60,6 +170,9 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 			"%"+search+"%",
 		)
 	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	stmt = stmt.Model(&SalesModel{})
 	page := pg.With(stmt).Request(request).Response(&[]SalesModel{})
 	return page, nil
@@ -77,7 +190,7 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string) error {
 	}
 
 	// Pastikan status PO adalah "pending"
-	if sales.Status != "pending" {
+	if sales.StockStatus != "pending" {
 		return errors.New("purchase order already processed")
 	}
 
@@ -92,7 +205,7 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string) error {
 			}
 		}
 
-		sales.Status = "updated"
+		sales.StockStatus = "updated"
 		if err := tx.Save(&sales).Error; err != nil {
 			tx.Rollback()
 			return err

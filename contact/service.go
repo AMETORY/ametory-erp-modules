@@ -131,6 +131,9 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 	if isSupplier != nil {
 		stmt = stmt.Where("is_supplier = ?", isSupplier)
 	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	stmt = stmt.Model(&ContactModel{})
 	page := pg.With(stmt).Request(request).Response(&[]ContactModel{})
 	return page, nil

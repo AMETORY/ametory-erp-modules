@@ -51,6 +51,9 @@ func (s *WarehouseService) GetWarehouses(request http.Request, search string) (p
 			"%"+search+"%",
 		)
 	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	stmt = stmt.Model(&WarehouseModel{})
 	page := pg.With(stmt).Request(request).Response(&[]WarehouseModel{})
 	return page, nil

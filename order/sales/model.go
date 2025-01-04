@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/contact"
+	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
 	"github.com/AMETORY/ametory-erp-modules/utils"
@@ -29,9 +30,11 @@ type SalesModel struct {
 	Notes           string               `json:"notes"`
 	Total           float64              `json:"total"`
 	Subtotal        float64              `json:"subtotal"`
+	Paid            float64              `json:"paid"`
 	TotalBeforeTax  float64              `json:"total_before_tax"`
 	TotalBeforeDisc float64              `json:"total_before_disc"`
 	Status          string               `json:"status"`
+	StockStatus     string               `json:"stock_status" gorm:"default:'pending'"`
 	SalesDate       time.Time            `json:"sales_date"`
 	DueDate         time.Time            `json:"due_date"`
 	PaymentTerms    string               `json:"payment_terms"`
@@ -59,6 +62,10 @@ type SalesItemModel struct {
 	Product            *product.ProductModel     `gorm:"foreignKey:ProductID"`
 	WarehouseID        *string                   `json:"warehouse_id"`
 	Warehouse          *warehouse.WarehouseModel `gorm:"foreignKey:WarehouseID"`
+	SaleAccountID      *string                   `json:"sale_account_id"`
+	SaleAccount        *account.AccountModel     `gorm:"foreignKey:SaleAccountID"`
+	AssetAccountID     *string                   `json:"asset_account_id"`
+	AssetAccount       *account.AccountModel     `gorm:"foreignKey:AssetAccountID"`
 }
 
 func (s *SalesModel) TableName() string {

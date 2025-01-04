@@ -1,6 +1,7 @@
 package context
 
 import (
+	"context"
 	"net/http"
 
 	"gorm.io/gorm"
@@ -8,8 +9,9 @@ import (
 
 // ERPContext adalah struct yang menyimpan semua dependencies
 type ERPContext struct {
-	DB      *gorm.DB      // Database connection
-	Request *http.Request // HTTP request
+	DB      *gorm.DB         // Database connection
+	Ctx     *context.Context // Context
+	Request *http.Request    // HTTP request
 	// Tambahkan service lainnya di sini
 	InventoryService interface{} // Contoh: InventoryService
 	AuthService      interface{} // Contoh: AuthService
@@ -22,10 +24,11 @@ type ERPContext struct {
 }
 
 // NewERPContext membuat instance baru dari ERPContext
-func NewERPContext(db *gorm.DB, req *http.Request, skipMigrate bool) *ERPContext {
+func NewERPContext(db *gorm.DB, req *http.Request, ctx *context.Context, skipMigrate bool) *ERPContext {
 	return &ERPContext{
 		DB:            db,
 		Request:       req,
+		Ctx:           ctx,
 		SkipMigration: skipMigrate,
 	}
 }

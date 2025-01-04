@@ -44,6 +44,9 @@ func (s *AccountService) GetAccountByCode(code string) (*AccountModel, error) {
 func (s *AccountService) GetAccounts(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	if search != "" {
 		stmt = stmt.Where("accounts.name LIKE ? OR accounts.code LIKE ? ",
 			"%"+search+"%",

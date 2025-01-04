@@ -31,6 +31,7 @@ type TransactionModel struct {
 	Account                account.AccountModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:AccountID" json:"-"`
 	TaxPaymentID           string               `json:"tax_payment_id"`
 	TransactionRefID       *string              `json:"transaction_ref_id"`
+	TransactionRefType     string               `json:"transaction_ref_type"`
 	TransactionRefs        []TransactionModel   `json:"transaction_refs" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:TransactionRefID"`
 	CompanyID              string               `json:"company_id" gorm:"not null"`
 	Company                company.CompanyModel `gorm:"foreignKey:CompanyID"`
