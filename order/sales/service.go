@@ -1,9 +1,12 @@
 package sales
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/inventory"
+	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -60,4 +63,53 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 	stmt = stmt.Model(&SalesModel{})
 	page := pg.With(stmt).Request(request).Response(&[]SalesModel{})
 	return page, nil
+}
+
+func (s *SalesService) UpdateStock(salesID, warehouseID string) error {
+	var sales SalesModel
+	if err := s.db.First(&sales, salesID).Error; err != nil {
+		return err
+	}
+
+	invSrv, ok := s.ctx.InventoryService.(*inventory.InventoryService)
+	if !ok {
+		return errors.New("invalid inventory service")
+	}
+
+	// Pastikan status PO adalah "pending"
+	if sales.Status != "pending" {
+		return errors.New("purchase order already processed")
+	}
+
+	err := s.ctx.DB.Transaction(func(tx *gorm.DB) error {
+		for _, v := range sales.Items {
+			if v.ProductID == nil || v.WarehouseID == nil {
+				continue
+			}
+			if err := invSrv.StockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, -v.Quantity, stockmovement.MovementTypeIn, sales.ID); err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		sales.Status = "updated"
+		if err := tx.Save(&sales).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		// return nil will commit the whole transaction
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

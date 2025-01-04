@@ -5,6 +5,8 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/contact"
+	"github.com/AMETORY/ametory-erp-modules/inventory/product"
+	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -39,19 +41,24 @@ type SalesModel struct {
 	Contact         contact.ContactModel `gorm:"foreignKey:ContactID"`
 	ContactData     string               `gorm:"type:json" json:"contact_data"`
 	Type            SalesType            `json:"type"`
+	Items           []SalesItemModel     `gorm:"foreignKey:SalesID" json:"items"`
 }
 
 type SalesItemModel struct {
 	utils.BaseModel
-	SalesID            string     `json:"sales_id"`
-	Sales              SalesModel `gorm:"foreignKey:SalesID"`
-	Description        string     `json:"description"`
-	Quantity           float64    `json:"quantity"`
-	UnitPrice          float64    `json:"unit_price"`
-	Total              float64    `json:"total"`
-	DiscountPercent    float64    `json:"discount_percent"`
-	DiscountAmount     float64    `json:"discount_amount"`
-	SubtotalBeforeDisc float64    `json:"subtotal_before_disc"`
+	SalesID            string                    `json:"sales_id"`
+	Sales              SalesModel                `gorm:"foreignKey:SalesID"`
+	Description        string                    `json:"description"`
+	Quantity           float64                   `json:"quantity"`
+	UnitPrice          float64                   `json:"unit_price"`
+	Total              float64                   `json:"total"`
+	DiscountPercent    float64                   `json:"discount_percent"`
+	DiscountAmount     float64                   `json:"discount_amount"`
+	SubtotalBeforeDisc float64                   `json:"subtotal_before_disc"`
+	ProductID          *string                   `json:"product_id"`
+	Product            *product.ProductModel     `gorm:"foreignKey:ProductID"`
+	WarehouseID        *string                   `json:"warehouse_id"`
+	Warehouse          *warehouse.WarehouseModel `gorm:"foreignKey:WarehouseID"`
 }
 
 func (s *SalesModel) TableName() string {
@@ -66,7 +73,7 @@ func (s *SalesModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (s *SalesItemModel) TableName() string {
-	return "sales_item"
+	return "sales_items"
 }
 
 func (s *SalesItemModel) BeforeCreate(tx *gorm.DB) (err error) {
