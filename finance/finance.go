@@ -3,26 +3,24 @@ package finance
 import (
 	"fmt"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"gorm.io/gorm"
 )
 
 type FinanceService struct {
-	db                 *gorm.DB
+	ctx                *context.ERPContext
 	AccountService     *account.AccountService
 	TransactionService *transaction.TransactionService
-	SkipMigration      bool
 }
 
-func NewFinanceService(db *gorm.DB, skipMigrate bool) *FinanceService {
+func NewFinanceService(ctx *context.ERPContext) *FinanceService {
 	fmt.Println("INIT FINANCE SERVICE")
 	var service = FinanceService{
-		db:                 db,
-		SkipMigration:      skipMigrate,
-		AccountService:     account.NewAccountService(db),
-		TransactionService: transaction.NewTransactionService(db),
+		ctx: ctx,
 	}
+	service.AccountService = account.NewAccountService(ctx.DB, ctx)
 	err := service.Migrate()
 	if err != nil {
 		fmt.Println(err)
@@ -32,14 +30,14 @@ func NewFinanceService(db *gorm.DB, skipMigrate bool) *FinanceService {
 }
 
 func (s *FinanceService) Migrate() error {
-	if s.SkipMigration {
+	if s.ctx.SkipMigration {
 		return nil
 	}
-	if err := account.Migrate(s.db); err != nil {
+	if err := account.Migrate(s.ctx.DB); err != nil {
 		fmt.Println("ERROR ACCOUNT", err)
 		return err
 	}
-	if err := transaction.Migrate(s.db); err != nil {
+	if err := transaction.Migrate(s.ctx.DB); err != nil {
 		return err
 	}
 	// if err := transaction.Migrate(s.TransactionService.DB()); err != nil {
@@ -51,5 +49,5 @@ func (s *FinanceService) Migrate() error {
 	return nil
 }
 func (s *FinanceService) DB() *gorm.DB {
-	return s.db
+	return s.ctx.DB
 }

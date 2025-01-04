@@ -3,6 +3,7 @@ package company
 import (
 	"fmt"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
 )
@@ -32,13 +33,12 @@ func (CompanyModel) TableName() string {
 }
 
 type CompanyService struct {
-	db            *gorm.DB
-	SkipMigration bool
+	ctx *context.ERPContext
 }
 
-func NewCompanyService(db *gorm.DB, skipMigrate bool) *CompanyService {
+func NewCompanyService(ctx *context.ERPContext) *CompanyService {
 	fmt.Println("INIT COMPANY SERVICE")
-	var service = CompanyService{db: db, SkipMigration: skipMigrate}
+	var service = CompanyService{ctx: ctx}
 	err := service.Migrate()
 	if err != nil {
 		fmt.Println(err)
@@ -48,12 +48,12 @@ func NewCompanyService(db *gorm.DB, skipMigrate bool) *CompanyService {
 }
 
 func (s *CompanyService) Migrate() error {
-	if s.SkipMigration {
+	if s.ctx.SkipMigration {
 		return nil
 	}
-	return s.db.AutoMigrate(&CompanyModel{})
+	return s.ctx.DB.AutoMigrate(&CompanyModel{})
 }
 
 func (s *CompanyService) DB() *gorm.DB {
-	return s.db
+	return s.ctx.DB
 }

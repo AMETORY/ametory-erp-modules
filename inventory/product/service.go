@@ -3,22 +3,25 @@ package product
 import (
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
 type ProductService struct {
-	db *gorm.DB
+	db  *gorm.DB
+	ctx *context.ERPContext
 }
 type ProductCategoryService struct {
-	db *gorm.DB
+	db  *gorm.DB
+	ctx *context.ERPContext
 }
 
-func NewProductService(db *gorm.DB) *ProductService {
-	return &ProductService{db: db}
+func NewProductService(db *gorm.DB, ctx *context.ERPContext) *ProductService {
+	return &ProductService{db: db, ctx: ctx}
 }
-func NewProductCategoryService(db *gorm.DB) *ProductCategoryService {
-	return &ProductCategoryService{db: db}
+func NewProductCategoryService(db *gorm.DB, ctx *context.ERPContext) *ProductCategoryService {
+	return &ProductCategoryService{db: db, ctx: ctx}
 }
 
 func (s *ProductService) CreateProduct(data *ProductModel) error {

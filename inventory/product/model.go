@@ -46,7 +46,5 @@ func (p *ProductCategoryModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func Migrate(db *gorm.DB) error {
-	db.AutoMigrate(&ProductModel{})
-	db.AutoMigrate(&ProductCategoryModel{})
-	return nil
+	return db.AutoMigrate(&ProductModel{}, &ProductCategoryModel{})
 }

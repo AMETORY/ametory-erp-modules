@@ -3,25 +3,29 @@ package inventory
 import (
 	"fmt"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
+	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
+	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
 	"gorm.io/gorm"
 )
 
 type InventoryService struct {
-	db                     *gorm.DB
+	ctx                    *context.ERPContext
 	ProductService         *product.ProductService
 	ProductCategoryService *product.ProductCategoryService
-	// TransactionService *transaction.TransactionService
-	SkipMigration bool
+	WarehouseService       *warehouse.WarehouseService
+	StockMovementService   *stockmovement.StockMovementService
 }
 
-func NewInventoryService(db *gorm.DB, skipMigrate bool) *InventoryService {
+func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 	fmt.Println("INIT INVENTORY SERVICE")
 	var service = InventoryService{
-		db:                     db,
-		SkipMigration:          skipMigrate,
-		ProductService:         product.NewProductService(db),
-		ProductCategoryService: product.NewProductCategoryService(db),
+		ctx:                    ctx,
+		ProductService:         product.NewProductService(ctx.DB, ctx),
+		ProductCategoryService: product.NewProductCategoryService(ctx.DB, ctx),
+		WarehouseService:       warehouse.NewWarehouseService(ctx.DB, ctx),
+		StockMovementService:   stockmovement.NewStockMovementService(ctx.DB, ctx),
 	}
 	err := service.Migrate()
 	if err != nil {
@@ -32,19 +36,22 @@ func NewInventoryService(db *gorm.DB, skipMigrate bool) *InventoryService {
 }
 
 func (s *InventoryService) Migrate() error {
-	if s.SkipMigration {
+	if s.ctx.SkipMigration {
 		return nil
 	}
-	if err := product.Migrate(s.db); err != nil {
+	if err := product.Migrate(s.ctx.DB); err != nil {
 		fmt.Println("ERROR ACCOUNT", err)
 		return err
 	}
-	// if err := transaction.Migrate(s.db); err != nil {
-	// 	return err
-	// }
+	if err := warehouse.Migrate(s.ctx.DB); err != nil {
+		return err
+	}
+	if err := stockmovement.Migrate(s.ctx.DB); err != nil {
+		return err
+	}
 
 	return nil
 }
 func (s *InventoryService) DB() *gorm.DB {
-	return s.db
+	return s.ctx.DB
 }

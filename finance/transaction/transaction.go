@@ -4,16 +4,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
 type TransactionService struct {
-	db *gorm.DB
+	db  *gorm.DB
+	ctx *context.ERPContext
 }
 
-func NewTransactionService(db *gorm.DB) *TransactionService {
-	return &TransactionService{db: db}
+func NewTransactionService(db *gorm.DB, ctx *context.ERPContext) *TransactionService {
+	return &TransactionService{db: db, ctx: ctx}
 }
 
 func (s *TransactionService) CreateTransaction(transaction *TransactionModel) error {

@@ -3,16 +3,18 @@ package account
 import (
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
 type AccountService struct {
-	db *gorm.DB
+	db  *gorm.DB
+	ctx *context.ERPContext
 }
 
-func NewAccountService(db *gorm.DB) *AccountService {
-	return &AccountService{db: db}
+func NewAccountService(db *gorm.DB, ctx *context.ERPContext) *AccountService {
+	return &AccountService{db: db, ctx: ctx}
 }
 
 func (s *AccountService) CreateAccount(data *AccountModel) error {

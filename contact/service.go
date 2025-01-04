@@ -4,17 +4,19 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/company"
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
 type ContactService struct {
-	db            *gorm.DB
-	SkipMigration bool
+	ctx            *context.ERPContext
+	CompanyService *company.CompanyService
 }
 
-func NewContactService(db *gorm.DB, skipMigrate bool) *ContactService {
-	var contactService = ContactService{db: db}
+func NewContactService(ctx *context.ERPContext, companyService *company.CompanyService, skipMigrate bool) *ContactService {
+	var contactService = ContactService{ctx: ctx, CompanyService: companyService}
 	if !skipMigrate {
 		if err := contactService.Migrate(); err != nil {
 			return nil
@@ -25,13 +27,13 @@ func NewContactService(db *gorm.DB, skipMigrate bool) *ContactService {
 
 // CreateContact membuat contact baru
 func (s *ContactService) CreateContact(data *ContactModel) error {
-	return s.db.Create(data).Error
+	return s.ctx.DB.Create(data).Error
 }
 
 // GetContactByID mengambil contact berdasarkan ID
 func (s *ContactService) GetContactByID(id uint) (*ContactModel, error) {
 	var contact ContactModel
-	if err := s.db.First(&contact, id).Error; err != nil {
+	if err := s.ctx.DB.First(&contact, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("contact not found")
 		}
@@ -43,7 +45,7 @@ func (s *ContactService) GetContactByID(id uint) (*ContactModel, error) {
 // UpdateContactRoles mengupdate roles (is_customer, is_vendor, is_supplier) dari contact
 func (s *ContactService) UpdateContactRoles(id uint, isCustomer, isVendor, isSupplier bool) (*ContactModel, error) {
 	var contact ContactModel
-	if err := s.db.First(&contact, id).Error; err != nil {
+	if err := s.ctx.DB.First(&contact, id).Error; err != nil {
 		return nil, err
 	}
 
@@ -51,7 +53,7 @@ func (s *ContactService) UpdateContactRoles(id uint, isCustomer, isVendor, isSup
 	contact.IsVendor = isVendor
 	contact.IsSupplier = isSupplier
 
-	if err := s.db.Save(&contact).Error; err != nil {
+	if err := s.ctx.DB.Save(&contact).Error; err != nil {
 		return nil, err
 	}
 
@@ -61,7 +63,7 @@ func (s *ContactService) UpdateContactRoles(id uint, isCustomer, isVendor, isSup
 // GetContactsByRole mengambil semua contact berdasarkan role (customer, vendor, supplier)
 func (s *ContactService) GetContactsByRole(isCustomer, isVendor, isSupplier bool) ([]ContactModel, error) {
 	var contacts []ContactModel
-	query := s.db.Where("is_customer = ? AND is_vendor = ? AND is_supplier = ?", isCustomer, isVendor, isSupplier)
+	query := s.ctx.DB.Where("is_customer = ? AND is_vendor = ? AND is_supplier = ?", isCustomer, isVendor, isSupplier)
 	if err := query.Find(&contacts).Error; err != nil {
 		return nil, err
 	}
@@ -70,7 +72,7 @@ func (s *ContactService) GetContactsByRole(isCustomer, isVendor, isSupplier bool
 
 // DeleteContact menghapus contact berdasarkan ID
 func (s *ContactService) DeleteContact(id uint) error {
-	if err := s.db.Delete(&ContactModel{}, id).Error; err != nil {
+	if err := s.ctx.DB.Delete(&ContactModel{}, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("contact not found")
 		}
@@ -82,7 +84,7 @@ func (s *ContactService) DeleteContact(id uint) error {
 // UpdateContact mengupdate informasi contact
 func (s *ContactService) UpdateContact(id uint, data *ContactModel) (*ContactModel, error) {
 	var contact ContactModel
-	if err := s.db.First(&contact, id).Error; err != nil {
+	if err := s.ctx.DB.First(&contact, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("contact not found")
 		}
@@ -101,7 +103,7 @@ func (s *ContactService) UpdateContact(id uint, data *ContactModel) (*ContactMod
 	contact.IsVendor = data.IsVendor
 	contact.IsSupplier = data.IsSupplier
 
-	if err := s.db.Save(&contact).Error; err != nil {
+	if err := s.ctx.DB.Save(&contact).Error; err != nil {
 		return nil, err
 	}
 
@@ -111,7 +113,7 @@ func (s *ContactService) UpdateContact(id uint, data *ContactModel) (*ContactMod
 // GetContacts mengambil semua contact dengan pagination
 func (s *ContactService) GetContacts(request http.Request, search string, isCustomer, isVendor, isSupplier *bool) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.ctx.DB
 	if search != "" {
 		stmt = stmt.Where("contacts.name LIKE ? OR contacts.email LIKE ? OR contacts.phone LIKE ? OR contacts.address LIKE ?",
 			"%"+search+"%",
@@ -135,12 +137,12 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 }
 
 func (s *ContactService) Migrate() error {
-	if s.SkipMigration {
+	if s.ctx.SkipMigration {
 		return nil
 	}
-	return s.db.AutoMigrate(&ContactModel{})
+	return s.ctx.DB.AutoMigrate(&ContactModel{})
 }
 
 func (s *ContactService) DB() *gorm.DB {
-	return s.db
+	return s.ctx.DB
 }
