@@ -26,7 +26,9 @@ func NewSalesService(db *gorm.DB, ctx *context.ERPContext, financeService *finan
 }
 
 func (s *SalesService) CreateSales(data *SalesModel) error {
+	companyID := s.ctx.Request.Header.Get("ID-Company")
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		data.CompanyID = companyID
 		if err := s.db.Create(data).Error; err != nil {
 			tx.Rollback()
 			return err
@@ -41,6 +43,7 @@ func (s *SalesService) CreateSales(data *SalesModel) error {
 					Notes:              data.Description,
 					TransactionRefID:   &data.ID,
 					TransactionRefType: "sales",
+					CompanyID:          companyID,
 				}, v.Total)
 			}
 			if v.AssetAccountID != nil {
@@ -51,6 +54,7 @@ func (s *SalesService) CreateSales(data *SalesModel) error {
 					Notes:              data.Description,
 					TransactionRefID:   &data.ID,
 					TransactionRefType: "sales",
+					CompanyID:          companyID,
 				}, v.Total)
 				acc, err := s.financeService.AccountService.GetAccountByID(*v.AssetAccountID)
 				if err != nil {
@@ -78,12 +82,18 @@ func (s *SalesService) CreateSales(data *SalesModel) error {
 			}
 		}
 
+		if err := tx.Commit().Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
 		return nil
 	})
 
 }
 
 func (s *SalesService) CreatePayment(salesID string, date time.Time, amount float64, accountReceivableID *string, accountAssetID string) error {
+	companyID := s.ctx.Request.Header.Get("ID-Company")
 	return s.db.Transaction(func(tx *gorm.DB) error {
 
 		var data SalesModel
@@ -102,6 +112,7 @@ func (s *SalesService) CreatePayment(salesID string, date time.Time, amount floa
 			Notes:              data.Description,
 			TransactionRefID:   &data.ID,
 			TransactionRefType: "sales",
+			CompanyID:          companyID,
 		}, amount); err != nil {
 			return err
 		}
@@ -113,6 +124,7 @@ func (s *SalesService) CreatePayment(salesID string, date time.Time, amount floa
 				Notes:              data.Description,
 				TransactionRefID:   &data.ID,
 				TransactionRefType: "sales",
+				CompanyID:          companyID,
 			}, -amount); err != nil {
 				return err
 			}

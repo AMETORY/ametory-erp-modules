@@ -7,6 +7,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
+	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
 	"github.com/morkid/paginate"
@@ -31,13 +32,77 @@ func NewPurchaseService(db *gorm.DB, ctx *context.ERPContext, financeService *fi
 
 // CreatePurchaseOrder membuat purchase order baru
 func (s *PurchaseService) CreatePurchaseOrder(data *PurchaseOrderModel) error {
+	companyID := s.ctx.Request.Header.Get("ID-Company")
 	// Hitung total harga
 
-	return s.db.Create(data).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Membuat purchase order
+		data.CompanyID = companyID
+		if err := s.db.Create(data).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+		paid := 0.0
+		for _, v := range data.Items {
+			if v.PurchaseAccountID != nil {
+				s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+					Date:               data.PurchaseDate,
+					AccountID:          v.PurchaseAccountID,
+					Description:        "Pembelian " + data.PurchaseNumber,
+					Notes:              data.Description,
+					TransactionRefID:   &data.ID,
+					TransactionRefType: "purchase",
+					CompanyID:          companyID,
+				}, v.Total)
+			}
+			if v.AssetAccountID != nil {
+				s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+					Date:               data.PurchaseDate,
+					AccountID:          v.AssetAccountID,
+					Description:        "Pembelian " + data.PurchaseNumber,
+					Notes:              data.Description,
+					TransactionRefID:   &data.ID,
+					TransactionRefType: "purchase",
+					CompanyID:          companyID,
+				}, v.Total)
+				acc, err := s.financeService.AccountService.GetAccountByID(*v.AssetAccountID)
+				if err != nil {
+					return err
+				}
+				if acc.Type == account.ASSET {
+					paid += v.Total
+				}
+			}
+
+		}
+		if paid > 0 {
+			data.Paid = paid
+			if err := tx.Save(data).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		if paid < data.Total {
+			data.Status = "partial"
+			if err := tx.Save(data).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		return nil
+	})
 }
 
 // ReceivePurchaseOrder menerima barang dari supplier dan menambah stok
 func (s *PurchaseService) ReceivePurchaseOrder(poID, warehouseID string) error {
+	// companyID := s.ctx.Request.Header.Get("ID-Company")
 	var po PurchaseOrderModel
 	if err := s.db.First(&po, poID).Error; err != nil {
 		return err
@@ -106,6 +171,8 @@ func (s *PurchaseService) CancelPurchaseOrder(poID uint) error {
 
 // CreatePayment membuat payment untuk purchase order
 func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount float64, accountPayableID *string, accountAssetID string) error {
+	companyID := s.ctx.Request.Header.Get("ID-Company")
+
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var data PurchaseOrderModel
 		if err := s.db.First(&data, poID).Error; err != nil {
@@ -128,6 +195,7 @@ func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount floa
 			Notes:              data.Description,
 			TransactionRefID:   &data.ID,
 			TransactionRefType: "purchase",
+			CompanyID:          companyID,
 		}, -amount); err != nil {
 			return err
 		}
@@ -140,6 +208,7 @@ func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount floa
 				Notes:              data.Description,
 				TransactionRefID:   &data.ID,
 				TransactionRefType: "purchase",
+				CompanyID:          companyID,
 			}, amount); err != nil {
 				return err
 			}
