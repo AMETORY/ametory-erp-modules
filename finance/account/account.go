@@ -1,6 +1,11 @@
 package account
 
-import "gorm.io/gorm"
+import (
+	"net/http"
+
+	"github.com/morkid/paginate"
+	"gorm.io/gorm"
+)
 
 type AccountService struct {
 	db *gorm.DB
@@ -34,15 +39,16 @@ func (s *AccountService) GetAccountByCode(code string) (*AccountModel, error) {
 	return &account, err
 }
 
-func (s *AccountService) GetAccounts(page int, limit int, search string) ([]AccountModel, error) {
-	var accounts []AccountModel
-	query := s.db
-
+func (s *AccountService) GetAccounts(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
 	if search != "" {
-		query = query.Where("name LIKE ? OR code LIKE ?", "%"+search+"%", "%"+search+"%")
+		stmt = stmt.Where("accounts.name LIKE ? OR accounts.code LIKE ? ",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
 	}
-
-	offset := (page - 1) * limit
-	err := query.Offset(offset).Limit(limit).Find(&accounts).Error
-	return accounts, err
+	stmt = stmt.Model(&AccountModel{})
+	page := pg.With(stmt).Request(request).Response(&[]AccountModel{})
+	return page, nil
 }

@@ -1,8 +1,10 @@
 package transaction
 
 import (
+	"net/http"
 	"time"
 
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -15,7 +17,19 @@ func NewTransactionService(db *gorm.DB) *TransactionService {
 }
 
 func (s *TransactionService) CreateTransaction(transaction *TransactionModel) error {
-	return s.db.Create(transaction).Error
+	if transaction.SourceID != nil {
+		transaction.AccountID = transaction.SourceID
+		if err := s.db.Create(transaction).Error; err != nil {
+			return err
+		}
+	}
+	if transaction.DestinationID != nil {
+		transaction.AccountID = transaction.DestinationID
+		if err := s.db.Create(transaction).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *TransactionService) UpdateTransaction(transaction *TransactionModel) error {
@@ -51,18 +65,18 @@ func (s *TransactionService) GetByDateAndCompanyId(from, to time.Time, companyId
 	return transactions, err
 }
 
-func (s *TransactionService) GetTransactions(page int, limit int, search string) ([]TransactionModel, error) {
-	var accounts []TransactionModel
-	query := s.db
-
+func (s *TransactionService) GetTransactions(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Joins("LEFT JOIN accounts", "accounts.id = transactions.account_id")
 	if search != "" {
-		query = query.Select("transactions.*, account_source.name as account_source_name, account_destination.name as account_destination_name").
-			Joins("LEFT JOIN account as account_source", "account_source.id = transactions.account_source_id").
-			Joins("LEFT JOIN account as account_destination", "account_destination.id = transactions.account_destination_id")
-		query = query.Where("transactions.description LIKE ? OR transactions.notes LIKE ? OR account_source.name LIKE ? OR account_destination.name LIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+		stmt = stmt.Where("accounts.name LIKE ? OR accounts.code LIKE ? OR transactions.code LIKE ? OR transactions.description LIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
 	}
-
-	offset := (page - 1) * limit
-	err := query.Offset(offset).Limit(limit).Find(&accounts).Error
-	return accounts, err
+	stmt = stmt.Model(&TransactionModel{})
+	page := pg.With(stmt).Request(request).Response(&[]TransactionModel{})
+	return page, nil
 }

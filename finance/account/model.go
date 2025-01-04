@@ -1,6 +1,8 @@
 package account
 
 import (
+	"fmt"
+
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
@@ -38,6 +40,7 @@ type AccountModel struct {
 
 // Migrate menjalankan migrasi database untuk model account
 func Migrate(db *gorm.DB) error {
+	fmt.Println("Migrating account model...")
 	return db.AutoMigrate(&AccountModel{})
 }
 
@@ -46,4 +49,8 @@ func (u *AccountModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return
+}
+
+func (AccountModel) TableName() string {
+	return "accounts"
 }

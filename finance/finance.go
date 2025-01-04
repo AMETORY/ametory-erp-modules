@@ -16,6 +16,7 @@ type FinanceService struct {
 }
 
 func NewFinanceService(db *gorm.DB, skipMigrate bool) *FinanceService {
+	fmt.Println("INIT FINANCE SERVICE")
 	var service = FinanceService{
 		db:                 db,
 		SkipMigration:      skipMigrate,
@@ -35,6 +36,7 @@ func (s *FinanceService) Migrate() error {
 		return nil
 	}
 	if err := account.Migrate(s.db); err != nil {
+		fmt.Println("ERROR ACCOUNT", err)
 		return err
 	}
 	if err := transaction.Migrate(s.db); err != nil {

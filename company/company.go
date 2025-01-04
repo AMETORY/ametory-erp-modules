@@ -21,7 +21,7 @@ type CompanyModel struct {
 	ContactPersonPosition string `json:"contact_person_position"`
 	TaxPayerNumber        string `json:"tax_payer_number"`
 	UserID                string `json:"user_id"`
-	Status                string `json:"status" gorm:"type:VARCHAR(20) DEFAULT 'ACTIVE'"`
+	Status                string `json:"status" gorm:"type:VARCHAR(20);DEFAULT 'ACTIVE'"`
 	EmployeeActiveCount   int64  `json:"employee_active_count"`
 	EmployeeResignCount   int64  `json:"employee_resign_count"`
 	EmployeePendingCount  int64  `json:"employee_pending_count"`
