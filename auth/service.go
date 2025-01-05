@@ -97,6 +97,38 @@ func (s *AuthService) ForgotPassword(email string) error {
 	return nil
 }
 
+// ChangePassword mengganti password
+func (s *AuthService) ChangePassword(userID, oldPassword, newPassword string) error {
+	var user UserModel
+
+	// Cari user berdasarkan ID
+	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("user not found")
+		}
+		return err
+	}
+
+	// Verifikasi password lama
+	if err := CheckPassword(user.Password, oldPassword); err != nil {
+		return errors.New("invalid password")
+	}
+
+	// Hash password baru
+	hashedPassword, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	// Ganti password di database
+	user.Password = hashedPassword
+	if err := s.db.Save(&user).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Verification memverifikasi token reset password
 func (s *AuthService) Verification(token, newPassword string) error {
 	var user UserModel
