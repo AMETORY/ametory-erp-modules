@@ -17,6 +17,8 @@ type ProductModel struct {
 	Price           float64              `gorm:"not null;default:0"`
 	CompanyID       string               `json:"company_id"`
 	Company         company.CompanyModel `gorm:"foreignKey:CompanyID"`
+	DistributorID   *string              `json:"distributor_id"`
+	Distributor     interface{}          `gorm:"foreignKey:DistributorID"`
 	MasterProductID string               `json:"master_product_id"`
 	MasterProduct   MasterProductModel   `gorm:"foreignKey:MasterProductID"`
 	CategoryID      string

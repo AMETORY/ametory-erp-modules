@@ -10,6 +10,7 @@ type RoleModel struct {
 	utils.BaseModel
 	Name         string            `gorm:"unique;not null"`
 	Permissions  []PermissionModel `gorm:"many2many:role_permissions;"`
+	CompanyID    *string
 	IsAdmin      bool
 	IsSuperAdmin bool
 }

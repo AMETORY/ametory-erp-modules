@@ -64,6 +64,9 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
+	if request.Header.Get("ID-Distributor") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Distributor"))
+	}
 	stmt = stmt.Model(&ProductModel{})
 	page := pg.With(stmt).Request(request).Response(&[]ProductModel{})
 	return page, nil

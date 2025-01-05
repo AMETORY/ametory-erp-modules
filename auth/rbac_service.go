@@ -2,7 +2,9 @@ package auth
 
 import (
 	"errors"
+	"net/http"
 
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -114,4 +116,73 @@ func (s *RBACService) CheckAdminPermission(adminID string, permissionNames []str
 	}
 
 	return false, nil
+}
+
+// CreateRole membuat peran baru
+func (s *RBACService) CreateRole(name string, isAdmin bool, isSuperAdmin bool, companyID *string) (*RoleModel, error) {
+	role := RoleModel{
+		Name:         name,
+		IsAdmin:      isAdmin,
+		IsSuperAdmin: isSuperAdmin,
+		CompanyID:    companyID,
+	}
+
+	if err := s.db.Create(&role).Error; err != nil {
+		return nil, err
+	}
+
+	return &role, nil
+}
+
+// GetAllRoles mengambil semua peran
+func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where(" roles.name LIKE ?",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+
+	stmt = stmt.Model(&RoleModel{})
+	page := pg.With(stmt).Request(request).Response(&[]RoleModel{})
+	return page, nil
+}
+
+// GetRoleByID mengambil peran berdasarkan ID
+func (s *RBACService) GetRoleByID(roleID string) (*RoleModel, error) {
+	var role RoleModel
+	if err := s.db.First(&role, roleID).Error; err != nil {
+		return nil, errors.New("role not found")
+	}
+	return &role, nil
+}
+
+// UpdateRole memperbarui informasi peran berdasarkan ID
+func (s *RBACService) UpdateRole(roleID string, name string, isAdmin bool, isSuperAdmin bool) (*RoleModel, error) {
+	var role RoleModel
+	if err := s.db.First(&role, roleID).Error; err != nil {
+		return nil, errors.New("role not found")
+	}
+
+	role.Name = name
+	role.IsAdmin = isAdmin
+	role.IsSuperAdmin = isSuperAdmin
+
+	if err := s.db.Save(&role).Error; err != nil {
+		return nil, err
+	}
+
+	return &role, nil
+}
+
+// DeleteRole menghapus peran berdasarkan ID
+func (s *RBACService) DeleteRole(roleID string) error {
+	if err := s.db.Delete(&RoleModel{}, roleID).Error; err != nil {
+		return err
+	}
+	return nil
 }

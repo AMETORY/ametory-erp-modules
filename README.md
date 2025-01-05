@@ -2,8 +2,8 @@
 
 ## TODO
 
-- [ ] Authentication
-- [ ] Manajemen Company
+- [x] Authentication
+- [x] Manajemen Company
 - [ ] Manajemen Keuangan (Finance Management)
 - [ ] Manajemen Sumber Daya Manusia (HRM - Human Resource Management)
 - [ ] Manajemen Inventaris (Inventory Management)
