@@ -61,19 +61,54 @@ func (s *RBACService) AssignPermissionToRole(roleName string, permissionName str
 }
 
 // CheckPermission memeriksa apakah pengguna memiliki izin tertentu
-func (s *RBACService) CheckPermission(userID string, permissionName string) (bool, error) {
+func (s *RBACService) CheckPermission(userID string, permissionNames []string) (bool, error) {
 	var user UserModel
 
 	// Cari pengguna beserta peran dan izin
-	if err := s.db.Preload("Roles.Permissions").First(&user, userID).Error; err != nil {
+	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
+		return db.Where("is_admin = ?", false).Preload("Permissions")
+	}).First(&user, userID).Error; err != nil {
 		return false, errors.New("user not found")
 	}
 
 	// Periksa izin
-	for _, role := range user.Roles {
-		for _, permission := range role.Permissions {
-			if permission.Name == permissionName {
+	for _, roleName := range permissionNames {
+		for _, role := range user.Roles {
+			if role.IsSuperAdmin {
 				return true, nil
+			}
+			for _, permission := range role.Permissions {
+				if permission.Name == roleName {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// CheckPermission memeriksa apakah pengguna memiliki izin tertentu
+func (s *RBACService) CheckAdminPermission(adminID string, permissionNames []string) (bool, error) {
+	var admin AdminModel
+
+	// Cari pengguna beserta peran dan izin
+	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
+		return db.Where("is_admin = ?", true).Preload("Permissions")
+	}).First(&admin, adminID).Error; err != nil {
+		return false, errors.New("admin not found")
+	}
+
+	// Periksa izin
+	for _, roleName := range permissionNames {
+		for _, role := range admin.Roles {
+			for _, permission := range role.Permissions {
+				if role.IsSuperAdmin {
+					return true, nil
+				}
+				if permission.Name == roleName {
+					return true, nil
+				}
 			}
 		}
 	}

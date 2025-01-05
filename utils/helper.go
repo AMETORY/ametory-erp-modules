@@ -6,15 +6,17 @@ import (
 )
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
+
 }
 
 // RandString generates a random string of length n
 func RandString(n int) string {
+	r := rand.NewSource(time.Now().UnixNano())
+	rng := rand.New(r)
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = letters[rng.Intn(len(letters))]
 	}
 	return string(b)
 }
