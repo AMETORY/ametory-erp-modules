@@ -3,6 +3,7 @@ package auth
 import (
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -18,8 +19,9 @@ type UserModel struct {
 	Password                   string     `gorm:"not null"`
 	VerifiedAt                 *time.Time `gorm:"index"`
 	VerificationToken          string
-	VerificationTokenExpiredAt *time.Time  `gorm:"index"`
-	Roles                      []RoleModel `gorm:"many2many:user_roles;"`
+	VerificationTokenExpiredAt *time.Time             `gorm:"index"`
+	Roles                      []RoleModel            `gorm:"many2many:user_roles;"`
+	Companies                  []company.CompanyModel `gorm:"many2many:user_companies;"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {

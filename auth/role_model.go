@@ -43,11 +43,12 @@ func (r *PermissionModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 var (
 	services = map[string][]string{
-		"auth":      {"user", "admin", "rbac"},
-		"finance":   {"account", "transaction"},
-		"inventory": {"brand", "product_category", "product", "master_product", "warehouse", "stock_movement", "purchase", "procurement"},
-		"contact":   {"customer", "vendor", "supplier", "distributor"},
-		"order":     {"sales", "pos"},
+		"auth":         {"user", "admin", "rbac"},
+		"finance":      {"account", "transaction"},
+		"inventory":    {"brand", "product_category", "product", "master_product", "warehouse", "stock_movement", "purchase", "procurement"},
+		"contact":      {"customer", "vendor", "supplier"},
+		"order":        {"sales", "pos"},
+		"distribution": {"distributor"},
 	}
 )
 

@@ -37,15 +37,17 @@ func (s *ProductService) DeleteProduct(id string) error {
 }
 
 func (s *ProductService) GetProductByID(id string) (*ProductModel, error) {
-	var invoice ProductModel
-	err := s.db.Where("id = ?", id).First(&invoice).Error
-	return &invoice, err
+	var product ProductModel
+	err := s.db.Where("id = ?", id).First(&product).Error
+	product.Prices, _ = s.ListPricesOfProduct(product.ID)
+	return &product, err
 }
 
 func (s *ProductService) GetProductByCode(code string) (*ProductModel, error) {
-	var invoice ProductModel
-	err := s.db.Where("code = ?", code).First(&invoice).Error
-	return &invoice, err
+	var product ProductModel
+	err := s.db.Where("sku = ?", code).First(&product).Error
+	product.Prices, _ = s.ListPricesOfProduct(product.ID)
+	return &product, err
 }
 
 func (s *ProductService) GetProducts(request http.Request, search string) (paginate.Page, error) {
@@ -97,4 +99,18 @@ func (s *ProductCategoryService) GetProductCategories(request http.Request, sear
 	stmt = stmt.Model(&ProductCategoryModel{})
 	page := pg.With(stmt).Request(request).Response(&[]ProductCategoryModel{})
 	return page, nil
+}
+
+func (s *ProductService) CreatePriceCategory(data *PriceCategoryModel) error {
+	return s.db.Create(data).Error
+}
+
+func (s *ProductService) AddPriceToProduct(data *PriceModel) error {
+	return s.db.Create(data).Error
+}
+
+func (s *ProductService) ListPricesOfProduct(productID string) ([]PriceModel, error) {
+	var prices []PriceModel
+	err := s.db.Where("product_id = ?", productID).Find(&prices).Error
+	return prices, err
 }

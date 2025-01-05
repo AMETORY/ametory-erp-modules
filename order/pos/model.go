@@ -112,21 +112,3 @@ func (s *POSSalesItemModel) BeforeCreate(tx *gorm.DB) (err error) {
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&POSModel{}, &POSSalesItemModel{}, &MerchantModel{})
 }
-
-type MerchantModel struct {
-	utils.BaseModel
-	Name    string
-	Address string
-	Phone   string
-}
-
-func (m *MerchantModel) TableName() string {
-	return "pos_merchants"
-}
-
-func (m *MerchantModel) BeforeCreate(tx *gorm.DB) (err error) {
-	if m.ID == "" {
-		tx.Statement.SetColumn("id", uuid.New().String())
-	}
-	return
-}

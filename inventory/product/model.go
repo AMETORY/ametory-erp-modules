@@ -21,8 +21,9 @@ type ProductModel struct {
 	MasterProduct   MasterProductModel   `gorm:"foreignKey:MasterProductID"`
 	CategoryID      string
 	Category        ProductCategoryModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:CategoryID"`
+	Prices          []PriceModel         `gorm:"-"`
+	Brand           brand.BrandModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID"`
 	BrandID         string
-	Brand           brand.BrandModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID"`
 }
 
 func (ProductModel) TableName() string {
@@ -54,5 +55,5 @@ func (p *ProductCategoryModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&ProductModel{}, &ProductCategoryModel{}, &MasterProductModel{})
+	return db.AutoMigrate(&ProductModel{}, &ProductCategoryModel{}, &MasterProductModel{}, &PriceCategoryModel{}, &PriceModel{}, &MasterProductPriceModel{})
 }

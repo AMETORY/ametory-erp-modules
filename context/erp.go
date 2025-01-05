@@ -14,13 +14,14 @@ type ERPContext struct {
 	Ctx     *context.Context // Context
 	Request *http.Request    // HTTP request
 	// Tambahkan service lainnya di sini
-	InventoryService interface{} // Contoh: InventoryService
-	AuthService      interface{} // Contoh: AuthService
-	AdminAuthService interface{} // Contoh: AdminAuthService
-	RBACService      interface{} // Contoh: RBACService
-	CompanyService   interface{} // Contoh: CompanyService
-	FinanceService   interface{} // Contoh: FinanceService
-	OrderService     interface{} // Contoh: OrderService
+	InventoryService    interface{} // Contoh: InventoryService
+	AuthService         interface{} // Contoh: AuthService
+	AdminAuthService    interface{} // Contoh: AdminAuthService
+	RBACService         interface{} // Contoh: RBACService
+	CompanyService      interface{} // Contoh: CompanyService
+	FinanceService      interface{} // Contoh: FinanceService
+	OrderService        interface{} // Contoh: OrderService
+	DistributionService interface{} // Contoh: DistributionService
 	// Tambahkan service lainnya di sini
 	EmailSender *thirdparty.SMTPSender
 
