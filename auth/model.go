@@ -25,7 +25,7 @@ type UserModel struct {
 	Roles                      []RoleModel                    `gorm:"many2many:user_roles;"`
 	Companies                  []company.CompanyModel         `gorm:"many2many:user_companies;"`
 	Distributors               []distributor.DistributorModel `gorm:"many2many:user_distributors;"`
-	ProfilePicture             *shared.FileModel              `gorm:"foreignKey:RefID;references:ID"`
+	ProfilePicture             *shared.FileModel
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {

@@ -11,15 +11,15 @@ import (
 
 type AdminModel struct {
 	utils.BaseModel
-	FullName                   string            `gorm:"not null"`
-	Username                   string            `gorm:"unique"`
-	Email                      string            `gorm:"unique;not null"`
-	Password                   string            `gorm:"not null"`
-	VerifiedAt                 *time.Time        `gorm:"index"`
-	VerificationToken          string            `json:"verification_token"`
-	VerificationTokenExpiredAt *time.Time        `gorm:"index"`
-	Roles                      []RoleModel       `gorm:"many2many:admin_roles;"`
-	ProfilePicture             *shared.FileModel `gorm:"foreignKey:RefID;references:ID"`
+	FullName                   string      `gorm:"not null"`
+	Username                   string      `gorm:"unique"`
+	Email                      string      `gorm:"unique;not null"`
+	Password                   string      `gorm:"not null"`
+	VerifiedAt                 *time.Time  `gorm:"index"`
+	VerificationToken          string      `json:"verification_token"`
+	VerificationTokenExpiredAt *time.Time  `gorm:"index"`
+	Roles                      []RoleModel `gorm:"many2many:admin_roles;"`
+	ProfilePicture             *shared.FileModel
 }
 
 func (u *AdminModel) BeforeCreate(tx *gorm.DB) (err error) {
