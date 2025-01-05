@@ -82,7 +82,7 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 
 		// Kurangi stok untuk setiap item
 		for _, item := range items {
-			if err := invSrv.StockMovementService.AddMovement(*item.ProductID, warehouseID, merchantID, -item.Quantity, stockmovement.MovementTypeOut, pos.ID); err != nil {
+			if err := invSrv.StockMovementService.AddMovement(*item.ProductID, warehouseID, merchantID, nil, -item.Quantity, stockmovement.MovementTypeOut, pos.ID); err != nil {
 				return err
 			}
 		}

@@ -215,7 +215,7 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string) error {
 			if v.ProductID == nil || v.WarehouseID == nil {
 				continue
 			}
-			if err := invSrv.StockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, nil, -v.Quantity, stockmovement.MovementTypeIn, sales.ID); err != nil {
+			if err := invSrv.StockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, nil, nil, -v.Quantity, stockmovement.MovementTypeIn, sales.ID); err != nil {
 				tx.Rollback()
 				return err
 			}

@@ -16,14 +16,15 @@ func NewStockMovementService(db *gorm.DB, ctx *context.ERPContext) *StockMovemen
 }
 
 // AddMovement menambahkan pergerakan stok
-func (s *StockMovementService) AddMovement(productID, warehouseID string, merchantID *string, quantity float64, movementType MovementType, referenceID string) error {
+func (s *StockMovementService) AddMovement(productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, movementType MovementType, referenceID string) error {
 	movement := StockMovementModel{
-		ProductID:   productID,
-		WarehouseID: warehouseID,
-		Quantity:    quantity,
-		Type:        movementType,
-		MerchantID:  merchantID,
-		ReferenceID: referenceID,
+		ProductID:     productID,
+		WarehouseID:   warehouseID,
+		Quantity:      quantity,
+		Type:          movementType,
+		MerchantID:    merchantID,
+		DistributorID: distributorID,
+		ReferenceID:   referenceID,
 	}
 
 	if err := s.db.Create(&movement).Error; err != nil {
@@ -80,20 +81,20 @@ func (s *StockMovementService) GetMovementByWarehouseID(warehouseID string) ([]S
 }
 
 // CreateAdjustment menambahkan pergerakan stok dengan tipe ADJUST
-func (s *StockMovementService) CreateAdjustment(productID, warehouseID string, quantity float64, referenceID string) error {
-	return s.AddMovement(productID, warehouseID, nil, quantity, MovementTypeAdjust, referenceID)
+func (s *StockMovementService) CreateAdjustment(productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, referenceID string) error {
+	return s.AddMovement(productID, warehouseID, merchantID, distributorID, quantity, MovementTypeAdjust, referenceID)
 }
 
 // TransferStock melakukan transfer stok dari gudang sumber ke gudang tujuan
 func (s *StockMovementService) TransferStock(sourceWarehouseID, destinationWarehouseID string, productID string, quantity float64) error {
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
 		// membuat pergerakan stok di gudang sumber
-		if err := s.AddMovement(productID, sourceWarehouseID, nil, -quantity, MovementTypeTransfer, uuid.New().String()); err != nil {
+		if err := s.AddMovement(productID, sourceWarehouseID, nil, nil, -quantity, MovementTypeTransfer, uuid.New().String()); err != nil {
 			return err
 		}
 
 		// membuat pergerakan stok di gudang tujuan
-		if err := s.AddMovement(productID, destinationWarehouseID, nil, quantity, MovementTypeTransfer, uuid.New().String()); err != nil {
+		if err := s.AddMovement(productID, destinationWarehouseID, nil, nil, quantity, MovementTypeTransfer, uuid.New().String()); err != nil {
 			return err
 		}
 

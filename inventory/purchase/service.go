@@ -119,7 +119,7 @@ func (s *PurchaseService) ReceivePurchaseOrder(poID, warehouseID string) error {
 			if v.ProductID == nil || v.WarehouseID == nil {
 				continue
 			}
-			if err := s.stockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, nil, v.Quantity, stockmovement.MovementTypeIn, po.ID); err != nil {
+			if err := s.stockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, nil, nil, v.Quantity, stockmovement.MovementTypeIn, po.ID); err != nil {
 				tx.Rollback()
 				return err
 			}
