@@ -22,6 +22,8 @@ type ERPContext struct {
 	FinanceService      interface{} // Contoh: FinanceService
 	OrderService        interface{} // Contoh: OrderService
 	DistributionService interface{} // Contoh: DistributionService
+	FileService         interface{} // Contoh: FileService
+	Firestore           interface{} // Contoh: Firestore
 	// Tambahkan service lainnya di sini
 	EmailSender *thirdparty.SMTPSender
 

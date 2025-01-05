@@ -68,7 +68,7 @@ func (s *AdminAuthService) Login(usernameOrEmail, password string) (*AdminModel,
 	if user.VerifiedAt == nil {
 		return nil, errors.New("user not verified")
 	}
-
+	// fmt.Println("password", password)
 	// Verifikasi password
 	if err := CheckPassword(user.Password, password); err != nil {
 		return nil, errors.New("invalid password")

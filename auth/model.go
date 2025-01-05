@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/distribution/distributor"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -24,6 +25,7 @@ type UserModel struct {
 	Roles                      []RoleModel                    `gorm:"many2many:user_roles;"`
 	Companies                  []company.CompanyModel         `gorm:"many2many:user_companies;"`
 	Distributors               []distributor.DistributorModel `gorm:"many2many:user_distributors;"`
+	ProfilePicture             *shared.FileModel              `gorm:"foreignKey:RefID;references:ID"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {

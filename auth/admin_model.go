@@ -3,6 +3,7 @@ package auth
 import (
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -10,14 +11,15 @@ import (
 
 type AdminModel struct {
 	utils.BaseModel
-	FullName                   string     `gorm:"not null"`
-	Username                   string     `gorm:"unique"`
-	Email                      string     `gorm:"unique;not null"`
-	Password                   string     `gorm:"not null"`
-	VerifiedAt                 *time.Time `gorm:"index"`
-	VerificationToken          string
-	VerificationTokenExpiredAt *time.Time  `gorm:"index"`
-	Roles                      []RoleModel `gorm:"many2many:admin_roles;"`
+	FullName                   string            `gorm:"not null"`
+	Username                   string            `gorm:"unique"`
+	Email                      string            `gorm:"unique;not null"`
+	Password                   string            `gorm:"not null"`
+	VerifiedAt                 *time.Time        `gorm:"index"`
+	VerificationToken          string            `json:"verification_token"`
+	VerificationTokenExpiredAt *time.Time        `gorm:"index"`
+	Roles                      []RoleModel       `gorm:"many2many:admin_roles;"`
+	ProfilePicture             *shared.FileModel `gorm:"foreignKey:RefID;references:ID"`
 }
 
 func (u *AdminModel) BeforeCreate(tx *gorm.DB) (err error) {
