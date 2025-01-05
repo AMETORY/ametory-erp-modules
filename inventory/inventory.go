@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
+	"github.com/AMETORY/ametory-erp-modules/inventory/brand"
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/purchase"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
@@ -14,11 +15,13 @@ import (
 
 type InventoryService struct {
 	ctx                    *context.ERPContext
+	MasterProductService   *product.MasterProductService
 	ProductService         *product.ProductService
 	ProductCategoryService *product.ProductCategoryService
 	WarehouseService       *warehouse.WarehouseService
 	StockMovementService   *stockmovement.StockMovementService
 	PurchaseService        *purchase.PurchaseService
+	BrandService           *brand.BrandService
 }
 
 func NewInventoryService(ctx *context.ERPContext) *InventoryService {
@@ -31,11 +34,13 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 	stockmovementSrv := stockmovement.NewStockMovementService(ctx.DB, ctx)
 	var service = InventoryService{
 		ctx:                    ctx,
+		MasterProductService:   product.NewMasterProductService(ctx.DB, ctx),
 		ProductService:         product.NewProductService(ctx.DB, ctx),
 		ProductCategoryService: product.NewProductCategoryService(ctx.DB, ctx),
 		WarehouseService:       warehouse.NewWarehouseService(ctx.DB, ctx),
 		StockMovementService:   stockmovementSrv,
 		PurchaseService:        purchase.NewPurchaseService(ctx.DB, ctx, financeService, stockmovementSrv),
+		BrandService:           brand.NewBrandService(ctx.DB, ctx),
 	}
 	err := service.Migrate()
 	if err != nil {

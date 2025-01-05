@@ -18,7 +18,8 @@ type UserModel struct {
 	Password                   string     `gorm:"not null"`
 	VerifiedAt                 *time.Time `gorm:"index"`
 	VerificationToken          string
-	VerificationTokenExpiredAt *time.Time `gorm:"index"`
+	VerificationTokenExpiredAt *time.Time  `gorm:"index"`
+	Roles                      []RoleModel `gorm:"many2many:user_roles;"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {
@@ -30,11 +31,6 @@ func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (UserModel) TableName() string {
 	return "users"
-}
-
-// Migrate menjalankan migrasi database untuk model user
-func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&UserModel{})
 }
 
 // HashPassword mengenkripsi password menggunakan bcrypt
@@ -53,7 +49,7 @@ func CheckPassword(hashedPassword, password string) error {
 
 func (s *AuthService) Migrate() error {
 
-	return s.db.AutoMigrate(&UserModel{})
+	return s.db.AutoMigrate(&UserModel{}, &RoleModel{}, &PermissionModel{})
 }
 
 func (s *AuthService) DB() *gorm.DB {

@@ -19,6 +19,7 @@ type ContactModel struct {
 	IsCustomer            bool `gorm:"default:false"` // Flag untuk customer
 	IsVendor              bool `gorm:"default:false"` // Flag untuk vendor
 	IsSupplier            bool `gorm:"default:false"` // Flag untuk supplier
+	IsDistributor         bool `gorm:"default:false"` // Flag untuk supplier
 }
 
 func (ContactModel) TableName() string {
