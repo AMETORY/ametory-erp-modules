@@ -142,6 +142,11 @@ func (s *SalesService) CreatePayment(salesID string, date time.Time, amount floa
 			}
 		}
 
+		if err := tx.Commit().Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
 		return nil
 	})
 }
@@ -205,13 +210,12 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string) error {
 	if sales.StockStatus != "pending" {
 		return errors.New("purchase order already processed")
 	}
-
 	err := s.ctx.DB.Transaction(func(tx *gorm.DB) error {
 		for _, v := range sales.Items {
 			if v.ProductID == nil || v.WarehouseID == nil {
 				continue
 			}
-			if err := invSrv.StockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, -v.Quantity, stockmovement.MovementTypeIn, sales.ID); err != nil {
+			if err := invSrv.StockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, nil, -v.Quantity, stockmovement.MovementTypeIn, sales.ID); err != nil {
 				tx.Rollback()
 				return err
 			}

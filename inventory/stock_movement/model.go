@@ -23,6 +23,8 @@ type StockMovementModel struct {
 	Product     product.ProductModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProductID"`
 	WarehouseID string                   `gorm:"not null"` // Relasi ke warehouse
 	Warehouse   warehouse.WarehouseModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:WarehouseID"`
+	MerchantID  *string                  `gorm:"not null"` // Relasi ke warehouse
+	Merchant    interface{}              `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:MerchantID"`
 	Quantity    float64                  `gorm:"not null"` // Jumlah stok (positif untuk IN, negatif untuk OUT)
 	Type        MovementType             `gorm:"not null"` // Jenis pergerakan (IN, OUT, TRANSFER, ADJUST)
 	ReferenceID string                   // ID referensi (misalnya, ID pembelian, penjualan, dll.)
