@@ -2,9 +2,12 @@ package pos
 
 import (
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
+	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
 	"gorm.io/gorm"
@@ -51,6 +54,14 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 	for _, item := range items {
 		totalPrice += item.Total
 	}
+	if merchantID == nil {
+		return nil, errors.New("no merchant")
+	}
+
+	merchant := MerchantModel{}
+	if err := s.db.Where("id = ?", merchantID).First(&merchant).Error; err != nil {
+		return nil, err
+	}
 	pos := POSModel{
 		MerchantID: merchantID,
 		ContactID:  contactID,
@@ -58,6 +69,8 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 		Status:     "pending",
 		Items:      items,
 	}
+
+	now := time.Now()
 
 	err := s.ctx.DB.Transaction(func(tx *gorm.DB) error {
 
@@ -79,6 +92,36 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 		if err := tx.Save(&pos).Error; err != nil {
 			tx.Rollback()
 			return err
+		}
+
+		// Tambahkan transaksi ke jurnal
+		if pos.SaleAccountID != nil {
+			if err := s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+				Date:               now,
+				AccountID:          pos.SaleAccountID,
+				Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
+				Notes:              pos.Description,
+				TransactionRefID:   &pos.ID,
+				TransactionRefType: "pos_sales",
+				CompanyID:          pos.CompanyID,
+			}, totalPrice); err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+		if pos.AssetAccountID != nil {
+			if err := s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+				Date:               now,
+				AccountID:          pos.AssetAccountID,
+				Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
+				Notes:              pos.Description,
+				TransactionRefID:   &pos.ID,
+				TransactionRefType: "pos_sales",
+				CompanyID:          pos.CompanyID,
+			}, totalPrice); err != nil {
+				tx.Rollback()
+				return err
+			}
 		}
 
 		if err := tx.Commit().Error; err != nil {

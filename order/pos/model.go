@@ -41,30 +41,34 @@ const (
 
 type POSModel struct {
 	utils.BaseModel
-	SalesNumber         string               `json:"sales_number"`
-	Code                string               `json:"code"`
-	Description         string               `json:"description"`
-	Notes               string               `json:"notes"`
-	Total               float64              `json:"total"`
-	Subtotal            float64              `json:"subtotal"`
-	Paid                float64              `json:"paid"`
-	TotalBeforeTax      float64              `json:"total_before_tax"`
-	TotalBeforeDisc     float64              `json:"total_before_disc"`
-	Status              string               `json:"status"`
-	StockStatus         string               `json:"stock_status" gorm:"default:'pending'"`
-	SalesDate           time.Time            `json:"sales_date"`
-	DueDate             time.Time            `json:"due_date"`
-	PaymentTerms        string               `json:"payment_terms"`
-	MerchantID          *string              `json:"merchant_id"`
-	Merchant            *MerchantModel       `gorm:"foreignKey:MerchantID"`
-	CompanyID           string               `json:"company_id"`
-	Company             company.CompanyModel `gorm:"foreignKey:CompanyID"`
-	ContactID           string               `json:"contact_id"`
-	Contact             contact.ContactModel `gorm:"foreignKey:ContactID"`
-	ContactData         string               `gorm:"type:json" json:"contact_data"`
-	PaymentrType        string               `json:"payment_type"`
-	PaymentProviderType PaymentProviderType  `json:"payment_provider_type"`
-	Items               []POSSalesItemModel  `gorm:"foreignKey:SalesID" json:"items"`
+	SalesNumber         string                `json:"sales_number"`
+	Code                string                `json:"code"`
+	Description         string                `json:"description"`
+	Notes               string                `json:"notes"`
+	Total               float64               `json:"total"`
+	Subtotal            float64               `json:"subtotal"`
+	Paid                float64               `json:"paid"`
+	TotalBeforeTax      float64               `json:"total_before_tax"`
+	TotalBeforeDisc     float64               `json:"total_before_disc"`
+	Status              string                `json:"status"`
+	StockStatus         string                `json:"stock_status" gorm:"default:'pending'"`
+	SalesDate           time.Time             `json:"sales_date"`
+	DueDate             time.Time             `json:"due_date"`
+	PaymentTerms        string                `json:"payment_terms"`
+	MerchantID          *string               `json:"merchant_id"`
+	Merchant            *MerchantModel        `gorm:"foreignKey:MerchantID"`
+	CompanyID           string                `json:"company_id"`
+	Company             company.CompanyModel  `gorm:"foreignKey:CompanyID"`
+	ContactID           string                `json:"contact_id"`
+	Contact             contact.ContactModel  `gorm:"foreignKey:ContactID"`
+	ContactData         string                `gorm:"type:json" json:"contact_data"`
+	PaymentType         string                `json:"payment_type"`
+	PaymentProviderType PaymentProviderType   `json:"payment_provider_type"`
+	Items               []POSSalesItemModel   `gorm:"foreignKey:SalesID" json:"items"`
+	SaleAccountID       *string               `json:"sale_account_id"`
+	SaleAccount         *account.AccountModel `gorm:"foreignKey:SaleAccountID"`
+	AssetAccountID      *string               `json:"asset_account_id"`
+	AssetAccount        *account.AccountModel `gorm:"foreignKey:AssetAccountID"`
 }
 
 type POSSalesItemModel struct {
@@ -82,10 +86,6 @@ type POSSalesItemModel struct {
 	Product            *product.ProductModel     `gorm:"foreignKey:ProductID"`
 	WarehouseID        *string                   `json:"warehouse_id"`
 	Warehouse          *warehouse.WarehouseModel `gorm:"foreignKey:WarehouseID"`
-	SaleAccountID      *string                   `json:"sale_account_id"`
-	SaleAccount        *account.AccountModel     `gorm:"foreignKey:SaleAccountID"`
-	AssetAccountID     *string                   `json:"asset_account_id"`
-	AssetAccount       *account.AccountModel     `gorm:"foreignKey:AssetAccountID"`
 }
 
 func (s *POSModel) TableName() string {
