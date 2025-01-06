@@ -10,6 +10,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/inventory/purchase"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"gorm.io/gorm"
 )
 
@@ -27,15 +28,20 @@ type InventoryService struct {
 func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 	fmt.Println("INIT INVENTORY SERVICE")
 	var financeService *finance.FinanceService
+	var fileService *shared.FileService
 	financeSrv, ok := ctx.FinanceService.(*finance.FinanceService)
 	if ok {
 		financeService = financeSrv
+	}
+	fileSrv, ok := ctx.FileService.(*shared.FileService)
+	if ok {
+		fileService = fileSrv
 	}
 	stockmovementSrv := stockmovement.NewStockMovementService(ctx.DB, ctx)
 	var service = InventoryService{
 		ctx:                    ctx,
 		MasterProductService:   product.NewMasterProductService(ctx.DB, ctx),
-		ProductService:         product.NewProductService(ctx.DB, ctx),
+		ProductService:         product.NewProductService(ctx.DB, ctx, fileService),
 		ProductCategoryService: product.NewProductCategoryService(ctx.DB, ctx),
 		WarehouseService:       warehouse.NewWarehouseService(ctx.DB, ctx),
 		StockMovementService:   stockmovementSrv,

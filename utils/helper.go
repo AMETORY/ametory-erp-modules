@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -37,4 +39,9 @@ func CreateUsernameFromFullName(fullName string) string {
 	username = append(username, '-')
 	username = append(username, []rune(RandString(5))...)
 	return string(username)
+}
+
+func LogJson(data interface{}) {
+	jsonString, _ := json.MarshalIndent(data, "", "  ")
+	fmt.Println(string(jsonString))
 }

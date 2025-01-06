@@ -3,6 +3,7 @@ package product
 import (
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/inventory/brand"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -26,6 +27,7 @@ type ProductModel struct {
 	Prices          []PriceModel         `gorm:"-" json:"prices"`
 	Brand           brand.BrandModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID"`
 	BrandID         string               `json:"brand_id"`
+	ProductImages   []shared.FileModel   `json:"product_images"`
 }
 
 func (ProductModel) TableName() string {

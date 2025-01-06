@@ -4,21 +4,23 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
 type ProductService struct {
-	db  *gorm.DB
-	ctx *context.ERPContext
+	db          *gorm.DB
+	ctx         *context.ERPContext
+	fileService *shared.FileService
 }
 type ProductCategoryService struct {
 	db  *gorm.DB
 	ctx *context.ERPContext
 }
 
-func NewProductService(db *gorm.DB, ctx *context.ERPContext) *ProductService {
-	return &ProductService{db: db, ctx: ctx}
+func NewProductService(db *gorm.DB, ctx *context.ERPContext, fileService *shared.FileService) *ProductService {
+	return &ProductService{db: db, ctx: ctx, fileService: fileService}
 }
 func NewProductCategoryService(db *gorm.DB, ctx *context.ERPContext) *ProductCategoryService {
 	return &ProductCategoryService{db: db, ctx: ctx}
@@ -40,6 +42,7 @@ func (s *ProductService) GetProductByID(id string) (*ProductModel, error) {
 	var product ProductModel
 	err := s.db.Where("id = ?", id).First(&product).Error
 	product.Prices, _ = s.ListPricesOfProduct(product.ID)
+	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
 	return &product, err
 }
 
@@ -47,6 +50,7 @@ func (s *ProductService) GetProductByCode(code string) (*ProductModel, error) {
 	var product ProductModel
 	err := s.db.Where("sku = ?", code).First(&product).Error
 	product.Prices, _ = s.ListPricesOfProduct(product.ID)
+	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
 	return &product, err
 }
 
@@ -72,38 +76,6 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	return page, nil
 }
 
-func (s *ProductCategoryService) CreateProductCategory(data *ProductCategoryModel) error {
-	return s.db.Create(data).Error
-}
-
-func (s *ProductCategoryService) UpdateProductCategory(id string, data *ProductCategoryModel) error {
-	return s.db.Where("id = ?", id).Updates(data).Error
-}
-
-func (s *ProductCategoryService) DeleteProductCategory(id string) error {
-	return s.db.Where("id = ?", id).Delete(&ProductCategoryModel{}).Error
-}
-
-func (s *ProductCategoryService) GetProductCategoryByID(id string) (*ProductCategoryModel, error) {
-	var category ProductCategoryModel
-	err := s.db.Where("id = ?", id).First(&category).Error
-	return &category, err
-}
-
-func (s *ProductCategoryService) GetProductCategories(request http.Request, search string) (paginate.Page, error) {
-	pg := paginate.New()
-	stmt := s.db
-	if search != "" {
-		stmt = stmt.Where("product_categories.name LIKE ? OR product_categories.description LIKE ?",
-			"%"+search+"%",
-			"%"+search+"%",
-		)
-	}
-	stmt = stmt.Model(&ProductCategoryModel{})
-	page := pg.With(stmt).Request(request).Response(&[]ProductCategoryModel{})
-	return page, nil
-}
-
 func (s *ProductService) CreatePriceCategory(data *PriceCategoryModel) error {
 	return s.db.Create(data).Error
 }
@@ -116,4 +88,10 @@ func (s *ProductService) ListPricesOfProduct(productID string) ([]PriceModel, er
 	var prices []PriceModel
 	err := s.db.Where("product_id = ?", productID).Find(&prices).Error
 	return prices, err
+}
+
+func (s *ProductService) ListImagesOfProduct(productID string) ([]shared.FileModel, error) {
+	var images []shared.FileModel
+	err := s.db.Where("ref_id = ?", productID).Find(&images).Error
+	return images, err
 }
