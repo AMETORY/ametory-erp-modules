@@ -13,8 +13,8 @@ type FileModel struct {
 	Path     string `gorm:"type:varchar(255)" json:"path"`
 	Provider string `gorm:"type:varchar(255);default:local" json:"provider"`
 	URL      string `gorm:"type:varchar(255)" json:"url"`
-	RefID    string `gorm:"type:char(36);index" json:"ref_id"`
-	RefType  string `gorm:"type:varchar(255);index" json:"ref_type"`
+	RefID    string `gorm:"type:char(36);index" json:"-"`
+	RefType  string `gorm:"type:varchar(255);index" json:"-"`
 }
 
 func (FileModel) TableName() string {

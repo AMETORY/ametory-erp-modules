@@ -10,22 +10,22 @@ import (
 
 type ProductModel struct {
 	utils.BaseModel
-	Name            string `gorm:"not null"`
-	Description     string
-	SKU             string               `gorm:"type:varchar(255)"`
-	Barcode         string               `gorm:"type:varchar(255)"`
-	Price           float64              `gorm:"not null;default:0"`
+	Name            string               `gorm:"not null" json:"name"`
+	Description     string               `json:"description"`
+	SKU             string               `gorm:"type:varchar(255)" json:"sku"`
+	Barcode         string               `gorm:"type:varchar(255)" json:"barcode"`
+	Price           float64              `gorm:"not null;default:0" json:"price"`
 	CompanyID       string               `json:"company_id"`
 	Company         company.CompanyModel `gorm:"foreignKey:CompanyID"`
 	DistributorID   *string              `json:"distributor_id"`
 	Distributor     interface{}          `gorm:"foreignKey:DistributorID"`
 	MasterProductID string               `json:"master_product_id"`
 	MasterProduct   MasterProductModel   `gorm:"foreignKey:MasterProductID"`
-	CategoryID      string
+	CategoryID      string               `json:"category_id"`
 	Category        ProductCategoryModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:CategoryID"`
-	Prices          []PriceModel         `gorm:"-"`
+	Prices          []PriceModel         `gorm:"-" json:"prices"`
 	Brand           brand.BrandModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID"`
-	BrandID         string
+	BrandID         string               `json:"brand_id"`
 }
 
 func (ProductModel) TableName() string {

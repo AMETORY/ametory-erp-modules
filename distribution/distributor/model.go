@@ -9,9 +9,9 @@ import (
 // DistributorModel adalah model database untuk distributor
 type DistributorModel struct {
 	utils.BaseModel
-	Name    string
-	Address string
-	Phone   string
+	Name    string `json:"name"`
+	Address string `json:"address"`
+	Phone   string `json:"phone"`
 }
 
 func (DistributorModel) TableName() string {

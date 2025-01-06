@@ -8,9 +8,9 @@ import (
 
 type MerchantModel struct {
 	utils.BaseModel
-	Name    string
-	Address string
-	Phone   string
+	Name    string `json:"name"`
+	Address string `json:"address"`
+	Phone   string `json:"phone"`
 }
 
 func (m *MerchantModel) TableName() string {

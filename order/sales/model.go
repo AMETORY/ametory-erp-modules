@@ -39,9 +39,9 @@ type SalesModel struct {
 	DueDate         time.Time            `json:"due_date"`
 	PaymentTerms    string               `json:"payment_terms"`
 	CompanyID       string               `json:"company_id"`
-	Company         company.CompanyModel `gorm:"foreignKey:CompanyID"`
+	Company         company.CompanyModel `gorm:"foreignKey:CompanyID" json:"company"`
 	ContactID       string               `json:"contact_id"`
-	Contact         contact.ContactModel `gorm:"foreignKey:ContactID"`
+	Contact         contact.ContactModel `gorm:"foreignKey:ContactID" json:"contact"`
 	ContactData     string               `gorm:"type:json" json:"contact_data"`
 	Type            SalesType            `json:"type"`
 	Items           []SalesItemModel     `gorm:"foreignKey:SalesID" json:"items"`

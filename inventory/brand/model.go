@@ -11,9 +11,9 @@ import (
 // BrandModel adalah model database untuk brand
 type BrandModel struct {
 	utils.BaseModel
-	Name        string `gorm:"not null"`
-	Description string
-	Logo        string
+	Name        string               `gorm:"not null" json:"name"`
+	Description string               `json:"description"`
+	Logo        string               `json:"logo"`
 	CompanyID   string               `json:"company_id"`
 	Company     company.CompanyModel `gorm:"foreignKey:CompanyID"`
 }

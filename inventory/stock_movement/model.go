@@ -19,17 +19,17 @@ const (
 
 type StockMovementModel struct {
 	utils.BaseModel
-	ProductID     string                   `gorm:"not null"` // Relasi ke product
-	Product       product.ProductModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProductID"`
-	WarehouseID   string                   `gorm:"not null"` // Relasi ke warehouse
-	Warehouse     warehouse.WarehouseModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:WarehouseID"`
-	MerchantID    *string                  `gorm:"null"` // Relasi ke warehouse
-	Merchant      interface{}              `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:MerchantID"`
-	DistributorID *string                  `gorm:"null"` // Relasi ke warehouse
-	Distributor   interface{}              `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:DistributorID"`
-	Quantity      float64                  `gorm:"not null"` // Jumlah stok (positif untuk IN, negatif untuk OUT)
-	Type          MovementType             `gorm:"not null"` // Jenis pergerakan (IN, OUT, TRANSFER, ADJUST)
-	ReferenceID   string                   // ID referensi (misalnya, ID pembelian, penjualan, dll.)
+	ProductID     string                   `gorm:"not null" json:"product_id"` // Relasi ke product
+	Product       product.ProductModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProductID" json:"product"`
+	WarehouseID   string                   `gorm:"not null" json:"warehouse_id"` // Relasi ke warehouse
+	Warehouse     warehouse.WarehouseModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:WarehouseID" json:"warehouse"`
+	MerchantID    *string                  `gorm:"null" json:"merchant_id"` // Relasi ke warehouse
+	Merchant      interface{}              `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:MerchantID" json:"merchant"`
+	DistributorID *string                  `gorm:"null" json:"distributor_id"` // Relasi ke warehouse
+	Distributor   interface{}              `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:DistributorID" json:"distributor"`
+	Quantity      float64                  `gorm:"not null" json:"quantity"` // Jumlah stok (positif untuk IN, negatif untuk OUT)
+	Type          MovementType             `gorm:"not null" json:"type"`     // Jenis pergerakan (IN, OUT, TRANSFER, ADJUST)
+	ReferenceID   string                   `json:"reference_id"`             // ID referensi (misalnya, ID pembelian, penjualan, dll.)
 }
 
 func (StockMovementModel) TableName() string {

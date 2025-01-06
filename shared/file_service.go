@@ -2,6 +2,7 @@ package shared
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -33,7 +34,10 @@ func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *
 	if !ok {
 		return fmt.Errorf("firestore service is not found")
 	}
-	var path, url string
+	var path, url, mimeType string
+	mimeType = http.DetectContentType(file)
+	fileObj.MimeType = mimeType
+
 	switch provider {
 	case "local":
 		filePath := fmt.Sprintf("./assets/%s/%s", folder, fileObj.FileName)

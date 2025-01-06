@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
 )
@@ -155,4 +156,24 @@ func (s *AdminAuthService) Verification(token, newPassword string) error {
 		return err
 	}
 	return nil
+}
+
+// GetAdminByID mengambil admin berdasarkan ID
+func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
+	var user AdminModel
+	fmt.Println("s.db.", s.db)
+	// Cari user berdasarkan ID
+	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+
+	file := shared.FileModel{}
+	s.db.Where("ref_id = ?", user.ID).First(&file)
+	if file.ID != "" {
+		user.ProfilePicture = &file
+	}
+	return &user, nil
 }

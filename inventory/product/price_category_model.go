@@ -8,8 +8,8 @@ import (
 
 type PriceCategoryModel struct {
 	utils.BaseModel
-	Name        string `gorm:"unique;not null"`
-	Description string
+	Name        string `gorm:"unique;not null" json:"name"`
+	Description string `json:"description"`
 }
 
 func (PriceCategoryModel) TableName() string {

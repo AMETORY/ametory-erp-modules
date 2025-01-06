@@ -8,11 +8,11 @@ import (
 
 type RoleModel struct {
 	utils.BaseModel
-	Name         string            `gorm:"unique;not null"`
-	Permissions  []PermissionModel `gorm:"many2many:role_permissions;"`
-	CompanyID    *string
-	IsAdmin      bool
-	IsSuperAdmin bool
+	Name         string            `gorm:"unique;not null" json:"name"`
+	Permissions  []PermissionModel `gorm:"many2many:role_permissions;" json:"permissions"`
+	CompanyID    *string           `json:"company_id"`
+	IsAdmin      bool              `json:"is_admin"`
+	IsSuperAdmin bool              `json:"is_super_admin"`
 }
 
 // PermissionModel adalah model database untuk izin

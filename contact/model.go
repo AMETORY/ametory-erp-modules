@@ -9,16 +9,16 @@ import (
 // ContactModel adalah model database untuk contact
 type ContactModel struct {
 	utils.BaseModel
-	Name                  string `gorm:"not null"`
-	Email                 string
-	Code                  string
-	Phone                 string
-	Address               string
-	ContactPerson         string
-	ContactPersonPosition string
-	IsCustomer            bool `gorm:"default:false"` // Flag untuk customer
-	IsVendor              bool `gorm:"default:false"` // Flag untuk vendor
-	IsSupplier            bool `gorm:"default:false"` // Flag untuk supplier
+	Name                  string `gorm:"not null" json:"name"`
+	Email                 string `json:"email"`
+	Code                  string `json:"code"`
+	Phone                 string `json:"phone"`
+	Address               string `json:"address"`
+	ContactPerson         string `json:"contact_person"`
+	ContactPersonPosition string `json:"contact_person_position"`
+	IsCustomer            bool   `gorm:"default:false" json:"is_customer"` // Flag untuk customer
+	IsVendor              bool   `gorm:"default:false" json:"is_vendor"`   // Flag untuk vendor
+	IsSupplier            bool   `gorm:"default:false" json:"is_supplier"` // Flag untuk supplier
 }
 
 func (ContactModel) TableName() string {
