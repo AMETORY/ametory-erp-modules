@@ -23,7 +23,7 @@ type BrandModel struct {
 	ContactTitle       string                `json:"contact_title"`
 	ContactNote        string                `json:"contact_note"`
 	RegistrationNumber string                `json:"registration_number"`
-	CompanyID          *string               `json:"company_id"`
+	CompanyID          *string               `json:"company_id,omitempty"`
 	Company            *company.CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 }
 
