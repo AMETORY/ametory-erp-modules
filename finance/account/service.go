@@ -49,7 +49,7 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	if search != "" {
-		stmt = stmt.Where("accounts.name LIKE ? OR accounts.code LIKE ? ",
+		stmt = stmt.Where("accounts.name ILIKE ? OR accounts.code ILIKE ? ",
 			"%"+search+"%",
 			"%"+search+"%",
 		)

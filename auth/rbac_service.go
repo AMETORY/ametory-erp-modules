@@ -145,7 +145,7 @@ func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("roles.name LIKE ?",
+		stmt = stmt.Where("roles.name ILIKE ?",
 			"%"+search+"%",
 		)
 	}

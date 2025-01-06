@@ -248,7 +248,7 @@ func (s *PurchaseService) GetPurchases(request http.Request, search string) (pag
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("description LIKE ? OR purchase_number LIKE ?",
+		stmt = stmt.Where("description ILIKE ? OR purchase_number ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 		)

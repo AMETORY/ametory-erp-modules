@@ -42,7 +42,7 @@ func (s *DistributorService) GetDistributors(request http.Request, search string
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("distributors.name LIKE ? OR distributors.address LIKE ? ",
+		stmt = stmt.Where("distributors.name ILIKE ? OR distributors.address ILIKE ? ",
 			"%"+search+"%",
 			"%"+search+"%",
 		)

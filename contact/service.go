@@ -116,7 +116,7 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 	pg := paginate.New()
 	stmt := s.ctx.DB
 	if search != "" {
-		stmt = stmt.Where("contacts.name LIKE ? OR contacts.email LIKE ? OR contacts.phone LIKE ? OR contacts.address LIKE ?",
+		stmt = stmt.Where("contacts.name ILIKE ? OR contacts.email ILIKE ? OR contacts.phone ILIKE ? OR contacts.address ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",

@@ -46,7 +46,7 @@ func (s *BrandService) GetBrands(request http.Request, search string) (paginate.
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("brands.description LIKE ? OR brands.name LIKE ?",
+		stmt = stmt.Where("brands.description ILIKE ? OR brands.name ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 		)

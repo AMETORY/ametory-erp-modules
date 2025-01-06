@@ -136,7 +136,7 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	if search != "" {
-		stmt = stmt.Where("accounts.name LIKE ? OR accounts.code LIKE ? OR transactions.code LIKE ? OR transactions.description LIKE ?",
+		stmt = stmt.Where("accounts.name ILIKE ? OR accounts.code ILIKE ? OR transactions.code ILIKE ? OR transactions.description ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",

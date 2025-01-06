@@ -19,6 +19,7 @@ type InventoryService struct {
 	MasterProductService   *product.MasterProductService
 	ProductService         *product.ProductService
 	ProductCategoryService *product.ProductCategoryService
+	PriceCategoryService   *product.PriceCategoryService
 	WarehouseService       *warehouse.WarehouseService
 	StockMovementService   *stockmovement.StockMovementService
 	PurchaseService        *purchase.PurchaseService
@@ -43,6 +44,7 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 		MasterProductService:   product.NewMasterProductService(ctx.DB, ctx),
 		ProductService:         product.NewProductService(ctx.DB, ctx, fileService),
 		ProductCategoryService: product.NewProductCategoryService(ctx.DB, ctx),
+		PriceCategoryService:   product.NewPriceCategoryService(ctx.DB, ctx),
 		WarehouseService:       warehouse.NewWarehouseService(ctx.DB, ctx),
 		StockMovementService:   stockmovementSrv,
 		PurchaseService:        purchase.NewPurchaseService(ctx.DB, ctx, financeService, stockmovementSrv),

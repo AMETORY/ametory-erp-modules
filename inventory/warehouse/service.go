@@ -46,7 +46,7 @@ func (s *WarehouseService) GetWarehouses(request http.Request, search string) (p
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("warehouses.description LIKE ? OR  warehouses.name LIKE ? OR warehouses.code LIKE ?",
+		stmt = stmt.Where("warehouses.description ILIKE ? OR  warehouses.name ILIKE ? OR warehouses.code ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",

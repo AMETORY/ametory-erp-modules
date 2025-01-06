@@ -51,7 +51,7 @@ func (s *CompanyService) GetCompanies(request http.Request, search string) (pagi
 	pg := paginate.New()
 	stmt := s.ctx.DB
 	if search != "" {
-		stmt = stmt.Where("companies.address LIKE ? OR companies.name LIKE ?",
+		stmt = stmt.Where("companies.address ILIKE ? OR companies.name ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 		)

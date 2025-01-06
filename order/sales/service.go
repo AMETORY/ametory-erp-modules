@@ -190,7 +190,7 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("sales.description LIKE ? OR sales.code LIKE ? OR sales.sales_number LIKE ?",
+		stmt = stmt.Where("sales.description ILIKE ? OR sales.code ILIKE ? OR sales.sales_number ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",

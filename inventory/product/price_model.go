@@ -13,7 +13,7 @@ type PriceModel struct {
 	Amount          float64            `gorm:"not null" json:"amount"`
 	Currency        string             `gorm:"type:varchar(3);not null" json:"currency"` // ISO 4217 currency code
 	ProductID       string             `json:"product_id"`
-	Product         ProductModel       `gorm:"foreignKey:ProductID" json:"product"`
+	Product         ProductModel       `gorm:"foreignKey:ProductID" json:"-"`
 	PriceCategoryID string             `json:"price_category_id"`
 	PriceCategory   PriceCategoryModel `gorm:"foreignKey:PriceCategoryID" json:"price_category"`
 	EffectiveDate   time.Time          `json:"effective_date"`
@@ -36,7 +36,7 @@ type MasterProductPriceModel struct {
 	Amount          float64            `gorm:"not null" json:"amount"`
 	Currency        string             `gorm:"type:varchar(3);not null" json:"currency"` // ISO 4217 currency code
 	MasterProductID string             `json:"master_product_id"`
-	MasterProduct   MasterProductModel `gorm:"foreignKey:MasterProductID" json:"master_product"`
+	MasterProduct   MasterProductModel `gorm:"foreignKey:MasterProductID" json:"-"`
 	PriceCategoryID string             `json:"price_category_id"`
 	PriceCategory   PriceCategoryModel `gorm:"foreignKey:PriceCategoryID" json:"price_category"`
 	EffectiveDate   time.Time          `json:"effective_date"`
