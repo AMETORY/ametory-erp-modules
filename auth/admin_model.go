@@ -14,7 +14,8 @@ type AdminModel struct {
 	FullName                   string            `gorm:"not null" json:"full_name"`
 	Username                   string            `gorm:"unique" json:"username"`
 	Email                      string            `gorm:"unique;not null" json:"email"`
-	Password                   string            `gorm:"not null" json:"-"`
+	Phone                      *string           `gorm:"null" json:"phone"`
+	Password                   *string           `gorm:"not null" json:"-"`
 	VerifiedAt                 *time.Time        `gorm:"index" json:"verified_at"`
 	VerificationToken          string            `gorm:"index" json:"-"`
 	VerificationTokenExpiredAt *time.Time        `gorm:"index" json:"-"`

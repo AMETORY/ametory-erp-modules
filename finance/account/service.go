@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -54,6 +55,8 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 		)
 	}
 	stmt = stmt.Model(&AccountModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]AccountModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }

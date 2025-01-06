@@ -47,13 +47,13 @@ type AccountModel struct {
 	IsTax                 bool                  `json:"is_tax" bson:"is_tax" gorm:"default:false"`
 	TypeLabel             string                `gorm:"-" json:"type_label"`
 	CashflowGroupLabel    string                `gorm:"-" json:"cashflow_group_label"`
-	CashflowSubGroupLabel string                `gorm:"-" json:"cashflow_subgroup_label" `
+	CashflowSubGroupLabel string                `gorm:"-" json:"cashflow_subgroup_label"`
 	CompanyID             *string               `json:"company_id"`
 	Company               *company.CompanyModel `gorm:"foreignKey:CompanyID"`
-	TransactionCount      int64                 `gorm:"-"`
-	Balance               float64               `gorm:"-"`
-	BalanceBefore         float64               `gorm:"-"`
-	HasOpeningBalance     bool                  `gorm:"-"`
+	TransactionCount      int64                 `gorm:"-" json:"transaction_count"`
+	Balance               float64               `gorm:"-" json:"balance"`
+	BalanceBefore         float64               `gorm:"-" json:"balance_before"`
+	HasOpeningBalance     bool                  `gorm:"-" json:"has_opening_balance"`
 	// Transactions          []Transaction `gorm:"-"`
 }
 

@@ -41,8 +41,7 @@ func NewCompanyService(ctx *context.ERPContext) *CompanyService {
 	var service = CompanyService{ctx: ctx}
 	err := service.Migrate()
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		panic(err)
 	}
 	return &service
 }

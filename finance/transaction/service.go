@@ -7,6 +7,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -77,8 +78,10 @@ func (s *TransactionService) GetTransactionByDate(from, to time.Time, request ht
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
-	pageResp := pg.With(stmt).Request(request).Response(new([]TransactionModel))
-	return pageResp, nil
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(new([]TransactionModel))
+	page.Page = page.Page + 1
+	return page, nil
 }
 
 func (s *TransactionService) GetByDateAndCompanyId(from, to time.Time, companyId string, page, limit int) ([]TransactionModel, error) {
@@ -103,7 +106,9 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 		)
 	}
 	stmt = stmt.Model(&TransactionModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]TransactionModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }
 

@@ -24,8 +24,7 @@ func NewFinanceService(ctx *context.ERPContext) *FinanceService {
 	service.TransactionService = transaction.NewTransactionService(ctx.DB, ctx, service.AccountService)
 	err := service.Migrate()
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		panic(err)
 	}
 	return &service
 }
@@ -35,7 +34,6 @@ func (s *FinanceService) Migrate() error {
 		return nil
 	}
 	if err := account.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR ACCOUNT", err)
 		return err
 	}
 	if err := transaction.Migrate(s.ctx.DB); err != nil {

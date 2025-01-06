@@ -3,6 +3,7 @@ package product
 import (
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 )
 
@@ -34,6 +35,8 @@ func (s *ProductCategoryService) GetProductCategories(request http.Request, sear
 		)
 	}
 	stmt = stmt.Model(&ProductCategoryModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]ProductCategoryModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }

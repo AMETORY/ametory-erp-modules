@@ -18,8 +18,7 @@ func NewAdminAuthService(db *gorm.DB) *AdminAuthService {
 	var service = AdminAuthService{db: db}
 	err := service.Migrate()
 	if err != nil {
-		fmt.Println("Error migrating auth service", err)
-		return nil
+		panic(err)
 	}
 	return &service
 }
@@ -41,7 +40,7 @@ func (s *AdminAuthService) Register(fullname, username, email, password string) 
 		FullName:                   fullname,
 		Username:                   username,
 		Email:                      email,
-		Password:                   hashedPassword,
+		Password:                   &hashedPassword,
 		VerificationToken:          verificationToken,
 		VerificationTokenExpiredAt: &verificationTokenExpiredAt,
 	}
@@ -71,7 +70,7 @@ func (s *AdminAuthService) Login(usernameOrEmail, password string) (*AdminModel,
 	}
 	// fmt.Println("password", password)
 	// Verifikasi password
-	if err := CheckPassword(user.Password, password); err != nil {
+	if err := CheckPassword(*user.Password, password); err != nil {
 		return nil, errors.New("invalid password")
 	}
 
@@ -111,7 +110,7 @@ func (s *AdminAuthService) ChangePassword(userID, oldPassword, newPassword strin
 	}
 
 	// Verifikasi password lama
-	if err := CheckPassword(user.Password, oldPassword); err != nil {
+	if err := CheckPassword(*user.Password, oldPassword); err != nil {
 		return errors.New("invalid password")
 	}
 
@@ -122,7 +121,7 @@ func (s *AdminAuthService) ChangePassword(userID, oldPassword, newPassword strin
 	}
 
 	// Ganti password di database
-	user.Password = hashedPassword
+	user.Password = &hashedPassword
 	if err := s.db.Save(&user).Error; err != nil {
 		return err
 	}
@@ -176,4 +175,26 @@ func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
 		user.ProfilePicture = &file
 	}
 	return &user, nil
+}
+
+// UpdateAdminByID memperbarui informasi admin berdasarkan ID
+func (s *AdminAuthService) UpdateAdminByID(userID string, updatedData *AdminModel) error {
+	var user AdminModel
+
+	// Cari user berdasarkan ID
+	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("user not found")
+		}
+		return err
+	}
+
+	// Perbarui data user
+	user.FullName = updatedData.FullName
+	user.Phone = updatedData.Phone
+	if err := s.db.Save(&user).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

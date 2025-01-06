@@ -6,6 +6,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -19,7 +20,7 @@ func NewContactService(ctx *context.ERPContext, companyService *company.CompanyS
 	var contactService = ContactService{ctx: ctx, CompanyService: companyService}
 	if !skipMigrate {
 		if err := contactService.Migrate(); err != nil {
-			return nil
+			panic(err)
 		}
 	}
 	return &contactService
@@ -135,7 +136,9 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	stmt = stmt.Model(&ContactModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]ContactModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }
 

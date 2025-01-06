@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -44,4 +46,16 @@ func CreateUsernameFromFullName(fullName string) string {
 func LogJson(data interface{}) {
 	jsonString, _ := json.MarshalIndent(data, "", "  ")
 	fmt.Println(string(jsonString))
+}
+
+func FixRequest(request *http.Request) {
+	req := request.URL.Query()
+	pageStr := request.URL.Query().Get("page")
+	if pageStr != "" {
+		page, _ := strconv.Atoi(pageStr)
+		// request.URL.Query().Set("page", strconv.Itoa(page-1))
+		req.Set("page", strconv.Itoa(page-1))
+		request.URL.RawQuery = req.Encode()
+	}
+
 }

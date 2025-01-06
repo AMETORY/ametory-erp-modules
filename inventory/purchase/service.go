@@ -10,6 +10,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -248,6 +249,8 @@ func (s *PurchaseService) GetPurchases(request http.Request, search string) (pag
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	stmt = stmt.Model(&PurchaseOrderModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]PurchaseOrderModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }

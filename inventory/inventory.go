@@ -50,8 +50,7 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 	}
 	err := service.Migrate()
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		panic(err)
 	}
 	return &service
 }
@@ -61,13 +60,22 @@ func (s *InventoryService) Migrate() error {
 		return nil
 	}
 	if err := product.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR ACCOUNT", err)
+		fmt.Println("ERROR MIGRATING PRODUCT", err)
 		return err
 	}
 	if err := warehouse.Migrate(s.ctx.DB); err != nil {
+		fmt.Println("ERROR MIGRATING WAREHOUSE", err)
 		return err
 	}
 	if err := stockmovement.Migrate(s.ctx.DB); err != nil {
+		return err
+	}
+	if err := brand.Migrate(s.ctx.DB); err != nil {
+		fmt.Println("ERROR MIGRATING BRAND", err)
+		return err
+	}
+	if err := purchase.Migrate(s.ctx.DB); err != nil {
+		fmt.Println("ERROR MIGRATING PURCHASE", err)
 		return err
 	}
 

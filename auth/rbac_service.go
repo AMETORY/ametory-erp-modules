@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -153,7 +154,9 @@ func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate
 	}
 
 	stmt = stmt.Model(&RoleModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]RoleModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }
 

@@ -22,8 +22,7 @@ func NewDistributionService(ctx *context.ERPContext) *DistributionService {
 	service.DistributorService = distributor.NewDistributorService(ctx.DB, ctx)
 	err := service.Migrate()
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		panic(err)
 	}
 	return &service
 }
@@ -33,7 +32,6 @@ func (s *DistributionService) Migrate() error {
 		return nil
 	}
 	if err := distributor.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR ACCOUNT", err)
 		return err
 	}
 

@@ -18,11 +18,12 @@ type MasterProductModel struct {
 	Price         float64              `gorm:"not null;default:0" json:"price"`
 	CompanyID     string               `json:"company_id"`
 	Company       company.CompanyModel `gorm:"foreignKey:CompanyID"`
-	CategoryID    string
+	CategoryID    string               `json:"category_id"`
 	Category      ProductCategoryModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:CategoryID"`
-	BrandID       string
-	Brand         brand.BrandModel   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID"`
-	ProductImages []shared.FileModel `gorm:"foreignKey:ProductID" json:"product_images"`
+	Prices        []PriceModel         `gorm:"-" json:"prices"`
+	Brand         brand.BrandModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID"`
+	BrandID       string               `json:"brand_id"`
+	ProductImages []shared.FileModel   `gorm:"-" json:"product_images"`
 }
 
 func (MasterProductModel) TableName() string {

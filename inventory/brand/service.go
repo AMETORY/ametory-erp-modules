@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -53,7 +54,10 @@ func (s *BrandService) GetBrands(request http.Request, search string) (paginate.
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
+	request.URL.Query().Get("page")
 	stmt = stmt.Model(&BrandModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]BrandModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }

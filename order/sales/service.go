@@ -11,6 +11,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -191,7 +192,9 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	stmt = stmt.Model(&SalesModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]SalesModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }
 

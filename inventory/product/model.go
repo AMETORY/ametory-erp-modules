@@ -11,15 +11,15 @@ import (
 
 type ProductModel struct {
 	utils.BaseModel
-	Name            string               `gorm:"not null" json:"name"`
-	Description     string               `json:"description"`
-	SKU             string               `gorm:"type:varchar(255)" json:"sku"`
-	Barcode         string               `gorm:"type:varchar(255)" json:"barcode"`
-	Price           float64              `gorm:"not null;default:0" json:"price"`
-	CompanyID       string               `json:"company_id"`
-	Company         company.CompanyModel `gorm:"foreignKey:CompanyID"`
-	DistributorID   *string              `json:"distributor_id"`
-	Distributor     interface{}          `gorm:"foreignKey:DistributorID"`
+	Name          string               `gorm:"not null" json:"name"`
+	Description   string               `json:"description"`
+	SKU           string               `gorm:"type:varchar(255)" json:"sku"`
+	Barcode       string               `gorm:"type:varchar(255)" json:"barcode"`
+	Price         float64              `gorm:"not null;default:0" json:"price"`
+	CompanyID     string               `json:"company_id"`
+	Company       company.CompanyModel `gorm:"foreignKey:CompanyID"`
+	DistributorID *string              `gorm:"foreignKey:DistributorID;references:ID" json:"distributor_id"`
+	// Distributor     interface{}          `gorm:"foreignKey:DistributorID"`
 	MasterProductID string               `json:"master_product_id"`
 	MasterProduct   MasterProductModel   `gorm:"foreignKey:MasterProductID"`
 	CategoryID      string               `json:"category_id"`
@@ -27,7 +27,7 @@ type ProductModel struct {
 	Prices          []PriceModel         `gorm:"-" json:"prices"`
 	Brand           brand.BrandModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID"`
 	BrandID         string               `json:"brand_id"`
-	ProductImages   []shared.FileModel   `json:"product_images"`
+	ProductImages   []shared.FileModel   `gorm:"-" json:"product_images"`
 }
 
 func (ProductModel) TableName() string {
@@ -59,5 +59,12 @@ func (p *ProductCategoryModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&ProductModel{}, &ProductCategoryModel{}, &MasterProductModel{}, &PriceCategoryModel{}, &PriceModel{}, &MasterProductPriceModel{})
+	return db.AutoMigrate(
+		&ProductModel{},
+		&ProductCategoryModel{},
+		&MasterProductModel{},
+		&PriceCategoryModel{},
+		&PriceModel{},
+		&MasterProductPriceModel{},
+	)
 }

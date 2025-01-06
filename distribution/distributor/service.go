@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -50,7 +51,9 @@ func (s *DistributorService) GetDistributors(request http.Request, search string
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	stmt = stmt.Model(&DistributorModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]DistributorModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }
 func (s *DistributorService) GetAllProduct(request http.Request, search string, distibutorID string) (paginate.Page, error) {

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -56,6 +57,8 @@ func (s *MasterProductService) GetMasterProducts(request http.Request, search st
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	stmt = stmt.Model(&MasterProductModel{})
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]MasterProductModel{})
+	page.Page = page.Page + 1
 	return page, nil
 }

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/utils"
@@ -17,8 +16,7 @@ func NewAuthService(db *gorm.DB) *AuthService {
 	var service = AuthService{db: db}
 	err := service.Migrate()
 	if err != nil {
-		fmt.Println("Error migrating auth service", err)
-		return nil
+		panic(err)
 	}
 	return &service
 }
