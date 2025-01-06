@@ -33,7 +33,11 @@ func NewPurchaseService(db *gorm.DB, ctx *context.ERPContext, financeService *fi
 
 // CreatePurchaseOrder membuat purchase order baru
 func (s *PurchaseService) CreatePurchaseOrder(data *PurchaseOrderModel) error {
-	companyID := s.ctx.Request.Header.Get("ID-Company")
+	var companyID *string
+	if s.ctx.Request.Header.Get("ID-Company") != "" {
+		compID := s.ctx.Request.Header.Get("ID-Company")
+		companyID = &compID
+	}
 	// Hitung total harga
 
 	return s.db.Transaction(func(tx *gorm.DB) error {
@@ -172,7 +176,11 @@ func (s *PurchaseService) CancelPurchaseOrder(poID uint) error {
 
 // CreatePayment membuat payment untuk purchase order
 func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount float64, accountPayableID *string, accountAssetID string) error {
-	companyID := s.ctx.Request.Header.Get("ID-Company")
+	var companyID *string
+	if s.ctx.Request.Header.Get("ID-Company") != "" {
+		compID := s.ctx.Request.Header.Get("ID-Company")
+		companyID = &compID
+	}
 
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var data PurchaseOrderModel

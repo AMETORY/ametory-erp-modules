@@ -8,6 +8,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/google/uuid"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -23,9 +24,10 @@ func NewTransactionService(db *gorm.DB, ctx *context.ERPContext, accountService 
 }
 
 func (s *TransactionService) CreateTransaction(transaction *TransactionModel, amount float64) error {
-
-	if transaction.SourceID != nil {
-		transaction.AccountID = transaction.SourceID
+	code := utils.RandString(10)
+	if transaction.AccountID != nil {
+		transaction.ID = uuid.New().String()
+		transaction.Code = code
 		transaction.Amount = amount
 		account, err := s.accountService.GetAccountByID(*transaction.AccountID)
 		if err != nil {
@@ -36,40 +38,76 @@ func (s *TransactionService) CreateTransaction(transaction *TransactionModel, am
 		if err := s.db.Create(transaction).Error; err != nil {
 			return err
 		}
-	}
-	if transaction.DestinationID != nil {
-		transaction.AccountID = transaction.DestinationID
-		transaction.Amount = amount
-		account, err := s.accountService.GetAccountByID(*transaction.AccountID)
-		if err != nil {
-			return err
+	} else {
+		if transaction.SourceID != nil {
+			transaction.ID = uuid.New().String()
+			transaction.Code = code
+			transaction.AccountID = transaction.SourceID
+			transaction.Amount = amount
+			account, err := s.accountService.GetAccountByID(*transaction.AccountID)
+			if err != nil {
+				return err
+			}
+			s.UpdateCreditDebit(transaction, account.Type)
+
+			if err := s.db.Create(transaction).Error; err != nil {
+				return err
+			}
 		}
-		s.UpdateCreditDebit(transaction, account.Type)
-		if err := s.db.Create(transaction).Error; err != nil {
-			return err
+		if transaction.DestinationID != nil {
+			transaction.ID = uuid.New().String()
+			transaction.Code = code
+			transaction.AccountID = transaction.DestinationID
+			transaction.Amount = amount
+			account, err := s.accountService.GetAccountByID(*transaction.AccountID)
+			if err != nil {
+				return err
+			}
+			s.UpdateCreditDebit(transaction, account.Type)
+			if err := s.db.Create(transaction).Error; err != nil {
+				return err
+			}
 		}
 	}
+
 	return nil
 }
 
-func (s *TransactionService) UpdateTransaction(transaction *TransactionModel) error {
-	return s.db.Save(transaction).Error
+func (s *TransactionService) UpdateTransaction(id string, transaction *TransactionModel) error {
+	return s.db.Where("id = ?", id).Updates(transaction).Error
 }
 
-func (s *TransactionService) DeleteTransaction(transaction *TransactionModel) error {
-	return s.db.Delete(transaction).Error
+func (s *TransactionService) DeleteTransaction(id string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var data TransactionModel
+		err := tx.Where("id = ?", id).First(&data).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("id = ?", id).Delete(&TransactionModel{}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("code = ?", data.Code).Delete(&TransactionModel{}).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *TransactionService) GetTransactionById(id string) (*TransactionModel, error) {
 	var transaction TransactionModel
-	err := s.db.First(&transaction, "id = ?", id).Error
+	err := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id").
+		First(&transaction, "transactions.id = ?", id).Error
 	return &transaction, err
 }
 
-func (s *TransactionService) GetTransactionByCode(code string) (*TransactionModel, error) {
-	var transaction TransactionModel
-	err := s.db.First(&transaction, "code = ?", code).Error
-	return &transaction, err
+func (s *TransactionService) GetTransactionByCode(code string) ([]TransactionModel, error) {
+	var transaction []TransactionModel
+	err := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id").
+		First(&transaction, "transactions.code = ?", code).Error
+	return transaction, err
 }
 
 func (s *TransactionService) GetTransactionByDate(from, to time.Time, request http.Request) (paginate.Page, error) {
@@ -93,7 +131,7 @@ func (s *TransactionService) GetByDateAndCompanyId(from, to time.Time, companyId
 
 func (s *TransactionService) GetTransactions(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Joins("LEFT JOIN accounts", "accounts.id = transactions.account_id")
+	stmt := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id")
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
@@ -113,7 +151,15 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 }
 
 func (s *TransactionService) UpdateCreditDebit(transaction *TransactionModel, accountType account.AccountType) (*TransactionModel, error) {
+	transaction.IsExpense = false
+	transaction.IsIncome = false
 
+	if accountType == account.EXPENSE {
+		transaction.IsExpense = true
+	}
+	if accountType == account.REVENUE {
+		transaction.IsIncome = true
+	}
 	switch accountType {
 	case account.ASSET, account.EXPENSE, account.COST, account.CONTRA_LIABILITY, account.CONTRA_EQUITY, account.CONTRA_REVENUE:
 		transaction.Debit = transaction.Amount

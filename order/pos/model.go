@@ -57,8 +57,8 @@ type POSModel struct {
 	PaymentTerms        string                `json:"payment_terms" gorm:"column:payment_terms"`
 	MerchantID          *string               `json:"merchant_id" gorm:"column:merchant_id"`
 	Merchant            *MerchantModel        `gorm:"foreignKey:MerchantID;column:merchant"`
-	CompanyID           string                `json:"company_id" gorm:"column:company_id"`
-	Company             company.CompanyModel  `gorm:"foreignKey:CompanyID;column:company"`
+	CompanyID           *string               `json:"company_id" gorm:"column:company_id"`
+	Company             *company.CompanyModel `gorm:"foreignKey:CompanyID;column:company"`
 	ContactID           string                `json:"contact_id" gorm:"column:contact_id"`
 	Contact             contact.ContactModel  `gorm:"foreignKey:ContactID;column:contact"`
 	ContactData         string                `json:"contact_data" gorm:"type:json;column:contact_data"`

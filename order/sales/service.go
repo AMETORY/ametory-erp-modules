@@ -27,7 +27,11 @@ func NewSalesService(db *gorm.DB, ctx *context.ERPContext, financeService *finan
 }
 
 func (s *SalesService) CreateSales(data *SalesModel) error {
-	companyID := s.ctx.Request.Header.Get("ID-Company")
+	var companyID *string
+	if s.ctx.Request.Header.Get("ID-Company") != "" {
+		compID := s.ctx.Request.Header.Get("ID-Company")
+		companyID = &compID
+	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		data.CompanyID = companyID
 		if err := s.db.Create(data).Error; err != nil {
@@ -94,7 +98,11 @@ func (s *SalesService) CreateSales(data *SalesModel) error {
 }
 
 func (s *SalesService) CreatePayment(salesID string, date time.Time, amount float64, accountReceivableID *string, accountAssetID string) error {
-	companyID := s.ctx.Request.Header.Get("ID-Company")
+	var companyID *string
+	if s.ctx.Request.Header.Get("ID-Company") != "" {
+		compID := s.ctx.Request.Header.Get("ID-Company")
+		companyID = &compID
+	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 
 		var data SalesModel

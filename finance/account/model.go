@@ -31,29 +31,29 @@ const (
 // AccountModel adalah model database untuk account
 type AccountModel struct {
 	utils.BaseModel
-	Name                  string                `json:"name" bson:"name"`
-	Code                  string                `json:"code" bson:"code"`
-	Color                 string                `json:"color" bson:"color"`
-	Description           string                `json:"description" bson:"description"`
-	IsDeletable           bool                  `json:"is_deletable" bson:"is_deletable"`
-	IsReport              bool                  `json:"is_report" bson:"is_report" gorm:"-"`
-	IsAccountReport       bool                  `json:"is_account_report" bson:"is_account_report" gorm:"-"`
-	IsCashflowReport      bool                  `json:"is_cashflow_report" bson:"is_cashflow_report" gorm:"-"`
-	IsPDF                 bool                  `json:"is_pdf" bson:"is_pdf" gorm:"-"`
-	Type                  AccountType           `json:"type" bson:"type"`
-	Category              string                `json:"category" bson:"category"`
-	CashflowGroup         string                `json:"cashflow_group" bson:"cashflow_group"`
-	CashflowSubGroup      string                `json:"cashflow_subgroup" bson:"cashflow_group"`
-	IsTax                 bool                  `json:"is_tax" bson:"is_tax" gorm:"default:false"`
-	TypeLabel             string                `gorm:"-" json:"type_label"`
-	CashflowGroupLabel    string                `gorm:"-" json:"cashflow_group_label"`
-	CashflowSubGroupLabel string                `gorm:"-" json:"cashflow_subgroup_label"`
-	CompanyID             *string               `json:"company_id"`
-	Company               *company.CompanyModel `gorm:"foreignKey:CompanyID"`
-	TransactionCount      int64                 `gorm:"-" json:"transaction_count"`
-	Balance               float64               `gorm:"-" json:"balance"`
-	BalanceBefore         float64               `gorm:"-" json:"balance_before"`
-	HasOpeningBalance     bool                  `gorm:"-" json:"has_opening_balance"`
+	Name                  string                `json:"name"`
+	Code                  string                `json:"code"`
+	Color                 string                `json:"color"`
+	Description           string                `json:"description"`
+	IsDeletable           bool                  `json:"is_deletable"`
+	IsReport              bool                  `json:"is_report" gorm:"-"`
+	IsAccountReport       bool                  `json:"is_account_report" gorm:"-"`
+	IsCashflowReport      bool                  `json:"is_cashflow_report" gorm:"-"`
+	IsPDF                 bool                  `json:"is_pdf" gorm:"-"`
+	Type                  AccountType           `json:"type"`
+	Category              string                `json:"category"`
+	CashflowGroup         string                `json:"cashflow_group"`
+	CashflowSubGroup      string                `json:"cashflow_subgroup"`
+	IsTax                 bool                  `json:"is_tax" gorm:"default:false"`
+	TypeLabel             string                `gorm:"-" json:"type_label,omitempty"`
+	CashflowGroupLabel    string                `gorm:"-" json:"cashflow_group_label,omitempty"`
+	CashflowSubGroupLabel string                `gorm:"-" json:"cashflow_subgroup_label,omitempty"`
+	CompanyID             *string               `json:"company_id,omitempty"`
+	Company               *company.CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	TransactionCount      int64                 `gorm:"-" json:"transaction_count,omitempty"`
+	Balance               float64               `gorm:"-" json:"balance,omitempty"`
+	BalanceBefore         float64               `gorm:"-" json:"balance_before,omitempty"`
+	HasOpeningBalance     bool                  `gorm:"-" json:"has_opening_balance,omitempty"`
 	// Transactions          []Transaction `gorm:"-"`
 }
 

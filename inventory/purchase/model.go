@@ -37,8 +37,8 @@ type PurchaseOrderModel struct {
 	PurchaseDate    time.Time                `json:"purchase_date"`
 	DueDate         time.Time                `json:"due_date"`
 	PaymentTerms    string                   `json:"payment_terms"`
-	CompanyID       string                   `json:"company_id"`
-	Company         company.CompanyModel     `gorm:"foreignKey:CompanyID"`
+	CompanyID       *string                  `json:"company_id"`
+	Company         *company.CompanyModel    `gorm:"foreignKey:CompanyID"`
 	ContactID       string                   `json:"contact_id"`
 	Contact         contact.ContactModel     `gorm:"foreignKey:ContactID"`
 	ContactData     string                   `gorm:"type:json" json:"contact_data"`
