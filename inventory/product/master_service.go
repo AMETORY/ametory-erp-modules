@@ -34,7 +34,11 @@ func (s *MasterProductService) DeleteMasterProduct(id string) error {
 
 func (s *MasterProductService) GetMasterProductByID(id string) (*MasterProductModel, error) {
 	var product MasterProductModel
-	err := s.db.Where("id = ?", id).First(&product).Error
+	err := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Where("id = ?", id).First(&product).Error
 	product.Prices, _ = s.ListPricesOfProduct(product.ID)
 	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
 	return &product, err
@@ -48,7 +52,11 @@ func (s *MasterProductService) GetMasterProductByCode(code string) (*MasterProdu
 
 func (s *MasterProductService) GetMasterProducts(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	})
 	if search != "" {
 		stmt = stmt.Where("master_products.description ILIKE ? OR master_products.sku ILIKE ? OR master_products.name ILIKE ? OR master_products.barcode ILIKE ?",
 			"%"+search+"%",

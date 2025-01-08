@@ -11,18 +11,18 @@ import (
 // BrandModel adalah model database untuk brand
 type BrandModel struct {
 	utils.BaseModel
-	Name               string                `gorm:"not null" json:"name"`
-	Description        string                `json:"description"`
-	Logo               string                `json:"logo"`
-	Website            string                `json:"website"`
-	Email              string                `json:"email"`
-	Phone              string                `json:"phone"`
-	Address            string                `json:"address"`
-	ContactPerson      string                `json:"contact_person"`
-	ContactPosition    string                `json:"contact_position"`
-	ContactTitle       string                `json:"contact_title"`
-	ContactNote        string                `json:"contact_note"`
-	RegistrationNumber string                `json:"registration_number"`
+	Name               string                `gorm:"not null" json:"name,omitempty"`
+	Description        string                `json:"description,omitempty"`
+	Logo               string                `json:"logo,omitempty"`
+	Website            string                `json:"website,omitempty"`
+	Email              string                `json:"email,omitempty"`
+	Phone              string                `json:"phone,omitempty"`
+	Address            string                `json:"address,omitempty"`
+	ContactPerson      string                `json:"contact_person,omitempty"`
+	ContactPosition    string                `json:"contact_position,omitempty"`
+	ContactTitle       string                `json:"contact_title,omitempty"`
+	ContactNote        string                `json:"contact_note,omitempty"`
+	RegistrationNumber string                `json:"registration_number,omitempty"`
 	CompanyID          *string               `json:"company_id,omitempty"`
 	Company            *company.CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 }
