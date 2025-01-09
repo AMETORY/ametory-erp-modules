@@ -6,7 +6,6 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/utils"
-	"github.com/google/uuid"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
@@ -27,7 +26,11 @@ func (s *StockMovementService) CreateStockMovement(movement *StockMovementModel)
 
 func (s *StockMovementService) GetStockMovements(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Joins("LEFT JOIN products ON stock_movements.product_id = products.id")
+	stmt := s.db.Preload("Product", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Warehouse", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Joins("LEFT JOIN products ON stock_movements.product_id = products.id")
 
 	if search != "" {
 		stmt = stmt.Where("stock_movements.description ILIKE ? OR products.name ILIKE ?",
@@ -50,7 +53,7 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 }
 
 // AddMovement menambahkan pergerakan stok
-func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, movementType MovementType, referenceID, description string) error {
+func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, movementType MovementType, referenceID, description string) (*StockMovementModel, error) {
 	movement := StockMovementModel{
 		Date:          date,
 		ProductID:     productID,
@@ -64,10 +67,10 @@ func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseI
 	}
 
 	if err := s.db.Create(&movement).Error; err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &movement, nil
 }
 
 // GetCurrentStock menghitung stok saat ini berdasarkan riwayat pergerakan
@@ -117,29 +120,37 @@ func (s *StockMovementService) GetMovementByWarehouseID(warehouseID string) ([]S
 }
 
 // CreateAdjustment menambahkan pergerakan stok dengan tipe ADJUST
-func (s *StockMovementService) CreateAdjustment(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, referenceID, description string) error {
+func (s *StockMovementService) CreateAdjustment(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, referenceID, description string) (*StockMovementModel, error) {
 	return s.AddMovement(date, productID, warehouseID, merchantID, distributorID, quantity, MovementTypeAdjust, referenceID, description)
 }
 
 // TransferStock melakukan transfer stok dari gudang sumber ke gudang tujuan
-func (s *StockMovementService) TransferStock(date time.Time, sourceWarehouseID, destinationWarehouseID string, productID string, quantity float64, description string) error {
+func (s *StockMovementService) TransferStock(date time.Time, sourceWarehouseID, destinationWarehouseID string, productID string, quantity float64, description string) (*StockMovementModel, error) {
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
+		var movement *StockMovementModel
 		// membuat pergerakan stok di gudang sumber
-		if err := s.AddMovement(date, productID, sourceWarehouseID, nil, nil, -quantity, MovementTypeTransfer, uuid.New().String(), description); err != nil {
+		movement, err := s.AddMovement(date, productID, sourceWarehouseID, nil, nil, -quantity, MovementTypeTransfer, "", description)
+		if err != nil {
 			return err
 		}
 
 		// membuat pergerakan stok di gudang tujuan
-		if err := s.AddMovement(date, productID, destinationWarehouseID, nil, nil, quantity, MovementTypeTransfer, uuid.New().String(), description); err != nil {
+		movement2, err := s.AddMovement(date, productID, destinationWarehouseID, nil, nil, quantity, MovementTypeTransfer, movement.ID, description)
+		if err != nil {
+			return err
+		}
+
+		movement.ReferenceID = movement2.ID
+		if err := tx.Save(movement).Error; err != nil {
 			return err
 		}
 
 		return nil
 	}); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (s *StockMovementService) UpdateStockMovement(id string, data *StockMovementModel) error {
@@ -152,6 +163,10 @@ func (s *StockMovementService) DeleteStockMovement(id string) error {
 
 func (s *StockMovementService) GetStockMovementByID(id string) (*StockMovementModel, error) {
 	var invoice StockMovementModel
-	err := s.db.Where("id = ?", id).First(&invoice).Error
+	err := s.db.Preload("Product", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Warehouse", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
