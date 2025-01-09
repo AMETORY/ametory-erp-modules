@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -170,9 +169,13 @@ func (s *AdminAuthService) Verification(token, newPassword string) error {
 // GetAdminByID mengambil admin berdasarkan ID
 func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
 	var user AdminModel
-	fmt.Println("s.db.", s.db)
+	// fmt.Println("s.db.", s.db)
 	// Cari user berdasarkan ID
-	if err := s.db.Preload("Roles").Where("id = ?", userID).First(&user).Error; err != nil {
+	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name", "is_super_admin").Preload("Permissions", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		})
+	}).Where("id = ?", userID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -183,6 +186,14 @@ func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
 	s.db.Where("ref_id = ? and ref_type = ?", user.ID, "admin").First(&file)
 	if file.ID != "" {
 		user.ProfilePicture = &file
+	}
+	for i, v := range user.Roles {
+		if v.IsSuperAdmin {
+			var Permissions []PermissionModel
+			s.db.Find(&Permissions)
+			user.Roles[i].Permissions = Permissions
+		}
+
 	}
 	return &user, nil
 }
