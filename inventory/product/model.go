@@ -28,6 +28,7 @@ type ProductModel struct {
 	Brand           *brand.BrandModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID" json:"brand,omitempty"`
 	BrandID         *string               `json:"brand_id,omitempty"`
 	ProductImages   []shared.FileModel    `gorm:"-" json:"product_images,omitempty"`
+	TotalStock      float64               `gorm:"-" json:"total_stock,omitempty"`
 }
 
 func (ProductModel) TableName() string {

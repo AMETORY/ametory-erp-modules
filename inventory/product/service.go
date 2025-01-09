@@ -33,17 +33,34 @@ func (s *ProductService) DeleteProduct(id string) error {
 	return s.db.Where("id = ?", id).Delete(&ProductModel{}).Error
 }
 
-func (s *ProductService) GetProductByID(id string) (*ProductModel, error) {
+func (s *ProductService) GetProductByID(id string, request *http.Request) (*ProductModel, error) {
 	var product ProductModel
-	err := s.db.Where("id = ?", id).First(&product).Error
+	err := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Where("id = ?", id).First(&product).Error
 	product.Prices, _ = s.ListPricesOfProduct(product.ID)
 	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
+	var warehouseID *string
+	if request != nil {
+		warehouseIDStr := request.Header.Get("ID-Warehouse")
+		if warehouseIDStr != "" {
+			warehouseID = &warehouseIDStr
+		}
+	}
+	stock, _ := s.GetStock(product.ID, request, warehouseID)
+	product.TotalStock = stock
 	return &product, err
 }
 
 func (s *ProductService) GetProductByCode(code string) (*ProductModel, error) {
 	var product ProductModel
-	err := s.db.Where("sku = ?", code).First(&product).Error
+	err := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Where("sku = ?", code).First(&product).Error
 	product.Prices, _ = s.ListPricesOfProduct(product.ID)
 	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
 	return &product, err
@@ -51,7 +68,11 @@ func (s *ProductService) GetProductByCode(code string) (*ProductModel, error) {
 
 func (s *ProductService) GetProducts(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	})
 	if search != "" {
 		stmt = stmt.Where("products.description ILIKE ? OR products.sku ILIKE ? OR products.name ILIKE ? OR products.barcode ILIKE ?",
 			"%"+search+"%",
@@ -119,4 +140,31 @@ func (s *ProductService) DeletePriceOfProduct(productID string, priceID string) 
 
 func (s *ProductService) DeleteImageOfProduct(productID string, imageID string) error {
 	return s.db.Where("ref_id = ? and ref_type = ? and id = ?", productID, "product", imageID).Delete(&shared.FileModel{}).Error
+}
+
+func (s *ProductService) GetStock(productID string, request *http.Request, warehouseID *string) (float64, error) {
+
+	var totalStock float64
+	db := s.db.Table("stock_movements")
+	if request != nil {
+		if request.Header.Get("ID-Company") != "" {
+			db = db.Where("company_id = ?", request.Header.Get("ID-Company"))
+		}
+		if request.Header.Get("ID-Distributor") != "" {
+			db = db.Where("company_id = ?", request.Header.Get("ID-Distributor"))
+		}
+	}
+
+	if warehouseID != nil {
+		db = db.Where("warehouse_id = ?", *warehouseID)
+	}
+
+	if err := db.
+		Where("product_id = ?", productID).
+		Select("COALESCE(SUM(quantity), 0)").
+		Scan(&totalStock).Error; err != nil {
+		return 0, err
+	}
+
+	return totalStock, nil
 }
