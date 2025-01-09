@@ -18,7 +18,7 @@ type RoleModel struct {
 // PermissionModel adalah model database untuk izin
 type PermissionModel struct {
 	utils.BaseModel
-	Name string `gorm:"unique;not null"`
+	Name string `gorm:"unique;not null" json:"name"`
 }
 
 func (RoleModel) TableName() string {

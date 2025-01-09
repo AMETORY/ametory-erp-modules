@@ -143,7 +143,7 @@ func (s *RBACService) CreateRole(name string, isAdmin bool, isSuperAdmin bool, c
 // GetAllRoles mengambil semua peran
 func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Permissions")
 	if search != "" {
 		stmt = stmt.Where("roles.name ILIKE ?",
 			"%"+search+"%",
@@ -157,6 +157,19 @@ func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]RoleModel{})
 	page.Page = page.Page + 1
+	items := page.Items.(*[]RoleModel)
+	newItems := make([]RoleModel, 0)
+
+	for _, v := range *items {
+		if v.IsSuperAdmin {
+			var Permissions []PermissionModel
+			s.db.Find(&Permissions)
+			v.Permissions = Permissions
+		}
+		newItems = append(newItems, v)
+
+	}
+	page.Items = &newItems
 	return page, nil
 }
 
@@ -172,7 +185,7 @@ func (s *RBACService) GetRoleByID(roleID string) (*RoleModel, error) {
 // UpdateRole memperbarui informasi peran berdasarkan ID
 func (s *RBACService) UpdateRole(roleID string, name string, isAdmin bool, isSuperAdmin bool) (*RoleModel, error) {
 	var role RoleModel
-	if err := s.db.First(&role, roleID).Error; err != nil {
+	if err := s.db.First(&role, "id = ?", roleID).Error; err != nil {
 		return nil, errors.New("role not found")
 	}
 
@@ -193,4 +206,13 @@ func (s *RBACService) DeleteRole(roleID string) error {
 		return err
 	}
 	return nil
+}
+
+// GetAllPermissions mengambil semua izin
+func (s *RBACService) GetAllPermissions() ([]PermissionModel, error) {
+	var permissions []PermissionModel
+	if err := s.db.Find(&permissions).Error; err != nil {
+		return nil, err
+	}
+	return permissions, nil
 }
