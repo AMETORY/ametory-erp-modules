@@ -24,7 +24,7 @@ type ERPContext struct {
 	DistributionService interface{} // Contoh: DistributionService
 	FileService         interface{} // Contoh: FileService
 	Firestore           interface{} // Contoh: Firestore
-	// Tambahkan service lainnya di sini
+	// Add additional services here
 	EmailSender *thirdparty.SMTPSender
 
 	SkipMigration bool // SkipMigration adalah flag untuk menentukan apakah migrasi dijalankan atau tidak
