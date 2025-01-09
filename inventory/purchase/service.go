@@ -106,7 +106,7 @@ func (s *PurchaseService) CreatePurchaseOrder(data *PurchaseOrderModel) error {
 }
 
 // ReceivePurchaseOrder menerima barang dari supplier dan menambah stok
-func (s *PurchaseService) ReceivePurchaseOrder(poID, warehouseID string, description string) error {
+func (s *PurchaseService) ReceivePurchaseOrder(date time.Time, poID, warehouseID string, description string) error {
 	// companyID := s.ctx.Request.Header.Get("ID-Company")
 	var po PurchaseOrderModel
 	if err := s.db.First(&po, poID).Error; err != nil {
@@ -124,7 +124,7 @@ func (s *PurchaseService) ReceivePurchaseOrder(poID, warehouseID string, descrip
 			if v.ProductID == nil || v.WarehouseID == nil {
 				continue
 			}
-			if err := s.stockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, nil, nil, v.Quantity, stockmovement.MovementTypeIn, po.ID, description); err != nil {
+			if err := s.stockMovementService.AddMovement(date, *v.ProductID, *v.WarehouseID, nil, nil, v.Quantity, stockmovement.MovementTypeIn, po.ID, description); err != nil {
 				tx.Rollback()
 				return err
 			}

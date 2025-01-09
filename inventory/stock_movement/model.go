@@ -1,6 +1,8 @@
 package stockmovement
 
 import (
+	"time"
+
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
 	"github.com/AMETORY/ametory-erp-modules/utils"
@@ -19,6 +21,7 @@ const (
 
 type StockMovementModel struct {
 	utils.BaseModel
+	Date          time.Time                `gorm:"not null" json:"date"` // Tanggal pergerakan stok
 	Description   string                   `gorm:"null" json:"description"`
 	ProductID     string                   `gorm:"not null" json:"product_id"` // Relasi ke product
 	Product       product.ProductModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProductID" json:"product"`
