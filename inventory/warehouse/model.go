@@ -9,10 +9,15 @@ import (
 // WarehouseModel adalah model database untuk warehouse
 type WarehouseModel struct {
 	utils.BaseModel
-	Name        string `gorm:"not null" json:"name"`
-	Code        string `gorm:"type:varchar(255)" json:"code"`
-	Description string `json:"description"`
-	Address     string `json:"address"`
+	Name            string `gorm:"not null" json:"name"`
+	Code            string `gorm:"type:varchar(255)" json:"code"`
+	Description     string `json:"description,omitempty"`
+	Address         string `json:"address,omitempty"`
+	Phone           string `json:"phone,omitempty"`
+	ContactPerson   string `json:"contact_person,omitempty"`
+	ContactPosition string `json:"contact_position,omitempty"`
+	ContactTitle    string `json:"contact_title,omitempty"`
+	ContactNote     string `json:"contact_note,omitempty"`
 }
 
 func (WarehouseModel) TableName() string {

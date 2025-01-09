@@ -2,6 +2,7 @@ package product
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -119,4 +120,82 @@ func (s *MasterProductService) DeletePriceFromMasterProduct(productID string, pr
 
 func (s *MasterProductService) DeleteImageFromMasterProduct(productID string, imageID string) error {
 	return s.db.Where("ref_id = ? and ref_type = ? and id = ?", productID, "master-product", imageID).Delete(&shared.FileModel{}).Error
+}
+
+func (s *MasterProductService) ConvertToProducts(ids []string, distributorID *string) []string {
+	newErrors := make([]string, 0)
+	if len(ids) == 0 {
+		return []string{"no ids provided"}
+	}
+	masterProducts := make([]MasterProductModel, 0)
+	err := s.db.Where("id in (?)", ids).Find(&masterProducts).Error
+	if err != nil {
+		return []string{err.Error()}
+	}
+
+	for _, masterProduct := range masterProducts {
+		existingProduct := ProductModel{}
+		err = s.db.Where("master_product_id = ?", masterProduct.ID).First(&existingProduct).Error
+		if err == nil {
+			newErrors = append(newErrors, fmt.Sprintf("product with master id %s already exists", masterProduct.ID))
+			continue
+		}
+
+		product := ProductModel{
+			Name:            masterProduct.Name,
+			Description:     masterProduct.Description,
+			SKU:             masterProduct.SKU,
+			Barcode:         masterProduct.Barcode,
+			Price:           masterProduct.Price,
+			CompanyID:       masterProduct.CompanyID,
+			DistributorID:   distributorID,
+			MasterProductID: &masterProduct.ID,
+			CategoryID:      masterProduct.CategoryID,
+			BrandID:         masterProduct.BrandID,
+		}
+		err = s.db.Create(&product).Error
+		if err != nil {
+			newErrors = append(newErrors, err.Error())
+		}
+		images, err := s.ListImagesOfProduct(masterProduct.ID)
+		if err != nil {
+			newErrors = append(newErrors, err.Error())
+		}
+
+		for _, v := range images {
+			err := s.db.Create(&shared.FileModel{
+				FileName: v.FileName,
+				MimeType: v.MimeType,
+				Path:     v.Path,
+				Provider: v.Provider,
+				URL:      v.URL,
+				RefID:    product.ID,
+				RefType:  "product",
+			}).Error
+			if err != nil {
+				newErrors = append(newErrors, err.Error())
+			}
+		}
+
+		listPrices, err := s.ListPricesOfProduct(masterProduct.ID)
+		if err != nil {
+			newErrors = append(newErrors, err.Error())
+		}
+		for _, v := range listPrices {
+			err := s.db.Create(&PriceModel{
+				Amount:          v.Amount,
+				Currency:        v.Currency,
+				PriceCategoryID: v.PriceCategoryID,
+				EffectiveDate:   v.EffectiveDate,
+				MinQuantity:     v.MinQuantity,
+				ProductID:       product.ID,
+			}).Error
+			if err != nil {
+				newErrors = append(newErrors, err.Error())
+			}
+		}
+
+	}
+
+	return newErrors
 }

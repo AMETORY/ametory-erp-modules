@@ -12,9 +12,9 @@ import (
 type ProductModel struct {
 	utils.BaseModel
 	Name          string                `gorm:"not null" json:"name,omitempty"`
-	Description   string                `json:"description,omitempty"`
-	SKU           string                `gorm:"type:varchar(255)" json:"sku,omitempty"`
-	Barcode       string                `gorm:"type:varchar(255)" json:"barcode,omitempty"`
+	Description   *string               `json:"description,omitempty"`
+	SKU           *string               `gorm:"type:varchar(255)" json:"sku,omitempty"`
+	Barcode       *string               `gorm:"type:varchar(255)" json:"barcode,omitempty"`
 	Price         float64               `gorm:"not null;default:0" json:"price,omitempty"`
 	CompanyID     *string               `json:"company_id,omitempty"`
 	Company       *company.CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
