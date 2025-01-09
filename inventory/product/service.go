@@ -35,7 +35,7 @@ func (s *ProductService) DeleteProduct(id string) error {
 
 func (s *ProductService) GetProductByID(id string, request *http.Request) (*ProductModel, error) {
 	var product ProductModel
-	err := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")

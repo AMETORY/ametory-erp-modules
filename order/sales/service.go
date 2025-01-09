@@ -206,7 +206,7 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 	return page, nil
 }
 
-func (s *SalesService) UpdateStock(salesID, warehouseID string) error {
+func (s *SalesService) UpdateStock(salesID, warehouseID string, description string) error {
 	var sales SalesModel
 	if err := s.db.First(&sales, salesID).Error; err != nil {
 		return err
@@ -226,7 +226,7 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string) error {
 			if v.ProductID == nil || v.WarehouseID == nil {
 				continue
 			}
-			if err := invSrv.StockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, nil, nil, -v.Quantity, stockmovement.MovementTypeIn, sales.ID); err != nil {
+			if err := invSrv.StockMovementService.AddMovement(*v.ProductID, *v.WarehouseID, nil, nil, -v.Quantity, stockmovement.MovementTypeIn, sales.ID, description); err != nil {
 				tx.Rollback()
 				return err
 			}

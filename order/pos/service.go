@@ -43,7 +43,7 @@ func (s *POSService) CreateMerchant(name, address, phone string) (*MerchantModel
 }
 
 // CreatePOSTransaction membuat transaksi POS baru dengan multi-item
-func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehouseID string, items []POSSalesItemModel) (*POSModel, error) {
+func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehouseID string, items []POSSalesItemModel, description string) (*POSModel, error) {
 	invSrv, ok := s.ctx.InventoryService.(*inventory.InventoryService)
 	if !ok {
 		return nil, errors.New("invalid inventory service")
@@ -82,7 +82,7 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 
 		// Kurangi stok untuk setiap item
 		for _, item := range items {
-			if err := invSrv.StockMovementService.AddMovement(*item.ProductID, warehouseID, merchantID, nil, -item.Quantity, stockmovement.MovementTypeOut, pos.ID); err != nil {
+			if err := invSrv.StockMovementService.AddMovement(*item.ProductID, warehouseID, merchantID, nil, -item.Quantity, stockmovement.MovementTypeOut, pos.ID, description); err != nil {
 				return err
 			}
 		}

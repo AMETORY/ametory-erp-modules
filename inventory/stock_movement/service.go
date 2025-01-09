@@ -1,8 +1,12 @@
 package stockmovement
 
 import (
+	"net/http"
+
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -15,8 +19,37 @@ func NewStockMovementService(db *gorm.DB, ctx *context.ERPContext) *StockMovemen
 	return &StockMovementService{db: db, ctx: ctx}
 }
 
+// CreateStockMovement membuat pergerakan stok
+func (s *StockMovementService) CreateStockMovement(movement *StockMovementModel) error {
+	return s.db.Create(movement).Error
+}
+
+func (s *StockMovementService) GetStockMovements(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Joins("LEFT JOIN products ON stock_movements.product_id = products.id")
+
+	if search != "" {
+		stmt = stmt.Where("stock_movements.description ILIKE ? OR products.name ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if request.Header.Get("ID-Distributor") != "" {
+		stmt = stmt.Where("stock_movements.distributor = ?", request.Header.Get("ID-Distributor"))
+	}
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&StockMovementModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]StockMovementModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
 // AddMovement menambahkan pergerakan stok
-func (s *StockMovementService) AddMovement(productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, movementType MovementType, referenceID string) error {
+func (s *StockMovementService) AddMovement(productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, movementType MovementType, referenceID, description string) error {
 	movement := StockMovementModel{
 		ProductID:     productID,
 		WarehouseID:   warehouseID,
@@ -25,6 +58,7 @@ func (s *StockMovementService) AddMovement(productID, warehouseID string, mercha
 		MerchantID:    merchantID,
 		DistributorID: distributorID,
 		ReferenceID:   referenceID,
+		Description:   description,
 	}
 
 	if err := s.db.Create(&movement).Error; err != nil {
@@ -81,20 +115,20 @@ func (s *StockMovementService) GetMovementByWarehouseID(warehouseID string) ([]S
 }
 
 // CreateAdjustment menambahkan pergerakan stok dengan tipe ADJUST
-func (s *StockMovementService) CreateAdjustment(productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, referenceID string) error {
-	return s.AddMovement(productID, warehouseID, merchantID, distributorID, quantity, MovementTypeAdjust, referenceID)
+func (s *StockMovementService) CreateAdjustment(productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, referenceID, description string) error {
+	return s.AddMovement(productID, warehouseID, merchantID, distributorID, quantity, MovementTypeAdjust, referenceID, description)
 }
 
 // TransferStock melakukan transfer stok dari gudang sumber ke gudang tujuan
-func (s *StockMovementService) TransferStock(sourceWarehouseID, destinationWarehouseID string, productID string, quantity float64) error {
+func (s *StockMovementService) TransferStock(sourceWarehouseID, destinationWarehouseID string, productID string, quantity float64, description string) error {
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
 		// membuat pergerakan stok di gudang sumber
-		if err := s.AddMovement(productID, sourceWarehouseID, nil, nil, -quantity, MovementTypeTransfer, uuid.New().String()); err != nil {
+		if err := s.AddMovement(productID, sourceWarehouseID, nil, nil, -quantity, MovementTypeTransfer, uuid.New().String(), description); err != nil {
 			return err
 		}
 
 		// membuat pergerakan stok di gudang tujuan
-		if err := s.AddMovement(productID, destinationWarehouseID, nil, nil, quantity, MovementTypeTransfer, uuid.New().String()); err != nil {
+		if err := s.AddMovement(productID, destinationWarehouseID, nil, nil, quantity, MovementTypeTransfer, uuid.New().String(), description); err != nil {
 			return err
 		}
 

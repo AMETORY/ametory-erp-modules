@@ -19,6 +19,7 @@ const (
 
 type StockMovementModel struct {
 	utils.BaseModel
+	Description   string                   `gorm:"null" json:"description"`
 	ProductID     string                   `gorm:"not null" json:"product_id"` // Relasi ke product
 	Product       product.ProductModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProductID" json:"product"`
 	WarehouseID   string                   `gorm:"not null" json:"warehouse_id"` // Relasi ke warehouse
