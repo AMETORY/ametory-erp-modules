@@ -21,18 +21,19 @@ const (
 
 type StockMovementModel struct {
 	utils.BaseModel
-	Date          time.Time                `gorm:"not null" json:"date"` // Tanggal pergerakan stok
-	Description   string                   `gorm:"null" json:"description"`
-	ProductID     string                   `gorm:"not null" json:"product_id"` // Relasi ke product
-	Product       product.ProductModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProductID" json:"product"`
-	WarehouseID   string                   `gorm:"not null" json:"warehouse_id"` // Relasi ke warehouse
-	Warehouse     warehouse.WarehouseModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:WarehouseID" json:"warehouse"`
-	MerchantID    *string                  `gorm:"null" json:"merchant_id"`    // Relasi ke warehouse
-	DistributorID *string                  `gorm:"null" json:"distributor_id"` // Relasi ke warehouse
-	CompanyID     *string                  `gorm:"null" json:"company_id"`     // Relasi ke warehouse
-	Quantity      float64                  `gorm:"not null" json:"quantity"`   // Jumlah stok (positif untuk IN, negatif untuk OUT)
-	Type          MovementType             `gorm:"not null" json:"type"`       // Jenis pergerakan (IN, OUT, TRANSFER, ADJUST)
-	ReferenceID   string                   `json:"reference_id"`               // ID referensi (misalnya, ID pembelian, penjualan, dll.)
+	Date              time.Time                `gorm:"not null" json:"date"` // Tanggal pergerakan stok
+	Description       string                   `gorm:"null" json:"description"`
+	ProductID         string                   `gorm:"not null" json:"product_id"` // Relasi ke product
+	Product           product.ProductModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProductID" json:"product"`
+	SourceWarehouseID string                   `gorm:"-" json:"source_warehouse_id"` // Relasi ke warehouse
+	WarehouseID       string                   `gorm:"not null" json:"warehouse_id"` // Relasi ke warehouse
+	Warehouse         warehouse.WarehouseModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:WarehouseID" json:"warehouse"`
+	MerchantID        *string                  `gorm:"null" json:"merchant_id"`    // Relasi ke warehouse
+	DistributorID     *string                  `gorm:"null" json:"distributor_id"` // Relasi ke warehouse
+	CompanyID         *string                  `gorm:"null" json:"company_id"`     // Relasi ke warehouse
+	Quantity          float64                  `gorm:"not null" json:"quantity"`   // Jumlah stok (positif untuk IN, negatif untuk OUT)
+	Type              MovementType             `gorm:"not null" json:"type"`       // Jenis pergerakan (IN, OUT, TRANSFER, ADJUST)
+	ReferenceID       string                   `json:"reference_id"`               // ID referensi (misalnya, ID pembelian, penjualan, dll.)
 }
 
 func (StockMovementModel) TableName() string {

@@ -15,17 +15,18 @@ import (
 // UserModel adalah model database untuk user
 type UserModel struct {
 	utils.BaseModel
-	FullName                   string                         `gorm:"not null" json:"full_name"`
-	Username                   string                         `gorm:"unique" json:"username"`
-	Email                      string                         `gorm:"unique;not null" json:"email"`
+	FullName                   string                         `gorm:"not null" json:"full_name,omitempty"`
+	Username                   string                         `gorm:"unique" json:"username,omitempty"`
+	Email                      string                         `gorm:"unique;not null" json:"email,omitempty"`
 	Password                   string                         `gorm:"not null" json:"-"`
-	VerifiedAt                 *time.Time                     `gorm:"index" json:"verified_at"`
-	VerificationToken          string                         `json:"verification_token"`
-	VerificationTokenExpiredAt *time.Time                     `gorm:"index" json:"verification_token_expired_at"`
-	Roles                      []RoleModel                    `gorm:"many2many:user_roles;" json:"roles"`
-	Companies                  []company.CompanyModel         `gorm:"many2many:user_companies;" json:"companies"`
-	Distributors               []distributor.DistributorModel `gorm:"many2many:user_distributors;" json:"distributors"`
-	ProfilePicture             *shared.FileModel              `json:"profile_picture" gorm:"-"`
+	VerifiedAt                 *time.Time                     `gorm:"index" json:"verified_at,omitempty"`
+	VerificationToken          string                         `json:"verification_token,omitempty"`
+	VerificationTokenExpiredAt *time.Time                     `gorm:"index" json:"verification_token_expired_at,omitempty"`
+	Roles                      []RoleModel                    `gorm:"many2many:user_roles;" json:"roles,omitempty"`
+	Companies                  []company.CompanyModel         `gorm:"many2many:user_companies;" json:"companies,omitempty"`
+	Distributors               []distributor.DistributorModel `gorm:"many2many:user_distributors;" json:"distributors,omitempty"`
+	ProfilePicture             *shared.FileModel              `json:"profile_picture,omitempty" gorm:"-"`
+	RoleID                     *string                        `json:"role_id,omitempty" gorm:"-"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {

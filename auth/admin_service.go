@@ -3,10 +3,12 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -24,16 +26,23 @@ func NewAdminAuthService(db *gorm.DB) *AdminAuthService {
 }
 
 // Register membuat user baru
-func (s *AdminAuthService) Register(fullname, username, email, password string) (*AdminModel, error) {
+func (s *AdminAuthService) Register(fullname, username, email, password string, isAdd bool) (*AdminModel, error) {
 	// Hash password
 	hashedPassword, err := HashPassword(password)
 	if err != nil {
 		return nil, err
 	}
-
+	now := time.Now()
+	var verTokenExp = (time.Now().AddDate(0, 0, 7))
+	var verificationAt, verificationTokenExpiredAt *time.Time
 	// Generate verification token
 	verificationToken := utils.RandString(32)
-	verificationTokenExpiredAt := time.Now().AddDate(0, 0, 7) // 7 hari
+	verificationTokenExpiredAt = &verTokenExp // 7 hari
+	if isAdd {
+		verificationAt = &now
+		verificationToken = ""
+		verificationTokenExpiredAt = nil
+	}
 
 	// Buat user baru
 	user := AdminModel{
@@ -42,7 +51,8 @@ func (s *AdminAuthService) Register(fullname, username, email, password string) 
 		Email:                      email,
 		Password:                   &hashedPassword,
 		VerificationToken:          verificationToken,
-		VerificationTokenExpiredAt: &verificationTokenExpiredAt,
+		VerificationTokenExpiredAt: verificationTokenExpiredAt,
+		VerifiedAt:                 verificationAt,
 	}
 
 	// Simpan ke database
@@ -162,7 +172,7 @@ func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
 	var user AdminModel
 	fmt.Println("s.db.", s.db)
 	// Cari user berdasarkan ID
-	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
+	if err := s.db.Preload("Roles").Where("id = ?", userID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -170,7 +180,7 @@ func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
 	}
 
 	file := shared.FileModel{}
-	s.db.Where("ref_id = ?", user.ID).First(&file)
+	s.db.Where("ref_id = ? and ref_type = ?", user.ID, "admin").First(&file)
 	if file.ID != "" {
 		user.ProfilePicture = &file
 	}
@@ -197,4 +207,40 @@ func (s *AdminAuthService) UpdateAdminByID(userID string, updatedData *AdminMode
 	}
 
 	return nil
+}
+
+// GetAdmins retrieves a list of all admins
+func (s *AdminAuthService) GetAdmins(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Preload("Roles")
+	if search != "" {
+		stmt = stmt.Where("admins.full_name ILIKE ? OR admins.email ILIKE ? OR admins.username ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	stmt = stmt.Model(&AdminModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]AdminModel{})
+	page.Page = page.Page + 1
+	items := page.Items.(*[]AdminModel)
+	newItems := make([]AdminModel, 0)
+
+	for _, v := range *items {
+		img, err := s.GetProfilePicture(v.ID)
+		if err == nil {
+			v.ProfilePicture = &img
+		}
+		newItems = append(newItems, v)
+	}
+	page.Items = &newItems
+	return page, nil
+}
+
+func (s *AdminAuthService) GetProfilePicture(userID string) (shared.FileModel, error) {
+	var image shared.FileModel
+	err := s.db.Where("ref_id = ? and ref_type = ?", userID, "admin").First(&image).Error
+	return image, err
 }

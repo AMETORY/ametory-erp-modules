@@ -74,7 +74,7 @@ func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseI
 }
 
 // GetCurrentStock menghitung stok saat ini berdasarkan riwayat pergerakan
-func (s *StockMovementService) GetCurrentStock(productID, warehouseID uint) (float64, error) {
+func (s *StockMovementService) GetCurrentStock(productID, warehouseID string) (float64, error) {
 	var totalStock float64
 	if err := s.db.Model(&StockMovementModel{}).
 		Where("product_id = ? AND warehouse_id = ?", productID, warehouseID).
