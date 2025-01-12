@@ -4,13 +4,12 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
-	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type AdminModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	FullName                   string            `gorm:"not null" json:"full_name,omitempty"`
 	Username                   string            `gorm:"unique" json:"username,omitempty"`
 	Email                      string            `gorm:"unique;not null" json:"email,omitempty"`

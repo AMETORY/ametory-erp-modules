@@ -8,7 +8,8 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/order/merchant"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -40,38 +41,38 @@ const (
 )
 
 type POSModel struct {
-	utils.BaseModel
-	SalesNumber         string                `json:"sales_number" gorm:"column:sales_number"`
-	Code                string                `json:"code" gorm:"column:code"`
-	Description         string                `json:"description" gorm:"column:description"`
-	Notes               string                `json:"notes" gorm:"column:notes"`
-	Total               float64               `json:"total" gorm:"column:total"`
-	Subtotal            float64               `json:"subtotal" gorm:"column:subtotal"`
-	Paid                float64               `json:"paid" gorm:"column:paid"`
-	TotalBeforeTax      float64               `json:"total_before_tax" gorm:"column:total_before_tax"`
-	TotalBeforeDisc     float64               `json:"total_before_disc" gorm:"column:total_before_disc"`
-	Status              string                `json:"status" gorm:"column:status"`
-	StockStatus         string                `json:"stock_status" gorm:"default:'pending';column:stock_status"`
-	SalesDate           time.Time             `json:"sales_date" gorm:"column:sales_date"`
-	DueDate             time.Time             `json:"due_date" gorm:"column:due_date"`
-	PaymentTerms        string                `json:"payment_terms" gorm:"column:payment_terms"`
-	MerchantID          *string               `json:"merchant_id" gorm:"column:merchant_id"`
-	Merchant            *MerchantModel        `gorm:"foreignKey:MerchantID;column:merchant"`
-	CompanyID           *string               `json:"company_id" gorm:"column:company_id"`
-	Company             *company.CompanyModel `gorm:"foreignKey:CompanyID;column:company"`
-	ContactID           string                `json:"contact_id" gorm:"column:contact_id"`
-	Contact             contact.ContactModel  `gorm:"foreignKey:ContactID;column:contact"`
-	ContactData         string                `json:"contact_data" gorm:"type:json;column:contact_data"`
-	PaymentType         string                `json:"payment_type" gorm:"column:payment_type"`
-	PaymentProviderType PaymentProviderType   `json:"payment_provider_type" gorm:"column:payment_provider_type"`
-	Items               []POSSalesItemModel   `json:"items" gorm:"foreignKey:SalesID;column:items"`
-	SaleAccountID       *string               `json:"sale_account_id" gorm:"column:sale_account_id"`
-	SaleAccount         *account.AccountModel `gorm:"foreignKey:SaleAccountID;column:sale_account"`
-	AssetAccountID      *string               `json:"asset_account_id" gorm:"column:asset_account_id"`
-	AssetAccount        *account.AccountModel `gorm:"foreignKey:AssetAccountID;column:asset_account"`
+	shared.BaseModel
+	SalesNumber         string                  `json:"sales_number" gorm:"column:sales_number"`
+	Code                string                  `json:"code" gorm:"column:code"`
+	Description         string                  `json:"description" gorm:"column:description"`
+	Notes               string                  `json:"notes" gorm:"column:notes"`
+	Total               float64                 `json:"total" gorm:"column:total"`
+	Subtotal            float64                 `json:"subtotal" gorm:"column:subtotal"`
+	Paid                float64                 `json:"paid" gorm:"column:paid"`
+	TotalBeforeTax      float64                 `json:"total_before_tax" gorm:"column:total_before_tax"`
+	TotalBeforeDisc     float64                 `json:"total_before_disc" gorm:"column:total_before_disc"`
+	Status              string                  `json:"status" gorm:"column:status"`
+	StockStatus         string                  `json:"stock_status" gorm:"default:'pending';column:stock_status"`
+	SalesDate           time.Time               `json:"sales_date" gorm:"column:sales_date"`
+	DueDate             time.Time               `json:"due_date" gorm:"column:due_date"`
+	PaymentTerms        string                  `json:"payment_terms" gorm:"column:payment_terms"`
+	MerchantID          *string                 `json:"merchant_id" gorm:"column:merchant_id"`
+	Merchant            *merchant.MerchantModel `gorm:"foreignKey:MerchantID;column:merchant"`
+	CompanyID           *string                 `json:"company_id" gorm:"column:company_id"`
+	Company             *company.CompanyModel   `gorm:"foreignKey:CompanyID;column:company"`
+	ContactID           string                  `json:"contact_id" gorm:"column:contact_id"`
+	Contact             contact.ContactModel    `gorm:"foreignKey:ContactID;column:contact"`
+	ContactData         string                  `json:"contact_data" gorm:"type:json;column:contact_data"`
+	PaymentType         string                  `json:"payment_type" gorm:"column:payment_type"`
+	PaymentProviderType PaymentProviderType     `json:"payment_provider_type" gorm:"column:payment_provider_type"`
+	Items               []POSSalesItemModel     `json:"items" gorm:"foreignKey:SalesID;column:items"`
+	SaleAccountID       *string                 `json:"sale_account_id" gorm:"column:sale_account_id"`
+	SaleAccount         *account.AccountModel   `gorm:"foreignKey:SaleAccountID;column:sale_account"`
+	AssetAccountID      *string                 `json:"asset_account_id" gorm:"column:asset_account_id"`
+	AssetAccount        *account.AccountModel   `gorm:"foreignKey:AssetAccountID;column:asset_account"`
 }
 type POSSalesItemModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	SalesID            string                    `json:"sales_id"`
 	Sales              POSModel                  `gorm:"foreignKey:SalesID"`
 	Description        string                    `json:"description"`
@@ -109,5 +110,5 @@ func (s *POSSalesItemModel) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&POSModel{}, &POSSalesItemModel{}, &MerchantModel{})
+	return db.AutoMigrate(&POSModel{}, &POSSalesItemModel{})
 }

@@ -1,14 +1,14 @@
 package warehouse
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // WarehouseModel adalah model database untuk warehouse
 type WarehouseModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name            string `gorm:"not null" json:"name"`
 	Code            string `gorm:"type:varchar(255)" json:"code"`
 	Description     string `json:"description,omitempty"`

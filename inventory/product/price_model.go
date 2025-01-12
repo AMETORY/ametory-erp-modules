@@ -3,13 +3,13 @@ package product
 import (
 	"time"
 
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type PriceModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Amount          float64            `gorm:"not null" json:"amount"`
 	Currency        string             `gorm:"type:varchar(3);not null" json:"currency"` // ISO 4217 currency code
 	ProductID       string             `json:"product_id"`
@@ -32,7 +32,7 @@ func (p *PriceModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type MasterProductPriceModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Amount          float64            `gorm:"not null" json:"amount"`
 	Currency        string             `gorm:"type:varchar(3);not null" json:"currency"` // ISO 4217 currency code
 	MasterProductID string             `json:"master_product_id"`

@@ -69,7 +69,7 @@ func (s *SMTPSender) SendEmail(subject string, data interface{}, attachment []st
 }
 
 // SendEmail SendEmail
-func (s *SMTPSender) SendEmailWithTemplate(subject string, attachment []string) error {
+func (s *SMTPSender) SendEmailWithTemplate(subject, message string, attachment []string) error {
 	return s.send(subject, attachment)
 }
 

@@ -1,13 +1,12 @@
 package shared
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type FileModel struct {
-	utils.BaseModel
+	BaseModel
 	FileName string `gorm:"type:varchar(255)" json:"file_name"`
 	MimeType string `gorm:"type:varchar(255)" json:"mime_type"`
 	Path     string `gorm:"type:varchar(255)" json:"path"`

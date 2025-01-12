@@ -1,13 +1,13 @@
 package auth
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type RoleModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name         string            `gorm:"unique;not null" json:"name"`
 	Permissions  []PermissionModel `gorm:"many2many:role_permissions;" json:"permissions"`
 	CompanyID    *string           `json:"company_id"`
@@ -17,7 +17,7 @@ type RoleModel struct {
 
 // PermissionModel adalah model database untuk izin
 type PermissionModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name string `gorm:"unique;not null" json:"name"`
 }
 

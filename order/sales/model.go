@@ -8,7 +8,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -23,7 +23,7 @@ const (
 )
 
 type SalesModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	SalesNumber     string                `json:"sales_number"`
 	Code            string                `json:"code"`
 	Description     string                `json:"description"`
@@ -48,7 +48,7 @@ type SalesModel struct {
 }
 
 type SalesItemModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	SalesID            string                    `json:"sales_id"`
 	Sales              SalesModel                `gorm:"foreignKey:SalesID"`
 	Description        string                    `json:"description"`

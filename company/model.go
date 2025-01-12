@@ -1,13 +1,13 @@
 package company
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type CompanyModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name                  string  `json:"name"`
 	Logo                  string  `json:"logo"`
 	Cover                 string  `json:"cover"`

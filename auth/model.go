@@ -6,7 +6,6 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/distribution/distributor"
 	"github.com/AMETORY/ametory-erp-modules/shared"
-	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -14,7 +13,7 @@ import (
 
 // UserModel adalah model database untuk user
 type UserModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	FullName                   string                         `gorm:"not null" json:"full_name,omitempty"`
 	Username                   string                         `gorm:"unique" json:"username,omitempty"`
 	Email                      string                         `gorm:"unique;not null" json:"email,omitempty"`

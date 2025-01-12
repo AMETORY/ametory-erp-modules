@@ -1,14 +1,14 @@
 package distributor
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // DistributorModel adalah model database untuk distributor
 type DistributorModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name            string `json:"name"`
 	Address         string `json:"address"`
 	Phone           string `json:"phone"`

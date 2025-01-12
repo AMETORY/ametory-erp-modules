@@ -4,13 +4,12 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/inventory/brand"
 	"github.com/AMETORY/ametory-erp-modules/shared"
-	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type ProductModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name          string                `gorm:"not null" json:"name,omitempty"`
 	Description   *string               `json:"description,omitempty"`
 	SKU           *string               `gorm:"type:varchar(255)" json:"sku,omitempty"`
@@ -43,7 +42,7 @@ func (p *ProductModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type ProductCategoryModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name        string `gorm:"unique;not null" json:"name"`
 	Description string `json:"description"`
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -20,7 +20,7 @@ const (
 )
 
 type StockMovementModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Date              time.Time                `gorm:"not null" json:"date"` // Tanggal pergerakan stok
 	Description       string                   `gorm:"null" json:"description"`
 	ProductID         string                   `gorm:"not null" json:"product_id"` // Relasi ke product

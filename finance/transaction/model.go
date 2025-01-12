@@ -5,13 +5,13 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type TransactionModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Code                   string                `json:"code"`
 	Description            string                `json:"description"`
 	Notes                  string                `json:"notes"`

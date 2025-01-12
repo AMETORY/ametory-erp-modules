@@ -10,6 +10,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
+	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"gorm.io/gorm"
 )
 
@@ -28,8 +29,8 @@ func NewPOSService(db *gorm.DB, ctx *context.ERPContext, financeService *finance
 }
 
 // CreateMerchant membuat merchant baru
-func (s *POSService) CreateMerchant(name, address, phone string) (*MerchantModel, error) {
-	merchant := MerchantModel{
+func (s *POSService) CreateMerchant(name, address, phone string) (*merchant.MerchantModel, error) {
+	merchant := merchant.MerchantModel{
 		Name:    name,
 		Address: address,
 		Phone:   phone,
@@ -58,7 +59,7 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 		return nil, errors.New("no merchant")
 	}
 
-	merchant := MerchantModel{}
+	merchant := merchant.MerchantModel{}
 	if err := s.db.Where("id = ?", merchantID).First(&merchant).Error; err != nil {
 		return nil, err
 	}

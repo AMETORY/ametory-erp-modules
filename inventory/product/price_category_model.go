@@ -1,13 +1,13 @@
 package product
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type PriceCategoryModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name        string `gorm:"unique;not null" json:"name"`
 	Description string `json:"description,omitempty"`
 }

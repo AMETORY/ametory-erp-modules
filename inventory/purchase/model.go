@@ -8,7 +8,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -22,7 +22,7 @@ const (
 )
 
 type PurchaseOrderModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	PurchaseNumber  string                   `json:"purchase_number"`
 	Code            string                   `json:"code"`
 	Description     string                   `json:"description"`
@@ -47,7 +47,7 @@ type PurchaseOrderModel struct {
 }
 
 type PurchaseOrderItemModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	PurchaseID         string                    `json:"purchase_id"`
 	Purchase           PurchaseOrderModel        `gorm:"foreignKey:PurchaseID"`
 	Description        string                    `json:"description"`

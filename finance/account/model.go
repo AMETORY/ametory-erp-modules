@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/company"
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -30,7 +30,7 @@ const (
 
 // AccountModel adalah model database untuk account
 type AccountModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name                  string                `json:"name"`
 	Code                  string                `json:"code"`
 	Color                 string                `json:"color"`

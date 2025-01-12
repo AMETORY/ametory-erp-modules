@@ -4,13 +4,13 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/AMETORY/ametory-erp-modules/company"
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 )
 
 // BrandModel adalah model database untuk brand
 type BrandModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name               string                `gorm:"not null" json:"name,omitempty"`
 	Description        string                `json:"description,omitempty"`
 	Logo               string                `json:"logo,omitempty"`

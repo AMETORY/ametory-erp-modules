@@ -1,14 +1,14 @@
 package contact
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // ContactModel adalah model database untuk contact
 type ContactModel struct {
-	utils.BaseModel
+	shared.BaseModel
 	Name                  string `gorm:"not null" json:"name"`
 	Email                 string `json:"email"`
 	Code                  string `json:"code"`

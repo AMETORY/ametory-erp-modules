@@ -168,3 +168,13 @@ func (s *ProductService) GetStock(productID string, request *http.Request, wareh
 
 	return totalStock, nil
 }
+
+func (s *ProductService) GetProductsByMerchant(merchantID string, productIDs []string) ([]ProductModel, error) {
+	var products []ProductModel
+	db := s.db.Where("merchant_id = ?", merchantID)
+	if len(productIDs) > 0 {
+		db = db.Where("id in (?)", productIDs)
+	}
+	err := db.Find(&products).Error
+	return products, err
+}
