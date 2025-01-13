@@ -3,17 +3,19 @@ package shipping
 import (
 	"errors"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/distribution/shipping/provider"
 	"gorm.io/gorm"
 )
 
 type ShippingService struct {
 	db       *gorm.DB
+	ctx      *context.ERPContext
 	provider provider.ShippingProvider
 }
 
-func NewShippingService(db *gorm.DB, provider provider.ShippingProvider) *ShippingService {
-	return &ShippingService{db: db, provider: provider}
+func NewShippingService(db *gorm.DB, ctx *context.ERPContext) *ShippingService {
+	return &ShippingService{db: db, ctx: ctx}
 }
 func (s *ShippingService) SetProvider(provider provider.ShippingProvider) {
 	s.provider = provider

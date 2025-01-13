@@ -35,7 +35,7 @@ func (s *AdminAuthService) Register(fullname, username, email, password string, 
 	var verTokenExp = (time.Now().AddDate(0, 0, 7))
 	var verificationAt, verificationTokenExpiredAt *time.Time
 	// Generate verification token
-	verificationToken := utils.RandString(32)
+	verificationToken := utils.RandString(32, false)
 	verificationTokenExpiredAt = &verTokenExp // 7 hari
 	if isAdd {
 		verificationAt = &now

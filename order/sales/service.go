@@ -1,11 +1,13 @@
 package sales
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/distribution/order_request"
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
@@ -234,6 +236,7 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string, description stri
 		}
 
 		sales.StockStatus = "updated"
+
 		if err := tx.Save(&sales).Error; err != nil {
 			tx.Rollback()
 			return err
@@ -253,4 +256,58 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string, description stri
 	}
 
 	return nil
+}
+
+func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *order_request.OrderRequestModel, salesNumber string, taxPercent float64, description string) error {
+	var companyID *string
+	if s.ctx.Request.Header.Get("ID-Company") != "" {
+		compID := s.ctx.Request.Header.Get("ID-Company")
+		companyID = &compID
+	}
+	if orderRequest.ContactID == nil {
+		return errors.New("contact ID is required")
+	}
+	contactData, err := json.Marshal(*orderRequest.Contact)
+	if err != nil {
+		return err
+	}
+
+	data := &SalesModel{
+		SalesNumber:     salesNumber,
+		Code:            utils.RandString(10, true),
+		SalesDate:       orderRequest.CreatedAt,
+		DueDate:         orderRequest.ExpiresAt,
+		TotalBeforeTax:  0,
+		TotalBeforeDisc: 0,
+		Subtotal:        0,
+		Paid:            0,
+		CompanyID:       companyID,
+		ContactID:       *orderRequest.ContactID,
+		ContactData:     string(contactData),
+		Type:            ECOMMERCE,
+		Items:           []SalesItemModel{},
+	}
+	var totalBeforeTax, totalBeforeDisc float64
+	for _, v := range orderRequest.Items {
+		data.Items = append(data.Items, SalesItemModel{
+			ProductID:          v.ProductID,
+			Quantity:           v.Quantity,
+			UnitPrice:          v.UnitPrice,
+			Total:              v.Quantity * v.UnitPrice,
+			DiscountPercent:    v.DiscountPercent,
+			DiscountAmount:     v.DiscountAmount,
+			SubtotalBeforeDisc: v.Quantity * v.UnitPrice,
+		})
+		totalBeforeDisc += v.Quantity * v.UnitPrice
+		if v.DiscountPercent > 0 {
+			totalBeforeTax += v.Quantity * (v.UnitPrice - (v.UnitPrice * v.DiscountPercent / 100))
+		} else {
+			totalBeforeTax += v.Quantity * (v.UnitPrice - v.DiscountAmount)
+		}
+
+	}
+	data.TotalBeforeTax = totalBeforeTax
+	data.TotalBeforeDisc = totalBeforeDisc
+	data.Subtotal = totalBeforeTax * (1 + taxPercent/100)
+	return s.CreateSales(data)
 }

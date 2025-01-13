@@ -4,13 +4,18 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/auth"
+	"github.com/AMETORY/ametory-erp-modules/contact"
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type OrderRequestModel struct {
 	shared.BaseModel
 	UserID             string                  `json:"user_id,omitempty"`
 	User               auth.UserModel          `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	ContactID          *string                 `json:"contact_id,omitempty"`
+	Contact            *contact.ContactModel   `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
 	UserLat            float64                 `json:"user_lat,omitempty"`
 	UserLng            float64                 `json:"user_lng,omitempty"`
 	Status             string                  `json:"status,omitempty"`                                 // "Pending", "Accepted", "Rejected"
@@ -22,13 +27,37 @@ type OrderRequestModel struct {
 	CancellationReason string                  `json:"cancellation_reason,omitempty"`
 }
 
+func (OrderRequestModel) TableName() string {
+	return "order_requests"
+}
+
+func (orm *OrderRequestModel) BeforeCreate(tx *gorm.DB) (err error) {
+	orm.ID = uuid.New().String()
+	return
+}
+
 // OrderRequestItemModel adalah representasi di database untuk item order request
 type OrderRequestItemModel struct {
 	shared.BaseModel
-	OrderRequestID string  `gorm:"type:char(36);index" json:"-"`
-	Description    string  `json:"description"`
-	Quantity       float64 `json:"quantity"`
-	UnitPrice      float64 `json:"unit_price"`
-	Total          float64 `json:"total"`
-	ProductID      *string `json:"product_id"`
+	OrderRequestID  string  `gorm:"type:char(36);index" json:"-"`
+	Description     string  `json:"description"`
+	Quantity        float64 `json:"quantity"`
+	UnitPrice       float64 `json:"unit_price"`
+	DiscountPercent float64 `json:"discount_percent"`
+	DiscountAmount  float64 `json:"discount_amount"`
+	Total           float64 `json:"total"`
+	ProductID       *string `json:"product_id"`
+}
+
+func (OrderRequestItemModel) TableName() string {
+	return "order_request_items"
+}
+
+func (orim *OrderRequestItemModel) BeforeCreate(tx *gorm.DB) (err error) {
+	orim.ID = uuid.New().String()
+	return
+}
+
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&OrderRequestModel{}, &OrderRequestItemModel{})
 }

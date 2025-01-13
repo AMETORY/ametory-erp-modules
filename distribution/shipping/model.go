@@ -25,3 +25,7 @@ func (s *ShippingModel) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&ShippingModel{})
+}

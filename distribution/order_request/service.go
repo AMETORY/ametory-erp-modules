@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
@@ -12,13 +13,14 @@ import (
 
 type OrderRequestService struct {
 	db                *gorm.DB
+	ctx               *context.ERPContext
 	merchantService   *merchant.MerchantService
 	productService    *product.ProductService
 	auditTrailService *audit_trail.AuditTrailService
 }
 
-func NewOrderRequestService(db *gorm.DB, merchantService *merchant.MerchantService, productService *product.ProductService, auditTrailSrv *audit_trail.AuditTrailService) *OrderRequestService {
-	return &OrderRequestService{db: db, merchantService: merchantService, productService: productService, auditTrailService: auditTrailSrv}
+func NewOrderRequestService(db *gorm.DB, ctx *context.ERPContext, merchantService *merchant.MerchantService, productService *product.ProductService, auditTrailSrv *audit_trail.AuditTrailService) *OrderRequestService {
+	return &OrderRequestService{db: db, ctx: ctx, merchantService: merchantService, productService: productService, auditTrailService: auditTrailSrv}
 }
 
 func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng float64, expiresAt time.Time) (*OrderRequestModel, error) {

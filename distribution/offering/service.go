@@ -3,6 +3,7 @@ package offering
 import (
 	"fmt"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/distribution/order_request"
 	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
@@ -11,14 +12,14 @@ import (
 
 type OfferingService struct {
 	db                *gorm.DB
-	orderRequestSvc   *order_request.OrderRequestService
+	ctx               *context.ERPContext
 	auditTrailService *audit_trail.AuditTrailService
 	// merchantService   *merchant.MerchantService
 	// productService    *product.ProductService
 }
 
-func NewOfferingService(db *gorm.DB, orderRequestSvc *order_request.OrderRequestService, auditTrailSrv *audit_trail.AuditTrailService) *OfferingService {
-	return &OfferingService{db: db, orderRequestSvc: orderRequestSvc}
+func NewOfferingService(db *gorm.DB, ctx *context.ERPContext, auditTrailSrv *audit_trail.AuditTrailService) *OfferingService {
+	return &OfferingService{db: db, ctx: ctx}
 }
 
 func (s *OfferingService) GetOffersForUser(userID, status string, orderRequest *string) ([]OfferModel, error) {

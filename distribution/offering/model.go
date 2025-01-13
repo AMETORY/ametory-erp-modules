@@ -28,3 +28,7 @@ func (o *OfferModel) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+func Migrate(tx *gorm.DB) error {
+	return tx.AutoMigrate(&OfferModel{})
+}

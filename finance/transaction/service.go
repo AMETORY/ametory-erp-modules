@@ -24,7 +24,7 @@ func NewTransactionService(db *gorm.DB, ctx *context.ERPContext, accountService 
 }
 
 func (s *TransactionService) CreateTransaction(transaction *TransactionModel, amount float64) error {
-	code := utils.RandString(10)
+	code := utils.RandString(10, false)
 	if transaction.AccountID != nil {
 		transaction.ID = uuid.New().String()
 		transaction.Code = code

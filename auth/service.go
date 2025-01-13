@@ -30,7 +30,7 @@ func (s *AuthService) Register(fullname, username, email, password string) (*Use
 	}
 
 	// Generate verification token
-	verificationToken := utils.RandString(32)
+	verificationToken := utils.RandString(32, false)
 	verificationTokenExpiredAt := time.Now().AddDate(0, 0, 7) // 7 hari
 
 	// Buat user baru
