@@ -3,6 +3,7 @@ package merchant
 import (
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/utils"
@@ -70,7 +71,7 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("brands.description ILIKE ? OR brands.name ILIKE ?",
+		stmt = stmt.Where("merchants.description ILIKE ? OR merchants.name ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 		)
@@ -83,5 +84,20 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]MerchantModel{})
 	page.Page = page.Page + 1
+	items := page.Items.(*[]MerchantModel)
+	newItems := make([]MerchantModel, 0)
+
+	for _, v := range *items {
+		if v.CompanyID != nil {
+			var company company.CompanyModel
+			err := s.db.Select("name", "id").Where("id = ?", v.CompanyID).First(&company).Error
+			if err == nil {
+				v.Company = &company
+			}
+		}
+		newItems = append(newItems, v)
+
+	}
+	page.Items = &newItems
 	return page, nil
 }

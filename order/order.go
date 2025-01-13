@@ -34,7 +34,7 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 	}
 	err := service.Migrate()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("INIT ORDER SERVICE ERROR", err)
 		return nil
 	}
 	return &service
@@ -45,7 +45,15 @@ func (s *OrderService) Migrate() error {
 		return nil
 	}
 	if err := sales.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR ACCOUNT", err)
+		fmt.Println("ERROR SALES", err)
+		return err
+	}
+	if err := pos.Migrate(s.ctx.DB); err != nil {
+		fmt.Println("ERROR POS", err)
+		return err
+	}
+	if err := merchant.Migrate(s.ctx.DB); err != nil {
+		fmt.Println("ERROR MERCHANT", err)
 		return err
 	}
 
