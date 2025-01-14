@@ -2,6 +2,7 @@ package distribution
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/distribution/distributor"
@@ -46,16 +47,20 @@ func (s *DistributionService) Migrate() error {
 		return nil
 	}
 	if err := distributor.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR DISTRIBUTOR MIGRATE", err)
 		return err
 	}
 	if err := order_request.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR ORDER REQUEST MIGRATE", err)
 		return err
 	}
 	if err := offering.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR OFFERING MIGRATE", err)
 		return err
 	}
 
 	if err := shipping.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR SHIPPING MIGRATE", err)
 		return err
 	}
 

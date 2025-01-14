@@ -2,6 +2,7 @@ package order
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
@@ -45,15 +46,15 @@ func (s *OrderService) Migrate() error {
 		return nil
 	}
 	if err := sales.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR SALES", err)
+		log.Println("ERROR SALES", err)
 		return err
 	}
 	if err := pos.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR POS", err)
+		log.Println("ERROR POS", err)
 		return err
 	}
 	if err := merchant.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR MERCHANT", err)
+		log.Println("ERROR MERCHANT", err)
 		return err
 	}
 

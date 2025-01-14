@@ -20,6 +20,9 @@ func NewFileService(ctx *context.ERPContext, baseURL string) *FileService {
 		baseURL: baseURL,
 	}
 
+	if ctx.SkipMigration {
+		return &service
+	}
 	err := Migrate(ctx.DB)
 	if err != nil {
 		fmt.Println(err)

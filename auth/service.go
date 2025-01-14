@@ -2,20 +2,27 @@ package auth
 
 import (
 	"errors"
+	"log"
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
 )
 
 type AuthService struct {
-	db *gorm.DB
+	erpContext *context.ERPContext
+	db         *gorm.DB
 }
 
-func NewAuthService(db *gorm.DB) *AuthService {
-	var service = AuthService{db: db}
+func NewAuthService(erpContext *context.ERPContext) *AuthService {
+	var service = AuthService{erpContext: erpContext, db: erpContext.DB}
+	if erpContext.SkipMigration {
+		return &service
+	}
 	err := service.Migrate()
 	if err != nil {
+		log.Println("ERROR AUTH MIGRATE", err)
 		panic(err)
 	}
 	return &service

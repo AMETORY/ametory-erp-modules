@@ -28,6 +28,7 @@ type ProductModel struct {
 	BrandID         *string               `json:"brand_id,omitempty"`
 	ProductImages   []shared.FileModel    `gorm:"-" json:"product_images,omitempty"`
 	TotalStock      float64               `gorm:"-" json:"total_stock,omitempty"`
+	Status          string                `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 }
 
 func (ProductModel) TableName() string {

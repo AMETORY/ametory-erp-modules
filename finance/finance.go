@@ -2,6 +2,7 @@ package finance
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
@@ -34,9 +35,11 @@ func (s *FinanceService) Migrate() error {
 		return nil
 	}
 	if err := account.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR ACCOUNT MIGRATE", err)
 		return err
 	}
 	if err := transaction.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR TRANSACTION MIGRATE", err)
 		return err
 	}
 	// if err := transaction.Migrate(s.TransactionService.DB()); err != nil {

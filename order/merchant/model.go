@@ -20,6 +20,7 @@ type MerchantModel struct {
 	RegencyID  *string               `json:"regency_id,omitempty" gorm:"type:char(4);index"`
 	DistrictID *string               `json:"district_id,omitempty" gorm:"type:char(6);index"`
 	VillageID  *string               `json:"village_id,omitempty" gorm:"type:char(10);index"`
+	Status     string                `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 }
 
 func (m *MerchantModel) TableName() string {

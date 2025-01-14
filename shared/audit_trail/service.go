@@ -1,15 +1,17 @@
 package audit_trail
 
 import (
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"gorm.io/gorm"
 )
 
 type AuditTrailService struct {
-	db *gorm.DB
+	erpContext *context.ERPContext
+	db         *gorm.DB
 }
 
-func NewAuditTrailService(db *gorm.DB) *AuditTrailService {
-	return &AuditTrailService{db: db}
+func NewAuditTrailService(erpContext *context.ERPContext) *AuditTrailService {
+	return &AuditTrailService{erpContext: erpContext, db: erpContext.DB}
 }
 
 func (s *AuditTrailService) LogAction(userID string, action AuditAction, entity string, entityID, details string) error {

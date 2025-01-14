@@ -2,6 +2,7 @@ package inventory
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
@@ -62,22 +63,22 @@ func (s *InventoryService) Migrate() error {
 		return nil
 	}
 	if err := product.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR MIGRATING PRODUCT", err)
+		log.Println("ERROR MIGRATING PRODUCT", err)
 		return err
 	}
 	if err := warehouse.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR MIGRATING WAREHOUSE", err)
+		log.Println("ERROR MIGRATING WAREHOUSE", err)
 		return err
 	}
 	if err := stockmovement.Migrate(s.ctx.DB); err != nil {
 		return err
 	}
 	if err := brand.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR MIGRATING BRAND", err)
+		log.Println("ERROR MIGRATING BRAND", err)
 		return err
 	}
 	if err := purchase.Migrate(s.ctx.DB); err != nil {
-		fmt.Println("ERROR MIGRATING PURCHASE", err)
+		log.Println("ERROR MIGRATING PURCHASE", err)
 		return err
 	}
 

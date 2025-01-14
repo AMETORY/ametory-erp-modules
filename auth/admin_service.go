@@ -2,9 +2,11 @@ package auth
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -12,13 +14,18 @@ import (
 )
 
 type AdminAuthService struct {
-	db *gorm.DB
+	erpContext *context.ERPContext
+	db         *gorm.DB
 }
 
-func NewAdminAuthService(db *gorm.DB) *AdminAuthService {
-	var service = AdminAuthService{db: db}
+func NewAdminAuthService(erpContext *context.ERPContext) *AdminAuthService {
+	var service = AdminAuthService{erpContext: erpContext, db: erpContext.DB}
+	if erpContext.SkipMigration {
+		return &service
+	}
 	err := service.Migrate()
 	if err != nil {
+		log.Println("ERROR ADMIN AUTH MIGRATE", err)
 		panic(err)
 	}
 	return &service

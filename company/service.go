@@ -2,6 +2,7 @@ package company
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -18,6 +19,7 @@ func NewCompanyService(ctx *context.ERPContext) *CompanyService {
 	var service = CompanyService{ctx: ctx}
 	err := service.Migrate()
 	if err != nil {
+		log.Println("ERROR COMPANY MIGRATE", err)
 		panic(err)
 	}
 	return &service
