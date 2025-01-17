@@ -26,7 +26,8 @@ type ERPContext struct {
 	Firestore           interface{} // Contoh: Firestore
 	IndonesiaRegService interface{} // Contoh: Firestore
 	// Add additional services here
-	EmailSender *thirdparty.SMTPSender
+	EmailSender  *thirdparty.SMTPSender
+	WatzapClient *thirdparty.WatzapClient
 
 	SkipMigration bool // SkipMigration adalah flag untuk menentukan apakah migrasi dijalankan atau tidak
 }
