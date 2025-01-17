@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
 )
@@ -29,7 +30,7 @@ func NewAuthService(erpContext *context.ERPContext) *AuthService {
 }
 
 // Register membuat user baru
-func (s *AuthService) Register(fullname, username, email, password string) (*UserModel, error) {
+func (s *AuthService) Register(fullname, username, email, password, phoneNumber string) (*UserModel, error) {
 	// Hash password
 	hashedPassword, err := HashPassword(password)
 	if err != nil {
@@ -48,6 +49,7 @@ func (s *AuthService) Register(fullname, username, email, password string) (*Use
 		Password:                   hashedPassword,
 		VerificationToken:          verificationToken,
 		VerificationTokenExpiredAt: &verificationTokenExpiredAt,
+		PhoneNumber:                &phoneNumber,
 	}
 
 	// Simpan ke database
@@ -63,7 +65,7 @@ func (s *AuthService) Login(usernameOrEmail, password string) (*UserModel, error
 	var user UserModel
 
 	// Cari user berdasarkan username atau email
-	if err := s.db.Where("username = ? OR email = ?", usernameOrEmail, usernameOrEmail).First(&user).Error; err != nil {
+	if err := s.db.Where("username = ? OR email = ? OR phone_number = ?", usernameOrEmail, usernameOrEmail, usernameOrEmail).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -155,6 +157,82 @@ func (s *AuthService) Verification(token, newPassword string) error {
 	user.VerificationToken = "" // Hapus token
 	user.VerificationTokenExpiredAt = nil
 	user.VerifiedAt = &now
+
+	if err := s.db.Save(&user).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *AuthService) GetUserByPhoneNumber(phoneNumber string) bool {
+	var user UserModel
+	if err := s.db.Where("phone_number = ?", phoneNumber).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false
+		}
+	}
+	return true
+}
+func (s *AuthService) GetUserByEmail(email string) bool {
+	var user UserModel
+	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false
+		}
+	}
+	return true
+}
+func (s *AuthService) GetUserByID(userID string) (*UserModel, error) {
+	var user UserModel
+	// fmt.Println("s.db.", s.db)
+	// Cari user berdasarkan ID
+	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name", "is_super_admin").Preload("Permissions", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		})
+	}).Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+
+	file := shared.FileModel{}
+	s.db.Where("ref_id = ? and ref_type = ?", user.ID, "admin").First(&file)
+	if file.ID != "" {
+		user.ProfilePicture = &file
+	}
+	for i, v := range user.Roles {
+		if v.IsSuperAdmin {
+			var Permissions []PermissionModel
+			s.db.Find(&Permissions)
+			user.Roles[i].Permissions = Permissions
+		}
+	}
+	return &user, nil
+}
+
+func (s *AuthService) VerificationEmail(token string) error {
+	var user UserModel
+
+	// Cari user berdasarkan token
+	if err := s.db.Where("verification_token = ?", token).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("invalid token")
+		}
+		return err
+	}
+
+	// Verifikasi apakah token belum expired
+	if time.Now().After(*user.VerificationTokenExpiredAt) {
+		return errors.New("token has expired")
+	}
+
+	// Tandai user sebagai verified
+	now := time.Now()
+	user.VerifiedAt = &now
+	user.VerificationToken = ""
+	user.VerificationTokenExpiredAt = nil
 
 	if err := s.db.Save(&user).Error; err != nil {
 		return err

@@ -19,7 +19,7 @@ type CompanyModel struct {
 	ContactPerson         string  `json:"contact_person"`
 	ContactPersonPosition string  `json:"contact_person_position"`
 	TaxPayerNumber        string  `json:"tax_payer_number,omitempty"`
-	UserID                *string `json:"user_id,omitempty"`
+	UserID                *string `json:"user_id,omitempty" gorm:"constraint:OnDelete:CASCADE;"`
 	Status                string  `json:"status" gorm:"type:VARCHAR(20);DEFAULT:'ACTIVE'"`
 	EmployeeActiveCount   int64   `json:"employee_active_count,omitempty"`
 	EmployeeResignCount   int64   `json:"employee_resign_count,omitempty"`

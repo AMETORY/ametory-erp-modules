@@ -16,7 +16,9 @@ type UserModel struct {
 	shared.BaseModel
 	FullName                   string                         `gorm:"not null" json:"full_name,omitempty"`
 	Username                   string                         `gorm:"unique" json:"username,omitempty"`
+	Code                       *string                        `gorm:"unique;null" json:"code,omitempty"`
 	Email                      string                         `gorm:"unique;not null" json:"email,omitempty"`
+	PhoneNumber                *string                        `gorm:"null" json:"phone_number,omitempty"`
 	Password                   string                         `gorm:"not null" json:"-"`
 	VerifiedAt                 *time.Time                     `gorm:"index" json:"verified_at,omitempty"`
 	VerificationToken          string                         `json:"verification_token,omitempty"`
@@ -26,6 +28,7 @@ type UserModel struct {
 	Distributors               []distributor.DistributorModel `gorm:"many2many:user_distributors;" json:"distributors,omitempty"`
 	ProfilePicture             *shared.FileModel              `json:"profile_picture,omitempty" gorm:"-"`
 	RoleID                     *string                        `json:"role_id,omitempty" gorm:"-"`
+	BirthDate                  *time.Time                     `gorm:"null" json:"birth_date,omitempty"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {
