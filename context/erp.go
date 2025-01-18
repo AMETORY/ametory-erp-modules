@@ -24,7 +24,8 @@ type ERPContext struct {
 	DistributionService interface{} // Contoh: DistributionService
 	FileService         interface{} // Contoh: FileService
 	Firestore           interface{} // Contoh: Firestore
-	IndonesiaRegService interface{} // Contoh: Firestore
+	IndonesiaRegService interface{} // Contoh: IndonesiaRegService
+	UserService         interface{} // Contoh: IndonesiaRegService
 	AppService          interface{}
 	// Add additional services here
 	EmailSender  *thirdparty.SMTPSender
