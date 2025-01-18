@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/distribution/order_request"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"gorm.io/gorm"
 )
 
@@ -18,7 +19,7 @@ func NewTimerService(orderRequestSvc *order_request.OrderRequestService) *TimerS
 
 func (s *TimerService) StartOrderRequestTimer(orderRequestID string, timeout time.Duration) {
 	time.AfterFunc(timeout, func() {
-		orderRequest := order_request.OrderRequestModel{}
+		orderRequest := models.OrderRequestModel{}
 		err := s.db.Where("id = ?", orderRequestID).First(&orderRequest).Error
 		if err != nil {
 			return

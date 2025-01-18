@@ -1,10 +1,8 @@
-package order_request
+package models
 
 import (
 	"time"
 
-	"github.com/AMETORY/ametory-erp-modules/auth"
-	"github.com/AMETORY/ametory-erp-modules/contact"
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -13,9 +11,9 @@ import (
 type OrderRequestModel struct {
 	shared.BaseModel
 	UserID             string                  `json:"user_id,omitempty"`
-	User               auth.UserModel          `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	User               UserModel               `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	ContactID          *string                 `json:"contact_id,omitempty"`
-	Contact            *contact.ContactModel   `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
+	Contact            *ContactModel           `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
 	UserLat            float64                 `json:"user_lat,omitempty"`
 	UserLng            float64                 `json:"user_lng,omitempty"`
 	Status             string                  `json:"status,omitempty"`                                 // "Pending", "Accepted", "Rejected"
@@ -56,8 +54,4 @@ func (OrderRequestItemModel) TableName() string {
 func (orim *OrderRequestItemModel) BeforeCreate(tx *gorm.DB) (err error) {
 	orim.ID = uuid.New().String()
 	return
-}
-
-func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&OrderRequestModel{}, &OrderRequestItemModel{})
 }

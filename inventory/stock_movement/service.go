@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -19,8 +20,12 @@ func NewStockMovementService(db *gorm.DB, ctx *context.ERPContext) *StockMovemen
 	return &StockMovementService{db: db, ctx: ctx}
 }
 
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.StockMovementModel{})
+}
+
 // CreateStockMovement membuat pergerakan stok
-func (s *StockMovementService) CreateStockMovement(movement *StockMovementModel) error {
+func (s *StockMovementService) CreateStockMovement(movement *models.StockMovementModel) error {
 	return s.db.Create(movement).Error
 }
 
@@ -45,16 +50,16 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 		stmt = stmt.Where("stock_movements.distributor = ?", request.Header.Get("ID-Distributor"))
 	}
 	request.URL.Query().Get("page")
-	stmt = stmt.Model(&StockMovementModel{})
+	stmt = stmt.Model(&models.StockMovementModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]StockMovementModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.StockMovementModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }
 
 // AddMovement menambahkan pergerakan stok
-func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, movementType MovementType, referenceID, description string) (*StockMovementModel, error) {
-	movement := StockMovementModel{
+func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, movementType models.MovementType, referenceID, description string) (*models.StockMovementModel, error) {
+	movement := models.StockMovementModel{
 		Date:          date,
 		ProductID:     productID,
 		WarehouseID:   warehouseID,
@@ -76,7 +81,7 @@ func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseI
 // GetCurrentStock menghitung stok saat ini berdasarkan riwayat pergerakan
 func (s *StockMovementService) GetCurrentStock(productID, warehouseID string) (float64, error) {
 	var totalStock float64
-	if err := s.db.Model(&StockMovementModel{}).
+	if err := s.db.Model(&models.StockMovementModel{}).
 		Where("product_id = ? AND warehouse_id = ?", productID, warehouseID).
 		Select("COALESCE(SUM(quantity), 0)").
 		Scan(&totalStock).Error; err != nil {
@@ -87,8 +92,8 @@ func (s *StockMovementService) GetCurrentStock(productID, warehouseID string) (f
 }
 
 // GetMovementHistory mengambil riwayat pergerakan stok
-func (s *StockMovementService) GetMovementHistory(productID, warehouseID string) ([]StockMovementModel, error) {
-	var movements []StockMovementModel
+func (s *StockMovementService) GetMovementHistory(productID, warehouseID string) ([]models.StockMovementModel, error) {
+	var movements []models.StockMovementModel
 	if err := s.db.Where("product_id = ? AND warehouse_id = ?", productID, warehouseID).
 		Find(&movements).Error; err != nil {
 		return nil, err
@@ -98,8 +103,8 @@ func (s *StockMovementService) GetMovementHistory(productID, warehouseID string)
 }
 
 // GetMovementByProductID mengambil pergerakan stok berdasarkan ID produk
-func (s *StockMovementService) GetMovementByProductID(productID string) ([]StockMovementModel, error) {
-	var movements []StockMovementModel
+func (s *StockMovementService) GetMovementByProductID(productID string) ([]models.StockMovementModel, error) {
+	var movements []models.StockMovementModel
 	if err := s.db.Where("product_id = ?", productID).
 		Find(&movements).Error; err != nil {
 		return nil, err
@@ -109,8 +114,8 @@ func (s *StockMovementService) GetMovementByProductID(productID string) ([]Stock
 }
 
 // GetMovementByWarehouseID mengambil pergerakan stok berdasarkan ID gudang
-func (s *StockMovementService) GetMovementByWarehouseID(warehouseID string) ([]StockMovementModel, error) {
-	var movements []StockMovementModel
+func (s *StockMovementService) GetMovementByWarehouseID(warehouseID string) ([]models.StockMovementModel, error) {
+	var movements []models.StockMovementModel
 	if err := s.db.Where("warehouse_id = ?", warehouseID).
 		Find(&movements).Error; err != nil {
 		return nil, err
@@ -120,22 +125,22 @@ func (s *StockMovementService) GetMovementByWarehouseID(warehouseID string) ([]S
 }
 
 // CreateAdjustment menambahkan pergerakan stok dengan tipe ADJUST
-func (s *StockMovementService) CreateAdjustment(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, referenceID, description string) (*StockMovementModel, error) {
-	return s.AddMovement(date, productID, warehouseID, merchantID, distributorID, quantity, MovementTypeAdjust, referenceID, description)
+func (s *StockMovementService) CreateAdjustment(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, referenceID, description string) (*models.StockMovementModel, error) {
+	return s.AddMovement(date, productID, warehouseID, merchantID, distributorID, quantity, models.MovementTypeAdjust, referenceID, description)
 }
 
 // TransferStock melakukan transfer stok dari gudang sumber ke gudang tujuan
-func (s *StockMovementService) TransferStock(date time.Time, sourceWarehouseID, destinationWarehouseID string, productID string, quantity float64, description string) (*StockMovementModel, error) {
+func (s *StockMovementService) TransferStock(date time.Time, sourceWarehouseID, destinationWarehouseID string, productID string, quantity float64, description string) (*models.StockMovementModel, error) {
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
-		var movement *StockMovementModel
+		var movement *models.StockMovementModel
 		// membuat pergerakan stok di gudang sumber
-		movement, err := s.AddMovement(date, productID, sourceWarehouseID, nil, nil, -quantity, MovementTypeTransfer, "", description)
+		movement, err := s.AddMovement(date, productID, sourceWarehouseID, nil, nil, -quantity, models.MovementTypeTransfer, "", description)
 		if err != nil {
 			return err
 		}
 
 		// membuat pergerakan stok di gudang tujuan
-		movement2, err := s.AddMovement(date, productID, destinationWarehouseID, nil, nil, quantity, MovementTypeTransfer, movement.ID, description)
+		movement2, err := s.AddMovement(date, productID, destinationWarehouseID, nil, nil, quantity, models.MovementTypeTransfer, movement.ID, description)
 		if err != nil {
 			return err
 		}
@@ -153,16 +158,16 @@ func (s *StockMovementService) TransferStock(date time.Time, sourceWarehouseID, 
 	return nil, nil
 }
 
-func (s *StockMovementService) UpdateStockMovement(id string, data *StockMovementModel) error {
+func (s *StockMovementService) UpdateStockMovement(id string, data *models.StockMovementModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
 func (s *StockMovementService) DeleteStockMovement(id string) error {
-	return s.db.Where("id = ?", id).Delete(&StockMovementModel{}).Error
+	return s.db.Where("id = ?", id).Delete(&models.StockMovementModel{}).Error
 }
 
-func (s *StockMovementService) GetStockMovementByID(id string) (*StockMovementModel, error) {
-	var invoice StockMovementModel
+func (s *StockMovementService) GetStockMovementByID(id string) (*models.StockMovementModel, error) {
+	var invoice models.StockMovementModel
 	err := s.db.Preload("Product", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Warehouse", func(db *gorm.DB) *gorm.DB {

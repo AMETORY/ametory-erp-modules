@@ -1,10 +1,12 @@
 package account
 
-var GenericChartOfAccount = []AccountModel{
+import "github.com/AMETORY/ametory-erp-modules/shared/models"
+
+var GenericChartOfAccount = []models.AccountModel{
 	{
 		Name:             "Kas Kecil",
 		Code:             "11001",
-		Type:             ASSET,
+		Type:             models.ASSET,
 		Category:         "Cash and Bank",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Cash",
@@ -13,7 +15,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Kas Besar",
 		Code:             "11002",
-		Type:             ASSET,
+		Type:             models.ASSET,
 		Category:         "Cash and Bank",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Cash",
@@ -22,7 +24,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Piutang Dagang",
 		Code:             "12001",
-		Type:             ASSET,
+		Type:             models.ASSET,
 		Category:         "Receivables",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Accounts Receivable",
@@ -31,7 +33,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Piutang Bukan Dagang",
 		Code:             "12002",
-		Type:             ASSET,
+		Type:             models.ASSET,
 		Category:         "Receivables",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Accounts Receivable",
@@ -40,7 +42,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Persediaan",
 		Code:             "13001",
-		Type:             ASSET,
+		Type:             models.ASSET,
 		Category:         "Inventory",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Inventory",
@@ -49,7 +51,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Pendapatan",
 		Code:             "41001",
-		Type:             REVENUE,
+		Type:             models.REVENUE,
 		Category:         "Revenue",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Revenue",
@@ -58,7 +60,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Biaya Operasional",
 		Code:             "51001",
-		Type:             EXPENSE,
+		Type:             models.EXPENSE,
 		Category:         "Operating Expenses",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Operating Expenses",
@@ -67,7 +69,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Biaya Bunga",
 		Code:             "51002",
-		Type:             EXPENSE,
+		Type:             models.EXPENSE,
 		Category:         "Interest Expenses",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Interest Expenses",
@@ -76,7 +78,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Biaya Depresiasi",
 		Code:             "51003",
-		Type:             EXPENSE,
+		Type:             models.EXPENSE,
 		Category:         "Depreciation Expenses",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Depreciation Expenses",
@@ -85,7 +87,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Biaya Pajak",
 		Code:             "51004",
-		Type:             EXPENSE,
+		Type:             models.EXPENSE,
 		Category:         "Tax Expenses",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Tax Expenses",
@@ -94,7 +96,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Biaya Lain-Lain",
 		Code:             "51005",
-		Type:             EXPENSE,
+		Type:             models.EXPENSE,
 		Category:         "Other Expenses",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Other Expenses",
@@ -103,7 +105,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Utang Dagang",
 		Code:             "21001",
-		Type:             LIABILITY,
+		Type:             models.LIABILITY,
 		Category:         "Payables",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Accounts Payable",
@@ -112,7 +114,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Utang Bukan Dagang",
 		Code:             "21002",
-		Type:             LIABILITY,
+		Type:             models.LIABILITY,
 		Category:         "Payables",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Accounts Payable",
@@ -121,7 +123,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Modal",
 		Code:             "31001",
-		Type:             EQUITY,
+		Type:             models.EQUITY,
 		Category:         "Equity",
 		CashflowGroup:    "Investing",
 		CashflowSubGroup: "Equity",
@@ -130,7 +132,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Pajak Masukan",
 		Code:             "22001",
-		Type:             LIABILITY,
+		Type:             models.LIABILITY,
 		Category:         "Tax",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Tax",
@@ -139,7 +141,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Pajak Keluaran",
 		Code:             "22002",
-		Type:             LIABILITY,
+		Type:             models.LIABILITY,
 		Category:         "Tax",
 		CashflowGroup:    "Operating",
 		CashflowSubGroup: "Tax",
@@ -148,7 +150,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Pinjaman Bank",
 		Code:             "22003",
-		Type:             LIABILITY,
+		Type:             models.LIABILITY,
 		Category:         "Loan",
 		CashflowGroup:    "Financing",
 		CashflowSubGroup: "Loan",
@@ -157,7 +159,7 @@ var GenericChartOfAccount = []AccountModel{
 	{
 		Name:             "Pinjaman Modal Non Bank",
 		Code:             "22004",
-		Type:             LIABILITY,
+		Type:             models.LIABILITY,
 		Category:         "Loan",
 		CashflowGroup:    "Financing",
 		CashflowSubGroup: "Loan",

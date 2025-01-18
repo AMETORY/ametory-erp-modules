@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -14,25 +15,29 @@ func NewDistributorService(db *gorm.DB, ctx *context.ERPContext) *DistributorSer
 	return &DistributorService{db: db, ctx: ctx}
 }
 
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.DistributorModel{})
+}
+
 type DistributorService struct {
 	db  *gorm.DB
 	ctx *context.ERPContext
 }
 
-func (s *DistributorService) CreateDistributor(data *DistributorModel) error {
+func (s *DistributorService) CreateDistributor(data *models.DistributorModel) error {
 	return s.db.Create(data).Error
 }
 
-func (s *DistributorService) UpdateDistributor(id string, data *DistributorModel) error {
+func (s *DistributorService) UpdateDistributor(id string, data *models.DistributorModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
 func (s *DistributorService) DeleteDistributor(id string) error {
-	return s.db.Where("id = ?", id).Delete(&DistributorModel{}).Error
+	return s.db.Where("id = ?", id).Delete(&models.DistributorModel{}).Error
 }
 
-func (s *DistributorService) GetDistributorByID(id string) (*DistributorModel, error) {
-	var distributor DistributorModel
+func (s *DistributorService) GetDistributorByID(id string) (*models.DistributorModel, error) {
+	var distributor models.DistributorModel
 	err := s.db.Where("id = ?", id).First(&distributor).Error
 
 	return &distributor, err
@@ -50,9 +55,9 @@ func (s *DistributorService) GetDistributors(request http.Request, search string
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
-	stmt = stmt.Model(&DistributorModel{})
+	stmt = stmt.Model(&models.DistributorModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]DistributorModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.DistributorModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }

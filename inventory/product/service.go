@@ -6,6 +6,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -21,20 +22,31 @@ func NewProductService(db *gorm.DB, ctx *context.ERPContext, fileService *shared
 	return &ProductService{db: db, ctx: ctx, fileService: fileService}
 }
 
-func (s *ProductService) CreateProduct(data *ProductModel) error {
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(
+		&models.ProductModel{},
+		&models.ProductCategoryModel{},
+		&models.MasterProductModel{},
+		&models.PriceCategoryModel{},
+		&models.PriceModel{},
+		&models.MasterProductPriceModel{},
+	)
+}
+
+func (s *ProductService) CreateProduct(data *models.ProductModel) error {
 	return s.db.Create(data).Error
 }
 
-func (s *ProductService) UpdateProduct(id string, data *ProductModel) error {
+func (s *ProductService) UpdateProduct(id string, data *models.ProductModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
 func (s *ProductService) DeleteProduct(id string) error {
-	return s.db.Where("id = ?", id).Delete(&ProductModel{}).Error
+	return s.db.Where("id = ?", id).Delete(&models.ProductModel{}).Error
 }
 
-func (s *ProductService) GetProductByID(id string, request *http.Request) (*ProductModel, error) {
-	var product ProductModel
+func (s *ProductService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
+	var product models.ProductModel
 	err := s.db.Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
@@ -54,8 +66,8 @@ func (s *ProductService) GetProductByID(id string, request *http.Request) (*Prod
 	return &product, err
 }
 
-func (s *ProductService) GetProductByCode(code string) (*ProductModel, error) {
-	var product ProductModel
+func (s *ProductService) GetProductByCode(code string) (*models.ProductModel, error) {
+	var product models.ProductModel
 	err := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
@@ -87,12 +99,12 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	if request.Header.Get("ID-Distributor") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Distributor"))
 	}
-	stmt = stmt.Model(&ProductModel{})
+	stmt = stmt.Model(&models.ProductModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]ProductModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.ProductModel{})
 	page.Page = page.Page + 1
-	items := page.Items.(*[]ProductModel)
-	newItems := make([]ProductModel, 0)
+	items := page.Items.(*[]models.ProductModel)
+	newItems := make([]models.ProductModel, 0)
 
 	for _, v := range *items {
 		img, err := s.ListImagesOfProduct(v.ID)
@@ -110,11 +122,11 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	return page, nil
 }
 
-func (s *ProductService) CreatePriceCategory(data *PriceCategoryModel) error {
+func (s *ProductService) CreatePriceCategory(data *models.PriceCategoryModel) error {
 	return s.db.Create(data).Error
 }
 
-func (s *ProductService) AddPriceToProduct(productID string, data *PriceModel) error {
+func (s *ProductService) AddPriceToProduct(productID string, data *models.PriceModel) error {
 	if data.PriceCategoryID == "" {
 		return errors.New("price category id is required")
 	}
@@ -122,8 +134,8 @@ func (s *ProductService) AddPriceToProduct(productID string, data *PriceModel) e
 	return s.db.Create(data).Error
 }
 
-func (s *ProductService) ListPricesOfProduct(productID string) ([]PriceModel, error) {
-	var prices []PriceModel
+func (s *ProductService) ListPricesOfProduct(productID string) ([]models.PriceModel, error) {
+	var prices []models.PriceModel
 	err := s.db.Preload("PriceCategory").Where("product_id = ?", productID).Find(&prices).Error
 	return prices, err
 }
@@ -135,7 +147,7 @@ func (s *ProductService) ListImagesOfProduct(productID string) ([]shared.FileMod
 }
 
 func (s *ProductService) DeletePriceOfProduct(productID string, priceID string) error {
-	return s.db.Where("product_id = ? and id = ?", productID, priceID).Delete(&PriceModel{}).Error
+	return s.db.Where("product_id = ? and id = ?", productID, priceID).Delete(&models.PriceModel{}).Error
 }
 
 func (s *ProductService) DeleteImageOfProduct(productID string, imageID string) error {
@@ -169,8 +181,8 @@ func (s *ProductService) GetStock(productID string, request *http.Request, wareh
 	return totalStock, nil
 }
 
-func (s *ProductService) GetProductsByMerchant(merchantID string, productIDs []string) ([]ProductModel, error) {
-	var products []ProductModel
+func (s *ProductService) GetProductsByMerchant(merchantID string, productIDs []string) ([]models.ProductModel, error) {
+	var products []models.ProductModel
 	db := s.db.Where("merchant_id = ?", merchantID)
 	if len(productIDs) > 0 {
 		db = db.Where("id in (?)", productIDs)

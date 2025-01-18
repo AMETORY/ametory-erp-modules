@@ -8,6 +8,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"gorm.io/gorm"
 )
 
@@ -19,15 +20,19 @@ type OrderRequestService struct {
 	auditTrailService *audit_trail.AuditTrailService
 }
 
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.OrderRequestModel{}, &models.OrderRequestItemModel{})
+}
+
 func NewOrderRequestService(db *gorm.DB, ctx *context.ERPContext, merchantService *merchant.MerchantService, productService *product.ProductService, auditTrailSrv *audit_trail.AuditTrailService) *OrderRequestService {
 	return &OrderRequestService{db: db, ctx: ctx, merchantService: merchantService, productService: productService, auditTrailService: auditTrailSrv}
 }
 
-func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng float64, expiresAt time.Time) (*OrderRequestModel, error) {
+func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng float64, expiresAt time.Time) (*models.OrderRequestModel, error) {
 	if s.auditTrailService == nil {
 		return nil, fmt.Errorf("audit trail service is not initialized")
 	}
-	orderRequest := OrderRequestModel{
+	orderRequest := models.OrderRequestModel{
 		UserID:    userID,
 		UserLat:   userLat,
 		UserLng:   userLng,
@@ -41,9 +46,9 @@ func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng
 	return &orderRequest, nil
 }
 
-func (s *OrderRequestService) GetAvailableMerchant(orderRequestID string, maxDistance float64) ([]merchant.MerchantModel, error) {
+func (s *OrderRequestService) GetAvailableMerchant(orderRequestID string, maxDistance float64) ([]models.MerchantModel, error) {
 
-	orderRequest := OrderRequestModel{}
+	orderRequest := models.OrderRequestModel{}
 	err := s.db.Where("id = ?", orderRequestID).First(&orderRequest).Error
 	if err != nil {
 		return nil, err
@@ -58,7 +63,7 @@ func (s *OrderRequestService) GetAvailableMerchant(orderRequestID string, maxDis
 		productIDs = append(productIDs, *v.ProductID)
 
 	}
-	availableMerchants := []merchant.MerchantModel{}
+	availableMerchants := []models.MerchantModel{}
 	for _, merchant := range merchants {
 		// Dapatkan produk dari merchant
 		products, err := s.productService.GetProductsByMerchant(merchant.ID, productIDs)
@@ -79,7 +84,7 @@ func (s *OrderRequestService) FinishOrderRequest(orderRequestID string) error {
 	if s.auditTrailService == nil {
 		return fmt.Errorf("audit trail service is not initialized")
 	}
-	orderRequest := OrderRequestModel{}
+	orderRequest := models.OrderRequestModel{}
 	err := s.db.Where("id = ?", orderRequestID).First(&orderRequest).Error
 	if err != nil {
 		return err
@@ -97,15 +102,15 @@ func (s *OrderRequestService) FinishOrderRequest(orderRequestID string) error {
 }
 
 // GetPendingOrderRequests digunakan untuk mendapatkan order request yang statusnya "Pending" dan merchant_id sesuai dengan parameter
-// Fungsi ini akan mengembalikan slice of OrderRequestModel
-func (s *OrderRequestService) GetPendingOrderRequests(merchantID string) ([]OrderRequestModel, error) {
-	var orderRequests []OrderRequestModel
+// Fungsi ini akan mengembalikan slice of models.OrderRequestModel
+func (s *OrderRequestService) GetPendingOrderRequests(merchantID string) ([]models.OrderRequestModel, error) {
+	var orderRequests []models.OrderRequestModel
 	err := s.db.Where("status = ? AND merchant_id = ?", "Pending", merchantID).Find(&orderRequests).Error
 	return orderRequests, err
 }
 
 func (s *OrderRequestService) CancelOrderRequest(orderRequestID string, reason string) error {
-	return s.db.Model(&OrderRequestModel{}).Where("id = ?", orderRequestID).
+	return s.db.Model(&models.OrderRequestModel{}).Where("id = ?", orderRequestID).
 		Updates(map[string]interface{}{"status": "Cancelled", "cancellation_reason": reason}).
 		Error
 }
@@ -118,7 +123,7 @@ func (s *OrderRequestService) CancelOrderRequest(orderRequestID string, reason s
 // 		}
 // 	}()
 
-// 	if err := tx.Model(&OrderRequestModel{}).Where("id = ?", orderRequestID).Updates(map[string]interface{}{
+// 	if err := tx.Model(&models.OrderRequestModel{}).Where("id = ?", orderRequestID).Updates(map[string]interface{}{
 // 		"status":       "Accepted",
 // 		"merchant_id":  merchantID,
 // 		"total_price":  totalPrice,

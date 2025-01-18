@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -28,16 +29,16 @@ func (s *PriceCategoryService) GetPriceCategories(request http.Request, search s
 		)
 	}
 
-	stmt = stmt.Model(&PriceCategoryModel{})
+	stmt = stmt.Model(&models.PriceCategoryModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]PriceCategoryModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.PriceCategoryModel{})
 
 	return page, nil
 }
 
-func (s *PriceCategoryService) GetPriceCategoryByID(id string) (*PriceCategoryModel, error) {
-	var category PriceCategoryModel
-	err := s.db.Model(&PriceCategoryModel{}).Where("id = ?", id).First(&category).Error
+func (s *PriceCategoryService) GetPriceCategoryByID(id string) (*models.PriceCategoryModel, error) {
+	var category models.PriceCategoryModel
+	err := s.db.Model(&models.PriceCategoryModel{}).Where("id = ?", id).First(&category).Error
 	if err != nil {
 		return nil, err
 	}

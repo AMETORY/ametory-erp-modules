@@ -8,6 +8,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -30,11 +31,15 @@ func NewAdminAuthService(erpContext *context.ERPContext) *AdminAuthService {
 	}
 	return &service
 }
+func (s *AdminAuthService) Migrate() error {
+
+	return s.db.AutoMigrate(&models.AdminModel{}, &models.RoleModel{}, &models.PermissionModel{})
+}
 
 // Register membuat user baru
-func (s *AdminAuthService) Register(fullname, username, email, password string, isAdd bool) (*AdminModel, error) {
+func (s *AdminAuthService) Register(fullname, username, email, password string, isAdd bool) (*models.AdminModel, error) {
 	// Hash password
-	hashedPassword, err := HashPassword(password)
+	hashedPassword, err := models.HashPassword(password)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +56,7 @@ func (s *AdminAuthService) Register(fullname, username, email, password string, 
 	}
 
 	// Buat user baru
-	user := AdminModel{
+	user := models.AdminModel{
 		FullName:                   fullname,
 		Username:                   username,
 		Email:                      email,
@@ -70,8 +75,8 @@ func (s *AdminAuthService) Register(fullname, username, email, password string, 
 }
 
 // Login memverifikasi username/email dan password
-func (s *AdminAuthService) Login(usernameOrEmail, password string) (*AdminModel, error) {
-	var user AdminModel
+func (s *AdminAuthService) Login(usernameOrEmail, password string) (*models.AdminModel, error) {
+	var user models.AdminModel
 
 	// Cari user berdasarkan username atau email
 	if err := s.db.Where("username = ? OR email = ?", usernameOrEmail, usernameOrEmail).First(&user).Error; err != nil {
@@ -86,7 +91,7 @@ func (s *AdminAuthService) Login(usernameOrEmail, password string) (*AdminModel,
 	}
 	// fmt.Println("password", password)
 	// Verifikasi password
-	if err := CheckPassword(*user.Password, password); err != nil {
+	if err := models.CheckPassword(*user.Password, password); err != nil {
 		return nil, errors.New("invalid password")
 	}
 
@@ -95,7 +100,7 @@ func (s *AdminAuthService) Login(usernameOrEmail, password string) (*AdminModel,
 
 // ForgotPassword mengirim email reset password (contoh sederhana)
 func (s *AdminAuthService) ForgotPassword(email string) error {
-	var user AdminModel
+	var user models.AdminModel
 
 	// Cari user berdasarkan email
 	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
@@ -115,7 +120,7 @@ func (s *AdminAuthService) ForgotPassword(email string) error {
 
 // ChangePassword mengganti password
 func (s *AdminAuthService) ChangePassword(userID, oldPassword, newPassword string) error {
-	var user AdminModel
+	var user models.AdminModel
 
 	// Cari user berdasarkan ID
 	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
@@ -126,12 +131,12 @@ func (s *AdminAuthService) ChangePassword(userID, oldPassword, newPassword strin
 	}
 
 	// Verifikasi password lama
-	if err := CheckPassword(*user.Password, oldPassword); err != nil {
+	if err := models.CheckPassword(*user.Password, oldPassword); err != nil {
 		return errors.New("invalid password")
 	}
 
 	// Hash password baru
-	hashedPassword, err := HashPassword(newPassword)
+	hashedPassword, err := models.HashPassword(newPassword)
 	if err != nil {
 		return err
 	}
@@ -147,7 +152,7 @@ func (s *AdminAuthService) ChangePassword(userID, oldPassword, newPassword strin
 
 // Verification memverifikasi token reset password
 func (s *AdminAuthService) Verification(token, newPassword string) error {
-	var user AdminModel
+	var user models.AdminModel
 
 	// Cari user berdasarkan token
 	if err := s.db.Where("verification_token = ?", token).First(&user).Error; err != nil {
@@ -174,8 +179,8 @@ func (s *AdminAuthService) Verification(token, newPassword string) error {
 }
 
 // GetAdminByID mengambil admin berdasarkan ID
-func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
-	var user AdminModel
+func (s *AdminAuthService) GetAdminByID(userID string) (*models.AdminModel, error) {
+	var user models.AdminModel
 	// fmt.Println("s.db.", s.db)
 	// Cari user berdasarkan ID
 	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
@@ -196,7 +201,7 @@ func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
 	}
 	for i, v := range user.Roles {
 		if v.IsSuperAdmin {
-			var Permissions []PermissionModel
+			var Permissions []models.PermissionModel
 			s.db.Find(&Permissions)
 			user.Roles[i].Permissions = Permissions
 		}
@@ -206,8 +211,8 @@ func (s *AdminAuthService) GetAdminByID(userID string) (*AdminModel, error) {
 }
 
 // UpdateAdminByID memperbarui informasi admin berdasarkan ID
-func (s *AdminAuthService) UpdateAdminByID(userID string, updatedData *AdminModel) error {
-	var user AdminModel
+func (s *AdminAuthService) UpdateAdminByID(userID string, updatedData *models.AdminModel) error {
+	var user models.AdminModel
 
 	// Cari user berdasarkan ID
 	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
@@ -239,12 +244,12 @@ func (s *AdminAuthService) GetAdmins(request http.Request, search string) (pagin
 		)
 	}
 
-	stmt = stmt.Model(&AdminModel{})
+	stmt = stmt.Model(&models.AdminModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]AdminModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.AdminModel{})
 	page.Page = page.Page + 1
-	items := page.Items.(*[]AdminModel)
-	newItems := make([]AdminModel, 0)
+	items := page.Items.(*[]models.AdminModel)
+	newItems := make([]models.AdminModel, 0)
 
 	for _, v := range *items {
 		img, err := s.GetProfilePicture(v.ID)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"github.com/morkid/paginate"
@@ -23,7 +24,11 @@ func NewTransactionService(db *gorm.DB, ctx *context.ERPContext, accountService 
 	return &TransactionService{db: db, ctx: ctx, accountService: accountService}
 }
 
-func (s *TransactionService) CreateTransaction(transaction *TransactionModel, amount float64) error {
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.TransactionModel{})
+}
+
+func (s *TransactionService) CreateTransaction(transaction *models.TransactionModel, amount float64) error {
 	code := utils.RandString(10, false)
 	if transaction.AccountID != nil {
 		transaction.ID = uuid.New().String()
@@ -73,22 +78,22 @@ func (s *TransactionService) CreateTransaction(transaction *TransactionModel, am
 	return nil
 }
 
-func (s *TransactionService) UpdateTransaction(id string, transaction *TransactionModel) error {
+func (s *TransactionService) UpdateTransaction(id string, transaction *models.TransactionModel) error {
 	return s.db.Where("id = ?", id).Updates(transaction).Error
 }
 
 func (s *TransactionService) DeleteTransaction(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		var data TransactionModel
+		var data models.TransactionModel
 		err := tx.Where("id = ?", id).First(&data).Error
 		if err != nil {
 			return err
 		}
-		err = tx.Where("id = ?", id).Delete(&TransactionModel{}).Error
+		err = tx.Where("id = ?", id).Delete(&models.TransactionModel{}).Error
 		if err != nil {
 			return err
 		}
-		err = tx.Where("code = ?", data.Code).Delete(&TransactionModel{}).Error
+		err = tx.Where("code = ?", data.Code).Delete(&models.TransactionModel{}).Error
 		if err != nil {
 			return err
 		}
@@ -96,15 +101,15 @@ func (s *TransactionService) DeleteTransaction(id string) error {
 	})
 }
 
-func (s *TransactionService) GetTransactionById(id string) (*TransactionModel, error) {
-	var transaction TransactionModel
+func (s *TransactionService) GetTransactionById(id string) (*models.TransactionModel, error) {
+	var transaction models.TransactionModel
 	err := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id").
 		First(&transaction, "transactions.id = ?", id).Error
 	return &transaction, err
 }
 
-func (s *TransactionService) GetTransactionByCode(code string) ([]TransactionModel, error) {
-	var transaction []TransactionModel
+func (s *TransactionService) GetTransactionByCode(code string) ([]models.TransactionModel, error) {
+	var transaction []models.TransactionModel
 	err := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id").
 		First(&transaction, "transactions.code = ?", code).Error
 	return transaction, err
@@ -117,13 +122,13 @@ func (s *TransactionService) GetTransactionByDate(from, to time.Time, request ht
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(new([]TransactionModel))
+	page := pg.With(stmt).Request(request).Response(new([]models.TransactionModel))
 	page.Page = page.Page + 1
 	return page, nil
 }
 
-func (s *TransactionService) GetByDateAndCompanyId(from, to time.Time, companyId string, page, limit int) ([]TransactionModel, error) {
-	var transactions []TransactionModel
+func (s *TransactionService) GetByDateAndCompanyId(from, to time.Time, companyId string, page, limit int) ([]models.TransactionModel, error) {
+	var transactions []models.TransactionModel
 	err := s.db.Where("date BETWEEN ? AND ? AND company_id = ?", from, to, companyId).
 		Offset((page - 1) * limit).Limit(limit).Find(&transactions).Error
 	return transactions, err
@@ -143,28 +148,28 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 			"%"+search+"%",
 		)
 	}
-	stmt = stmt.Model(&TransactionModel{})
+	stmt = stmt.Model(&models.TransactionModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]TransactionModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.TransactionModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }
 
-func (s *TransactionService) UpdateCreditDebit(transaction *TransactionModel, accountType account.AccountType) (*TransactionModel, error) {
+func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionModel, accountType models.AccountType) (*models.TransactionModel, error) {
 	transaction.IsExpense = false
 	transaction.IsIncome = false
 
-	if accountType == account.EXPENSE {
+	if accountType == models.EXPENSE {
 		transaction.IsExpense = true
 	}
-	if accountType == account.REVENUE {
+	if accountType == models.REVENUE {
 		transaction.IsIncome = true
 	}
 	switch accountType {
-	case account.ASSET, account.EXPENSE, account.COST, account.CONTRA_LIABILITY, account.CONTRA_EQUITY, account.CONTRA_REVENUE:
+	case models.ASSET, models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE:
 		transaction.Debit = transaction.Amount
 		transaction.Credit = 0
-	case account.LIABILITY, account.EQUITY, account.REVENUE, account.CONTRA_ASSET, account.CONTRA_EXPENSE:
+	case models.LIABILITY, models.EQUITY, models.REVENUE, models.CONTRA_ASSET, models.CONTRA_EXPENSE:
 		transaction.Credit = transaction.Amount
 		transaction.Debit = 0
 	default:

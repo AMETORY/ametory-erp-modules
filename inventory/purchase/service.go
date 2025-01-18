@@ -7,9 +7,8 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
-	"github.com/AMETORY/ametory-erp-modules/finance/account"
-	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -31,8 +30,12 @@ func NewPurchaseService(db *gorm.DB, ctx *context.ERPContext, financeService *fi
 	}
 }
 
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.PurchaseOrderModel{}, &models.PurchaseOrderItemModel{})
+}
+
 // CreatePurchaseOrder membuat purchase order baru
-func (s *PurchaseService) CreatePurchaseOrder(data *PurchaseOrderModel) error {
+func (s *PurchaseService) CreatePurchaseOrder(data *models.PurchaseOrderModel) error {
 	var companyID *string
 	if s.ctx.Request.Header.Get("ID-Company") != "" {
 		compID := s.ctx.Request.Header.Get("ID-Company")
@@ -50,7 +53,7 @@ func (s *PurchaseService) CreatePurchaseOrder(data *PurchaseOrderModel) error {
 		paid := 0.0
 		for _, v := range data.Items {
 			if v.PurchaseAccountID != nil {
-				s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+				s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
 					Date:               data.PurchaseDate,
 					AccountID:          v.PurchaseAccountID,
 					Description:        "Pembelian " + data.PurchaseNumber,
@@ -61,7 +64,7 @@ func (s *PurchaseService) CreatePurchaseOrder(data *PurchaseOrderModel) error {
 				}, v.Total)
 			}
 			if v.AssetAccountID != nil {
-				s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+				s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
 					Date:               data.PurchaseDate,
 					AccountID:          v.AssetAccountID,
 					Description:        "Pembelian " + data.PurchaseNumber,
@@ -74,7 +77,7 @@ func (s *PurchaseService) CreatePurchaseOrder(data *PurchaseOrderModel) error {
 				if err != nil {
 					return err
 				}
-				if acc.Type == account.ASSET {
+				if acc.Type == models.ASSET {
 					paid += v.Total
 				}
 			}
@@ -108,7 +111,7 @@ func (s *PurchaseService) CreatePurchaseOrder(data *PurchaseOrderModel) error {
 // ReceivePurchaseOrder menerima barang dari supplier dan menambah stok
 func (s *PurchaseService) ReceivePurchaseOrder(date time.Time, poID, warehouseID string, description string) error {
 	// companyID := s.ctx.Request.Header.Get("ID-Company")
-	var po PurchaseOrderModel
+	var po models.PurchaseOrderModel
 	if err := s.db.First(&po, poID).Error; err != nil {
 		return err
 	}
@@ -124,7 +127,7 @@ func (s *PurchaseService) ReceivePurchaseOrder(date time.Time, poID, warehouseID
 			if v.ProductID == nil || v.WarehouseID == nil {
 				continue
 			}
-			if _, err := s.stockMovementService.AddMovement(date, *v.ProductID, *v.WarehouseID, nil, nil, v.Quantity, stockmovement.MovementTypeIn, po.ID, description); err != nil {
+			if _, err := s.stockMovementService.AddMovement(date, *v.ProductID, *v.WarehouseID, nil, nil, v.Quantity, models.MovementTypeIn, po.ID, description); err != nil {
 				tx.Rollback()
 				return err
 			}
@@ -155,7 +158,7 @@ func (s *PurchaseService) ReceivePurchaseOrder(date time.Time, poID, warehouseID
 
 // CancelPurchaseOrder membatalkan purchase order
 func (s *PurchaseService) CancelPurchaseOrder(poID uint) error {
-	var po PurchaseOrderModel
+	var po models.PurchaseOrderModel
 	if err := s.db.First(&po, poID).Error; err != nil {
 		return err
 	}
@@ -183,7 +186,7 @@ func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount floa
 	}
 
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		var data PurchaseOrderModel
+		var data models.PurchaseOrderModel
 		if err := s.db.First(&data, poID).Error; err != nil {
 			return err
 		}
@@ -197,7 +200,7 @@ func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount floa
 			return errors.New("amount is greater than total")
 		}
 
-		if err := s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+		if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
 			Date:               date,
 			AccountID:          &accountAssetID,
 			Description:        "Pembayaran " + data.PurchaseNumber,
@@ -210,7 +213,7 @@ func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount floa
 		}
 
 		if accountPayableID != nil {
-			if err := s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+			if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
 				Date:               date,
 				AccountID:          accountPayableID,
 				Description:        "Pembayaran " + data.PurchaseNumber,
@@ -256,9 +259,9 @@ func (s *PurchaseService) GetPurchases(request http.Request, search string) (pag
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
-	stmt = stmt.Model(&PurchaseOrderModel{})
+	stmt = stmt.Model(&models.PurchaseOrderModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]PurchaseOrderModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.PurchaseOrderModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }

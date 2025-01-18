@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
-	"github.com/AMETORY/ametory-erp-modules/distribution/order_request"
-	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"gorm.io/gorm"
 )
 
@@ -22,9 +21,13 @@ func NewOfferingService(db *gorm.DB, ctx *context.ERPContext, auditTrailSrv *aud
 	return &OfferingService{db: db, ctx: ctx}
 }
 
-func (s *OfferingService) GetOffersForUser(userID, status string, orderRequest *string) ([]OfferModel, error) {
-	var offers []OfferModel
-	db := s.db.Model(&OfferModel{})
+func Migrate(tx *gorm.DB) error {
+	return tx.AutoMigrate(&models.OfferModel{})
+}
+
+func (s *OfferingService) GetOffersForUser(userID, status string, orderRequest *string) ([]models.OfferModel, error) {
+	var offers []models.OfferModel
+	db := s.db.Model(&models.OfferModel{})
 	if orderRequest != nil {
 		db = db.Where("order_request_id = ?", *orderRequest)
 	}
@@ -32,16 +35,16 @@ func (s *OfferingService) GetOffersForUser(userID, status string, orderRequest *
 	return offers, err
 }
 
-func (s *OfferingService) CreateOffer(orderRequestID string, merchant merchant.MerchantModel, shippingFee float64, userID string) error {
+func (s *OfferingService) CreateOffer(orderRequestID string, merchant models.MerchantModel, shippingFee float64, userID string) error {
 	if s.auditTrailService == nil {
 		return fmt.Errorf("audit trail service is not initialized")
 	}
-	orderRequest := order_request.OrderRequestModel{}
+	orderRequest := models.OrderRequestModel{}
 	err := s.db.Where("id = ?", orderRequestID).First(&orderRequest).Error
 	if err != nil {
 		return err
 	}
-	offer := OfferModel{
+	offer := models.OfferModel{
 		UserID:         userID,
 		OrderRequestID: orderRequestID,
 		MerchantID:     merchant.ID,
@@ -57,12 +60,12 @@ func (s *OfferingService) CreateOffer(orderRequestID string, merchant merchant.M
 	return nil
 }
 
-func (s *OfferingService) CreateOffers(orderRequestID string, availableMerchants []merchant.MerchantModel) error {
+func (s *OfferingService) CreateOffers(orderRequestID string, availableMerchants []models.MerchantModel) error {
 	if s.auditTrailService == nil {
 		return fmt.Errorf("audit trail service is not initialized")
 	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		orderRequest := order_request.OrderRequestModel{}
+		orderRequest := models.OrderRequestModel{}
 		err := tx.Where("id = ?", orderRequestID).First(&orderRequest).Error
 		if err != nil {
 			return err
@@ -71,7 +74,7 @@ func (s *OfferingService) CreateOffers(orderRequestID string, availableMerchants
 			return fmt.Errorf("order request is already accepted")
 		}
 		for _, merchant := range availableMerchants {
-			offer := OfferModel{
+			offer := models.OfferModel{
 				UserID:         orderRequestID,
 				OrderRequestID: orderRequestID,
 				MerchantID:     merchant.ID,
@@ -90,7 +93,7 @@ func (s *OfferingService) CreateOffers(orderRequestID string, availableMerchants
 
 func (s *OfferingService) TakeOffer(offerID string, totalPrice, shippingFee, distance float64) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		offer := OfferModel{}
+		offer := models.OfferModel{}
 		err := tx.Where("id = ?", offerID).First(&offer).Error
 		if err != nil {
 			return err
@@ -99,7 +102,7 @@ func (s *OfferingService) TakeOffer(offerID string, totalPrice, shippingFee, dis
 			return fmt.Errorf("offer is already taken")
 		}
 
-		orderRequest := order_request.OrderRequestModel{}
+		orderRequest := models.OrderRequestModel{}
 		err = tx.Where("id = ?", offer.OrderRequestID).First(&orderRequest).Error
 		if err != nil {
 			return err
@@ -138,7 +141,7 @@ func (s *OfferingService) TakeOffer(offerID string, totalPrice, shippingFee, dis
 
 // func (s *OfferingService) TakeOrder(orderRequestID string, merchantID string) error {
 // 	return s.db.Transaction(func(tx *gorm.DB) error {
-// 		orderRequest := order_request.OrderRequestModel{}
+// 		orderRequest := models.OrderRequestModel{}
 // 		err := tx.Where("id = ?", orderRequestID).First(&orderRequest).Error
 // 		if err != nil {
 // 			return err
@@ -147,7 +150,7 @@ func (s *OfferingService) TakeOffer(offerID string, totalPrice, shippingFee, dis
 // 			return fmt.Errorf("order request is already accepted")
 // 		}
 
-// 		offer := OfferModel{
+// 		offer := models.OfferModel{
 // 			UserID:         orderRequest.UserID,
 // 			OrderRequestID: orderRequest.ID,
 // 			MerchantID:     merchantID,
@@ -164,14 +167,14 @@ func (s *OfferingService) TakeOffer(offerID string, totalPrice, shippingFee, dis
 // }
 
 // max distance of 10 km
-// func (s *OfferingService) GetOffers(productIDs []string, userLat, userLng float64, maxDistance float64) ([]OfferModel, error) {
+// func (s *OfferingService) GetOffers(productIDs []string, userLat, userLng float64, maxDistance float64) ([]models.OfferModel, error) {
 // 	// Cari merchant terdekat
 // 	merchants, err := s.merchantService.GetNearbyMerchants(userLat, userLng, maxDistance) // Radius 10 km
 // 	if err != nil {
 // 		return nil, err
 // 	}
 
-// 	var offers []OfferModel
+// 	var offers []models.OfferModel
 // 	for _, merchant := range merchants {
 // 		// Dapatkan produk dari merchant
 // 		products, err := s.productService.GetProductsByMerchant(merchant.ID, []string{})
@@ -185,7 +188,7 @@ func (s *OfferingService) TakeOffer(offerID string, totalPrice, shippingFee, dis
 // 		// Hitung harga penawaran
 // 		for _, product := range products {
 // 			if contains(productIDs, product.ID) {
-// 				// offer := OfferModel{
+// 				// offer := models.OfferModel{
 // 				// 	MerchantID: merchant.ID,
 // 				// 	ProductID:  product.ID,
 // 				// 	Price:      s.pricingEngine.CalculateOffer(product.Price, distance),

@@ -7,6 +7,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
 )
@@ -29,10 +30,19 @@ func NewAuthService(erpContext *context.ERPContext) *AuthService {
 	return &service
 }
 
+func (s *AuthService) Migrate() error {
+
+	return s.db.AutoMigrate(&models.UserModel{}, &models.RoleModel{}, &models.PermissionModel{})
+}
+
+func (s *AuthService) DB() *gorm.DB {
+	return s.db
+}
+
 // Register membuat user baru
-func (s *AuthService) Register(fullname, username, email, password, phoneNumber string) (*UserModel, error) {
+func (s *AuthService) Register(fullname, username, email, password, phoneNumber string) (*models.UserModel, error) {
 	// Hash password
-	hashedPassword, err := HashPassword(password)
+	hashedPassword, err := models.HashPassword(password)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +52,7 @@ func (s *AuthService) Register(fullname, username, email, password, phoneNumber 
 	verificationTokenExpiredAt := time.Now().AddDate(0, 0, 7) // 7 hari
 
 	// Buat user baru
-	user := UserModel{
+	user := models.UserModel{
 		FullName:                   fullname,
 		Username:                   username,
 		Email:                      email,
@@ -61,8 +71,8 @@ func (s *AuthService) Register(fullname, username, email, password, phoneNumber 
 }
 
 // Login memverifikasi username/email dan password
-func (s *AuthService) Login(usernameOrEmail, password string) (*UserModel, error) {
-	var user UserModel
+func (s *AuthService) Login(usernameOrEmail, password string) (*models.UserModel, error) {
+	var user models.UserModel
 
 	// Cari user berdasarkan username atau email
 	if err := s.db.Where("username = ? OR email = ? OR phone_number = ?", usernameOrEmail, usernameOrEmail, usernameOrEmail).First(&user).Error; err != nil {
@@ -77,7 +87,7 @@ func (s *AuthService) Login(usernameOrEmail, password string) (*UserModel, error
 	}
 
 	// Verifikasi password
-	if err := CheckPassword(user.Password, password); err != nil {
+	if err := models.CheckPassword(user.Password, password); err != nil {
 		return nil, errors.New("invalid password")
 	}
 
@@ -86,7 +96,7 @@ func (s *AuthService) Login(usernameOrEmail, password string) (*UserModel, error
 
 // ForgotPassword mengirim email reset password (contoh sederhana)
 func (s *AuthService) ForgotPassword(email string) error {
-	var user UserModel
+	var user models.UserModel
 
 	// Cari user berdasarkan email
 	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
@@ -106,7 +116,7 @@ func (s *AuthService) ForgotPassword(email string) error {
 
 // ChangePassword mengganti password
 func (s *AuthService) ChangePassword(userID, oldPassword, newPassword string) error {
-	var user UserModel
+	var user models.UserModel
 
 	// Cari user berdasarkan ID
 	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
@@ -117,12 +127,12 @@ func (s *AuthService) ChangePassword(userID, oldPassword, newPassword string) er
 	}
 
 	// Verifikasi password lama
-	if err := CheckPassword(user.Password, oldPassword); err != nil {
+	if err := models.CheckPassword(user.Password, oldPassword); err != nil {
 		return errors.New("invalid password")
 	}
 
 	// Hash password baru
-	hashedPassword, err := HashPassword(newPassword)
+	hashedPassword, err := models.HashPassword(newPassword)
 	if err != nil {
 		return err
 	}
@@ -138,7 +148,7 @@ func (s *AuthService) ChangePassword(userID, oldPassword, newPassword string) er
 
 // Verification memverifikasi token reset password
 func (s *AuthService) Verification(token, newPassword string) error {
-	var user UserModel
+	var user models.UserModel
 
 	// Cari user berdasarkan token
 	if err := s.db.Where("verification_token = ?", token).First(&user).Error; err != nil {
@@ -165,7 +175,7 @@ func (s *AuthService) Verification(token, newPassword string) error {
 }
 
 func (s *AuthService) GetUserByPhoneNumber(phoneNumber string) bool {
-	var user UserModel
+	var user models.UserModel
 	if err := s.db.Where("phone_number = ?", phoneNumber).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false
@@ -174,7 +184,7 @@ func (s *AuthService) GetUserByPhoneNumber(phoneNumber string) bool {
 	return true
 }
 func (s *AuthService) GetUserByEmail(email string) bool {
-	var user UserModel
+	var user models.UserModel
 	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false
@@ -182,8 +192,8 @@ func (s *AuthService) GetUserByEmail(email string) bool {
 	}
 	return true
 }
-func (s *AuthService) GetUserByID(userID string) (*UserModel, error) {
-	var user UserModel
+func (s *AuthService) GetUserByID(userID string) (*models.UserModel, error) {
+	var user models.UserModel
 	// fmt.Println("s.db.", s.db)
 	// Cari user berdasarkan ID
 	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
@@ -204,7 +214,7 @@ func (s *AuthService) GetUserByID(userID string) (*UserModel, error) {
 	}
 	for i, v := range user.Roles {
 		if v.IsSuperAdmin {
-			var Permissions []PermissionModel
+			var Permissions []models.PermissionModel
 			s.db.Find(&Permissions)
 			user.Roles[i].Permissions = Permissions
 		}
@@ -213,7 +223,7 @@ func (s *AuthService) GetUserByID(userID string) (*UserModel, error) {
 }
 
 func (s *AuthService) VerificationEmail(token string) error {
-	var user UserModel
+	var user models.UserModel
 
 	// Cari user berdasarkan token
 	if err := s.db.Where("verification_token = ?", token).First(&user).Error; err != nil {

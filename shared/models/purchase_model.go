@@ -1,13 +1,8 @@
-package purchase
+package models
 
 import (
 	"time"
 
-	"github.com/AMETORY/ametory-erp-modules/company"
-	"github.com/AMETORY/ametory-erp-modules/contact"
-	"github.com/AMETORY/ametory-erp-modules/finance/account"
-	"github.com/AMETORY/ametory-erp-modules/inventory/product"
-	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -16,9 +11,9 @@ import (
 type PurchaseType string
 
 const (
-	PURCHASE    PurchaseType = "PURCHASE"
-	PROCUREMENT PurchaseType = "PROCUREMENT"
-	ECOMMERCE   PurchaseType = "ECOMMERCE"
+	PURCHASE           PurchaseType = "PURCHASE"
+	PROCUREMENT        PurchaseType = "PROCUREMENT"
+	PURCHASE_ECOMMERCE PurchaseType = "ECOMMERCE"
 )
 
 type PurchaseOrderModel struct {
@@ -38,9 +33,9 @@ type PurchaseOrderModel struct {
 	DueDate         time.Time                `json:"due_date"`
 	PaymentTerms    string                   `json:"payment_terms"`
 	CompanyID       *string                  `json:"company_id"`
-	Company         *company.CompanyModel    `gorm:"foreignKey:CompanyID"`
+	Company         *CompanyModel            `gorm:"foreignKey:CompanyID"`
 	ContactID       string                   `json:"contact_id"`
-	Contact         contact.ContactModel     `gorm:"foreignKey:ContactID"`
+	Contact         ContactModel             `gorm:"foreignKey:ContactID"`
 	ContactData     string                   `gorm:"type:json" json:"contact_data"`
 	Type            PurchaseType             `json:"type"`
 	Items           []PurchaseOrderItemModel `gorm:"foreignKey:PurchaseID" json:"items"`
@@ -48,23 +43,23 @@ type PurchaseOrderModel struct {
 
 type PurchaseOrderItemModel struct {
 	shared.BaseModel
-	PurchaseID         string                    `json:"purchase_id"`
-	Purchase           PurchaseOrderModel        `gorm:"foreignKey:PurchaseID"`
-	Description        string                    `json:"description"`
-	Quantity           float64                   `json:"quantity"`
-	UnitPrice          float64                   `json:"unit_price"`
-	Total              float64                   `json:"total"`
-	DiscountPercent    float64                   `json:"discount_percent"`
-	DiscountAmount     float64                   `json:"discount_amount"`
-	SubtotalBeforeDisc float64                   `json:"subtotal_before_disc"`
-	ProductID          *string                   `json:"product_id"`
-	Product            *product.ProductModel     `gorm:"foreignKey:ProductID"`
-	WarehouseID        *string                   `json:"warehouse_id"`
-	Warehouse          *warehouse.WarehouseModel `gorm:"foreignKey:WarehouseID"`
-	PurchaseAccountID  *string                   `json:"purchase_account_id"`
-	PurchaseAccount    *account.AccountModel     `gorm:"foreignKey:PurchaseAccountID"`
-	AssetAccountID     *string                   `json:"asset_account_id"`
-	AssetAccount       *account.AccountModel     `gorm:"foreignKey:AssetAccountID"`
+	PurchaseID         string             `json:"purchase_id"`
+	Purchase           PurchaseOrderModel `gorm:"foreignKey:PurchaseID"`
+	Description        string             `json:"description"`
+	Quantity           float64            `json:"quantity"`
+	UnitPrice          float64            `json:"unit_price"`
+	Total              float64            `json:"total"`
+	DiscountPercent    float64            `json:"discount_percent"`
+	DiscountAmount     float64            `json:"discount_amount"`
+	SubtotalBeforeDisc float64            `json:"subtotal_before_disc"`
+	ProductID          *string            `json:"product_id"`
+	Product            *ProductModel      `gorm:"foreignKey:ProductID"`
+	WarehouseID        *string            `json:"warehouse_id"`
+	Warehouse          *WarehouseModel    `gorm:"foreignKey:WarehouseID"`
+	PurchaseAccountID  *string            `json:"purchase_account_id"`
+	PurchaseAccount    *AccountModel      `gorm:"foreignKey:PurchaseAccountID"`
+	AssetAccountID     *string            `json:"asset_account_id"`
+	AssetAccount       *AccountModel      `gorm:"foreignKey:AssetAccountID"`
 }
 
 func (s *PurchaseOrderModel) TableName() string {
@@ -87,7 +82,4 @@ func (s *PurchaseOrderItemModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return
-}
-func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&PurchaseOrderModel{}, &PurchaseOrderItemModel{})
 }

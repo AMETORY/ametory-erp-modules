@@ -1,4 +1,4 @@
-package distributor
+package models
 
 import (
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -29,8 +29,4 @@ func (m *DistributorModel) BeforeCreate(tx *gorm.DB) (err error) {
 		m.ID = uuid.New().String()
 	}
 	return
-}
-
-func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&DistributorModel{})
 }

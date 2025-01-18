@@ -7,6 +7,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -21,20 +22,20 @@ func NewMasterProductService(db *gorm.DB, ctx *context.ERPContext) *MasterProduc
 	return &MasterProductService{db: db, ctx: ctx}
 }
 
-func (s *MasterProductService) CreateMasterProduct(data *MasterProductModel) error {
+func (s *MasterProductService) CreateMasterProduct(data *models.MasterProductModel) error {
 	return s.db.Create(data).Error
 }
 
-func (s *MasterProductService) UpdateMasterProduct(id string, data *MasterProductModel) error {
+func (s *MasterProductService) UpdateMasterProduct(id string, data *models.MasterProductModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
 func (s *MasterProductService) DeleteMasterProduct(id string) error {
-	return s.db.Where("id = ?", id).Delete(&MasterProductModel{}).Error
+	return s.db.Where("id = ?", id).Delete(&models.MasterProductModel{}).Error
 }
 
-func (s *MasterProductService) GetMasterProductByID(id string) (*MasterProductModel, error) {
-	var product MasterProductModel
+func (s *MasterProductService) GetMasterProductByID(id string) (*models.MasterProductModel, error) {
+	var product models.MasterProductModel
 	err := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
@@ -45,8 +46,8 @@ func (s *MasterProductService) GetMasterProductByID(id string) (*MasterProductMo
 	return &product, err
 }
 
-func (s *MasterProductService) GetMasterProductByCode(code string) (*MasterProductModel, error) {
-	var product MasterProductModel
+func (s *MasterProductService) GetMasterProductByCode(code string) (*models.MasterProductModel, error) {
+	var product models.MasterProductModel
 	err := s.db.Where("code = ?", code).First(&product).Error
 	return &product, err
 }
@@ -69,12 +70,12 @@ func (s *MasterProductService) GetMasterProducts(request http.Request, search st
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
-	stmt = stmt.Model(&MasterProductModel{})
+	stmt = stmt.Model(&models.MasterProductModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]MasterProductModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.MasterProductModel{})
 	page.Page = page.Page + 1
-	items := page.Items.(*[]MasterProductModel)
-	newItems := make([]MasterProductModel, 0)
+	items := page.Items.(*[]models.MasterProductModel)
+	newItems := make([]models.MasterProductModel, 0)
 	for _, v := range *items {
 		img, err := s.ListImagesOfProduct(v.ID)
 		if err == nil {
@@ -90,11 +91,11 @@ func (s *MasterProductService) GetMasterProducts(request http.Request, search st
 	return page, nil
 }
 
-func (s *MasterProductService) CreatePriceCategory(data *PriceCategoryModel) error {
+func (s *MasterProductService) CreatePriceCategory(data *models.PriceCategoryModel) error {
 	return s.db.Create(data).Error
 }
 
-func (s *MasterProductService) AddPriceToMasterProduct(productID string, data *MasterProductPriceModel) error {
+func (s *MasterProductService) AddPriceToMasterProduct(productID string, data *models.MasterProductPriceModel) error {
 	if data.PriceCategoryID == "" {
 		return errors.New("price category id is required")
 	}
@@ -102,8 +103,8 @@ func (s *MasterProductService) AddPriceToMasterProduct(productID string, data *M
 	return s.db.Create(data).Error
 }
 
-func (s *MasterProductService) ListPricesOfProduct(productID string) ([]MasterProductPriceModel, error) {
-	var prices []MasterProductPriceModel
+func (s *MasterProductService) ListPricesOfProduct(productID string) ([]models.MasterProductPriceModel, error) {
+	var prices []models.MasterProductPriceModel
 	err := s.db.Preload("PriceCategory").Where("master_product_id = ?", productID).Find(&prices).Error
 	return prices, err
 }
@@ -115,7 +116,7 @@ func (s *MasterProductService) ListImagesOfProduct(productID string) ([]shared.F
 }
 
 func (s *MasterProductService) DeletePriceFromMasterProduct(productID string, priceID string) error {
-	return s.db.Where("master_product_id = ? and id = ?", productID, priceID).Delete(&MasterProductPriceModel{}).Error
+	return s.db.Where("master_product_id = ? and id = ?", productID, priceID).Delete(&models.MasterProductPriceModel{}).Error
 }
 
 func (s *MasterProductService) DeleteImageFromMasterProduct(productID string, imageID string) error {
@@ -127,21 +128,21 @@ func (s *MasterProductService) ConvertToProducts(ids []string, distributorID *st
 	if len(ids) == 0 {
 		return []string{"no ids provided"}
 	}
-	masterProducts := make([]MasterProductModel, 0)
+	masterProducts := make([]models.MasterProductModel, 0)
 	err := s.db.Where("id in (?)", ids).Find(&masterProducts).Error
 	if err != nil {
 		return []string{err.Error()}
 	}
 
 	for _, masterProduct := range masterProducts {
-		existingProduct := ProductModel{}
+		existingProduct := models.ProductModel{}
 		err = s.db.Where("master_product_id = ?", masterProduct.ID).First(&existingProduct).Error
 		if err == nil {
 			newErrors = append(newErrors, fmt.Sprintf("product with master id %s already exists", masterProduct.ID))
 			continue
 		}
 
-		product := ProductModel{
+		product := models.ProductModel{
 			Name:            masterProduct.Name,
 			Description:     masterProduct.Description,
 			SKU:             masterProduct.SKU,
@@ -182,7 +183,7 @@ func (s *MasterProductService) ConvertToProducts(ids []string, distributorID *st
 			newErrors = append(newErrors, err.Error())
 		}
 		for _, v := range listPrices {
-			err := s.db.Create(&PriceModel{
+			err := s.db.Create(&models.PriceModel{
 				Amount:          v.Amount,
 				Currency:        v.Currency,
 				PriceCategoryID: v.PriceCategoryID,

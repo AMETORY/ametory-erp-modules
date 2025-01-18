@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/distribution/shipping/provider"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"gorm.io/gorm"
 )
 
@@ -17,10 +18,14 @@ type ShippingService struct {
 func NewShippingService(db *gorm.DB, ctx *context.ERPContext) *ShippingService {
 	return &ShippingService{db: db, ctx: ctx}
 }
+
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.ShippingModel{})
+}
 func (s *ShippingService) SetProvider(provider provider.ShippingProvider) {
 	s.provider = provider
 }
-func (s *ShippingService) CreateShipping(orderID uint, method, destination string) (*ShippingModel, error) {
+func (s *ShippingService) CreateShipping(orderID uint, method, destination string) (*models.ShippingModel, error) {
 	if s.provider == nil {
 		return nil, errors.New("shipping provider not set")
 	}
@@ -31,7 +36,7 @@ func (s *ShippingService) CreateShipping(orderID uint, method, destination strin
 	}
 
 	// Simpan data pengiriman ke database
-	shipping := ShippingModel{
+	shipping := models.ShippingModel{
 		OrderID:    orderID,
 		Method:     method,
 		TrackingID: shipment.TrackingID,

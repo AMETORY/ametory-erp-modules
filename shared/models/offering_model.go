@@ -1,4 +1,4 @@
-package offering
+package models
 
 import (
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -27,8 +27,4 @@ func (o *OfferModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return
-}
-
-func Migrate(tx *gorm.DB) error {
-	return tx.AutoMigrate(&OfferModel{})
 }

@@ -3,9 +3,9 @@ package merchant
 import (
 	"net/http"
 
-	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -20,8 +20,13 @@ type MerchantService struct {
 func NewMerchantService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService) *MerchantService {
 	return &MerchantService{db: db, ctx: ctx, financeService: financeService}
 }
-func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) ([]MerchantModel, error) {
-	var merchants []MerchantModel
+
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.MerchantModel{})
+}
+
+func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) ([]models.MerchantModel, error) {
+	var merchants []models.MerchantModel
 
 	rows, err := s.db.Raw(`
 		SELECT *, (
@@ -40,7 +45,7 @@ func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) (
 	defer rows.Close()
 
 	for rows.Next() {
-		var merchant MerchantModel
+		var merchant models.MerchantModel
 		if err := s.db.ScanRows(rows, &merchant); err != nil {
 			return nil, err
 		}
@@ -49,20 +54,20 @@ func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) (
 	return merchants, err
 }
 
-func (s *MerchantService) CreateMerchant(data *MerchantModel) error {
+func (s *MerchantService) CreateMerchant(data *models.MerchantModel) error {
 	return s.db.Create(data).Error
 }
 
-func (s *MerchantService) UpdateMerchant(id string, data *MerchantModel) error {
+func (s *MerchantService) UpdateMerchant(id string, data *models.MerchantModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
 func (s *MerchantService) DeleteMerchant(id string) error {
-	return s.db.Where("id = ?", id).Delete(&MerchantModel{}).Error
+	return s.db.Where("id = ?", id).Delete(&models.MerchantModel{}).Error
 }
 
-func (s *MerchantService) GetMerchantByID(id string) (*MerchantModel, error) {
-	var invoice MerchantModel
+func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, error) {
+	var invoice models.MerchantModel
 	err := s.db.Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
@@ -80,16 +85,16 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	request.URL.Query().Get("page")
-	stmt = stmt.Model(&MerchantModel{})
+	stmt = stmt.Model(&models.MerchantModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]MerchantModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.MerchantModel{})
 	page.Page = page.Page + 1
-	items := page.Items.(*[]MerchantModel)
-	newItems := make([]MerchantModel, 0)
+	items := page.Items.(*[]models.MerchantModel)
+	newItems := make([]models.MerchantModel, 0)
 
 	for _, v := range *items {
 		if v.CompanyID != nil {
-			var company company.CompanyModel
+			var company models.CompanyModel
 			err := s.db.Select("name", "id").Where("id = ?", v.CompanyID).First(&company).Error
 			if err == nil {
 				v.Company = &company

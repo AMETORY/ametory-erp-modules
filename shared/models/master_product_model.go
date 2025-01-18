@@ -1,8 +1,6 @@
-package product
+package models
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/company"
-	"github.com/AMETORY/ametory-erp-modules/inventory/brand"
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -16,11 +14,11 @@ type MasterProductModel struct {
 	Barcode       *string                   `gorm:"type:varchar(255)" json:"barcode"`
 	Price         float64                   `gorm:"not null;default:0" json:"price"`
 	CompanyID     *string                   `json:"company_id"`
-	Company       *company.CompanyModel     `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	Company       *CompanyModel             `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 	CategoryID    *string                   `json:"category_id"`
 	Category      *ProductCategoryModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:CategoryID" json:"category,omitempty"`
 	Prices        []MasterProductPriceModel `gorm:"-" json:"prices"`
-	Brand         *brand.BrandModel         `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID" json:"brand,omitempty"`
+	Brand         *BrandModel               `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID" json:"brand,omitempty"`
 	BrandID       *string                   `json:"brand_id,omitempty"`
 	ProductImages []shared.FileModel        `gorm:"-" json:"product_images"`
 }

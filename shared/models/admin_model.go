@@ -1,4 +1,4 @@
-package auth
+package models
 
 import (
 	"time"
@@ -32,9 +32,4 @@ func (u *AdminModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (AdminModel) TableName() string {
 	return "admins"
-}
-
-func (s *AdminAuthService) Migrate() error {
-
-	return s.db.AutoMigrate(&AdminModel{}, &RoleModel{}, &PermissionModel{})
 }

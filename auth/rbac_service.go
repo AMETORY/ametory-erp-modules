@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -21,8 +22,8 @@ func NewRBACService(erpContext *context.ERPContext) *RBACService {
 
 // AssignRoleToUser menetapkan peran ke pengguna
 func (s *RBACService) AssignRoleToUser(userID string, roleName string) error {
-	var user UserModel
-	var role RoleModel
+	var user models.UserModel
+	var role models.RoleModel
 
 	// Cari pengguna
 	if err := s.db.First(&user, userID).Error; err != nil {
@@ -44,8 +45,8 @@ func (s *RBACService) AssignRoleToUser(userID string, roleName string) error {
 
 // AssignPermissionToRole menetapkan izin ke peran
 func (s *RBACService) AssignPermissionToRole(roleName string, permissionName string) error {
-	var role RoleModel
-	var permission PermissionModel
+	var role models.RoleModel
+	var permission models.PermissionModel
 
 	// Cari peran
 	if err := s.db.Where("name = ?", roleName).First(&role).Error; err != nil {
@@ -67,7 +68,7 @@ func (s *RBACService) AssignPermissionToRole(roleName string, permissionName str
 
 // CheckPermission memeriksa apakah pengguna memiliki izin tertentu
 func (s *RBACService) CheckPermission(userID string, permissionNames []string) (bool, error) {
-	var user UserModel
+	var user models.UserModel
 
 	// Cari pengguna beserta peran dan izin
 	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
@@ -97,7 +98,7 @@ func (s *RBACService) CheckPermission(userID string, permissionNames []string) (
 
 // CheckPermission memeriksa apakah pengguna memiliki izin tertentu
 func (s *RBACService) CheckAdminPermission(adminID string, permissionNames []string) (bool, error) {
-	var admin AdminModel
+	var admin models.AdminModel
 
 	// Cari pengguna beserta peran dan izin
 	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
@@ -127,8 +128,8 @@ func (s *RBACService) CheckAdminPermission(adminID string, permissionNames []str
 }
 
 // CreateRole membuat peran baru
-func (s *RBACService) CreateRole(name string, isAdmin bool, isSuperAdmin bool, companyID *string) (*RoleModel, error) {
-	role := RoleModel{
+func (s *RBACService) CreateRole(name string, isAdmin bool, isSuperAdmin bool, companyID *string) (*models.RoleModel, error) {
+	role := models.RoleModel{
 		Name:         name,
 		IsAdmin:      isAdmin,
 		IsSuperAdmin: isSuperAdmin,
@@ -164,16 +165,16 @@ func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate
 		stmt = stmt.Where("is_super_admin = ?", request.URL.Query().Get("is_super_admin"))
 	}
 
-	stmt = stmt.Model(&RoleModel{})
+	stmt = stmt.Model(&models.RoleModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]RoleModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.RoleModel{})
 	page.Page = page.Page + 1
-	items := page.Items.(*[]RoleModel)
-	newItems := make([]RoleModel, 0)
+	items := page.Items.(*[]models.RoleModel)
+	newItems := make([]models.RoleModel, 0)
 
 	for _, v := range *items {
 		if v.IsSuperAdmin {
-			var Permissions []PermissionModel
+			var Permissions []models.PermissionModel
 			s.db.Find(&Permissions)
 			v.Permissions = Permissions
 		}
@@ -185,8 +186,8 @@ func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate
 }
 
 // GetRoleByID mengambil peran berdasarkan ID
-func (s *RBACService) GetRoleByID(roleID string) (*RoleModel, error) {
-	var role RoleModel
+func (s *RBACService) GetRoleByID(roleID string) (*models.RoleModel, error) {
+	var role models.RoleModel
 	if err := s.db.First(&role, roleID).Error; err != nil {
 		return nil, errors.New("role not found")
 	}
@@ -194,8 +195,8 @@ func (s *RBACService) GetRoleByID(roleID string) (*RoleModel, error) {
 }
 
 // UpdateRole memperbarui informasi peran berdasarkan ID
-func (s *RBACService) UpdateRole(roleID string, name string, isAdmin bool, isSuperAdmin bool, isMerchant bool) (*RoleModel, error) {
-	var role RoleModel
+func (s *RBACService) UpdateRole(roleID string, name string, isAdmin bool, isSuperAdmin bool, isMerchant bool) (*models.RoleModel, error) {
+	var role models.RoleModel
 	if err := s.db.First(&role, "id = ?", roleID).Error; err != nil {
 		return nil, errors.New("role not found")
 	}
@@ -214,15 +215,15 @@ func (s *RBACService) UpdateRole(roleID string, name string, isAdmin bool, isSup
 
 // DeleteRole menghapus peran berdasarkan ID
 func (s *RBACService) DeleteRole(roleID string) error {
-	if err := s.db.Delete(&RoleModel{}, roleID).Error; err != nil {
+	if err := s.db.Delete(&models.RoleModel{}, roleID).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
 // GetAllPermissions mengambil semua izin
-func (s *RBACService) GetAllPermissions() ([]PermissionModel, error) {
-	var permissions []PermissionModel
+func (s *RBACService) GetAllPermissions() ([]models.PermissionModel, error) {
+	var permissions []models.PermissionModel
 	if err := s.db.Where("is_active = ?", true).Find(&permissions).Error; err != nil {
 		return nil, err
 	}

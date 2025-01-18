@@ -6,8 +6,10 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
+	"gorm.io/gorm"
 )
 
 type CompanyService struct {
@@ -25,26 +27,38 @@ func NewCompanyService(ctx *context.ERPContext) *CompanyService {
 	return &service
 }
 
-func (s *CompanyService) CreateCompany(data *CompanyModel) error {
+func (s *CompanyService) Migrate() error {
+	if s.ctx.SkipMigration {
+		return nil
+	}
+	s.ctx.DB.Migrator().AlterColumn(&models.CompanyModel{}, "status")
+	return s.ctx.DB.AutoMigrate(&models.CompanyModel{})
+}
+
+func (s *CompanyService) DB() *gorm.DB {
+	return s.ctx.DB
+}
+
+func (s *CompanyService) CreateCompany(data *models.CompanyModel) error {
 	return s.ctx.DB.Create(data).Error
 }
 
-func (s *CompanyService) UpdateCompany(id string, data *CompanyModel) error {
+func (s *CompanyService) UpdateCompany(id string, data *models.CompanyModel) error {
 	return s.ctx.DB.Where("id = ?", id).Updates(data).Error
 }
 
 func (s *CompanyService) DeleteCompany(id string) error {
-	return s.ctx.DB.Where("id = ?", id).Delete(&CompanyModel{}).Error
+	return s.ctx.DB.Where("id = ?", id).Delete(&models.CompanyModel{}).Error
 }
 
-func (s *CompanyService) GetCompanyByID(id string) (*CompanyModel, error) {
-	var invoice CompanyModel
+func (s *CompanyService) GetCompanyByID(id string) (*models.CompanyModel, error) {
+	var invoice models.CompanyModel
 	err := s.ctx.DB.Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
 
-func (s *CompanyService) GetCompanyByCode(code string) (*CompanyModel, error) {
-	var invoice CompanyModel
+func (s *CompanyService) GetCompanyByCode(code string) (*models.CompanyModel, error) {
+	var invoice models.CompanyModel
 	err := s.ctx.DB.Where("code = ?", code).First(&invoice).Error
 	return &invoice, err
 }
@@ -62,9 +76,9 @@ func (s *CompanyService) GetCompanies(request http.Request, search string) (pagi
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
 	request.URL.Query().Get("page")
-	stmt = stmt.Model(&CompanyModel{})
+	stmt = stmt.Model(&models.CompanyModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]CompanyModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.CompanyModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }

@@ -7,10 +7,8 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
-	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
-	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
-	"github.com/AMETORY/ametory-erp-modules/order/merchant"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"gorm.io/gorm"
 )
 
@@ -28,9 +26,13 @@ func NewPOSService(db *gorm.DB, ctx *context.ERPContext, financeService *finance
 	}
 }
 
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.POSModel{}, &models.POSSalesItemModel{})
+}
+
 // CreateMerchant membuat merchant baru
-func (s *POSService) CreateMerchant(name, address, phone string) (*merchant.MerchantModel, error) {
-	merchant := merchant.MerchantModel{
+func (s *POSService) CreateMerchant(name, address, phone string) (*models.MerchantModel, error) {
+	merchant := models.MerchantModel{
 		Name:    name,
 		Address: address,
 		Phone:   phone,
@@ -44,7 +46,7 @@ func (s *POSService) CreateMerchant(name, address, phone string) (*merchant.Merc
 }
 
 // CreatePOSTransaction membuat transaksi POS baru dengan multi-item
-func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehouseID string, items []POSSalesItemModel, description string) (*POSModel, error) {
+func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehouseID string, items []models.POSSalesItemModel, description string) (*models.POSModel, error) {
 	invSrv, ok := s.ctx.InventoryService.(*inventory.InventoryService)
 	if !ok {
 		return nil, errors.New("invalid inventory service")
@@ -59,11 +61,11 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 		return nil, errors.New("no merchant")
 	}
 
-	merchant := merchant.MerchantModel{}
+	merchant := models.MerchantModel{}
 	if err := s.db.Where("id = ?", merchantID).First(&merchant).Error; err != nil {
 		return nil, err
 	}
-	pos := POSModel{
+	pos := models.POSModel{
 		MerchantID: merchantID,
 		ContactID:  contactID,
 		Total:      totalPrice,
@@ -83,7 +85,7 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 
 		// Kurangi stok untuk setiap item
 		for _, item := range items {
-			_, err := invSrv.StockMovementService.AddMovement(now, *item.ProductID, warehouseID, merchantID, nil, -item.Quantity, stockmovement.MovementTypeOut, pos.ID, description)
+			_, err := invSrv.StockMovementService.AddMovement(now, *item.ProductID, warehouseID, merchantID, nil, -item.Quantity, models.MovementTypeOut, pos.ID, description)
 			if err != nil {
 				return err
 			}
@@ -98,7 +100,7 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 
 		// Tambahkan transaksi ke jurnal
 		if pos.SaleAccountID != nil {
-			if err := s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+			if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
 				Date:               now,
 				AccountID:          pos.SaleAccountID,
 				Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
@@ -112,7 +114,7 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 			}
 		}
 		if pos.AssetAccountID != nil {
-			if err := s.financeService.TransactionService.CreateTransaction(&transaction.TransactionModel{
+			if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
 				Date:               now,
 				AccountID:          pos.AssetAccountID,
 				Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
@@ -142,8 +144,8 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID, warehou
 }
 
 // GetTransactionsByMerchant mengambil semua transaksi POS berdasarkan merchant
-func (s *POSService) GetTransactionsByMerchant(merchantID uint) ([]POSModel, error) {
-	var transactions []POSModel
+func (s *POSService) GetTransactionsByMerchant(merchantID uint) ([]models.POSModel, error) {
+	var transactions []models.POSModel
 	if err := s.db.Preload("Items").Where("merchant_id = ?", merchantID).Find(&transactions).Error; err != nil {
 		return nil, err
 	}

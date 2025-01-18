@@ -1,4 +1,4 @@
-package contact
+package models
 
 import (
 	"github.com/AMETORY/ametory-erp-modules/shared"

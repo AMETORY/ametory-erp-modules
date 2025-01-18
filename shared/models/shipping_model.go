@@ -1,4 +1,4 @@
-package shipping
+package models
 
 import (
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -24,8 +24,4 @@ func (s *ShippingModel) BeforeCreate(tx *gorm.DB) error {
 		s.ID = uuid.New().String()
 	}
 	return nil
-}
-
-func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&ShippingModel{})
 }

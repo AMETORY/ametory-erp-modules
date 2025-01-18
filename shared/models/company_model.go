@@ -1,4 +1,4 @@
-package company
+package models
 
 import (
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -35,16 +35,4 @@ func (c *CompanyModel) BeforeCreate(tx *gorm.DB) error {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return nil
-}
-
-func (s *CompanyService) Migrate() error {
-	if s.ctx.SkipMigration {
-		return nil
-	}
-	s.ctx.DB.Migrator().AlterColumn(&CompanyModel{}, "status")
-	return s.ctx.DB.AutoMigrate(&CompanyModel{})
-}
-
-func (s *CompanyService) DB() *gorm.DB {
-	return s.ctx.DB
 }
