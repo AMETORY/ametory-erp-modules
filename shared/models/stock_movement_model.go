@@ -22,10 +22,10 @@ type StockMovementModel struct {
 	Date              time.Time      `gorm:"not null" json:"date"` // Tanggal pergerakan stok
 	Description       string         `gorm:"null" json:"description"`
 	ProductID         string         `gorm:"not null" json:"product_id"` // Relasi ke product
-	Product           ProductModel   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProductID" json:"product"`
+	Product           ProductModel   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:ProductID" json:"product"`
 	SourceWarehouseID string         `gorm:"-" json:"source_warehouse_id"` // Relasi ke warehouse
 	WarehouseID       string         `gorm:"not null" json:"warehouse_id"` // Relasi ke warehouse
-	Warehouse         WarehouseModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:WarehouseID" json:"warehouse"`
+	Warehouse         WarehouseModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:WarehouseID" json:"warehouse"`
 	MerchantID        *string        `gorm:"null" json:"merchant_id"`    // Relasi ke warehouse
 	DistributorID     *string        `gorm:"null" json:"distributor_id"` // Relasi ke warehouse
 	CompanyID         *string        `gorm:"null" json:"company_id"`     // Relasi ke warehouse

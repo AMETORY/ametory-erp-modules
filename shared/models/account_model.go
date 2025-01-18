@@ -46,12 +46,12 @@ type AccountModel struct {
 	CashflowGroupLabel    string        `gorm:"-" json:"cashflow_group_label,omitempty"`
 	CashflowSubGroupLabel string        `gorm:"-" json:"cashflow_subgroup_label,omitempty"`
 	CompanyID             *string       `json:"company_id,omitempty"`
-	Company               *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	Company               *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
 	TransactionCount      int64         `gorm:"-" json:"transaction_count,omitempty"`
 	Balance               float64       `gorm:"-" json:"balance,omitempty"`
 	BalanceBefore         float64       `gorm:"-" json:"balance_before,omitempty"`
 	HasOpeningBalance     bool          `gorm:"-" json:"has_opening_balance,omitempty"`
-	// Transactions          []Transaction `gorm:"-"`
+	// Transactions          []Transaction `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 // Migrate menjalankan migrasi database untuk model account

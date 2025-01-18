@@ -34,18 +34,18 @@ type SalesModel struct {
 	DueDate         time.Time        `json:"due_date"`
 	PaymentTerms    string           `json:"payment_terms"`
 	CompanyID       *string          `json:"company_id"`
-	Company         *CompanyModel    `gorm:"foreignKey:CompanyID" json:"company"`
+	Company         *CompanyModel    `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company"`
 	ContactID       string           `json:"contact_id"`
-	Contact         ContactModel     `gorm:"foreignKey:ContactID" json:"contact"`
+	Contact         ContactModel     `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE" json:"contact"`
 	ContactData     string           `gorm:"type:json" json:"contact_data"`
 	Type            SalesType        `json:"type"`
-	Items           []SalesItemModel `gorm:"foreignKey:SalesID" json:"items"`
+	Items           []SalesItemModel `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE" json:"items"`
 }
 
 type SalesItemModel struct {
 	shared.BaseModel
 	SalesID            string          `json:"sales_id"`
-	Sales              SalesModel      `gorm:"foreignKey:SalesID"`
+	Sales              SalesModel      `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE"`
 	Description        string          `json:"description"`
 	Quantity           float64         `json:"quantity"`
 	UnitPrice          float64         `json:"unit_price"`
@@ -54,13 +54,13 @@ type SalesItemModel struct {
 	DiscountAmount     float64         `json:"discount_amount"`
 	SubtotalBeforeDisc float64         `json:"subtotal_before_disc"`
 	ProductID          *string         `json:"product_id"`
-	Product            *ProductModel   `gorm:"foreignKey:ProductID"`
+	Product            *ProductModel   `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
 	WarehouseID        *string         `json:"warehouse_id"`
-	Warehouse          *WarehouseModel `gorm:"foreignKey:WarehouseID"`
+	Warehouse          *WarehouseModel `gorm:"foreignKey:WarehouseID;constraint:OnDelete:CASCADE"`
 	SaleAccountID      *string         `json:"sale_account_id"`
-	SaleAccount        *AccountModel   `gorm:"foreignKey:SaleAccountID"`
+	SaleAccount        *AccountModel   `gorm:"foreignKey:SaleAccountID;constraint:OnDelete:CASCADE"`
 	AssetAccountID     *string         `json:"asset_account_id"`
-	AssetAccount       *AccountModel   `gorm:"foreignKey:AssetAccountID"`
+	AssetAccount       *AccountModel   `gorm:"foreignKey:AssetAccountID;constraint:OnDelete:CASCADE"`
 }
 
 func (s *SalesModel) TableName() string {

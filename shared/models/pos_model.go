@@ -51,24 +51,25 @@ type POSModel struct {
 	DueDate             time.Time           `json:"due_date" gorm:"due_date"`
 	PaymentTerms        string              `json:"payment_terms" gorm:"payment_terms"`
 	MerchantID          *string             `json:"merchant_id" gorm:"merchant_id"`
-	Merchant            *MerchantModel      `gorm:"foreignKey:MerchantID;merchant"`
+	Merchant            *MerchantModel      `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE"`
 	CompanyID           *string             `json:"company_id" gorm:"company_id"`
-	Company             *CompanyModel       `gorm:"foreignKey:CompanyID;company"`
+	Company             *CompanyModel       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	ContactID           string              `json:"contact_id" gorm:"contact_id"`
-	Contact             ContactModel        `gorm:"foreignKey:ContactID;contact"`
+	Contact             ContactModel        `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE"`
 	ContactData         string              `json:"contact_data" gorm:"type:json;contact_data"`
 	PaymentType         string              `json:"payment_type" gorm:"payment_type"`
 	PaymentProviderType PaymentProviderType `json:"payment_provider_type" gorm:"payment_provider_type"`
-	Items               []POSSalesItemModel `json:"items" gorm:"foreignKey:SalesID;items"`
+	Items               []POSSalesItemModel `json:"items" gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE"`
 	SaleAccountID       *string             `json:"sale_account_id" gorm:"sale_account_id"`
-	SaleAccount         *AccountModel       `gorm:"foreignKey:SaleAccountID;sale_account"`
+	SaleAccount         *AccountModel       `gorm:"foreignKey:SaleAccountID;constraint:OnDelete:CASCADE"`
 	AssetAccountID      *string             `json:"asset_account_id" gorm:"asset_account_id"`
-	AssetAccount        *AccountModel       `gorm:"foreignKey:AssetAccountID;asset_account"`
+	AssetAccount        *AccountModel       `gorm:"foreignKey:AssetAccountID;constraint:OnDelete:CASCADE"`
 }
+
 type POSSalesItemModel struct {
 	shared.BaseModel
 	SalesID            string          `json:"sales_id"`
-	Sales              POSModel        `gorm:"foreignKey:SalesID"`
+	Sales              POSModel        `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE"`
 	Description        string          `json:"description"`
 	Quantity           float64         `json:"quantity"`
 	UnitPrice          float64         `json:"unit_price"`
@@ -77,9 +78,9 @@ type POSSalesItemModel struct {
 	DiscountAmount     float64         `json:"discount_amount"`
 	SubtotalBeforeDisc float64         `json:"subtotal_before_disc"`
 	ProductID          *string         `json:"product_id"`
-	Product            *ProductModel   `gorm:"foreignKey:ProductID"`
+	Product            *ProductModel   `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
 	WarehouseID        *string         `json:"warehouse_id"`
-	Warehouse          *WarehouseModel `gorm:"foreignKey:WarehouseID"`
+	Warehouse          *WarehouseModel `gorm:"foreignKey:WarehouseID;constraint:OnDelete:CASCADE"`
 }
 
 func (s *POSModel) TableName() string {

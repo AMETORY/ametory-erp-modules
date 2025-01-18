@@ -25,13 +25,13 @@ type TransactionModel struct {
 	IsAccountReceivable    bool               `json:"is_account_receivable"`
 	IsAccountPayable       bool               `json:"is_account_payable"`
 	AccountID              *string            `json:"account_id"`
-	Account                AccountModel       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:AccountID" json:"account"`
+	Account                AccountModel       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:AccountID" json:"account"`
 	TaxPaymentID           string             `json:"tax_payment_id,omitempty"`
 	TransactionRefID       *string            `json:"transaction_ref_id,omitempty"`
 	TransactionRefType     string             `json:"transaction_ref_type,omitempty"`
-	TransactionRefs        []TransactionModel `json:"transaction_refs,omitempty" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:TransactionRefID"`
+	TransactionRefs        []TransactionModel `json:"transaction_refs,omitempty" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:TransactionRefID"`
 	CompanyID              *string            `json:"company_id,omitempty" gorm:"null"`
-	Company                *CompanyModel      `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	Company                *CompanyModel      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:CompanyID" json:"company,omitempty"`
 	File                   *string            `json:"file,omitempty"`
 	FileURL                *string            `json:"url,omitempty" gorm:"-"`
 	SourceID               *string            `json:"source_id,omitempty" gorm:"-"`
@@ -42,12 +42,12 @@ type TransactionModel struct {
 	IsReimbursementPayment bool               `json:"is_reimbursement_payment,omitempty"`
 	IsEmployeeLoanPayment  bool               `json:"is_employee_loan_payment,omitempty"`
 	// EmployeeID             *string              `json:"employee_id"`
-	// Employee               Employee             `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:EmployeeID" json:"-"`
+	// Employee               Employee             `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:EmployeeID" json:"-"`
 	// Images                 []Image            `json:"images" gorm:"-"`
 	// PayRollID              *string            `json:"pay_roll_id"`
-	// PayRoll                PayRoll            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:PayRollID" json:"-"`
+	// PayRoll                PayRoll            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:PayRollID" json:"-"`
 	// ReimbursementID        *string            `json:"reimbursement_id"`
-	// Reimbursement          Reimbursement      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ReimbursementID" json:"-"`
+	// Reimbursement          Reimbursement      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:ReimbursementID" json:"-"`
 	// CashAdvanceID          *string            `json:"cash_advance_id"`
 	// CashAdvance            CashAdvance        `gorm:"foreignKey:CashAdvanceID"`
 	// EmployeeLoanID         *string            `json:"employee_loan_id"`

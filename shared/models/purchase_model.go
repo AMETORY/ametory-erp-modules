@@ -33,18 +33,18 @@ type PurchaseOrderModel struct {
 	DueDate         time.Time                `json:"due_date"`
 	PaymentTerms    string                   `json:"payment_terms"`
 	CompanyID       *string                  `json:"company_id"`
-	Company         *CompanyModel            `gorm:"foreignKey:CompanyID"`
+	Company         *CompanyModel            `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	ContactID       string                   `json:"contact_id"`
-	Contact         ContactModel             `gorm:"foreignKey:ContactID"`
+	Contact         ContactModel             `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE"`
 	ContactData     string                   `gorm:"type:json" json:"contact_data"`
 	Type            PurchaseType             `json:"type"`
-	Items           []PurchaseOrderItemModel `gorm:"foreignKey:PurchaseID" json:"items"`
+	Items           []PurchaseOrderItemModel `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE" json:"items"`
 }
 
 type PurchaseOrderItemModel struct {
 	shared.BaseModel
 	PurchaseID         string             `json:"purchase_id"`
-	Purchase           PurchaseOrderModel `gorm:"foreignKey:PurchaseID"`
+	Purchase           PurchaseOrderModel `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE"`
 	Description        string             `json:"description"`
 	Quantity           float64            `json:"quantity"`
 	UnitPrice          float64            `json:"unit_price"`
@@ -53,13 +53,13 @@ type PurchaseOrderItemModel struct {
 	DiscountAmount     float64            `json:"discount_amount"`
 	SubtotalBeforeDisc float64            `json:"subtotal_before_disc"`
 	ProductID          *string            `json:"product_id"`
-	Product            *ProductModel      `gorm:"foreignKey:ProductID"`
+	Product            *ProductModel      `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
 	WarehouseID        *string            `json:"warehouse_id"`
-	Warehouse          *WarehouseModel    `gorm:"foreignKey:WarehouseID"`
+	Warehouse          *WarehouseModel    `gorm:"foreignKey:WarehouseID;constraint:OnDelete:CASCADE"`
 	PurchaseAccountID  *string            `json:"purchase_account_id"`
-	PurchaseAccount    *AccountModel      `gorm:"foreignKey:PurchaseAccountID"`
+	PurchaseAccount    *AccountModel      `gorm:"foreignKey:PurchaseAccountID;constraint:OnDelete:CASCADE"`
 	AssetAccountID     *string            `json:"asset_account_id"`
-	AssetAccount       *AccountModel      `gorm:"foreignKey:AssetAccountID"`
+	AssetAccount       *AccountModel      `gorm:"foreignKey:AssetAccountID;constraint:OnDelete:CASCADE"`
 }
 
 func (s *PurchaseOrderModel) TableName() string {
@@ -82,4 +82,5 @@ func (s *PurchaseOrderItemModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return
+
 }

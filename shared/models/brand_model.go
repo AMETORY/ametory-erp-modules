@@ -23,7 +23,7 @@ type BrandModel struct {
 	ContactNote        string        `json:"contact_note,omitempty"`
 	RegistrationNumber string        `json:"registration_number,omitempty"`
 	CompanyID          *string       `json:"company_id,omitempty"`
-	Company            *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	Company            *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
 }
 
 func (BrandModel) TableName() string {

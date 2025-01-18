@@ -19,7 +19,7 @@ type WarehouseModel struct {
 	ContactTitle    string        `json:"contact_title,omitempty"`
 	ContactNote     string        `json:"contact_note,omitempty"`
 	CompanyID       *string       `json:"company_id,omitempty"`
-	Company         *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	Company         *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (WarehouseModel) TableName() string {

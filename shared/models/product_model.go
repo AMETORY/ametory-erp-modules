@@ -14,15 +14,15 @@ type ProductModel struct {
 	Barcode         *string               `gorm:"type:varchar(255)" json:"barcode,omitempty"`
 	Price           float64               `gorm:"not null;default:0" json:"price,omitempty"`
 	CompanyID       *string               `json:"company_id,omitempty"`
-	Company         *CompanyModel         `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
-	DistributorID   *string               `gorm:"foreignKey:DistributorID;references:ID" json:"distributor_id,omitempty"`
-	Distributor     *DistributorModel     `gorm:"foreignKey:DistributorID" json:"distributor,omitempty"`
+	Company         *CompanyModel         `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
+	DistributorID   *string               `gorm:"foreignKey:DistributorID;references:ID;constraint:OnDelete:CASCADE" json:"distributor_id,omitempty"`
+	Distributor     *DistributorModel     `gorm:"foreignKey:DistributorID;constraint:OnDelete:CASCADE" json:"distributor,omitempty"`
 	MasterProductID *string               `json:"master_product_id,omitempty"`
-	MasterProduct   *MasterProductModel   `gorm:"foreignKey:MasterProductID" json:"master_product,omitempty"`
+	MasterProduct   *MasterProductModel   `gorm:"foreignKey:MasterProductID;constraint:OnDelete:CASCADE" json:"master_product,omitempty"`
 	CategoryID      *string               `json:"category_id,omitempty"`
-	Category        *ProductCategoryModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:CategoryID" json:"category,omitempty"`
+	Category        *ProductCategoryModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:CategoryID" json:"category,omitempty"`
 	Prices          []PriceModel          `gorm:"-" json:"prices,omitempty"`
-	Brand           *BrandModel           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:BrandID" json:"brand,omitempty"`
+	Brand           *BrandModel           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:BrandID" json:"brand,omitempty"`
 	BrandID         *string               `json:"brand_id,omitempty"`
 	ProductImages   []shared.FileModel    `gorm:"-" json:"product_images,omitempty"`
 	TotalStock      float64               `gorm:"-" json:"total_stock,omitempty"`

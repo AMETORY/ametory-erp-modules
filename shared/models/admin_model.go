@@ -18,7 +18,7 @@ type AdminModel struct {
 	VerifiedAt                 *time.Time        `gorm:"index" json:"verified_at,omitempty"`
 	VerificationToken          string            `gorm:"index" json:"-"`
 	VerificationTokenExpiredAt *time.Time        `gorm:"index" json:"verification_token_expired_at,omitempty"`
-	Roles                      []RoleModel       `gorm:"many2many:admin_roles;" json:"roles,omitempty"`
+	Roles                      []RoleModel       `gorm:"many2many:admin_roles;constraint:OnDelete:CASCADE;" json:"roles,omitempty"`
 	ProfilePicture             *shared.FileModel `json:"profile_picture" gorm:"-"`
 	RoleID                     *string           `json:"role_id" gorm:"-"`
 }

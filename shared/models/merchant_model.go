@@ -15,12 +15,12 @@ type MerchantModel struct {
 	Longitude          float64       `json:"longitude" gorm:"type:decimal(11,8);not null"`
 	UserID             *string       `json:"user_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
 	CompanyID          *string       `json:"company_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
-	DefaultWarehouseID *string       `json:"default_warehouse_id,omitempty" gorm:"type:char(36);index"`
-	Company            *CompanyModel `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
-	ProvinceID         *string       `json:"province_id,omitempty" gorm:"type:char(2);index"`
-	RegencyID          *string       `json:"regency_id,omitempty" gorm:"type:char(4);index"`
-	DistrictID         *string       `json:"district_id,omitempty" gorm:"type:char(6);index"`
-	VillageID          *string       `json:"village_id,omitempty" gorm:"type:char(10);index"`
+	DefaultWarehouseID *string       `json:"default_warehouse_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
+	Company            *CompanyModel `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
+	ProvinceID         *string       `json:"province_id,omitempty" gorm:"type:char(2);index;constraint:OnDelete:SET NULL;"`
+	RegencyID          *string       `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
+	DistrictID         *string       `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
+	VillageID          *string       `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
 	Status             string        `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 	MerchantType       string        `json:"merchant_type" gorm:"type:VARCHAR(20);default:'REGULAR_STORE'"`
 }

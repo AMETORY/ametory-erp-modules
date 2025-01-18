@@ -8,13 +8,14 @@ import (
 
 type OfferModel struct {
 	shared.BaseModel
-	UserID         string  `json:"user_id"`
-	OrderRequestID string  `json:"order_request_id"`
-	MerchantID     string  `json:"merchant_id"`
-	TotalPrice     float64 `json:"total_price"`
-	ShippingFee    float64 `json:"shipping_fee"`
-	Distance       float64 `json:"distance"`
-	Status         string  `json:"status"` // Pending, Accepted, Taken
+	UserID         string            `json:"user_id"`
+	OrderRequestID string            `json:"order_request_id"`
+	OrderRequest   OrderRequestModel `gorm:"foreignKey:OrderRequestID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"order_request,omitempty"`
+	MerchantID     string            `json:"merchant_id"`
+	TotalPrice     float64           `json:"total_price"`
+	ShippingFee    float64           `json:"shipping_fee"`
+	Distance       float64           `json:"distance"`
+	Status         string            `json:"status"` // Pending, Accepted, Taken
 }
 
 func (OfferModel) TableName() string {
