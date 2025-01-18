@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
-	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -109,8 +108,8 @@ func (s *MasterProductService) ListPricesOfProduct(productID string) ([]models.M
 	return prices, err
 }
 
-func (s *MasterProductService) ListImagesOfProduct(productID string) ([]shared.FileModel, error) {
-	var images []shared.FileModel
+func (s *MasterProductService) ListImagesOfProduct(productID string) ([]models.FileModel, error) {
+	var images []models.FileModel
 	err := s.db.Where("ref_id = ? and ref_type = ?", productID, "master-product").Find(&images).Error
 	return images, err
 }
@@ -120,7 +119,7 @@ func (s *MasterProductService) DeletePriceFromMasterProduct(productID string, pr
 }
 
 func (s *MasterProductService) DeleteImageFromMasterProduct(productID string, imageID string) error {
-	return s.db.Where("ref_id = ? and ref_type = ? and id = ?", productID, "master-product", imageID).Delete(&shared.FileModel{}).Error
+	return s.db.Where("ref_id = ? and ref_type = ? and id = ?", productID, "master-product", imageID).Delete(&models.FileModel{}).Error
 }
 
 func (s *MasterProductService) ConvertToProducts(ids []string, distributorID *string) []string {
@@ -164,7 +163,7 @@ func (s *MasterProductService) ConvertToProducts(ids []string, distributorID *st
 		}
 
 		for _, v := range images {
-			err := s.db.Create(&shared.FileModel{
+			err := s.db.Create(&models.FileModel{
 				FileName: v.FileName,
 				MimeType: v.MimeType,
 				Path:     v.Path,

@@ -5,13 +5,13 @@ import (
 	"log"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/file"
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/inventory/brand"
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/purchase"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
-	"github.com/AMETORY/ametory-erp-modules/shared"
 	"gorm.io/gorm"
 )
 
@@ -30,12 +30,12 @@ type InventoryService struct {
 func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 	fmt.Println("INIT INVENTORY SERVICE")
 	var financeService *finance.FinanceService
-	var fileService *shared.FileService
+	var fileService *file.FileService
 	financeSrv, ok := ctx.FinanceService.(*finance.FinanceService)
 	if ok {
 		financeService = financeSrv
 	}
-	fileSrv, ok := ctx.FileService.(*shared.FileService)
+	fileSrv, ok := ctx.FileService.(*file.FileService)
 	if ok {
 		fileService = fileSrv
 	}

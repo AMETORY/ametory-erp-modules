@@ -14,6 +14,7 @@ type MerchantModel struct {
 	Latitude           float64       `json:"latitude" gorm:"type:decimal(10,8);not null"`
 	Longitude          float64       `json:"longitude" gorm:"type:decimal(11,8);not null"`
 	UserID             *string       `json:"user_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
+	User               *UserModel    `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
 	CompanyID          *string       `json:"company_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
 	DefaultWarehouseID *string       `json:"default_warehouse_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
 	Company            *CompanyModel `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
@@ -23,6 +24,7 @@ type MerchantModel struct {
 	VillageID          *string       `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
 	Status             string        `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 	MerchantType       string        `json:"merchant_type" gorm:"type:VARCHAR(20);default:'REGULAR_STORE'"`
+	Picture            *FileModel    `json:"picture,omitempty" gorm:"-"`
 }
 
 func (m *MerchantModel) TableName() string {

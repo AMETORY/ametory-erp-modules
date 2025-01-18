@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
-	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/AMETORY/ametory-erp-modules/file"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -15,10 +15,10 @@ import (
 type ProductService struct {
 	db          *gorm.DB
 	ctx         *context.ERPContext
-	fileService *shared.FileService
+	fileService *file.FileService
 }
 
-func NewProductService(db *gorm.DB, ctx *context.ERPContext, fileService *shared.FileService) *ProductService {
+func NewProductService(db *gorm.DB, ctx *context.ERPContext, fileService *file.FileService) *ProductService {
 	return &ProductService{db: db, ctx: ctx, fileService: fileService}
 }
 
@@ -140,8 +140,8 @@ func (s *ProductService) ListPricesOfProduct(productID string) ([]models.PriceMo
 	return prices, err
 }
 
-func (s *ProductService) ListImagesOfProduct(productID string) ([]shared.FileModel, error) {
-	var images []shared.FileModel
+func (s *ProductService) ListImagesOfProduct(productID string) ([]models.FileModel, error) {
+	var images []models.FileModel
 	err := s.db.Where("ref_id = ? and ref_type = ?", productID, "product").Find(&images).Error
 	return images, err
 }
@@ -151,7 +151,7 @@ func (s *ProductService) DeletePriceOfProduct(productID string, priceID string) 
 }
 
 func (s *ProductService) DeleteImageOfProduct(productID string, imageID string) error {
-	return s.db.Where("ref_id = ? and ref_type = ? and id = ?", productID, "product", imageID).Delete(&shared.FileModel{}).Error
+	return s.db.Where("ref_id = ? and ref_type = ? and id = ?", productID, "product", imageID).Delete(&models.FileModel{}).Error
 }
 
 func (s *ProductService) GetStock(productID string, request *http.Request, warehouseID *string) (float64, error) {

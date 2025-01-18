@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
-	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -194,7 +193,7 @@ func (s *AdminAuthService) GetAdminByID(userID string) (*models.AdminModel, erro
 		return nil, err
 	}
 
-	file := shared.FileModel{}
+	file := models.FileModel{}
 	s.db.Where("ref_id = ? and ref_type = ?", user.ID, "admin").First(&file)
 	if file.ID != "" {
 		user.ProfilePicture = &file
@@ -262,8 +261,8 @@ func (s *AdminAuthService) GetAdmins(request http.Request, search string) (pagin
 	return page, nil
 }
 
-func (s *AdminAuthService) GetProfilePicture(userID string) (shared.FileModel, error) {
-	var image shared.FileModel
+func (s *AdminAuthService) GetProfilePicture(userID string) (models.FileModel, error) {
+	var image models.FileModel
 	err := s.db.Where("ref_id = ? and ref_type = ?", userID, "admin").First(&image).Error
 	return image, err
 }

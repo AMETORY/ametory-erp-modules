@@ -8,7 +8,7 @@ import (
 
 type RoleModel struct {
 	shared.BaseModel
-	Name         string            `gorm:"unique;not null" json:"name"`
+	Name         string            `gorm:"not null" json:"name"`
 	Permissions  []PermissionModel `gorm:"many2many:role_permissions;" json:"permissions"`
 	CompanyID    *string           `json:"company_id"`
 	IsAdmin      bool              `json:"is_admin"`
@@ -52,7 +52,7 @@ var (
 		"inventory": {
 			{"brand": cruds},
 			{"product_category": cruds},
-			{"product": cruds},
+			{"product": append(cruds, "approval")},
 			{"master_product": cruds},
 			{"warehouse": cruds},
 			{"stock_movement": cruds},
@@ -67,10 +67,10 @@ var (
 		"order": {
 			{"sales": cruds},
 			{"pos": cruds},
-			{"merchant": cruds},
+			{"merchant": append(cruds, "approval")},
 		},
 		"distribution": {
-			{"distributor": cruds},
+			{"distributor": append(cruds, "approval")},
 			{"offering": cruds},
 			{"order_request": append(cruds, "approval")},
 		},

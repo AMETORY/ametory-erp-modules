@@ -24,7 +24,7 @@ type UserModel struct {
 	Roles                      []RoleModel        `gorm:"many2many:user_roles;constraint:OnDelete:CASCADE;" json:"roles,omitempty"`
 	Companies                  []CompanyModel     `gorm:"many2many:user_companies;constraint:OnDelete:CASCADE;" json:"companies,omitempty"`
 	Distributors               []DistributorModel `gorm:"many2many:user_distributors;constraint:OnDelete:CASCADE;" json:"distributors,omitempty"`
-	ProfilePicture             *shared.FileModel  `json:"profile_picture,omitempty" gorm:"-"`
+	ProfilePicture             *FileModel         `json:"profile_picture,omitempty" gorm:"-"`
 	RoleID                     *string            `json:"role_id,omitempty" gorm:"-"`
 	BirthDate                  *time.Time         `gorm:"null" json:"birth_date,omitempty"`
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
-	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
@@ -31,7 +30,7 @@ func NewAuthService(erpContext *context.ERPContext) *AuthService {
 }
 
 func (s *AuthService) Migrate() error {
-
+	// s.db.Migrator().AlterColumn(&models.RoleModel{}, "name")
 	return s.db.AutoMigrate(&models.UserModel{}, &models.RoleModel{}, &models.PermissionModel{})
 }
 
@@ -207,8 +206,8 @@ func (s *AuthService) GetUserByID(userID string) (*models.UserModel, error) {
 		return nil, err
 	}
 
-	file := shared.FileModel{}
-	s.db.Where("ref_id = ? and ref_type = ?", user.ID, "admin").First(&file)
+	file := models.FileModel{}
+	s.db.Where("ref_id = ? and ref_type = ?", user.ID, "user").First(&file)
 	if file.ID != "" {
 		user.ProfilePicture = &file
 	}

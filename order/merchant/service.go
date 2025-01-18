@@ -68,7 +68,7 @@ func (s *MerchantService) DeleteMerchant(id string) error {
 
 func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, error) {
 	var invoice models.MerchantModel
-	err := s.db.Where("id = ?", id).First(&invoice).Error
+	err := s.db.Preload("Company").Preload("User").Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
 
@@ -84,7 +84,9 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
-	request.URL.Query().Get("page")
+	if request.URL.Query().Get("status") != "" {
+		stmt = stmt.Where("status = ?", request.URL.Query().Get("status"))
+	}
 	stmt = stmt.Model(&models.MerchantModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.MerchantModel{})

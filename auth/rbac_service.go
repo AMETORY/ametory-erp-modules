@@ -128,11 +128,12 @@ func (s *RBACService) CheckAdminPermission(adminID string, permissionNames []str
 }
 
 // CreateRole membuat peran baru
-func (s *RBACService) CreateRole(name string, isAdmin bool, isSuperAdmin bool, companyID *string) (*models.RoleModel, error) {
+func (s *RBACService) CreateRole(name string, isAdmin, isSuperAdmin, isMerchant bool, companyID *string) (*models.RoleModel, error) {
 	role := models.RoleModel{
 		Name:         name,
 		IsAdmin:      isAdmin,
 		IsSuperAdmin: isSuperAdmin,
+		IsMerchant:   isMerchant,
 		CompanyID:    companyID,
 	}
 

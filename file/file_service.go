@@ -1,11 +1,14 @@
-package shared
+package file
 
 import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 )
 
@@ -23,7 +26,7 @@ func NewFileService(ctx *context.ERPContext, baseURL string) *FileService {
 	if ctx.SkipMigration {
 		return &service
 	}
-	err := Migrate(ctx.DB)
+	err := ctx.DB.AutoMigrate(&models.FileModel{})
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -31,7 +34,7 @@ func NewFileService(ctx *context.ERPContext, baseURL string) *FileService {
 	return &service
 }
 
-func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *FileModel) error {
+func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *models.FileModel) error {
 	// TODO: implement upload file logic
 	firestoreSrv, ok := s.ctx.Firestore.(*thirdparty.Firestore)
 	if !ok {
@@ -41,6 +44,12 @@ func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *
 	mimeType = http.DetectContentType(file)
 	fileObj.MimeType = mimeType
 
+	fileNameSplit := strings.Split(fileObj.FileName, ".")
+	if len(fileNameSplit) == 1 {
+		fileObj.FileName = fmt.Sprintf("%s-%d", fileObj.FileName, time.Now().UnixMilli())
+	} else {
+		fileObj.FileName = fmt.Sprintf("%s-%d.%s", fileNameSplit[0], time.Now().UnixMilli(), fileNameSplit[1])
+	}
 	switch provider {
 	case "local":
 		filePath := fmt.Sprintf("./assets/%s/%s", folder, fileObj.FileName)
@@ -72,6 +81,10 @@ func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *
 	fileObj.Provider = "firebase"
 	fileObj.URL = url
 	fileObj.Provider = provider
+
+	if fileObj.SkipSave {
+		return nil
+	}
 
 	return s.ctx.DB.Save(fileObj).Error
 }
