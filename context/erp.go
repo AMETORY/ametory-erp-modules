@@ -25,6 +25,7 @@ type ERPContext struct {
 	FileService         interface{} // Contoh: FileService
 	Firestore           interface{} // Contoh: Firestore
 	IndonesiaRegService interface{} // Contoh: Firestore
+	AppService          interface{}
 	// Add additional services here
 	EmailSender  *thirdparty.SMTPSender
 	WatzapClient *thirdparty.WatzapClient

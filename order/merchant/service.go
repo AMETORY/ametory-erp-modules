@@ -108,3 +108,12 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 	page.Items = &newItems
 	return page, nil
 }
+
+func (s *MerchantService) CountMerchantByStatus(status string) (int64, error) {
+
+	var count int64
+	if err := s.db.Model(&models.MerchantModel{}).Where("status = ?", status).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}

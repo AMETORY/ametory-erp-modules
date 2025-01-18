@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func init() {
@@ -62,4 +64,8 @@ func FixRequest(request *http.Request) {
 		request.URL.RawQuery = req.Encode()
 	}
 
+}
+
+func Uuid() string {
+	return uuid.New().String()
 }

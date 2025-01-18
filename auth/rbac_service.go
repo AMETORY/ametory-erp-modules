@@ -126,6 +126,25 @@ func (s *RBACService) CheckAdminPermission(adminID string, permissionNames []str
 
 	return false, nil
 }
+func (s *RBACService) CheckSuperAdminPermission(adminID string) (bool, error) {
+	var admin models.AdminModel
+
+	// Cari pengguna beserta peran dan izin
+	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
+		return db.Where("is_admin = ?", true)
+	}).First(&admin, "id = ?", adminID).Error; err != nil {
+		return false, errors.New("admin not found")
+	}
+
+	// Periksa izin
+	for _, role := range admin.Roles {
+		if role.IsSuperAdmin {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
 
 // CreateRole membuat peran baru
 func (s *RBACService) CreateRole(name string, isAdmin, isSuperAdmin, isMerchant bool, companyID *string) (*models.RoleModel, error) {
