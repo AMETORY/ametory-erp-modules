@@ -30,6 +30,9 @@ func Migrate(db *gorm.DB) error {
 		&models.PriceCategoryModel{},
 		&models.PriceModel{},
 		&models.MasterProductPriceModel{},
+		&models.VariantModel{},
+		&models.VariantProductAttributeModel{},
+		&models.ProductAttributeModel{},
 	)
 }
 

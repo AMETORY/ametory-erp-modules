@@ -27,6 +27,7 @@ type ProductModel struct {
 	ProductImages   []FileModel           `gorm:"-" json:"product_images,omitempty"`
 	TotalStock      float64               `gorm:"-" json:"total_stock,omitempty"`
 	Status          string                `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
+	Merchants       []*MerchantModel      `gorm:"many2many:product_merchants;constraint:OnDelete:CASCADE;" json:"merchants,omitempty"`
 }
 
 func (ProductModel) TableName() string {
