@@ -8,10 +8,10 @@ import (
 
 type VariantProductAttributeModel struct {
 	shared.BaseModel
-	VariantID   string                `gorm:"index" json:"variant_id"`
-	AttributeID string                `gorm:"index" json:"attribute_id"`
-	Attribute   ProductAttributeModel `gorm:"foreignKey:AttributeID;constraint:OnDelete:CASCADE" json:"attribute"`
-	Value       string                `gorm:"type:varchar(255)" json:"value"`
+	VariantID   string                `gorm:"index" json:"variant_id,omitempty"`
+	AttributeID string                `gorm:"index" json:"attribute_id,omitempty"`
+	Attribute   ProductAttributeModel `gorm:"foreignKey:AttributeID;constraint:OnDelete:CASCADE" json:"attribute,omitempty"`
+	Value       string                `gorm:"type:varchar(255)" json:"value,omitempty"`
 }
 
 func (VariantProductAttributeModel) TableName() string {

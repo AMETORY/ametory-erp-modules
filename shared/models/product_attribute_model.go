@@ -8,7 +8,7 @@ import (
 
 type ProductAttributeModel struct {
 	shared.BaseModel
-	Name string
+	Name string `json:"name,omitempty"`
 }
 
 func (ProductAttributeModel) TableName() string {
