@@ -64,6 +64,9 @@ var (
 			{"vendor": cruds},
 			{"supplier": cruds},
 		},
+		"company": {
+			{"company": append(cruds, "approval")},
+		},
 		"order": {
 			{"sales": cruds},
 			{"pos": cruds},

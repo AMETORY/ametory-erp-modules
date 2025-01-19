@@ -57,6 +57,7 @@ func (s *WarehouseService) GetWarehouses(request http.Request, search string) (p
 			"%"+search+"%",
 		)
 	}
+	stmt = stmt.Preload("Company")
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}

@@ -28,7 +28,7 @@ type ProductModel struct {
 	Brand           *BrandModel           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:BrandID" json:"brand,omitempty"`
 	BrandID         *string               `json:"brand_id,omitempty"`
 	ProductImages   []FileModel           `gorm:"-" json:"product_images,omitempty"`
-	TotalStock      float64               `gorm:"-" json:"total_stock,omitempty"`
+	TotalStock      float64               `gorm:"-" json:"total_stock"`
 	Status          string                `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 	Merchants       []*MerchantModel      `gorm:"many2many:product_merchants;constraint:OnDelete:CASCADE;" json:"merchants,omitempty"`
 	DisplayName     string                `gorm:"type:varchar(255)" json:"display_name,omitempty"`
@@ -51,10 +51,11 @@ func (p *ProductModel) BeforeSave(tx *gorm.DB) (err error) {
 }
 
 type ProductMerchant struct {
-	ProductID        string     `gorm:"primaryKey;uniqueIndex:product_merchants_product_id_merchant_id_key"`
-	MerchantID       string     `gorm:"primaryKey;uniqueIndex:product_merchants_product_id_merchant_id_key"`
-	LastUpdatedStock *time.Time `gorm:"column:last_updated_stock"`
-	LastStock        float64    `gorm:"column:last_stock"`
+	ProductModelID   string     `gorm:"primaryKey;uniqueIndex:product_merchants_product_id_merchant_id_key" json:"product_id"`
+	MerchantModelID  string     `gorm:"primaryKey;uniqueIndex:product_merchants_product_id_merchant_id_key" json:"merchant_id"`
+	LastUpdatedStock *time.Time `gorm:"column:last_updated_stock" json:"last_updated_stock"`
+	LastStock        float64    `gorm:"column:last_stock" json:"last_stock"`
+	Price            float64    `gorm:"column:price" json:"price"`
 }
 
 func (v *ProductModel) GenerateDisplayName(tx *gorm.DB) {

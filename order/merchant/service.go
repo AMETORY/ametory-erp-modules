@@ -1,6 +1,7 @@
 package merchant
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -72,6 +73,17 @@ func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, err
 	err := s.db.Preload("Company").Preload("User").Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
+func (s *MerchantService) GetActiveMerchantByID(id string) (*models.MerchantModel, error) {
+	var invoice models.MerchantModel
+	err := s.db.Preload("Company").Preload("User").Preload("DefaultWarehouse").Where("id = ? ", id).First(&invoice).Error
+	if invoice.Status == "PENDING" {
+		return nil, errors.New("merchant is not active")
+	}
+	if invoice.Status == "SUSPENDED" {
+		return nil, errors.New("merchant is suspended")
+	}
+	return &invoice, err
+}
 
 func (s *MerchantService) GetMerchants(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
@@ -114,9 +126,9 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 	pg := paginate.New()
 	var products []models.ProductModel
 
-	stmt := s.db.Joins("JOIN product_merchants ON product_merchants.product_id = products.id").
+	stmt := s.db.Joins("JOIN product_merchants ON product_merchants.product_model_id = products.id").
 		Joins("JOIN brands ON brands.id = products.brand_id").
-		Where("product_merchants.merchant_id = ?", merchantID)
+		Where("product_merchants.merchant_model_id = ?", merchantID)
 
 	if search != "" {
 		stmt = stmt.Where("products.name ILIKE ? OR products.sku ILIKE ? OR products.description ILIKE ? OR brands.name ILIKE ?",
@@ -125,6 +137,7 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			"%"+search+"%",
 			"%"+search+"%")
 	}
+	stmt = stmt.Select("products.*", "product_merchants.price as price").Model(&models.ProductModel{})
 
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&products)
@@ -137,7 +150,9 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 		if warehouseID != nil {
 			totalStock, _ := s.ctx.InventoryService.(*inventory.InventoryService).StockMovementService.GetCurrentStock(v.ID, *warehouseID)
 			v.TotalStock = totalStock
+
 		}
+
 		newItems = append(newItems, v)
 	}
 	page.Items = &newItems
@@ -152,4 +167,69 @@ func (s *MerchantService) CountMerchantByStatus(status string) (int64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+func (s *MerchantService) AddProductsToMerchant(merchantID string, productIDs []string) error {
+
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, productID := range productIDs {
+		var product models.ProductModel
+		if err := tx.Select("id", "price").Where("id = ?", productID).First(&product).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&models.ProductMerchant{}).Where("product_model_id = ? AND merchant_model_id = ?", productID, merchantID).FirstOrCreate(&models.ProductMerchant{
+			ProductModelID:  productID,
+			MerchantModelID: merchantID,
+			Price:           product.Price,
+		}).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) DeleteProductsFromMerchant(merchantID string, productIDs []string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Where("merchant_model_id = ? AND product_model_id IN (?)", merchantID, productIDs).
+		Delete(&models.ProductMerchant{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) EditProductPrice(merchantID, productID string, price float64) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.ProductMerchant{}).Where("product_model_id = ? AND merchant_model_id = ?", productID, merchantID).
+		Updates(map[string]interface{}{
+			"price": price,
+		}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }

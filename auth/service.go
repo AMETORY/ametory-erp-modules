@@ -248,3 +248,25 @@ func (s *AuthService) VerificationEmail(token string) error {
 	}
 	return nil
 }
+
+func (s *AuthService) GetCompanies(userID string) ([]models.CompanyModel, error) {
+	var user models.UserModel
+	// fmt.Println("s.db.", s.db)
+	// Cari user berdasarkan ID
+	if err := s.db.Preload("Companies", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+
+	for i, v := range user.Companies {
+		var merchants []models.MerchantModel
+		s.db.Where("company_id = ?", v.ID).Find(&merchants)
+		user.Companies[i].Merchants = merchants
+	}
+
+	return user.Companies, nil
+}

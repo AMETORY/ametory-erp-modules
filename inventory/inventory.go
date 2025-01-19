@@ -11,6 +11,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/inventory/product"
 	"github.com/AMETORY/ametory-erp-modules/inventory/purchase"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
+	"github.com/AMETORY/ametory-erp-modules/inventory/stock_opname"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
 	"gorm.io/gorm"
 )
@@ -26,6 +27,7 @@ type InventoryService struct {
 	StockMovementService    *stockmovement.StockMovementService
 	PurchaseService         *purchase.PurchaseService
 	BrandService            *brand.BrandService
+	StockOpenameService     *stock_opname.StockOpnameService
 }
 
 func NewInventoryService(ctx *context.ERPContext) *InventoryService {
@@ -41,10 +43,11 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 		fileService = fileSrv
 	}
 	stockmovementSrv := stockmovement.NewStockMovementService(ctx.DB, ctx)
+	productSrv := product.NewProductService(ctx.DB, ctx, fileService)
 	var service = InventoryService{
 		ctx:                     ctx,
 		MasterProductService:    product.NewMasterProductService(ctx.DB, ctx),
-		ProductService:          product.NewProductService(ctx.DB, ctx, fileService),
+		ProductService:          productSrv,
 		ProductCategoryService:  product.NewProductCategoryService(ctx.DB, ctx),
 		ProductAttributeService: product.NewProductAttributeService(ctx.DB, ctx),
 		PriceCategoryService:    product.NewPriceCategoryService(ctx.DB, ctx),
@@ -52,6 +55,7 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 		StockMovementService:    stockmovementSrv,
 		PurchaseService:         purchase.NewPurchaseService(ctx.DB, ctx, financeService, stockmovementSrv),
 		BrandService:            brand.NewBrandService(ctx.DB, ctx),
+		StockOpenameService:     stock_opname.NewStockOpnameService(ctx.DB, ctx, productSrv, stockmovementSrv),
 	}
 	err := service.Migrate()
 	if err != nil {
@@ -81,6 +85,10 @@ func (s *InventoryService) Migrate() error {
 	}
 	if err := purchase.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR MIGRATING PURCHASE", err)
+		return err
+	}
+	if err := stock_opname.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR MIGRATING STOCK OPNAME", err)
 		return err
 	}
 

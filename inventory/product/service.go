@@ -33,6 +33,7 @@ func Migrate(db *gorm.DB) error {
 		&models.VariantModel{},
 		&models.VariantProductAttributeModel{},
 		&models.ProductAttributeModel{},
+		&models.ProductMerchant{},
 	)
 }
 
@@ -88,11 +89,11 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	})
-	stmt = stmt.Joins("JOIN brands ON brands.id = products.brand_id")
-	stmt = stmt.Joins("JOIN product_categories ON product_categories.id = products.category_id")
-	stmt = stmt.Joins("JOIN product_variants ON product_variants.product_id = products.id")
+	stmt = stmt.Joins("LEFT JOIN brands ON brands.id = products.brand_id")
+	stmt = stmt.Joins("LEFT JOIN product_categories ON product_categories.id = products.category_id")
+	stmt = stmt.Joins("LEFT JOIN product_variants ON product_variants.product_id = products.id")
 	if search != "" {
-		stmt = stmt.Where("products.description ILIKE ? OR products.sku ILIKE ? OR products.name ILIKE ? OR products.barcode ILIKE ? OR brands.name ILIKE ? OR product_categories.name ILIKE ? OR product_variants.display_name ILIKE ?", "%"+search+"%", "%"+search+"%", "%"+
+		stmt = stmt.Where("products.description ILIKE ? OR products.sku ILIKE ? OR products.name ILIKE ? OR products.barcode ILIKE ? OR brands.name ILIKE ? OR product_categories.name ILIKE ? OR product_variants.display_name ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
@@ -108,6 +109,8 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	if request.Header.Get("ID-Distributor") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Distributor"))
 	}
+	stmt = stmt.Distinct("products.id")
+	stmt = stmt.Select("products.*")
 	stmt = stmt.Model(&models.ProductModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ProductModel{})

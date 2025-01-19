@@ -75,7 +75,35 @@ func (s *RBACService) CheckPermission(userID string, permissionNames []string) (
 		return db.Where("is_admin = ?", false).Preload("Permissions", func(db *gorm.DB) *gorm.DB {
 			return db.Where("name IN (?)", permissionNames)
 		})
-	}).First(&user, userID).Error; err != nil {
+	}).First(&user, "id = ?", userID).Error; err != nil {
+		return false, errors.New("user not found")
+	}
+
+	// Periksa izin
+	for _, roleName := range permissionNames {
+		for _, role := range user.Roles {
+			if role.IsSuperAdmin {
+				return true, nil
+			}
+			for _, permission := range role.Permissions {
+				if permission.Name == roleName {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
+func (s *RBACService) CheckPermissionWithCompanyID(userID, companyID string, permissionNames []string) (bool, error) {
+	var user models.UserModel
+
+	// Cari pengguna beserta peran dan izin
+	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
+		return db.Where("company_id = ?", companyID).Where("is_admin = ?", false).Preload("Permissions", func(db *gorm.DB) *gorm.DB {
+			return db.Where("name IN (?)", permissionNames)
+		})
+	}).First(&user, "id = ?", userID).Error; err != nil {
 		return false, errors.New("user not found")
 	}
 

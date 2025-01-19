@@ -52,15 +52,35 @@ func (s *CompanyService) DeleteCompany(id string) error {
 }
 
 func (s *CompanyService) GetCompanyByID(id string) (*models.CompanyModel, error) {
-	var invoice models.CompanyModel
-	err := s.ctx.DB.Where("id = ?", id).First(&invoice).Error
-	return &invoice, err
+	var company models.CompanyModel
+	err := s.ctx.DB.Where("id = ?", id).First(&company).Error
+	return &company, err
+}
+func (s *CompanyService) GetCompanyWithMerchantsByID(id string) (*models.CompanyModel, error) {
+	var company models.CompanyModel
+	err := s.ctx.DB.Where("id = ?", id).First(&company).Error
+	if err != nil {
+		return nil, err
+	}
+	var merchants []models.MerchantModel
+	var warehouses []models.WarehouseModel
+	err = s.ctx.DB.Where("company_id = ?", id).Find(&merchants).Error
+	if err != nil {
+		return nil, err
+	}
+	err = s.ctx.DB.Where("company_id = ?", id).Find(&warehouses).Error
+	if err != nil {
+		return nil, err
+	}
+	company.Merchants = merchants
+	company.Warehouses = warehouses
+	return &company, nil
 }
 
 func (s *CompanyService) GetCompanyByCode(code string) (*models.CompanyModel, error) {
-	var invoice models.CompanyModel
-	err := s.ctx.DB.Where("code = ?", code).First(&invoice).Error
-	return &invoice, err
+	var company models.CompanyModel
+	err := s.ctx.DB.Where("code = ?", code).First(&company).Error
+	return &company, err
 }
 
 func (s *CompanyService) GetCompanies(request http.Request, search string) (paginate.Page, error) {
