@@ -8,7 +8,8 @@ import (
 
 type ProductAttributeModel struct {
 	shared.BaseModel
-	Name string `json:"name,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Priority int    `json:"priority" gorm:"default:0"`
 }
 
 func (ProductAttributeModel) TableName() string {

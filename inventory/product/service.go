@@ -88,8 +88,14 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	})
+	stmt = stmt.Joins("JOIN brands ON brands.id = products.brand_id")
+	stmt = stmt.Joins("JOIN product_categories ON product_categories.id = products.category_id")
+	stmt = stmt.Joins("JOIN product_variants ON product_variants.product_id = products.id")
 	if search != "" {
-		stmt = stmt.Where("products.description ILIKE ? OR products.sku ILIKE ? OR products.name ILIKE ? OR products.barcode ILIKE ?",
+		stmt = stmt.Where("products.description ILIKE ? OR products.sku ILIKE ? OR products.name ILIKE ? OR products.barcode ILIKE ? OR brands.name ILIKE ? OR product_categories.name ILIKE ? OR product_variants.display_name ILIKE ?", "%"+search+"%", "%"+search+"%", "%"+
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
@@ -192,4 +198,21 @@ func (s *ProductService) GetProductsByMerchant(merchantID string, productIDs []s
 	}
 	err := db.Find(&products).Error
 	return products, err
+}
+
+func (s *ProductService) CreateProductVariant(data *models.VariantModel) error {
+	return s.db.Create(data).Error
+}
+func (s *ProductService) GetProductVariants(productID string) ([]models.VariantModel, error) {
+	var variants []models.VariantModel
+	err := s.db.Preload("Attributes.Attribute").Where("product_id = ?", productID).Find(&variants).Error
+	return variants, err
+}
+
+func (s *ProductService) UpdateProductVariant(id string, data *models.VariantModel) error {
+	return s.db.Where("id = ?", id).Updates(data).Error
+}
+
+func (s *ProductService) DeleteProductVariant(id string) error {
+	return s.db.Where("id = ?", id).Unscoped().Delete(&models.VariantModel{}).Error
 }

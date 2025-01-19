@@ -1,6 +1,9 @@
 package models
 
 import (
+	"strings"
+	"time"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -28,6 +31,7 @@ type ProductModel struct {
 	TotalStock      float64               `gorm:"-" json:"total_stock,omitempty"`
 	Status          string                `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 	Merchants       []*MerchantModel      `gorm:"many2many:product_merchants;constraint:OnDelete:CASCADE;" json:"merchants,omitempty"`
+	DisplayName     string                `gorm:"type:varchar(255)" json:"display_name,omitempty"`
 }
 
 func (ProductModel) TableName() string {
@@ -39,4 +43,31 @@ func (p *ProductModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return
+}
+
+func (p *ProductModel) BeforeSave(tx *gorm.DB) (err error) {
+	p.GenerateDisplayName(tx)
+	return
+}
+
+type ProductMerchant struct {
+	ProductID        string     `gorm:"primaryKey;uniqueIndex:product_merchants_product_id_merchant_id_key"`
+	MerchantID       string     `gorm:"primaryKey;uniqueIndex:product_merchants_product_id_merchant_id_key"`
+	LastUpdatedStock *time.Time `gorm:"column:last_updated_stock"`
+	LastStock        float64    `gorm:"column:last_stock"`
+}
+
+func (v *ProductModel) GenerateDisplayName(tx *gorm.DB) {
+
+	var displayNames []string
+	var brand BrandModel
+	if v.BrandID != nil {
+		tx.Find(&brand, "id = ?", v.BrandID)
+		displayNames = append(displayNames, brand.Name)
+	}
+
+	displayNames = append(displayNames, v.Name)
+
+	// Generate display name
+	v.DisplayName = strings.Join(displayNames, " ")
 }

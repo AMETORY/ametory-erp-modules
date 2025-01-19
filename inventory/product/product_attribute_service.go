@@ -45,7 +45,7 @@ func (s *ProductAttributeService) GetProductAttributes(request http.Request, sea
 			"%"+search+"%",
 		)
 	}
-	stmt = stmt.Model(&models.ProductAttributeModel{})
+	stmt = stmt.Model(&models.ProductAttributeModel{}).Order("priority ASC")
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ProductAttributeModel{})
 	page.Page = page.Page + 1

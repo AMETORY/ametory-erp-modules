@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
+	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -106,6 +107,41 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 
 	}
 	page.Items = &newItems
+	return page, nil
+}
+
+func (s *MerchantService) GetMerchantProducts(request http.Request, search string, merchantID string, warehouseID *string) (paginate.Page, error) {
+	pg := paginate.New()
+	var products []models.ProductModel
+
+	stmt := s.db.Joins("JOIN product_merchants ON product_merchants.product_id = products.id").
+		Joins("JOIN brands ON brands.id = products.brand_id").
+		Where("product_merchants.merchant_id = ?", merchantID)
+
+	if search != "" {
+		stmt = stmt.Where("products.name ILIKE ? OR products.sku ILIKE ? OR products.description ILIKE ? OR brands.name ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%")
+	}
+
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&products)
+	page.Page = page.Page + 1
+
+	items := page.Items.(*[]models.ProductModel)
+	newItems := make([]models.ProductModel, 0)
+
+	for _, v := range *items {
+		if warehouseID != nil {
+			totalStock, _ := s.ctx.InventoryService.(*inventory.InventoryService).StockMovementService.GetCurrentStock(v.ID, *warehouseID)
+			v.TotalStock = totalStock
+		}
+		newItems = append(newItems, v)
+	}
+	page.Items = &newItems
+
 	return page, nil
 }
 
