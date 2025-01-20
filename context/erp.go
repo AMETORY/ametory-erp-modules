@@ -27,6 +27,7 @@ type ERPContext struct {
 	IndonesiaRegService interface{} // Contoh: IndonesiaRegService
 	UserService         interface{} // Contoh: IndonesiaRegService
 	AppService          interface{}
+	InternalService     interface{}
 	// Add additional services here
 	EmailSender  *thirdparty.SMTPSender
 	WatzapClient *thirdparty.WatzapClient

@@ -270,3 +270,19 @@ func (s *AuthService) GetCompanies(userID string) ([]models.CompanyModel, error)
 
 	return user.Companies, nil
 }
+
+func (s *AuthService) UpdateLatLng(userID string, latitude, longitude float64) error {
+	user := &models.UserModel{}
+	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
+		return err
+	}
+
+	user.Latitude = latitude
+	user.Longitude = longitude
+
+	if err := s.db.Save(user).Error; err != nil {
+		return err
+	}
+
+	return nil
+}

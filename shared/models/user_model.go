@@ -27,6 +27,12 @@ type UserModel struct {
 	ProfilePicture             *FileModel         `json:"profile_picture,omitempty" gorm:"-"`
 	RoleID                     *string            `json:"role_id,omitempty" gorm:"-"`
 	BirthDate                  *time.Time         `gorm:"null" json:"birth_date,omitempty"`
+	Latitude                   float64            `json:"latitude" gorm:"type:decimal(10,8);default:-6.9951754;not null"`
+	Longitude                  float64            `json:"longitude" gorm:"type:decimal(11,8);default:107.5946778;not null"`
+	ProvinceID                 *string            `json:"province_id,omitempty" gorm:"type:char(2);index;constraint:OnDelete:SET NULL;"`
+	RegencyID                  *string            `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
+	DistrictID                 *string            `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
+	VillageID                  *string            `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {
