@@ -17,6 +17,7 @@ type UserModel struct {
 	Code                       *string            `gorm:"unique;null" json:"code,omitempty"`
 	Email                      string             `gorm:"unique;not null" json:"email,omitempty"`
 	PhoneNumber                *string            `gorm:"null" json:"phone_number,omitempty"`
+	Address                    string             `json:"address"`
 	Password                   string             `gorm:"not null" json:"-"`
 	VerifiedAt                 *time.Time         `gorm:"index" json:"verified_at,omitempty"`
 	VerificationToken          string             `json:"verification_token,omitempty"`

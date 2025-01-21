@@ -3,6 +3,7 @@ package product
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/file"
@@ -34,6 +35,7 @@ func Migrate(db *gorm.DB) error {
 		&models.VariantProductAttributeModel{},
 		&models.ProductAttributeModel{},
 		&models.ProductMerchant{},
+		&models.DiscountModel{},
 	)
 }
 
@@ -117,9 +119,16 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	page.Page = page.Page + 1
 	items := page.Items.(*[]models.ProductModel)
 	newItems := make([]models.ProductModel, 0)
+	var warehouseID *string
+	warehouseIDStr := request.Header.Get("ID-Warehouse")
+	if warehouseIDStr != "" {
+		warehouseID = &warehouseIDStr
+	}
 
 	for _, v := range *items {
 		img, err := s.ListImagesOfProduct(v.ID)
+		activeDiscount, _ := s.GetFirstActiveDiscount(v.ID)
+		v.ActiveDiscount = activeDiscount
 		if err == nil {
 			v.ProductImages = img
 		}
@@ -128,7 +137,8 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 			v.Prices = prices
 		}
 		newItems = append(newItems, v)
-
+		stock, _ := s.GetStock(v.ID, &request, warehouseID)
+		v.TotalStock = stock
 	}
 	page.Items = &newItems
 	return page, nil
@@ -218,4 +228,122 @@ func (s *ProductService) UpdateProductVariant(id string, data *models.VariantMod
 
 func (s *ProductService) DeleteProductVariant(id string) error {
 	return s.db.Where("id = ?", id).Unscoped().Delete(&models.VariantModel{}).Error
+}
+
+func (s *ProductService) AddDiscount(productID string, discountType models.DiscountType, value float64, startDate time.Time, endDate *time.Time) (*models.DiscountModel, error) {
+	// Validasi tanggal jika endDate tidak nil
+	if endDate != nil && startDate.After(*endDate) {
+		return nil, errors.New("start date must be before end date")
+	}
+
+	// Buat diskon
+	discount := models.DiscountModel{
+		ProductID: productID,
+		Type:      discountType,
+		Value:     value,
+		StartDate: startDate,
+		EndDate:   endDate,
+		IsActive:  true,
+	}
+	if err := s.db.Create(&discount).Error; err != nil {
+		return nil, err
+	}
+
+	return &discount, nil
+}
+
+func (s *ProductService) GetFirstActiveDiscount(productID string) (*models.DiscountModel, error) {
+	var discount *models.DiscountModel
+	err := s.db.Where("product_id = ? AND is_active = ? AND start_date <= ?", productID, true, time.Now()).
+		Where("end_date IS NULL OR end_date >= ?", time.Now()).Order("created_at DESC").
+		First(&discount).Error
+	return discount, err
+}
+
+func (s *ProductService) GetActiveDiscounts(productID string) ([]models.DiscountModel, error) {
+	var discounts []models.DiscountModel
+	err := s.db.Where("product_id = ? AND is_active = ? AND start_date <= ?", productID, true, time.Now()).
+		Where("end_date IS NULL OR end_date >= ?", time.Now()).
+		Find(&discounts).Error
+	return discounts, err
+}
+
+func (s *ProductService) GetAllDiscountByProductID(productID string) ([]models.DiscountModel, error) {
+	var discounts []models.DiscountModel
+	err := s.db.Where("product_id = ?", productID).Find(&discounts).Error
+	return discounts, err
+}
+
+func (s *ProductService) GetBestDealByPercentage(limit int) ([]models.ProductModel, error) {
+	var products []models.ProductModel
+	err := s.db.Joins("JOIN discounts ON products.id = discounts.product_id").
+		Where("discounts.type = ? AND discounts.is_active = ? AND discounts.start_date <= ?", models.DiscountPercentage, true, time.Now()).
+		Where("discounts.end_date IS NULL OR discounts.end_date >= ?", time.Now()).
+		Order("discounts.value DESC").
+		Limit(limit).
+		Find(&products).Error
+	return products, err
+}
+
+func (s *ProductService) GetBestDealByAmount(limit int) ([]models.ProductModel, error) {
+	var products []models.ProductModel
+	err := s.db.Joins("JOIN discounts ON products.id = discounts.product_id").
+		Where("discounts.type = ? AND discounts.is_active = ? AND discounts.start_date <= ?", models.DiscountAmount, true, time.Now()).
+		Where("discounts.end_date IS NULL OR discounts.end_date >= ?", time.Now()).
+		Order("discounts.value DESC").
+		Limit(limit).
+		Find(&products).Error
+	return products, err
+}
+
+func (s *ProductService) GetBestDealByDiscountedPrice(limit int) ([]models.ProductModel, error) {
+	var products []models.ProductModel
+	err := s.db.Joins("JOIN discounts ON products.id = discounts.product_id").
+		Where("discounts.is_active = ? AND discounts.start_date <= ?", true, time.Now()).
+		Where("discounts.end_date IS NULL OR discounts.end_date >= ?", time.Now()).
+		Select("products.*, (products.price - CASE WHEN discounts.type = 'PERCENTAGE' THEN products.price * discounts.value / 100 ELSE discounts.value END) as discounted_price").
+		Order("discounted_price ASC").
+		Limit(limit).
+		Find(&products).Error
+	return products, err
+}
+
+func (s *ProductService) CalculateDiscountedPrice(productID string, originalPrice float64) (float64, error) {
+	// Dapatkan diskon aktif untuk produk
+	discounts, err := s.GetActiveDiscounts(productID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Hitung harga setelah diskon
+	discountedPrice := originalPrice
+	for _, discount := range discounts {
+		switch discount.Type {
+		case models.DiscountPercentage:
+			discountedPrice -= originalPrice * (discount.Value / 100)
+		case models.DiscountAmount:
+			discountedPrice -= discount.Value
+		}
+	}
+
+	// Pastikan harga tidak negatif
+	if discountedPrice < 0 {
+		discountedPrice = 0
+	}
+
+	return discountedPrice, nil
+}
+
+func (s *ProductService) UpdateDiscount(discountID string, data models.DiscountModel) error {
+	// Validasi tanggal
+	if data.EndDate != nil && data.StartDate.After(*data.EndDate) {
+		return errors.New("start date must be before end date")
+	}
+
+	return s.db.Model(&models.DiscountModel{}).Where("id = ?", discountID).Save(&data).Error
+}
+
+// DeactivateDiscount: Menonaktifkan diskon
+func (s *ProductService) DeactivateDiscount(discountID string) error {
+	return s.db.Model(&models.DiscountModel{}).Where("id = ?", discountID).Update("is_active", false).Error
 }

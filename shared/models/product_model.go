@@ -32,6 +32,8 @@ type ProductModel struct {
 	Status          string                `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 	Merchants       []*MerchantModel      `gorm:"many2many:product_merchants;constraint:OnDelete:CASCADE;" json:"merchants,omitempty"`
 	DisplayName     string                `gorm:"type:varchar(255)" json:"display_name,omitempty"`
+	Discounts       []DiscountModel       `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"discounts,omitempty"`
+	ActiveDiscount  *DiscountModel        `gorm:"-" json:"active_discount,omitempty"`
 }
 
 func (ProductModel) TableName() string {

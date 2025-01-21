@@ -31,6 +31,21 @@ func RandString(n int, uppercase bool) string {
 	return string(b)
 }
 
+// RandomStringNumber generates a random string of length n including numbers
+func RandomStringNumber(n int, uppercase bool) string {
+	r := rand.NewSource(time.Now().UnixNano())
+	rng := rand.New(r)
+	letters := []rune("0123456789")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rng.Intn(len(letters))]
+	}
+	if uppercase {
+		return strings.ToUpper(string(b))
+	}
+	return string(b)
+}
+
 // CreateUsernameFromFullName creates a username from a full name
 func CreateUsernameFromFullName(fullName string) string {
 	letters := []rune(fullName)
