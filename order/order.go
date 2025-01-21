@@ -6,6 +6,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
+	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"github.com/AMETORY/ametory-erp-modules/order/pos"
 	"github.com/AMETORY/ametory-erp-modules/order/sales"
@@ -26,12 +27,13 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 	if ok {
 		financeService = financeSrv
 	}
+	inventoryService := inventory.NewInventoryService(ctx)
 
 	var service = OrderService{
 		ctx:             ctx,
 		SalesService:    sales.NewSalesService(ctx.DB, ctx, financeService),
 		PosService:      pos.NewPOSService(ctx.DB, ctx, financeService),
-		MerchantService: merchant.NewMerchantService(ctx.DB, ctx, financeService),
+		MerchantService: merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
 	}
 	err := service.Migrate()
 	if err != nil {

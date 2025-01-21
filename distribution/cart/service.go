@@ -23,6 +23,25 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.CartModel{}, &models.CartItemModel{})
 }
 
+func (s *CartService) GetCartByID(cartID string) (*models.CartModel, error) {
+	var cart models.CartModel
+	err := s.db.Preload("Items.Product").Where("id = ?", cartID).First(&cart).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("cart not found")
+		}
+		return nil, err
+	}
+	subTotal, _ := s.CountSubTotalByCartID(cartID)
+	cart.SubTotal = subTotal
+	for i, v := range cart.Items {
+		img, _ := s.inventoryService.ProductService.ListImagesOfProduct(v.ProductID)
+		v.Product.ProductImages = img
+		cart.Items[i] = v
+	}
+	return &cart, nil
+}
+
 func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, error) {
 	var cart models.CartModel
 	err := s.db.Preload("Items.Product").Where("user_id = ? AND status = ?", userID, "ACTIVE").First(&cart).Error
@@ -140,6 +159,17 @@ func (s *CartService) FinishCart(userID string) error {
 	return nil
 }
 
+func (s *CartService) CountSubTotalByCartID(cartID string) (float64, error) {
+	var subTotal float64
+	err := s.db.Model(&models.CartItemModel{}).
+		Where("cart_id = ?", cartID).
+		Select("SUM(quantity * price) AS sub_total").
+		Scan(&subTotal).Error
+	if err != nil {
+		return 0, err
+	}
+	return subTotal, nil
+}
 func (s *CartService) CountSubTotal(userID string) (float64, error) {
 	var subTotal float64
 	err := s.db.Model(&models.CartItemModel{}).

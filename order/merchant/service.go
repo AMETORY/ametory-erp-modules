@@ -14,13 +14,14 @@ import (
 )
 
 type MerchantService struct {
-	ctx            *context.ERPContext
-	db             *gorm.DB
-	financeService *finance.FinanceService
+	ctx              *context.ERPContext
+	db               *gorm.DB
+	financeService   *finance.FinanceService
+	inventoryService *inventory.InventoryService
 }
 
-func NewMerchantService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService) *MerchantService {
-	return &MerchantService{db: db, ctx: ctx, financeService: financeService}
+func NewMerchantService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, inventoryService *inventory.InventoryService) *MerchantService {
+	return &MerchantService{db: db, ctx: ctx, financeService: financeService, inventoryService: inventoryService}
 }
 
 func Migrate(db *gorm.DB) error {
@@ -31,14 +32,15 @@ func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) (
 	var merchants []models.MerchantModel
 
 	rows, err := s.db.Raw(`
-		SELECT *, (
+		SELECT * FROM (SELECT *, (
 			6371 * acos(
 				cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
 				sin(radians(?)) * sin(radians(latitude))
 			)
 		) AS distance
-		FROM merchant
-		HAVING distance <= ?
+		FROM pos_merchants
+		WHERE status = 'ACTIVE') t
+		WHERE distance <= ?
 		ORDER BY distance
 	`, lat, lng, lat, radius).Rows()
 	if err != nil {
@@ -232,4 +234,23 @@ func (s *MerchantService) EditProductPrice(merchantID, productID string, price f
 	}
 
 	return tx.Commit().Error
+}
+
+func (s *MerchantService) GetProductAvailableByMerchant(merchant models.MerchantModel, orderRequest *models.OrderRequestModel) error {
+	var totalPrice float64
+	for i, item := range orderRequest.Items {
+		var product models.ProductModel
+		s.db.Find(&product, "id = ?", item.ProductID)
+		availableStock, _ := s.inventoryService.ProductService.GetStock(product.ID, nil, merchant.DefaultWarehouseID)
+		if availableStock < item.Quantity {
+			item.Status = "OUT_OF_STOCK"
+		} else {
+			item.Status = "AVAILABLE"
+			totalPrice += float64(item.Quantity) * product.Price
+
+		}
+		orderRequest.Items[i] = item
+	}
+	orderRequest.TotalPrice = totalPrice
+	return nil
 }

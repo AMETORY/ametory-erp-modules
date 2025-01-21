@@ -28,7 +28,28 @@ func NewOrderRequestService(db *gorm.DB, ctx *context.ERPContext, merchantServic
 	return &OrderRequestService{db: db, ctx: ctx, merchantService: merchantService, productService: productService, auditTrailService: auditTrailSrv}
 }
 
+func (s *OrderRequestService) GetOrderRequestByID(orderRequestID string) (*models.OrderRequestModel, error) {
+	orderRequest := models.OrderRequestModel{}
+	err := s.db.Preload("Items").Where("id = ?", orderRequestID).First(&orderRequest).Error
+	if err != nil {
+		return nil, err
+	}
+	return &orderRequest, nil
+}
 func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng float64, expiresAt time.Time) (*models.OrderRequestModel, error) {
+	pendingRequest := models.OrderRequestModel{}
+	err := s.db.Where("user_id = ? AND status = ?", userID, "PENDING").First(&pendingRequest).Error
+	if err == nil {
+		if pendingRequest.ExpiresAt.Before(time.Now()) {
+			pendingRequest.Status = "EXPIRED"
+			if err := s.db.Save(&pendingRequest).Error; err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("you have a pending order request")
+		}
+	}
+
 	if s.auditTrailService == nil {
 		return nil, fmt.Errorf("audit trail service is not initialized")
 	}
@@ -36,7 +57,7 @@ func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng
 		UserID:    userID,
 		UserLat:   userLat,
 		UserLng:   userLng,
-		Status:    "Pending",
+		Status:    "PENDING",
 		ExpiresAt: expiresAt,
 	}
 	if err := s.db.Create(&orderRequest).Error; err != nil {
@@ -44,6 +65,17 @@ func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng
 	}
 	s.auditTrailService.LogAction(userID, "CREATE", "ORDER_REQUEST", orderRequest.ID, "{}")
 	return &orderRequest, nil
+}
+
+func (s *OrderRequestService) AddOrderRequestItem(orderRequestID string, item models.OrderRequestItemModel) error {
+	orderRequest := models.OrderRequestModel{}
+	err := s.db.Where("id = ?", orderRequestID).First(&orderRequest).Error
+	if err != nil {
+		return err
+	}
+
+	return s.db.Model(&orderRequest).Association("Items").Append(&item)
+
 }
 
 func (s *OrderRequestService) GetAvailableMerchant(orderRequestID string, maxDistance float64) ([]models.MerchantModel, error) {
@@ -54,28 +86,12 @@ func (s *OrderRequestService) GetAvailableMerchant(orderRequestID string, maxDis
 		return nil, err
 	}
 
-	merchants, err := s.merchantService.GetNearbyMerchants(orderRequest.UserLat, orderRequest.UserLng, maxDistance)
+	merchants, err := s.merchantService.GetNearbyMerchants(orderRequest.UserLat, orderRequest.UserLng, maxDistance) // in km
 	if err != nil {
 		return nil, err
 	}
-	productIDs := []string{}
-	for _, v := range orderRequest.Items {
-		productIDs = append(productIDs, *v.ProductID)
 
-	}
-	availableMerchants := []models.MerchantModel{}
-	for _, merchant := range merchants {
-		// Dapatkan produk dari merchant
-		products, err := s.productService.GetProductsByMerchant(merchant.ID, productIDs)
-		if err != nil {
-			return nil, err
-		}
-		if len(products) == len(productIDs) {
-			availableMerchants = append(availableMerchants, merchant)
-		}
-	}
-
-	return availableMerchants, nil
+	return merchants, nil
 }
 
 // FinishOrderRequest digunakan untuk mengupdate status order request menjadi "Completed"

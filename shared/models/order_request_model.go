@@ -21,7 +21,7 @@ type OrderRequestModel struct {
 	TotalPrice         float64                 `json:"total_price,omitempty"`
 	ShippingFee        float64                 `json:"shipping_fee,omitempty"`
 	ExpiresAt          time.Time               `json:"expires_at,omitempty"` // Batas waktu pengambilan order
-	Items              []OrderRequestItemModel `gorm:"foreignKey:OrderRequestID" json:"items,omitempty"`
+	Items              []OrderRequestItemModel `gorm:"foreignKey:OrderRequestID;constraint:OnDelete:CASCADE" json:"items"`
 	CancellationReason string                  `json:"cancellation_reason,omitempty"`
 }
 
@@ -45,6 +45,7 @@ type OrderRequestItemModel struct {
 	DiscountAmount  float64 `json:"discount_amount"`
 	Total           float64 `json:"total"`
 	ProductID       *string `json:"product_id"`
+	Status          string  `json:"status" gorm:"-"`
 }
 
 func (OrderRequestItemModel) TableName() string {
