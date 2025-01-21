@@ -31,6 +31,8 @@ func (BrandModel) TableName() string {
 }
 
 func (bm *BrandModel) BeforeCreate(tx *gorm.DB) (err error) {
-	bm.ID = uuid.NewString()
+	if bm.ID == "" {
+		bm.ID = uuid.NewString()
+	}
 	return
 }

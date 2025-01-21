@@ -1,6 +1,7 @@
 package models
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ type ProductModel struct {
 	SKU             *string               `gorm:"type:varchar(255)" json:"sku,omitempty"`
 	Barcode         *string               `gorm:"type:varchar(255)" json:"barcode,omitempty"`
 	Price           float64               `gorm:"not null;default:0" json:"price,omitempty"`
+	OriginalPrice   float64               `gorm:"-" json:"original_price,omitempty"`
 	CompanyID       *string               `json:"company_id,omitempty"`
 	Company         *CompanyModel         `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 	DistributorID   *string               `gorm:"foreignKey:DistributorID;references:ID;constraint:OnDelete:CASCADE" json:"distributor_id,omitempty"`
@@ -34,10 +36,29 @@ type ProductModel struct {
 	DisplayName     string                `gorm:"type:varchar(255)" json:"display_name,omitempty"`
 	Discounts       []DiscountModel       `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"discounts,omitempty"`
 	ActiveDiscount  *DiscountModel        `gorm:"-" json:"active_discount,omitempty"`
+	PriceList       []float64             `gorm:"-" json:"price_list,omitempty"`
 }
 
 func (ProductModel) TableName() string {
 	return "products"
+}
+
+func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
+	var pp ProductModel
+	tx.Select("price").Model(&p).First(&pp, "id = ?", p.ID)
+	p.OriginalPrice = pp.Price
+
+	var pm []ProductMerchant
+	tx.Select("price").Where("product_model_id = ?", p.ID).Find(&pm)
+	p.PriceList = []float64{pp.Price}
+	for _, v := range pm {
+		if v.Price != p.Price {
+			p.PriceList = append(p.PriceList, v.Price)
+		}
+	}
+
+	sort.Float64s(p.PriceList)
+	return
 }
 
 func (p *ProductModel) BeforeCreate(tx *gorm.DB) (err error) {

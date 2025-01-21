@@ -68,6 +68,7 @@ func (s *ProductService) GetProductByID(id string, request *http.Request) (*mode
 		}
 	}
 	stock, _ := s.GetStock(product.ID, request, warehouseID)
+
 	product.TotalStock = stock
 	return &product, err
 }
@@ -128,7 +129,9 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	for _, v := range *items {
 		img, err := s.ListImagesOfProduct(v.ID)
 		activeDiscount, _ := s.GetFirstActiveDiscount(v.ID)
-		v.ActiveDiscount = activeDiscount
+		if activeDiscount.ID != "" {
+			v.ActiveDiscount = activeDiscount
+		}
 		if err == nil {
 			v.ProductImages = img
 		}
@@ -136,9 +139,10 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 		if err == nil {
 			v.Prices = prices
 		}
-		newItems = append(newItems, v)
+
 		stock, _ := s.GetStock(v.ID, &request, warehouseID)
 		v.TotalStock = stock
+		newItems = append(newItems, v)
 	}
 	page.Items = &newItems
 	return page, nil
