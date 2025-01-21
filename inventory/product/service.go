@@ -144,6 +144,12 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	return page, nil
 }
 
+func (s *ProductService) CountProductByMerchantID(merchantID string) (int64, error) {
+	var count int64
+	err := s.db.Model(&models.ProductMerchant{}).Where("merchant_model_id = ?", merchantID).Count(&count).Error
+	return count, err
+}
+
 func (s *ProductService) CreatePriceCategory(data *models.PriceCategoryModel) error {
 	return s.db.Create(data).Error
 }
