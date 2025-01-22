@@ -174,7 +174,7 @@ func (s *CartService) CountSubTotal(userID string) (float64, error) {
 	var subTotal float64
 	err := s.db.Model(&models.CartItemModel{}).
 		Where("cart_id IN (SELECT id FROM carts WHERE user_id = ? AND status = ?)", userID, "ACTIVE").
-		Select("SUM(quantity * price) AS sub_total").
+		Select("COALESCE(SUM(quantity * price), 0) AS sub_total").
 		Scan(&subTotal).Error
 	if err != nil {
 		return 0, err

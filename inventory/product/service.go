@@ -2,6 +2,7 @@ package product
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -53,7 +54,7 @@ func (s *ProductService) DeleteProduct(id string) error {
 
 func (s *ProductService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
 	var product models.ProductModel
-	err := s.db.Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
@@ -70,6 +71,12 @@ func (s *ProductService) GetProductByID(id string, request *http.Request) (*mode
 	stock, _ := s.GetStock(product.ID, request, warehouseID)
 
 	product.TotalStock = stock
+	for i, v := range product.Variants {
+		variantStock, _ := s.GetVariantStock(product.ID, v.ID, request, warehouseID)
+		v.TotalStock = variantStock
+		product.Variants[i] = v
+		fmt.Println("VARIANT STOCK", v.ID, variantStock)
+	}
 	return &product, err
 }
 
@@ -82,12 +89,13 @@ func (s *ProductService) GetProductByCode(code string) (*models.ProductModel, er
 	}).Where("sku = ?", code).First(&product).Error
 	product.Prices, _ = s.ListPricesOfProduct(product.ID)
 	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
+
 	return &product, err
 }
 
 func (s *ProductService) GetProducts(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
+	stmt := s.db.Preload("Variants").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
@@ -126,23 +134,31 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 		warehouseID = &warehouseIDStr
 	}
 
-	for _, v := range *items {
-		img, err := s.ListImagesOfProduct(v.ID)
-		activeDiscount, _ := s.GetFirstActiveDiscount(v.ID)
+	for _, item := range *items {
+		img, err := s.ListImagesOfProduct(item.ID)
+		activeDiscount, _ := s.GetFirstActiveDiscount(item.ID)
 		if activeDiscount.ID != "" {
-			v.ActiveDiscount = activeDiscount
+			item.ActiveDiscount = activeDiscount
 		}
 		if err == nil {
-			v.ProductImages = img
+			item.ProductImages = img
 		}
-		prices, err := s.ListPricesOfProduct(v.ID)
+		prices, err := s.ListPricesOfProduct(item.ID)
 		if err == nil {
-			v.Prices = prices
+			item.Prices = prices
 		}
 
-		stock, _ := s.GetStock(v.ID, &request, warehouseID)
-		v.TotalStock = stock
-		newItems = append(newItems, v)
+		stock, _ := s.GetStock(item.ID, &request, warehouseID)
+		item.TotalStock = stock
+
+		item.TotalStock = stock
+		for i, variant := range item.Variants {
+			variantStock, _ := s.GetVariantStock(item.ID, variant.ID, &request, warehouseID)
+			item.TotalStock = variantStock
+			item.Variants[i] = variant
+			fmt.Println("VARIANT STOCK", variant.ID, variantStock)
+		}
+		newItems = append(newItems, item)
 	}
 	page.Items = &newItems
 	return page, nil
@@ -213,6 +229,33 @@ func (s *ProductService) GetStock(productID string, request *http.Request, wareh
 	return totalStock, nil
 }
 
+func (s *ProductService) GetVariantStock(productID string, variantID string, request *http.Request, warehouseID *string) (float64, error) {
+
+	var totalStock float64
+	db := s.db.Table("stock_movements")
+	if request != nil {
+		if request.Header.Get("ID-Company") != "" {
+			db = db.Where("company_id = ?", request.Header.Get("ID-Company"))
+		}
+		if request.Header.Get("ID-Distributor") != "" {
+			db = db.Where("company_id = ?", request.Header.Get("ID-Distributor"))
+		}
+	}
+
+	if warehouseID != nil {
+		db = db.Where("warehouse_id = ?", *warehouseID)
+	}
+
+	if err := db.
+		Where("product_id = ? AND variant_id = ?", productID, variantID).
+		Select("COALESCE(SUM(quantity), 0)").
+		Scan(&totalStock).Error; err != nil {
+		return 0, err
+	}
+
+	return totalStock, nil
+}
+
 func (s *ProductService) GetProductsByMerchant(merchantID string, productIDs []string) ([]models.ProductModel, error) {
 	var products []models.ProductModel
 	db := s.db.Where("merchant_id = ?", merchantID)
@@ -226,9 +269,20 @@ func (s *ProductService) GetProductsByMerchant(merchantID string, productIDs []s
 func (s *ProductService) CreateProductVariant(data *models.VariantModel) error {
 	return s.db.Create(data).Error
 }
-func (s *ProductService) GetProductVariants(productID string) ([]models.VariantModel, error) {
+func (s *ProductService) GetProductVariants(productID string, request http.Request) ([]models.VariantModel, error) {
 	var variants []models.VariantModel
 	err := s.db.Preload("Attributes.Attribute").Where("product_id = ?", productID).Find(&variants).Error
+	var warehouseID *string
+	warehouseIDStr := request.Header.Get("ID-Warehouse")
+	if warehouseIDStr != "" {
+		warehouseID = &warehouseIDStr
+	}
+	for i, v := range variants {
+		variantStock, _ := s.GetVariantStock(productID, v.ID, &request, warehouseID)
+		v.TotalStock = variantStock
+		variants[i] = v
+		fmt.Println("VARIANT STOCK", v.ID, variantStock)
+	}
 	return variants, err
 }
 

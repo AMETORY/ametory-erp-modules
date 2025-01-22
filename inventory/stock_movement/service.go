@@ -69,10 +69,11 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 }
 
 // AddMovement menambahkan pergerakan stok
-func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, movementType models.MovementType, referenceID, description string) (*models.StockMovementModel, error) {
+func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseID string, variantID, merchantID *string, distributorID *string, quantity float64, movementType models.MovementType, referenceID, description string) (*models.StockMovementModel, error) {
 	movement := models.StockMovementModel{
 		Date:          date,
 		ProductID:     productID,
+		VariantID:     variantID,
 		WarehouseID:   warehouseID,
 		Quantity:      quantity,
 		Type:          movementType,
@@ -136,22 +137,22 @@ func (s *StockMovementService) GetMovementByWarehouseID(warehouseID string) ([]m
 }
 
 // CreateAdjustment menambahkan pergerakan stok dengan tipe ADJUST
-func (s *StockMovementService) CreateAdjustment(date time.Time, productID, warehouseID string, merchantID *string, distributorID *string, quantity float64, referenceID, description string) (*models.StockMovementModel, error) {
-	return s.AddMovement(date, productID, warehouseID, merchantID, distributorID, quantity, models.MovementTypeAdjust, referenceID, description)
+func (s *StockMovementService) CreateAdjustment(date time.Time, productID, warehouseID string, variantID, merchantID *string, distributorID *string, quantity float64, referenceID, description string) (*models.StockMovementModel, error) {
+	return s.AddMovement(date, productID, warehouseID, variantID, merchantID, distributorID, quantity, models.MovementTypeAdjust, referenceID, description)
 }
 
 // TransferStock melakukan transfer stok dari gudang sumber ke gudang tujuan
-func (s *StockMovementService) TransferStock(date time.Time, sourceWarehouseID, destinationWarehouseID string, productID string, quantity float64, description string) (*models.StockMovementModel, error) {
+func (s *StockMovementService) TransferStock(date time.Time, sourceWarehouseID, destinationWarehouseID string, productID string, variantID *string, quantity float64, description string) (*models.StockMovementModel, error) {
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
 		var movement *models.StockMovementModel
 		// membuat pergerakan stok di gudang sumber
-		movement, err := s.AddMovement(date, productID, sourceWarehouseID, nil, nil, -quantity, models.MovementTypeTransfer, "", description)
+		movement, err := s.AddMovement(date, productID, sourceWarehouseID, variantID, nil, nil, -quantity, models.MovementTypeTransfer, "", description)
 		if err != nil {
 			return err
 		}
 
 		// membuat pergerakan stok di gudang tujuan
-		movement2, err := s.AddMovement(date, productID, destinationWarehouseID, nil, nil, quantity, models.MovementTypeTransfer, movement.ID, description)
+		movement2, err := s.AddMovement(date, productID, destinationWarehouseID, variantID, nil, nil, quantity, models.MovementTypeTransfer, movement.ID, description)
 		if err != nil {
 			return err
 		}

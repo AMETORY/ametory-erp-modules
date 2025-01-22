@@ -12,12 +12,13 @@ import (
 type VariantModel struct {
 	shared.BaseModel
 	ProductID   string                         `gorm:"index" json:"product_id,omitempty"`
-	Product     ProductModel                   `gorm:"foreignKey:ProductID" json:"product,omitempty"`
+	Product     *ProductModel                  `gorm:"foreignKey:ProductID" json:"product,omitempty"`
 	SKU         string                         `gorm:"type:varchar(255);not null" json:"sku,omitempty"`
 	Barcode     *string                        `gorm:"type:varchar(255)" json:"barcode,omitempty"`
 	Price       float64                        `gorm:"not null;default:0" json:"price,omitempty"`
 	Attributes  []VariantProductAttributeModel `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE" json:"attributes,omitempty"`
 	DisplayName string                         `gorm:"type:varchar(255)" json:"display_name,omitempty"`
+	TotalStock  float64                        `gorm:"-" json:"total_stock"`
 }
 
 func (VariantModel) TableName() string {

@@ -37,6 +37,7 @@ type ProductModel struct {
 	Discounts       []DiscountModel       `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"discounts,omitempty"`
 	ActiveDiscount  *DiscountModel        `gorm:"-" json:"active_discount,omitempty"`
 	PriceList       []float64             `gorm:"-" json:"price_list,omitempty"`
+	Variants        []VariantModel        `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"variants,omitempty"`
 }
 
 func (ProductModel) TableName() string {

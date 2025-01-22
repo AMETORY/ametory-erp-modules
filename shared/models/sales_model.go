@@ -55,6 +55,8 @@ type SalesItemModel struct {
 	SubtotalBeforeDisc float64         `json:"subtotal_before_disc"`
 	ProductID          *string         `json:"product_id"`
 	Product            *ProductModel   `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
+	VariantID          *string         `json:"variant_id,omitempty"`
+	Variant            *VariantModel   `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
 	WarehouseID        *string         `json:"warehouse_id"`
 	Warehouse          *WarehouseModel `gorm:"foreignKey:WarehouseID;constraint:OnDelete:CASCADE"`
 	SaleAccountID      *string         `json:"sale_account_id"`

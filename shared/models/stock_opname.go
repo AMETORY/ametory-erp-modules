@@ -28,6 +28,7 @@ type StockOpnameDetail struct {
 	shared.BaseModel
 	StockOpnameID string  `gorm:"not null"` // ID stock opname header
 	ProductID     string  `gorm:"not null"` // ID produk
+	VariantID     *string `json:"variant_id,omitempty"`
 	Quantity      float64 `gorm:"not null"` // Jumlah stok fisik
 	SystemQty     float64 `gorm:"not null"` // Jumlah stok di sistem
 	Difference    float64 `gorm:"not null"` // Selisih stok (Quantity - SystemQty)

@@ -23,6 +23,8 @@ type StockMovementModel struct {
 	Description       string            `gorm:"null" json:"description"`
 	ProductID         string            `gorm:"not null" json:"product_id"` // Relasi ke product
 	Product           ProductModel      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:ProductID" json:"product"`
+	VariantID         *string           `json:"variant_id,omitempty"`
+	Variant           *VariantModel     `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
 	SourceWarehouseID string            `gorm:"-" json:"source_warehouse_id"` // Relasi ke warehouse
 	WarehouseID       string            `gorm:"not null" json:"warehouse_id"` // Relasi ke warehouse
 	Warehouse         WarehouseModel    `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:WarehouseID" json:"warehouse"`
