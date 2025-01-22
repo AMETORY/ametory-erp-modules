@@ -12,6 +12,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ProductService struct {
@@ -39,6 +40,8 @@ func Migrate(db *gorm.DB) error {
 		&models.ProductMerchant{},
 		&models.DiscountModel{},
 		&models.TagModel{},
+		&models.ProductTag{},
+		&models.VariantTag{},
 	)
 }
 
@@ -46,8 +49,8 @@ func (s *ProductService) CreateProduct(data *models.ProductModel) error {
 	return s.db.Create(data).Error
 }
 
-func (s *ProductService) UpdateProduct(id string, data *models.ProductModel) error {
-	return s.db.Where("id = ?", id).Updates(data).Error
+func (s *ProductService) UpdateProduct(data *models.ProductModel) error {
+	return s.db.Omit(clause.Associations).Save(data).Error
 }
 
 func (s *ProductService) DeleteProduct(id string) error {
@@ -56,7 +59,7 @@ func (s *ProductService) DeleteProduct(id string) error {
 
 func (s *ProductService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
 	var product models.ProductModel
-	err := s.db.Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("Tags").Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
@@ -97,7 +100,7 @@ func (s *ProductService) GetProductByCode(code string) (*models.ProductModel, er
 
 func (s *ProductService) GetProducts(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Variants").Preload("Category", func(db *gorm.DB) *gorm.DB {
+	stmt := s.db.Preload("Tags").Preload("Variants").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
@@ -416,25 +419,28 @@ func (s *ProductService) DeactivateDiscount(discountID string) error {
 	return s.db.Model(&models.DiscountModel{}).Where("id = ?", discountID).Update("is_active", false).Error
 }
 
-func (s *ProductService) AddProductTagByName(productID string, name string) error {
+func (s *ProductService) AddProductTagByName(productID string, name string) (*models.TagModel, error) {
 	tag, err := s.tagService.GetTagByName(name)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			tag = &models.TagModel{
-				Name: name,
+				Name:  name,
+				Color: "#F5F5F5",
 			}
 			err = s.db.Create(tag).Error
 			if err != nil {
-				return err
+				return nil, err
 			}
 		} else {
-			return err
+			return nil, err
 		}
 	}
+	var product models.ProductModel
+	s.db.Find(&product, "id = ?", productID)
 
 	// Tambahkan tag ke produk
-	err = s.db.Model(&models.ProductModel{}).Where("id = ?", productID).Association("Tags").Append(tag)
-	return err
+	err = s.db.Model(&product).Association("Tags").Append(tag)
+	return tag, err
 }
 func (s *ProductService) AddVariantTagByName(productID string, name string) error {
 	tag, err := s.tagService.GetTagByName(name)

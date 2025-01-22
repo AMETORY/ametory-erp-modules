@@ -102,6 +102,17 @@ func (s *StockMovementService) GetCurrentStock(productID, warehouseID string) (f
 
 	return totalStock, nil
 }
+func (s *StockMovementService) GetVarianCurrentStock(productID, varianID, warehouseID string) (float64, error) {
+	var totalStock float64
+	if err := s.db.Model(&models.StockMovementModel{}).
+		Where("product_id = ? AND variant_id = ? AND warehouse_id = ?", productID, varianID, warehouseID).
+		Select("COALESCE(SUM(quantity), 0)").
+		Scan(&totalStock).Error; err != nil {
+		return 0, err
+	}
+
+	return totalStock, nil
+}
 
 // GetMovementHistory mengambil riwayat pergerakan stok
 func (s *StockMovementService) GetMovementHistory(productID, warehouseID string) ([]models.StockMovementModel, error) {

@@ -127,6 +127,11 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 func (s *MerchantService) GetMerchantProducts(request http.Request, search string, merchantID string, warehouseID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	var products []models.ProductModel
+	var merchant models.MerchantModel
+	s.db.Select("default_warehouse_id").Where("id = ?", merchantID).First(&merchant)
+	if warehouseID == nil {
+		warehouseID = merchant.DefaultWarehouseID
+	}
 
 	stmt := s.db.Joins("JOIN product_merchants ON product_merchants.product_model_id = products.id").
 		Joins("JOIN brands ON brands.id = products.brand_id").
@@ -139,7 +144,7 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			"%"+search+"%",
 			"%"+search+"%")
 	}
-	stmt = stmt.Select("products.*", "product_merchants.price as price").Model(&models.ProductModel{})
+	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants").Model(&models.ProductModel{})
 
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&products)
@@ -150,9 +155,15 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 
 	for _, v := range *items {
 		if warehouseID != nil {
-			totalStock, _ := s.ctx.InventoryService.(*inventory.InventoryService).StockMovementService.GetCurrentStock(v.ID, *warehouseID)
+			totalStock, _ := s.inventoryService.StockMovementService.GetCurrentStock(v.ID, *warehouseID)
 			v.TotalStock = totalStock
-
+		}
+		for j, variant := range v.Variants {
+			if warehouseID != nil {
+				totalVariantStock, _ := s.inventoryService.StockMovementService.GetVarianCurrentStock(v.ID, variant.ID, *warehouseID)
+				variant.TotalStock = totalVariantStock
+				v.Variants[j] = variant
+			}
 		}
 
 		newItems = append(newItems, v)

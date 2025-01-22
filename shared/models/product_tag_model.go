@@ -24,3 +24,12 @@ func (p *TagModel) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type ProductTag struct {
+	ProductModelID string `gorm:"primaryKey;uniqueIndex:product_tags_product_id_tag_id_key"`
+	TagModelID     string `gorm:"primaryKey;uniqueIndex:product_tags_product_id_tag_id_key"`
+}
+type VariantTag struct {
+	VariantModelID string `gorm:"primaryKey;uniqueIndex:variant_tags_variant_id_tag_id_key"`
+	TagModelID     string `gorm:"primaryKey;uniqueIndex:variant_tags_variant_id_tag_id_key"`
+}
