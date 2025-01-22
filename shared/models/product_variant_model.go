@@ -19,6 +19,7 @@ type VariantModel struct {
 	Attributes  []VariantProductAttributeModel `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE" json:"attributes,omitempty"`
 	DisplayName string                         `gorm:"type:varchar(255)" json:"display_name,omitempty"`
 	TotalStock  float64                        `gorm:"-" json:"total_stock"`
+	Tags        []*TagModel                    `gorm:"many2many:variant_tags;constraint:OnDelete:CASCADE;" json:"tags,omitempty"`
 }
 
 func (VariantModel) TableName() string {

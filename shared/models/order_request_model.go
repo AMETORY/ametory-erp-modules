@@ -47,6 +47,7 @@ type OrderRequestItemModel struct {
 	DiscountAmount  float64 `json:"discount_amount"`
 	Total           float64 `json:"total"`
 	ProductID       *string `json:"product_id"`
+	VariantID       *string `json:"variant_id"`
 	Status          string  `json:"status" gorm:"-"`
 }
 

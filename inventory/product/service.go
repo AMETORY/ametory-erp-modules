@@ -18,10 +18,11 @@ type ProductService struct {
 	db          *gorm.DB
 	ctx         *context.ERPContext
 	fileService *file.FileService
+	tagService  *TagService
 }
 
-func NewProductService(db *gorm.DB, ctx *context.ERPContext, fileService *file.FileService) *ProductService {
-	return &ProductService{db: db, ctx: ctx, fileService: fileService}
+func NewProductService(db *gorm.DB, ctx *context.ERPContext, fileService *file.FileService, tagService *TagService) *ProductService {
+	return &ProductService{db: db, ctx: ctx, fileService: fileService, tagService: tagService}
 }
 
 func Migrate(db *gorm.DB) error {
@@ -37,6 +38,7 @@ func Migrate(db *gorm.DB) error {
 		&models.ProductAttributeModel{},
 		&models.ProductMerchant{},
 		&models.DiscountModel{},
+		&models.TagModel{},
 	)
 }
 
@@ -103,6 +105,8 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	stmt = stmt.Joins("LEFT JOIN brands ON brands.id = products.brand_id")
 	stmt = stmt.Joins("LEFT JOIN product_categories ON product_categories.id = products.category_id")
 	stmt = stmt.Joins("LEFT JOIN product_variants ON product_variants.product_id = products.id")
+	stmt = stmt.Joins("LEFT JOIN product_tags ON product_tags.product_model_id = products.id")
+	stmt = stmt.Joins("LEFT JOIN tags ON product_tags.tag_model_id = tags.id")
 	if search != "" {
 		stmt = stmt.Where("products.description ILIKE ? OR products.sku ILIKE ? OR products.name ILIKE ? OR products.barcode ILIKE ? OR brands.name ILIKE ? OR product_categories.name ILIKE ? OR product_variants.display_name ILIKE ?",
 			"%"+search+"%",
@@ -410,4 +414,45 @@ func (s *ProductService) UpdateDiscount(discountID string, data models.DiscountM
 // DeactivateDiscount: Menonaktifkan diskon
 func (s *ProductService) DeactivateDiscount(discountID string) error {
 	return s.db.Model(&models.DiscountModel{}).Where("id = ?", discountID).Update("is_active", false).Error
+}
+
+func (s *ProductService) AddProductTagByName(productID string, name string) error {
+	tag, err := s.tagService.GetTagByName(name)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			tag = &models.TagModel{
+				Name: name,
+			}
+			err = s.db.Create(tag).Error
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	// Tambahkan tag ke produk
+	err = s.db.Model(&models.ProductModel{}).Where("id = ?", productID).Association("Tags").Append(tag)
+	return err
+}
+func (s *ProductService) AddVariantTagByName(productID string, name string) error {
+	tag, err := s.tagService.GetTagByName(name)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			tag = &models.TagModel{
+				Name: name,
+			}
+			err = s.db.Create(tag).Error
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	// Tambahkan tag ke produk
+	err = s.db.Model(&models.VariantModel{}).Where("id = ?", productID).Association("Tags").Append(tag)
+	return err
 }

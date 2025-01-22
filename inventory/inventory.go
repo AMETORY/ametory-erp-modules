@@ -28,6 +28,7 @@ type InventoryService struct {
 	PurchaseService         *purchase.PurchaseService
 	BrandService            *brand.BrandService
 	StockOpenameService     *stock_opname.StockOpnameService
+	TagService              *product.TagService
 }
 
 func NewInventoryService(ctx *context.ERPContext) *InventoryService {
@@ -43,7 +44,9 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 		fileService = fileSrv
 	}
 	stockmovementSrv := stockmovement.NewStockMovementService(ctx.DB, ctx)
-	productSrv := product.NewProductService(ctx.DB, ctx, fileService)
+	tagService := product.NewTagService(ctx.DB, ctx)
+	productSrv := product.NewProductService(ctx.DB, ctx, fileService, tagService)
+
 	var service = InventoryService{
 		ctx:                     ctx,
 		MasterProductService:    product.NewMasterProductService(ctx.DB, ctx),
@@ -55,6 +58,7 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 		StockMovementService:    stockmovementSrv,
 		PurchaseService:         purchase.NewPurchaseService(ctx.DB, ctx, financeService, stockmovementSrv),
 		BrandService:            brand.NewBrandService(ctx.DB, ctx),
+		TagService:              tagService,
 		StockOpenameService:     stock_opname.NewStockOpnameService(ctx.DB, ctx, productSrv, stockmovementSrv),
 	}
 	err := service.Migrate()

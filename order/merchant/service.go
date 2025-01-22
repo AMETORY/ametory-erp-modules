@@ -240,13 +240,23 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 	var subTotal float64
 	for i, item := range orderRequest.Items {
 		var product models.ProductModel
-		s.db.Find(&product, "id = ?", item.ProductID)
-		availableStock, _ := s.inventoryService.ProductService.GetStock(product.ID, nil, merchant.DefaultWarehouseID)
+		s.db.Select("price", "id").Find(&product, "id = ?", item.ProductID)
+		var availableStock, price float64
+		price = product.Price
+		if item.VariantID != nil {
+			var variant models.VariantModel
+			s.db.Select("price", "id").Find(&variant, "id = ?", *item.VariantID)
+			price = variant.Price
+			availableStock, _ = s.inventoryService.ProductService.GetVariantStock(*item.ProductID, *item.VariantID, nil, merchant.DefaultWarehouseID)
+		} else {
+			availableStock, _ = s.inventoryService.ProductService.GetStock(*item.ProductID, nil, merchant.DefaultWarehouseID)
+		}
+
 		if availableStock < item.Quantity {
 			item.Status = "OUT_OF_STOCK"
 		} else {
 			item.Status = "AVAILABLE"
-			subTotal += float64(item.Quantity) * product.Price
+			subTotal += float64(item.Quantity) * price
 
 		}
 		orderRequest.Items[i] = item
