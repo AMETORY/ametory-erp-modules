@@ -19,7 +19,9 @@ type OrderRequestModel struct {
 	Status             string                  `json:"status,omitempty"`                                 // "Pending", "Accepted", "Rejected"
 	MerchantID         *string                 `gorm:"type:char(36);index" json:"merchant_id,omitempty"` // Diisi jika merchant mengambil order
 	TotalPrice         float64                 `json:"total_price,omitempty"`
+	SubTotal           float64                 `json:"sub_total,omitempty"`
 	ShippingFee        float64                 `json:"shipping_fee,omitempty"`
+	Distance           float64                 `json:"distance"`
 	ExpiresAt          time.Time               `json:"expires_at,omitempty"` // Batas waktu pengambilan order
 	Items              []OrderRequestItemModel `gorm:"foreignKey:OrderRequestID;constraint:OnDelete:CASCADE" json:"items"`
 	CancellationReason string                  `json:"cancellation_reason,omitempty"`

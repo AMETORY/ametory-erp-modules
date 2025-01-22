@@ -11,7 +11,14 @@ type AuditTrailService struct {
 }
 
 func NewAuditTrailService(erpContext *context.ERPContext) *AuditTrailService {
+	if !erpContext.SkipMigration {
+		Migrate(erpContext.DB)
+	}
 	return &AuditTrailService{erpContext: erpContext, db: erpContext.DB}
+}
+
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&AuditTrailModel{})
 }
 
 func (s *AuditTrailService) LogAction(userID string, action AuditAction, entity string, entityID, details string) error {

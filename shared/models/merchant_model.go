@@ -27,6 +27,7 @@ type MerchantModel struct {
 	MerchantType       string             `json:"merchant_type" gorm:"type:VARCHAR(20);default:'REGULAR_STORE'"`
 	Picture            *FileModel         `json:"picture,omitempty" gorm:"-"`
 	OrderRequest       *OrderRequestModel `json:"order_request,omitempty" gorm:"-"`
+	Distance           float64            `json:"distance" gorm:"-"`
 }
 
 func (m *MerchantModel) TableName() string {

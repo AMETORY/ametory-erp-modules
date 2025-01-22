@@ -8,7 +8,7 @@ import (
 
 type ShippingModel struct {
 	shared.BaseModel
-	OrderID    uint   `gorm:"not null"` // ID pesanan
+	OrderID    string `gorm:"not null"` // ID pesanan
 	Method     string `gorm:"not null"` // Metode pengiriman
 	TrackingID string `gorm:"unique"`   // Nomor resi
 	Provider   string `gorm:"not null"` // Provider pengiriman

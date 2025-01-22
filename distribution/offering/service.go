@@ -18,69 +18,65 @@ type OfferingService struct {
 }
 
 func NewOfferingService(db *gorm.DB, ctx *context.ERPContext, auditTrailSrv *audit_trail.AuditTrailService) *OfferingService {
-	return &OfferingService{db: db, ctx: ctx}
+	return &OfferingService{db: db, ctx: ctx, auditTrailService: auditTrailSrv}
 }
 
 func Migrate(tx *gorm.DB) error {
 	return tx.AutoMigrate(&models.OfferModel{})
 }
 
-func (s *OfferingService) GetOffersForUser(userID, status string, orderRequest *string) ([]models.OfferModel, error) {
+func (s *OfferingService) GetOffersForUser(userID, status string, orderRequestID *string) ([]models.OfferModel, error) {
 	var offers []models.OfferModel
 	db := s.db.Model(&models.OfferModel{})
-	if orderRequest != nil {
-		db = db.Where("order_request_id = ?", *orderRequest)
+	if orderRequestID != nil {
+		db = db.Where("order_request_id = ?", *orderRequestID)
 	}
 	err := db.Find(&offers, "user_id = ? AND status = ?", userID, status).Error
 	return offers, err
 }
 
-func (s *OfferingService) CreateOffer(orderRequestID string, merchant models.MerchantModel, shippingFee float64, userID string) error {
+func (s *OfferingService) CreateOffer(orderRequest models.OrderRequestModel, merchant models.MerchantModel) (*models.OfferModel, error) {
 	if s.auditTrailService == nil {
-		return fmt.Errorf("audit trail service is not initialized")
+		return nil, fmt.Errorf("audit trail service is not initialized")
 	}
-	orderRequest := models.OrderRequestModel{}
-	err := s.db.Where("id = ?", orderRequestID).First(&orderRequest).Error
-	if err != nil {
-		return err
-	}
+
 	offer := models.OfferModel{
-		UserID:         userID,
-		OrderRequestID: orderRequestID,
+		UserID:         orderRequest.UserID,
+		OrderRequestID: orderRequest.ID,
 		MerchantID:     merchant.ID,
+		SubTotal:       orderRequest.SubTotal,
 		TotalPrice:     orderRequest.TotalPrice,
-		ShippingFee:    shippingFee,
-		Status:         "Pending",
+		ShippingFee:    orderRequest.ShippingFee,
+		Distance:       orderRequest.Distance,
+		Status:         "PENDING",
 	}
-	err = s.db.Create(&offer).Error
+	err := s.db.Create(&offer).Error
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.auditTrailService.LogAction(userID, "CREATE", "OFFER", offer.ID, fmt.Sprintf("{\"order_request_id\": \"%s\", \"merchant_id\": \"%s\"}", orderRequestID, merchant.ID))
-	return nil
+	offer.OrderRequest = orderRequest
+	s.auditTrailService.LogAction(orderRequest.UserID, "CREATE", "OFFER", offer.ID, fmt.Sprintf("{\"order_request_id\": \"%s\", \"merchant_id\": \"%s\"}", orderRequest.ID, merchant.ID))
+	return &offer, nil
 }
 
-func (s *OfferingService) CreateOffers(orderRequestID string, availableMerchants []models.MerchantModel) error {
+func (s *OfferingService) CreateOffers(orderRequest models.OrderRequestModel, availableMerchants []models.MerchantModel) error {
 	if s.auditTrailService == nil {
 		return fmt.Errorf("audit trail service is not initialized")
 	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		orderRequest := models.OrderRequestModel{}
-		err := tx.Where("id = ?", orderRequestID).First(&orderRequest).Error
-		if err != nil {
-			return err
-		}
+
 		if orderRequest.Status == "Accepted" {
 			return fmt.Errorf("order request is already accepted")
 		}
 		for _, merchant := range availableMerchants {
 			offer := models.OfferModel{
-				UserID:         orderRequestID,
-				OrderRequestID: orderRequestID,
+				UserID:         orderRequest.UserID,
+				OrderRequestID: orderRequest.ID,
 				MerchantID:     merchant.ID,
+				SubTotal:       orderRequest.SubTotal,
 				TotalPrice:     orderRequest.TotalPrice,
 				ShippingFee:    orderRequest.ShippingFee,
-				Status:         "Pending",
+				Status:         "PENDING",
 			}
 			err := tx.Create(&offer).Error
 			if err != nil {

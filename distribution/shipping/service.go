@@ -6,6 +6,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/distribution/shipping/provider"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/shared/objects"
 	"gorm.io/gorm"
 )
 
@@ -25,7 +26,7 @@ func Migrate(db *gorm.DB) error {
 func (s *ShippingService) SetProvider(provider provider.ShippingProvider) {
 	s.provider = provider
 }
-func (s *ShippingService) CreateShipping(orderID uint, method, destination string) (*models.ShippingModel, error) {
+func (s *ShippingService) CreateShipping(orderID string, method, destination string) (*models.ShippingModel, error) {
 	if s.provider == nil {
 		return nil, errors.New("shipping provider not set")
 	}
@@ -49,14 +50,21 @@ func (s *ShippingService) CreateShipping(orderID uint, method, destination strin
 	return &shipping, nil
 }
 
-func (s *ShippingService) GetRates(origin, destination string, weight float64) ([]provider.Rate, error) {
+func (s *ShippingService) GetRates(origin, destination string, weight float64) ([]objects.Rate, error) {
 	if s.provider == nil {
 		return nil, errors.New("shipping provider not set")
 	}
 	return s.provider.GetRates(origin, destination, weight)
 }
 
-func (s *ShippingService) TrackShipment(trackingID string) (*provider.TrackingStatus, error) {
+func (s *ShippingService) GetExpressMotorRates(origin, destination objects.LocationPrecise) ([]objects.Rate, error) {
+	if s.provider == nil {
+		return nil, errors.New("shipping provider not set")
+	}
+	return s.provider.GetExpressMotorRates(origin, destination)
+}
+
+func (s *ShippingService) TrackShipment(trackingID string) (*objects.TrackingStatus, error) {
 	if s.provider == nil {
 		return nil, errors.New("shipping provider not set")
 	}

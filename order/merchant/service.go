@@ -237,7 +237,7 @@ func (s *MerchantService) EditProductPrice(merchantID, productID string, price f
 }
 
 func (s *MerchantService) GetProductAvailableByMerchant(merchant models.MerchantModel, orderRequest *models.OrderRequestModel) error {
-	var totalPrice float64
+	var subTotal float64
 	for i, item := range orderRequest.Items {
 		var product models.ProductModel
 		s.db.Find(&product, "id = ?", item.ProductID)
@@ -246,11 +246,11 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 			item.Status = "OUT_OF_STOCK"
 		} else {
 			item.Status = "AVAILABLE"
-			totalPrice += float64(item.Quantity) * product.Price
+			subTotal += float64(item.Quantity) * product.Price
 
 		}
 		orderRequest.Items[i] = item
 	}
-	orderRequest.TotalPrice = totalPrice
+	orderRequest.SubTotal = subTotal
 	return nil
 }

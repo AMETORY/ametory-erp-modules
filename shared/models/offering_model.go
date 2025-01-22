@@ -12,6 +12,7 @@ type OfferModel struct {
 	OrderRequestID string            `json:"order_request_id"`
 	OrderRequest   OrderRequestModel `gorm:"foreignKey:OrderRequestID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"order_request,omitempty"`
 	MerchantID     string            `json:"merchant_id"`
+	SubTotal       float64           `json:"sub_total"`
 	TotalPrice     float64           `json:"total_price"`
 	ShippingFee    float64           `json:"shipping_fee"`
 	Distance       float64           `json:"distance"`
@@ -23,7 +24,7 @@ func (OfferModel) TableName() string {
 }
 
 func (o *OfferModel) BeforeCreate(tx *gorm.DB) (err error) {
-	o.Status = "Pending"
+	o.Status = "PENDING"
 	if o.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
