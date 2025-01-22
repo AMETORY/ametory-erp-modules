@@ -32,6 +32,7 @@ type ProductModel struct {
 	ProductImages    []FileModel           `gorm:"-" json:"product_images,omitempty"`
 	TotalStock       float64               `gorm:"-" json:"total_stock"`
 	LastUpdatedStock *time.Time            `gorm:"-" json:"last_updated_stock,omitempty"`
+	LastStock        float64               `gorm:"-" json:"last_stock"`
 	Status           string                `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 	Merchants        []*MerchantModel      `gorm:"many2many:product_merchants;constraint:OnDelete:CASCADE;" json:"merchants,omitempty"`
 	DisplayName      string                `gorm:"type:varchar(255)" json:"display_name,omitempty"`

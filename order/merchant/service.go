@@ -144,7 +144,7 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			"%"+search+"%",
 			"%"+search+"%")
 	}
-	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants").Model(&models.ProductModel{})
+	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants").Preload("Tags").Model(&models.ProductModel{})
 
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&products)
@@ -167,9 +167,10 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 		}
 
 		var ProductMerchant models.ProductMerchant
-		err := s.db.Select("last_updated_stock").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
+		err := s.db.Select("last_updated_stock", "last_stock").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
 		if err == nil {
 			v.LastUpdatedStock = ProductMerchant.LastUpdatedStock
+			v.LastStock = ProductMerchant.LastStock
 		}
 
 		newItems = append(newItems, v)
