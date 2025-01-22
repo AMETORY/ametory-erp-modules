@@ -68,6 +68,15 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 	return page, nil
 }
 
+// UpdateLastStock update last stock berdasarkan riwayat pergerakan
+func (s *StockMovementService) UpdateLastStock(productID, merchant_model_id string, quantity float64, lastUpdatedAt time.Time) error {
+	return s.db.Model(&models.ProductMerchant{}).
+		Where("product_model_id = ? AND merchant_model_id = ?", productID, merchant_model_id).
+		Order("created_at desc").
+		Limit(1).
+		Updates(map[string]interface{}{"last_stock": quantity, "last_updated_stock": lastUpdatedAt}).Error
+}
+
 // AddMovement menambahkan pergerakan stok
 func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseID string, variantID, merchantID *string, distributorID *string, quantity float64, movementType models.MovementType, referenceID, description string) (*models.StockMovementModel, error) {
 	movement := models.StockMovementModel{
@@ -102,10 +111,32 @@ func (s *StockMovementService) GetCurrentStock(productID, warehouseID string) (f
 
 	return totalStock, nil
 }
+func (s *StockMovementService) GetCurrentStockByMerchantID(productID, merchantID string) (float64, error) {
+	var totalStock float64
+	if err := s.db.Model(&models.StockMovementModel{}).
+		Where("product_id = ? AND merchant_id = ?", productID, merchantID).
+		Select("COALESCE(SUM(quantity), 0)").
+		Scan(&totalStock).Error; err != nil {
+		return 0, err
+	}
+
+	return totalStock, nil
+}
 func (s *StockMovementService) GetVarianCurrentStock(productID, varianID, warehouseID string) (float64, error) {
 	var totalStock float64
 	if err := s.db.Model(&models.StockMovementModel{}).
 		Where("product_id = ? AND variant_id = ? AND warehouse_id = ?", productID, varianID, warehouseID).
+		Select("COALESCE(SUM(quantity), 0)").
+		Scan(&totalStock).Error; err != nil {
+		return 0, err
+	}
+
+	return totalStock, nil
+}
+func (s *StockMovementService) GetVarianCurrentStockByMerchantID(productID, varianID, merchant_id string) (float64, error) {
+	var totalStock float64
+	if err := s.db.Model(&models.StockMovementModel{}).
+		Where("product_id = ? AND variant_id = ? AND merchant_id = ?", productID, varianID, merchant_id).
 		Select("COALESCE(SUM(quantity), 0)").
 		Scan(&totalStock).Error; err != nil {
 		return 0, err

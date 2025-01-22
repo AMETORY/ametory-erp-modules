@@ -166,6 +166,12 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			}
 		}
 
+		var ProductMerchant models.ProductMerchant
+		err := s.db.Select("last_updated_stock").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
+		if err == nil {
+			v.LastUpdatedStock = ProductMerchant.LastUpdatedStock
+		}
+
 		newItems = append(newItems, v)
 	}
 	page.Items = &newItems

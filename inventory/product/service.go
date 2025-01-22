@@ -278,7 +278,7 @@ func (s *ProductService) CreateProductVariant(data *models.VariantModel) error {
 }
 func (s *ProductService) GetProductVariants(productID string, request http.Request) ([]models.VariantModel, error) {
 	var variants []models.VariantModel
-	err := s.db.Preload("Attributes.Attribute").Where("product_id = ?", productID).Find(&variants).Error
+	err := s.db.Preload("Attributes.Attribute").Preload("Tags").Where("product_id = ?", productID).Find(&variants).Error
 	var warehouseID *string
 	warehouseIDStr := request.Header.Get("ID-Warehouse")
 	if warehouseIDStr != "" {
@@ -293,8 +293,8 @@ func (s *ProductService) GetProductVariants(productID string, request http.Reque
 	return variants, err
 }
 
-func (s *ProductService) UpdateProductVariant(id string, data *models.VariantModel) error {
-	return s.db.Where("id = ?", id).Updates(data).Error
+func (s *ProductService) UpdateProductVariant(data *models.VariantModel) error {
+	return s.db.Save(data).Error
 }
 
 func (s *ProductService) DeleteProductVariant(id string) error {

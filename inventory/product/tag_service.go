@@ -1,8 +1,12 @@
 package product
 
 import (
+	"net/http"
+
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -52,10 +56,12 @@ func (s *TagService) DeleteTag(id string) error {
 	return nil
 }
 
-func (s *TagService) ListTags() ([]models.TagModel, error) {
-	var tags []models.TagModel
-	if err := s.db.Find(&tags).Error; err != nil {
-		return nil, err
-	}
-	return tags, nil
+func (s *TagService) ListTags(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	stmt = stmt.Model(&models.TagModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.TagModel{})
+	page.Page = page.Page + 1
+	return page, nil
 }
