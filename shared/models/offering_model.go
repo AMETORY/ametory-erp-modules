@@ -14,6 +14,9 @@ type OfferModel struct {
 	OrderRequestID               string                   `json:"order_request_id"`
 	OrderRequest                 OrderRequestModel        `gorm:"foreignKey:OrderRequestID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"order_request,omitempty"`
 	MerchantID                   string                   `json:"merchant_id"`
+	Merchant                     MerchantModel            `gorm:"foreignKey:MerchantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"merchant,omitempty"`
+	PaymentID                    *string                  `json:"payment_id"`
+	Payment                      *PaymentModel            `gorm:"foreignKey:PaymentID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"payment,omitempty"`
 	SubTotal                     float64                  `json:"sub_total"`
 	TotalPrice                   float64                  `json:"total_price"`
 	ShippingFee                  float64                  `json:"shipping_fee"`

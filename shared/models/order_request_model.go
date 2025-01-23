@@ -21,7 +21,7 @@ type OrderRequestModel struct {
 	TotalPrice         float64                 `json:"total_price,omitempty"`
 	SubTotal           float64                 `json:"sub_total,omitempty"`
 	ShippingFee        float64                 `json:"shipping_fee,omitempty"`
-	ShippingData       string                  `gorm:"type:json" json:"shipping_data,omitempty"`
+	ShippingData       string                  `gorm:"type:json" json:"-"`
 	Distance           float64                 `json:"distance"`
 	ExpiresAt          time.Time               `json:"expires_at,omitempty"` // Batas waktu pengambilan order
 	Items              []OrderRequestItemModel `gorm:"foreignKey:OrderRequestID;constraint:OnDelete:CASCADE" json:"items"`

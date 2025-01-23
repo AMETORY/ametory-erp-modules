@@ -41,52 +41,54 @@ func (s *SalesService) CreateSales(data *models.SalesModel) error {
 			tx.Rollback()
 			return err
 		}
-		paid := 0.0
-		for _, v := range data.Items {
-			if v.SaleAccountID != nil {
-				s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-					Date:               data.SalesDate,
-					AccountID:          v.SaleAccountID,
-					Description:        "Penjualan " + data.SalesNumber,
-					Notes:              data.Description,
-					TransactionRefID:   &data.ID,
-					TransactionRefType: "sales",
-					CompanyID:          companyID,
-				}, v.Total)
+		if s.financeService.TransactionService != nil {
+			paid := 0.0
+			for _, v := range data.Items {
+				if v.SaleAccountID != nil {
+					s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+						Date:               data.SalesDate,
+						AccountID:          v.SaleAccountID,
+						Description:        "Penjualan " + data.SalesNumber,
+						Notes:              data.Description,
+						TransactionRefID:   &data.ID,
+						TransactionRefType: "sales",
+						CompanyID:          companyID,
+					}, v.Total)
+				}
+				if v.AssetAccountID != nil {
+					s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+						Date:               data.SalesDate,
+						AccountID:          v.AssetAccountID,
+						Description:        "Penjualan " + data.SalesNumber,
+						Notes:              data.Description,
+						TransactionRefID:   &data.ID,
+						TransactionRefType: "sales",
+						CompanyID:          companyID,
+					}, v.Total)
+					acc, err := s.financeService.AccountService.GetAccountByID(*v.AssetAccountID)
+					if err != nil {
+						return err
+					}
+					if acc.Type == models.ASSET {
+						paid += v.Total
+					}
+				}
+
 			}
-			if v.AssetAccountID != nil {
-				s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-					Date:               data.SalesDate,
-					AccountID:          v.AssetAccountID,
-					Description:        "Penjualan " + data.SalesNumber,
-					Notes:              data.Description,
-					TransactionRefID:   &data.ID,
-					TransactionRefType: "sales",
-					CompanyID:          companyID,
-				}, v.Total)
-				acc, err := s.financeService.AccountService.GetAccountByID(*v.AssetAccountID)
-				if err != nil {
+			if paid > 0 {
+				data.Paid = paid
+				if err := tx.Save(data).Error; err != nil {
+					tx.Rollback()
 					return err
 				}
-				if acc.Type == models.ASSET {
-					paid += v.Total
+			}
+
+			if paid < data.Total {
+				data.Status = "partial"
+				if err := tx.Save(data).Error; err != nil {
+					tx.Rollback()
+					return err
 				}
-			}
-
-		}
-		if paid > 0 {
-			data.Paid = paid
-			if err := tx.Save(data).Error; err != nil {
-				tx.Rollback()
-				return err
-			}
-		}
-
-		if paid < data.Total {
-			data.Status = "partial"
-			if err := tx.Save(data).Error; err != nil {
-				tx.Rollback()
-				return err
 			}
 		}
 

@@ -55,3 +55,26 @@ type PaymentData struct {
 	Updated             string  `json:"updated"`
 	Expiration          string  `json:"expiration"`
 }
+
+type OyCallback struct {
+	PartnerTxID         string  `json:"partner_tx_id"`
+	TxRefNumber         string  `json:"tx_ref_number"`
+	Amount              float64 `json:"amount"`
+	SenderName          string  `json:"sender_name"`
+	SenderPhone         string  `json:"sender_phone"`
+	SenderNote          string  `json:"sender_note"`
+	Status              string  `json:"status"`
+	SenderBank          string  `json:"sender_bank"`
+	IsInvoice           bool    `json:"is_invoice"`
+	PaidAmount          float64 `json:"paid_amount"`
+	PaymentMethod       string  `json:"payment_method"`
+	Description         string  `json:"description"`
+	Email               string  `json:"email"`
+	PaymentReceivedTime string  `json:"payment_received_time"`
+	SettlementTime      string  `json:"settlement_time"`
+	SettlementStatus    string  `json:"settlement_status"`
+	SettlementType      string  `json:"settlement_type"`
+	Created             string  `json:"created"`
+	Updated             string  `json:"updated"`
+	Expiration          string  `json:"expiration"`
+}

@@ -42,6 +42,7 @@ type POSModel struct {
 	Notes               string              `json:"notes" gorm:"notes"`
 	Total               float64             `json:"total" gorm:"total"`
 	Subtotal            float64             `json:"subtotal" gorm:"subtotal"`
+	ShippingFee         float64             `json:"shipping_fee" gorm:"shipping_fee"`
 	Paid                float64             `json:"paid" gorm:"paid"`
 	TotalBeforeTax      float64             `json:"total_before_tax" gorm:"total_before_tax"`
 	TotalBeforeDisc     float64             `json:"total_before_disc" gorm:"total_before_disc"`
@@ -50,12 +51,16 @@ type POSModel struct {
 	SalesDate           time.Time           `json:"sales_date" gorm:"sales_date"`
 	DueDate             time.Time           `json:"due_date" gorm:"due_date"`
 	PaymentTerms        string              `json:"payment_terms" gorm:"payment_terms"`
+	PaymentID           *string             `json:"payment_id" gorm:"payment_id"`
+	Payment             *PaymentModel       `gorm:"foreignKey:PaymentID;constraint:OnDelete:CASCADE"`
+	OfferID             *string             `json:"offer_id" gorm:"offer_id"`
+	Offer               *OfferModel         `gorm:"foreignKey:OfferID;constraint:OnDelete:CASCADE"`
 	MerchantID          *string             `json:"merchant_id" gorm:"merchant_id"`
 	Merchant            *MerchantModel      `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE"`
 	CompanyID           *string             `json:"company_id" gorm:"company_id"`
 	Company             *CompanyModel       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
-	ContactID           string              `json:"contact_id" gorm:"contact_id"`
-	Contact             ContactModel        `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE"`
+	ContactID           *string             `json:"contact_id" gorm:"contact_id"`
+	Contact             *ContactModel       `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE"`
 	ContactData         string              `json:"contact_data" gorm:"type:json;contact_data"`
 	PaymentType         string              `json:"payment_type" gorm:"payment_type"`
 	PaymentProviderType PaymentProviderType `json:"payment_provider_type" gorm:"payment_provider_type"`

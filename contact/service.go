@@ -17,9 +17,9 @@ type ContactService struct {
 	CompanyService *company.CompanyService
 }
 
-func NewContactService(ctx *context.ERPContext, companyService *company.CompanyService, skipMigrate bool) *ContactService {
+func NewContactService(ctx *context.ERPContext, companyService *company.CompanyService) *ContactService {
 	var contactService = ContactService{ctx: ctx, CompanyService: companyService}
-	if !skipMigrate {
+	if !ctx.SkipMigration {
 		if err := contactService.Migrate(); err != nil {
 			panic(err)
 		}
@@ -32,8 +32,36 @@ func (s *ContactService) CreateContact(data *models.ContactModel) error {
 	return s.ctx.DB.Create(data).Error
 }
 
+// CreateContactFromUser membuat contact baru dari user jika tidak ada contact yang sama dengan email user
+func (s *ContactService) CreateContactFromUser(user *models.UserModel, code string, isCustomer, isVendor, isSupplier bool, companyID *string) (*models.ContactModel, error) {
+	var contact models.ContactModel
+	if err := s.ctx.DB.Where("email = ?", user.Email).First(&contact).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+	}
+	if contact.ID == "" {
+		contact = models.ContactModel{
+			Code:       code,
+			Name:       user.FullName,
+			Phone:      user.PhoneNumber,
+			Address:    user.Address,
+			Email:      user.Email,
+			IsCustomer: isCustomer,
+			IsVendor:   isVendor,
+			IsSupplier: isSupplier,
+			UserID:     &user.ID,
+			CompanyID:  companyID,
+		}
+		if err := s.ctx.DB.Create(&contact).Error; err != nil {
+			return nil, err
+		}
+	}
+	return &contact, nil
+}
+
 // GetContactByID mengambil contact berdasarkan ID
-func (s *ContactService) GetContactByID(id uint) (*models.ContactModel, error) {
+func (s *ContactService) GetContactByID(id string) (*models.ContactModel, error) {
 	var contact models.ContactModel
 	if err := s.ctx.DB.First(&contact, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
