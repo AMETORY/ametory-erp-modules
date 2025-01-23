@@ -1,6 +1,7 @@
 package offering
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -25,6 +26,12 @@ func Migrate(tx *gorm.DB) error {
 	return tx.AutoMigrate(&models.OfferModel{})
 }
 
+func (s *OfferingService) GetOffersForByIDs(userID string, offerIds []string) ([]models.OfferModel, error) {
+	var offers []models.OfferModel
+	err := s.db.Model(&models.OfferModel{}).Where("user_id = ? AND id IN (?)", userID, offerIds).Find(&offers).Error
+	return offers, err
+}
+
 func (s *OfferingService) GetOffersForUser(userID, status string, orderRequestID *string) ([]models.OfferModel, error) {
 	var offers []models.OfferModel
 	db := s.db.Model(&models.OfferModel{})
@@ -35,27 +42,30 @@ func (s *OfferingService) GetOffersForUser(userID, status string, orderRequestID
 	return offers, err
 }
 
-func (s *OfferingService) CreateOffer(orderRequest models.OrderRequestModel, merchant models.MerchantModel) (*models.OfferModel, error) {
+func (s *OfferingService) CreateOffer(merchant models.MerchantAvailableProduct, userID string) (*models.OfferModel, error) {
 	if s.auditTrailService == nil {
 		return nil, fmt.Errorf("audit trail service is not initialized")
 	}
+	b, _ := json.Marshal(merchant)
 
 	offer := models.OfferModel{
-		UserID:         orderRequest.UserID,
-		OrderRequestID: orderRequest.ID,
-		MerchantID:     merchant.ID,
-		SubTotal:       orderRequest.SubTotal,
-		TotalPrice:     orderRequest.TotalPrice,
-		ShippingFee:    orderRequest.ShippingFee,
-		Distance:       orderRequest.Distance,
-		Status:         "PENDING",
+		UserID:                       userID,
+		OrderRequestID:               merchant.OrderRequestID,
+		MerchantID:                   merchant.MerchantID,
+		SubTotal:                     merchant.SubTotal,
+		TotalPrice:                   merchant.TotalPrice,
+		ShippingFee:                  merchant.ShippingFee,
+		Distance:                     merchant.Distance,
+		Status:                       "PENDING",
+		MerchantAvailableProductData: string(b),
+		MerchantAvailableProduct:     merchant,
 	}
 	err := s.db.Create(&offer).Error
 	if err != nil {
 		return nil, err
 	}
-	offer.OrderRequest = orderRequest
-	s.auditTrailService.LogAction(orderRequest.UserID, "CREATE", "OFFER", offer.ID, fmt.Sprintf("{\"order_request_id\": \"%s\", \"merchant_id\": \"%s\"}", orderRequest.ID, merchant.ID))
+
+	s.auditTrailService.LogAction(userID, "CREATE", "OFFER", offer.ID, fmt.Sprintf("{\"order_request_id\": \"%s\", \"merchant_id\": \"%s\"}", merchant.OrderRequestID, merchant.MerchantID))
 	return &offer, nil
 }
 

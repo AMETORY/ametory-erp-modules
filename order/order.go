@@ -8,6 +8,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/order/merchant"
+	"github.com/AMETORY/ametory-erp-modules/order/payment"
 	"github.com/AMETORY/ametory-erp-modules/order/pos"
 	"github.com/AMETORY/ametory-erp-modules/order/sales"
 	"gorm.io/gorm"
@@ -18,6 +19,7 @@ type OrderService struct {
 	SalesService    *sales.SalesService
 	PosService      *pos.POSService
 	MerchantService *merchant.MerchantService
+	PaymentService  *payment.PaymentService
 }
 
 func NewOrderService(ctx *context.ERPContext) *OrderService {
@@ -34,6 +36,7 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 		SalesService:    sales.NewSalesService(ctx.DB, ctx, financeService),
 		PosService:      pos.NewPOSService(ctx.DB, ctx, financeService),
 		MerchantService: merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
+		PaymentService:  payment.NewPaymentService(ctx.DB, ctx),
 	}
 	err := service.Migrate()
 	if err != nil {
@@ -57,6 +60,10 @@ func (s *OrderService) Migrate() error {
 	}
 	if err := merchant.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR MERCHANT", err)
+		return err
+	}
+	if err := payment.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR PAYMENT", err)
 		return err
 	}
 

@@ -36,9 +36,21 @@ func (s *OrderRequestService) GetOrderRequestByID(orderRequestID string) (*model
 	}
 	return &orderRequest, nil
 }
+func (s *OrderRequestService) GetOrderByStatus(userID string, status []string) (*models.OrderRequestModel, error) {
+	pendingRequest := models.OrderRequestModel{}
+	err := s.db.Preload("Offers").Preload("Items", func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Product", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "display_name")
+		}).Preload("Variant", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "display_name")
+		})
+	}).Where("user_id = ? AND status in (?)", userID, status).First(&pendingRequest).Error
+	return &pendingRequest, err
+}
+
 func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng float64, expiresAt time.Time) (*models.OrderRequestModel, error) {
 	pendingRequest := models.OrderRequestModel{}
-	err := s.db.Where("user_id = ? AND status = ?", userID, "PENDING").First(&pendingRequest).Error
+	err := s.db.Where("user_id = ? AND status in (?)", userID, []string{"PENDING", "OFFERING"}).First(&pendingRequest).Error
 	if err == nil {
 		if pendingRequest.ExpiresAt.Before(time.Now()) {
 			pendingRequest.Status = "EXPIRED"
@@ -46,7 +58,7 @@ func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng
 				return nil, err
 			}
 		} else {
-			return nil, fmt.Errorf("you have a pending order request")
+			return nil, fmt.Errorf("you have a PENDING/OFFERING order request")
 		}
 	}
 
@@ -54,11 +66,12 @@ func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng
 		return nil, fmt.Errorf("audit trail service is not initialized")
 	}
 	orderRequest := models.OrderRequestModel{
-		UserID:    userID,
-		UserLat:   userLat,
-		UserLng:   userLng,
-		Status:    "PENDING",
-		ExpiresAt: expiresAt,
+		UserID:       userID,
+		UserLat:      userLat,
+		UserLng:      userLng,
+		Status:       "PENDING",
+		ExpiresAt:    expiresAt,
+		ShippingData: "{}",
 	}
 	if err := s.db.Create(&orderRequest).Error; err != nil {
 		return nil, err
@@ -125,9 +138,9 @@ func (s *OrderRequestService) GetPendingOrderRequests(merchantID string) ([]mode
 	return orderRequests, err
 }
 
-func (s *OrderRequestService) CancelOrderRequest(orderRequestID string, reason string) error {
-	return s.db.Model(&models.OrderRequestModel{}).Where("id = ?", orderRequestID).
-		Updates(map[string]interface{}{"status": "Cancelled", "cancellation_reason": reason}).
+func (s *OrderRequestService) CancelOrderRequest(userID, orderRequestID, reason string) error {
+	return s.db.Model(&models.OrderRequestModel{}).Where("user_id = ? AND id = ? AND status IN (?)", userID, orderRequestID, []string{"OFFERING", "PENDING"}).
+		Updates(map[string]interface{}{"status": "CANCELLED", "cancellation_reason": reason}).
 		Error
 }
 

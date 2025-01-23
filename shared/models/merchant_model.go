@@ -40,3 +40,25 @@ func (m *MerchantModel) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type MerchantAvailableProduct struct {
+	Name           string                         `json:"name" gorm:"not null"`
+	MerchantID     string                         `json:"merchant_id"`
+	OrderRequestID string                         `json:"order_request_id"`
+	Items          []MerchantAvailableProductItem `json:"items"`
+	SubTotal       float64                        `json:"sub_total"`
+	ShippingFee    float64                        `json:"shipping_fee"`
+	TotalPrice     float64                        `json:"total_price"`
+	Distance       float64                        `json:"distance"`
+}
+
+type MerchantAvailableProductItem struct {
+	ProductID          string  `json:"product_id"`
+	ProductDisplayName string  `json:"product_display_name"`
+	VariantDisplayName *string `json:"variant_display_name"`
+	Status             string  `json:"status"`
+	VariantID          *string `json:"variant_id"`
+	Quantity           float64 `json:"quantity"`
+	UnitPrice          float64 `json:"unit_price"`
+	SubTotal           float64 `json:"sub_total"`
+}

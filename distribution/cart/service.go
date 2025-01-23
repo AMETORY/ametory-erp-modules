@@ -63,12 +63,19 @@ func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, e
 	for i, v := range cart.Items {
 		img, _ := s.inventoryService.ProductService.ListImagesOfProduct(v.ProductID)
 		v.Product.ProductImages = img
+		if v.VariantID != nil {
+			var variant models.VariantModel
+			if err := s.db.Where("id = ?", v.VariantID).First(&variant).Error; err != nil {
+				return nil, err
+			}
+			v.Product.Variants = []models.VariantModel{variant}
+		}
 		cart.Items[i] = v
 	}
 	return &cart, nil
 }
 
-func (s *CartService) AddItemToCart(userID string, productID string, quantity float64) error {
+func (s *CartService) AddItemToCart(userID string, productID string, variantID *string, quantity float64) error {
 	// Dapatkan cart active
 	cart, err := s.GetOrCreateActiveCart(userID)
 	if err != nil {
@@ -81,13 +88,18 @@ func (s *CartService) AddItemToCart(userID string, productID string, quantity fl
 
 	// Cek apakah item sudah ada di cart
 	var existingItem models.CartItemModel
-	err = s.db.Where("cart_id = ? AND product_id = ?", cart.ID, productID).First(&existingItem).Error
+	if variantID == nil {
+		err = s.db.Where("cart_id = ? AND product_id = ?", cart.ID, productID).First(&existingItem).Error
+	} else {
+		err = s.db.Where("cart_id = ? AND product_id = ? AND variant_id = ?", cart.ID, productID, variantID).First(&existingItem).Error
+	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Tambahkan item baru ke cart
 			item := models.CartItemModel{
 				CartID:    cart.ID,
 				ProductID: productID,
+				VariantID: variantID,
 				Quantity:  quantity,
 				Price:     product.Price,
 			}
@@ -109,7 +121,7 @@ func (s *CartService) AddItemToCart(userID string, productID string, quantity fl
 	return nil
 }
 
-func (s *CartService) DeleteItemCart(userID string, productID string) error {
+func (s *CartService) DeleteItemCart(userID string, itemID string) error {
 	// Dapatkan cart active
 	cart, err := s.GetOrCreateActiveCart(userID)
 	if err != nil {
@@ -117,7 +129,7 @@ func (s *CartService) DeleteItemCart(userID string, productID string) error {
 	}
 
 	// Hapus item dari cart
-	if err := s.db.Where("cart_id = ? AND product_id = ?", cart.ID, productID).Unscoped().Delete(&models.CartItemModel{}).Error; err != nil {
+	if err := s.db.Where("cart_id = ? AND id = ?", cart.ID, itemID).Unscoped().Delete(&models.CartItemModel{}).Error; err != nil {
 		return err
 	}
 

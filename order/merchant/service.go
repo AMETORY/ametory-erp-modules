@@ -2,6 +2,7 @@ package merchant
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -254,22 +255,31 @@ func (s *MerchantService) EditProductPrice(merchantID, productID string, price f
 	return tx.Commit().Error
 }
 
-func (s *MerchantService) GetProductAvailableByMerchant(merchant models.MerchantModel, orderRequest *models.OrderRequestModel) error {
+func (s *MerchantService) GetProductAvailableByMerchant(merchant models.MerchantModel, orderRequest *models.OrderRequestModel) (*models.MerchantAvailableProduct, error) {
 	var subTotal float64
+	var merchantAvailable models.MerchantAvailableProduct
+	merchantAvailable.MerchantID = merchant.ID
+	merchantAvailable.Name = merchant.Name
+	merchantAvailable.Items = make([]models.MerchantAvailableProductItem, len(orderRequest.Items))
 	for i, item := range orderRequest.Items {
+
+		fmt.Println("CHECK STOCK", *item.ProductID, *item.VariantID, *merchant.DefaultWarehouseID)
 		var product models.ProductModel
-		s.db.Select("price", "id").Find(&product, "id = ?", item.ProductID)
+		s.db.Select("price", "id", "display_name").Find(&product, "id = ?", item.ProductID)
+		var productDisplayName string = product.DisplayName
 		var availableStock, price float64
 		price = product.Price
+		var variantDisplayName *string
 		if item.VariantID != nil {
 			var variant models.VariantModel
-			s.db.Select("price", "id").Find(&variant, "id = ?", *item.VariantID)
+			s.db.Select("price", "id", "display_name").Find(&variant, "id = ?", *item.VariantID)
 			price = variant.Price
 			availableStock, _ = s.inventoryService.ProductService.GetVariantStock(*item.ProductID, *item.VariantID, nil, merchant.DefaultWarehouseID)
+			variantDisplayName = &variant.DisplayName
 		} else {
 			availableStock, _ = s.inventoryService.ProductService.GetStock(*item.ProductID, nil, merchant.DefaultWarehouseID)
 		}
-
+		fmt.Println("AVAILABLE STOCK", merchant.Name, *item.ProductID, *item.VariantID, *merchant.DefaultWarehouseID, availableStock)
 		if availableStock < item.Quantity {
 			item.Status = "OUT_OF_STOCK"
 		} else {
@@ -277,8 +287,20 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 			subTotal += float64(item.Quantity) * price
 
 		}
-		orderRequest.Items[i] = item
+		// orderRequest.Items[i] = item
+		merchantAvailable.Items[i] = models.MerchantAvailableProductItem{
+			ProductID:          *item.ProductID,
+			ProductDisplayName: productDisplayName,
+			VariantDisplayName: variantDisplayName,
+			VariantID:          item.VariantID,
+			Quantity:           item.Quantity,
+			UnitPrice:          price,
+			Status:             item.Status,
+			SubTotal:           float64(item.Quantity) * price,
+		}
+
 	}
-	orderRequest.SubTotal = subTotal
-	return nil
+	merchantAvailable.SubTotal = subTotal
+	merchantAvailable.OrderRequestID = orderRequest.ID
+	return &merchantAvailable, nil
 }

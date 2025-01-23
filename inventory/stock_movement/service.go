@@ -31,7 +31,9 @@ func (s *StockMovementService) CreateStockMovement(movement *models.StockMovemen
 
 func (s *StockMovementService) GetStockMovements(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Product", func(db *gorm.DB) *gorm.DB {
+	stmt := s.db.Preload("Merchant", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Product", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Warehouse", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")

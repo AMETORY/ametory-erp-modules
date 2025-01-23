@@ -161,9 +161,9 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 		item.TotalStock = stock
 		for i, variant := range item.Variants {
 			variantStock, _ := s.GetVariantStock(item.ID, variant.ID, &request, warehouseID)
-			item.TotalStock = variantStock
+			variant.TotalStock = variantStock
 			item.Variants[i] = variant
-			fmt.Println("VARIANT STOCK", variant.ID, variantStock)
+			fmt.Println("VARIANT STOCK", variant.ID, variant.TotalStock)
 		}
 		newItems = append(newItems, item)
 	}

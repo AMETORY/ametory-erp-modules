@@ -26,7 +26,7 @@ func (s *TimerService) StartOrderRequestTimer(orderRequestID string, timeout tim
 		}
 
 		if orderRequest.MerchantID == nil && orderRequest.Status == "Pending" {
-			s.orderRequestSvc.CancelOrderRequest(orderRequestID, "Timeout")
+			s.orderRequestSvc.CancelOrderRequest(orderRequest.UserID, orderRequestID, "Timeout")
 		}
 	})
 }
