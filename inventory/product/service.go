@@ -100,7 +100,7 @@ func (s *ProductService) GetProductByCode(code string) (*models.ProductModel, er
 
 func (s *ProductService) GetProducts(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Tags").Preload("Variants").Preload("Category", func(db *gorm.DB) *gorm.DB {
+	stmt := s.db.Preload("Tags").Preload("Variants.Attributes.Attribute").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")

@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -27,6 +29,7 @@ type CompanyModel struct {
 	EmployeePendingCount  int64            `json:"employee_pending_count,omitempty"`
 	Merchants             []MerchantModel  `json:"merchants,omitempty" gorm:"-"`
 	Warehouses            []WarehouseModel `json:"warehouses,omitempty" gorm:"-"`
+	EmailVerifiedAt       *time.Time       `gorm:"index" json:"email_verified_at,omitempty"`
 }
 
 func (CompanyModel) TableName() string {

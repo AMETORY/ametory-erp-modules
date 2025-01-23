@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/contact"
@@ -12,6 +13,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -244,4 +246,48 @@ func (s *POSService) GetTransactionsByMerchant(merchantID uint) ([]models.POSMod
 		return nil, err
 	}
 	return transactions, nil
+}
+
+func (s *POSService) GetPosSales(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Preload("Items").Preload("Payment")
+	if search != "" {
+		stmt = stmt.Where("pos_sales.code ILIKE ? OR pos_sales.description ILIKE ? OR pos_sales.sales_number ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+
+	if request.Header.Get("ID-Merchant") != "" {
+		stmt = stmt.Where("merchant_id = ?", request.Header.Get("ID-Merchant"))
+	}
+	orderBy := request.URL.Query().Get("order_by")
+	order := request.URL.Query().Get("order")
+	if orderBy == "" {
+		orderBy = "created_at"
+	}
+	if order == "" {
+		order = "desc"
+	}
+	stmt = stmt.Order(orderBy + " " + order)
+
+	stmt = stmt.Model(&models.POSModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.POSModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
+	var pos models.POSModel
+	if err := s.db.Preload("Items", func(tx *gorm.DB) *gorm.DB {
+		return tx.Preload("Product.Tags").Preload("Variant.Tags")
+	}).Preload("Payment").Where("id = ?", id).First(&pos).Error; err != nil {
+		return nil, err
+	}
+	return &pos, nil
 }

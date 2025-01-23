@@ -145,7 +145,7 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			"%"+search+"%",
 			"%"+search+"%")
 	}
-	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants").Preload("Tags").Model(&models.ProductModel{})
+	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants.Attributes.Attribute").Preload("Tags").Model(&models.ProductModel{})
 
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&products)
