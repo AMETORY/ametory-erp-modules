@@ -59,7 +59,6 @@ func (s *POSService) CreateMerchant(name, address, phone string) (*models.Mercha
 }
 
 func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider string) (*models.POSModel, error) {
-	var orderRequest models.OrderRequestModel
 	var shippingData struct {
 		FullName        string  `json:"full_name"`
 		Email           string  `json:"email"`
@@ -68,6 +67,7 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		Longitude       float64 `json:"longitude"`
 		ShippingAddress string  `json:"shipping_address"`
 	}
+	var orderRequest models.OrderRequestModel
 	if err := s.db.First(&orderRequest, "id = ?", offer.OrderRequestID).Error; err != nil {
 		return nil, err
 	}
@@ -284,7 +284,7 @@ func (s *POSService) GetPosSales(request http.Request, search string) (paginate.
 
 func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
 	var pos models.POSModel
-	if err := s.db.Preload("Items", func(tx *gorm.DB) *gorm.DB {
+	if err := s.db.Preload("Offer").Preload("Items", func(tx *gorm.DB) *gorm.DB {
 		return tx.Preload("Product.Tags").Preload("Variant.Tags")
 	}).Preload("Payment").Where("id = ?", id).First(&pos).Error; err != nil {
 		return nil, err

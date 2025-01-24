@@ -28,7 +28,7 @@ func (g *GoSendProvider) GetExpressMotorRates(origin, destination objects.Locati
 	}, nil
 }
 
-func (g *GoSendProvider) CreateShipment(orderID string, destination string) (objects.Shipment, error) {
+func (g *GoSendProvider) CreateShipment(orderID *string, destination string) (objects.Shipment, error) {
 	// Implementasi API GoSend untuk membuat pengiriman
 	return objects.Shipment{
 		TrackingID: "GS123456789",

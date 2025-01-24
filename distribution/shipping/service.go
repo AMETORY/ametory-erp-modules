@@ -1,6 +1,7 @@
 package shipping
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -26,7 +27,8 @@ func Migrate(db *gorm.DB) error {
 func (s *ShippingService) SetProvider(provider provider.ShippingProvider) {
 	s.provider = provider
 }
-func (s *ShippingService) CreateShipping(orderID string, method, destination string) (*models.ShippingModel, error) {
+
+func (s *ShippingService) CreateShipping(orderID *string, method, destination string) (*models.ShippingModel, error) {
 	if s.provider == nil {
 		return nil, errors.New("shipping provider not set")
 	}
@@ -38,15 +40,24 @@ func (s *ShippingService) CreateShipping(orderID string, method, destination str
 
 	// Simpan data pengiriman ke database
 	shipping := models.ShippingModel{
-		OrderID:    orderID,
-		Method:     method,
-		TrackingID: shipment.TrackingID,
-		Status:     shipment.Status,
+		OrderID:      orderID,
+		Method:       method,
+		TrackingID:   shipment.TrackingID,
+		Status:       shipment.Status,
+		TrackingData: "[]",
 	}
 	if err := s.db.Create(&shipping).Error; err != nil {
 		return nil, err
 	}
 
+	return &shipping, nil
+}
+
+func (s *ShippingService) GetShippingByTrackingID(trackingID string) (*models.ShippingModel, error) {
+	var shipping models.ShippingModel
+	if err := s.db.Where("tracking_id = ?", trackingID).First(&shipping).Error; err != nil {
+		return nil, err
+	}
 	return &shipping, nil
 }
 
@@ -68,9 +79,27 @@ func (s *ShippingService) TrackShipment(trackingID string) (*objects.TrackingSta
 	if s.provider == nil {
 		return nil, errors.New("shipping provider not set")
 	}
+	shipping, err := s.GetShippingByTrackingID(trackingID)
+	if err != nil {
+		return nil, err
+	}
+
+	json.Unmarshal([]byte(shipping.TrackingData), &shipping.TrackingStatuses)
 
 	status, err := s.provider.TrackShipment(trackingID)
 	if err != nil {
+		return nil, err
+	}
+	shipping.TrackingStatuses = append(shipping.TrackingStatuses, status)
+
+	shipping.Status = status.Status
+
+	b, err := json.Marshal(shipping.TrackingStatuses)
+	if err != nil {
+		return nil, err
+	}
+	shipping.TrackingData = string(b)
+	if err := s.db.Save(&shipping).Error; err != nil {
 		return nil, err
 	}
 
