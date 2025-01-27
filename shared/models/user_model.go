@@ -60,3 +60,23 @@ func HashPassword(password string) (string, error) {
 func CheckPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
+
+type PushTokenModel struct {
+	shared.BaseModel
+	Type       string  `json:"type"`
+	DeviceType string  `json:"device_type"`
+	Token      string  `json:"token" gorm:"uniqueIndex:idx_token"`
+	UserID     *string `json:"user_id" gorm:"uniqueIndex:idx_token"`
+	AdminID    *string `json:"admin_id" gorm:"uniqueIndex:idx_token"`
+}
+
+func (PushTokenModel) TableName() string {
+	return "push_tokens"
+}
+
+func (pt *PushTokenModel) BeforeCreate(tx *gorm.DB) (err error) {
+	if pt.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return
+}

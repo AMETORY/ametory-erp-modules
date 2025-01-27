@@ -30,6 +30,7 @@ type CompanyModel struct {
 	Merchants             []MerchantModel  `json:"merchants,omitempty" gorm:"-"`
 	Warehouses            []WarehouseModel `json:"warehouses,omitempty" gorm:"-"`
 	EmailVerifiedAt       *time.Time       `gorm:"index" json:"email_verified_at,omitempty"`
+	Users                 []UserModel      `gorm:"many2many:user_companies;" json:"users,omitempty"`
 }
 
 func (CompanyModel) TableName() string {

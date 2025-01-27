@@ -44,6 +44,7 @@ type POSModel struct {
 	Total               float64                `json:"total,omitempty" gorm:"column:total"`
 	Subtotal            float64                `json:"subtotal,omitempty" gorm:"column:subtotal"`
 	ShippingFee         float64                `json:"shipping_fee,omitempty" gorm:"column:shipping_fee"`
+	ServiceFee          float64                `json:"service_fee,omitempty" gorm:"column:service_fee"`
 	Paid                float64                `json:"paid,omitempty" gorm:"column:paid"`
 	TotalBeforeTax      float64                `json:"total_before_tax,omitempty" gorm:"column:total_before_tax"`
 	TotalBeforeDisc     float64                `json:"total_before_disc,omitempty" gorm:"column:total_before_disc"`
@@ -71,6 +72,9 @@ type POSModel struct {
 	SaleAccount         *AccountModel          `gorm:"foreignKey:SaleAccountID;constraint:OnDelete:CASCADE" json:"sale_account,omitempty"`
 	AssetAccountID      *string                `json:"asset_account_id,omitempty" gorm:"column:asset_account_id"`
 	AssetAccount        *AccountModel          `gorm:"foreignKey:AssetAccountID;constraint:OnDelete:CASCADE" json:"asset_account,omitempty"`
+	Tax                 float64                `json:"tax"`
+	TaxType             string                 `json:"tax_type" gorm:"type:varchar"`
+	TaxAmount           float64                `json:"tax_amount"`
 }
 
 type POSSalesItemModel struct {

@@ -35,28 +35,26 @@ func (s *ContactService) CreateContact(data *models.ContactModel) error {
 // CreateContactFromUser membuat contact baru dari user jika tidak ada contact yang sama dengan email user
 func (s *ContactService) CreateContactFromUser(user *models.UserModel, code string, isCustomer, isVendor, isSupplier bool, companyID *string) (*models.ContactModel, error) {
 	var contact models.ContactModel
-	if err := s.ctx.DB.Where("email = ?", user.Email).First(&contact).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
+	if err := s.ctx.DB.Where("user_id = ?", user.ID).First(&contact).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			contact = models.ContactModel{
+				Code:       code,
+				Name:       user.FullName,
+				Phone:      user.PhoneNumber,
+				Address:    user.Address,
+				Email:      user.Email,
+				IsCustomer: isCustomer,
+				IsVendor:   isVendor,
+				IsSupplier: isSupplier,
+				UserID:     &user.ID,
+				CompanyID:  companyID,
+			}
+			if err := s.ctx.DB.Create(&contact).Error; err != nil {
+				return nil, err
+			}
 		}
 	}
-	if contact.ID == "" {
-		contact = models.ContactModel{
-			Code:       code,
-			Name:       user.FullName,
-			Phone:      user.PhoneNumber,
-			Address:    user.Address,
-			Email:      user.Email,
-			IsCustomer: isCustomer,
-			IsVendor:   isVendor,
-			IsSupplier: isSupplier,
-			UserID:     &user.ID,
-			CompanyID:  companyID,
-		}
-		if err := s.ctx.DB.Create(&contact).Error; err != nil {
-			return nil, err
-		}
-	}
+
 	return &contact, nil
 }
 

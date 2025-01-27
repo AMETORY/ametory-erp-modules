@@ -52,3 +52,19 @@ func (s *ProductCategoryService) GetProductCategories(request http.Request, sear
 	page.Page = page.Page + 1
 	return page, nil
 }
+
+func (s *ProductCategoryService) GetCategoryByName(name string) (*models.ProductCategoryModel, error) {
+	var category models.ProductCategoryModel
+	err := s.db.Where("name = ?", name).First(&category).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	if err == gorm.ErrRecordNotFound {
+		category.Name = name
+		err = s.CreateProductCategory(&category)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &category, nil
+}

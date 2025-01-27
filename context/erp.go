@@ -25,10 +25,13 @@ type ERPContext struct {
 	DistributionService interface{} // Contoh: DistributionService
 	FileService         interface{} // Contoh: FileService
 	Firestore           interface{} // Contoh: Firestore
+	FCMService          interface{} // Contoh: Firestore
 	IndonesiaRegService interface{} // Contoh: IndonesiaRegService
 	UserService         interface{} // Contoh: IndonesiaRegService
 	AppService          interface{}
 	InternalService     interface{}
+
+	ThirdPartyServices map[string]interface{}
 	// Add additional services here
 	EmailSender  *thirdparty.SMTPSender
 	WatzapClient *thirdparty.WatzapClient
@@ -39,9 +42,14 @@ type ERPContext struct {
 // NewERPContext membuat instance baru dari ERPContext
 func NewERPContext(db *gorm.DB, req *http.Request, ctx *context.Context, skipMigrate bool) *ERPContext {
 	return &ERPContext{
-		DB:            db,
-		Request:       req,
-		Ctx:           ctx,
-		SkipMigration: skipMigrate,
+		DB:                 db,
+		Request:            req,
+		Ctx:                ctx,
+		SkipMigration:      skipMigrate,
+		ThirdPartyServices: make(map[string]interface{}, 0),
 	}
+}
+
+func (erp *ERPContext) AddThirdPartyService(name string, service interface{}) {
+	erp.ThirdPartyServices[name] = service
 }

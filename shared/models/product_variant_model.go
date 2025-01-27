@@ -3,6 +3,7 @@ package models
 import (
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
@@ -11,15 +12,19 @@ import (
 
 type VariantModel struct {
 	shared.BaseModel
-	ProductID   string                         `gorm:"index" json:"product_id,omitempty"`
-	Product     *ProductModel                  `gorm:"foreignKey:ProductID" json:"product,omitempty"`
-	SKU         string                         `gorm:"type:varchar(255);not null" json:"sku,omitempty"`
-	Barcode     *string                        `gorm:"type:varchar(255)" json:"barcode,omitempty"`
-	Price       float64                        `gorm:"not null;default:0" json:"price,omitempty"`
-	Attributes  []VariantProductAttributeModel `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE" json:"attributes,omitempty"`
-	DisplayName string                         `gorm:"type:varchar(255)" json:"display_name,omitempty"`
-	TotalStock  float64                        `gorm:"-" json:"total_stock,omitempty"`
-	Tags        []*TagModel                    `gorm:"many2many:variant_tags;constraint:OnDelete:CASCADE;" json:"tags,omitempty"`
+	ProductID        string                         `gorm:"index" json:"product_id,omitempty"`
+	Product          *ProductModel                  `gorm:"foreignKey:ProductID" json:"product,omitempty"`
+	SKU              string                         `gorm:"type:varchar(255);not null" json:"sku,omitempty"`
+	Barcode          *string                        `gorm:"type:varchar(255)" json:"barcode,omitempty"`
+	Price            float64                        `gorm:"not null;default:0" json:"price,omitempty"`
+	Attributes       []VariantProductAttributeModel `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE" json:"attributes,omitempty"`
+	DisplayName      string                         `gorm:"type:varchar(255)" json:"display_name,omitempty"`
+	TotalStock       float64                        `gorm:"-" json:"total_stock,omitempty"`
+	Tags             []*TagModel                    `gorm:"many2many:variant_tags;constraint:OnDelete:CASCADE;" json:"tags,omitempty"`
+	PriceList        []float64                      `gorm:"-" json:"price_list,omitempty"`
+	OriginalPrice    float64                        `gorm:"-" json:"original_price,omitempty"`
+	LastUpdatedStock *time.Time                     `gorm:"-" json:"last_updated_stock,omitempty"`
+	LastStock        float64                        `gorm:"-" json:"last_stock,omitempty"`
 }
 
 func (VariantModel) TableName() string {
@@ -65,4 +70,40 @@ func (v *VariantModel) GenerateDisplayName(tx *gorm.DB) {
 
 	// Generate display name
 	v.DisplayName = strings.Join(displayNames, " ")
+}
+
+func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
+	var pp VariantModel
+	tx.Select("price").Model(&p).First(&pp, "id = ?", p.ID)
+	p.OriginalPrice = pp.Price
+
+	var pm []VarianMerchant
+	tx.Select("price").Where("variant_id = ?", p.ID).Find(&pm)
+	p.PriceList = []float64{pp.Price}
+	for _, v := range pm {
+		if v.Price != p.Price {
+			p.PriceList = append(p.PriceList, v.Price)
+		}
+	}
+
+	// sort.Float64s(p.PriceList)
+	return
+}
+
+type VarianMerchant struct {
+	shared.BaseModel
+	MerchantID       string        `gorm:"type:char(36);uniqueIndex:variant_merchant_merchant_id_variant_id_key"`
+	Variant          VariantModel  `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	VariantID        string        `gorm:"type:char(36);uniqueIndex:variant_merchant_merchant_id_variant_id_key"`
+	Merchant         MerchantModel `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
+	LastUpdatedStock *time.Time    `gorm:"column:last_updated_stock" json:"last_updated_stock"`
+	LastStock        float64       `gorm:"column:last_stock" json:"last_stock"`
+	Price            float64
+}
+
+func (vm *VarianMerchant) BeforeCreate(tx *gorm.DB) error {
+	if vm.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return nil
 }

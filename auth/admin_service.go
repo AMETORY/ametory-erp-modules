@@ -266,3 +266,37 @@ func (s *AdminAuthService) GetProfilePicture(userID string) (models.FileModel, e
 	err := s.db.Where("ref_id = ? and ref_type = ?", userID, "admin").First(&image).Error
 	return image, err
 }
+
+// CreatePushToken creates a new push token for an admin
+func (s *AdminAuthService) CreatePushToken(adminID *string, token, deviceType, tokenType string) (*models.PushTokenModel, error) {
+	// Check if the token already exists
+	var existingPushToken models.PushTokenModel
+	if err := s.db.Where("token = ?  and admin_id = ?", token, adminID).First(&existingPushToken).Error; err == nil {
+		return nil, errors.New("token already exists")
+	}
+
+	pushToken := &models.PushTokenModel{
+		Token:      token,
+		DeviceType: deviceType,
+		Type:       tokenType,
+		AdminID:    adminID,
+	}
+
+	if err := s.db.Create(pushToken).Error; err != nil {
+		return nil, err
+	}
+
+	return pushToken, nil
+}
+
+func (s *AuthService) GetTokenFromAdminID(userID string) ([]string, error) {
+	var pushTokens []models.PushTokenModel
+	if err := s.db.Where("admin_id = ?", userID).Find(&pushTokens).Error; err != nil {
+		return nil, err
+	}
+	tokens := make([]string, len(pushTokens))
+	for i, token := range pushTokens {
+		tokens[i] = token.Token
+	}
+	return tokens, nil
+}

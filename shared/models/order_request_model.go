@@ -21,6 +21,11 @@ type OrderRequestModel struct {
 	TotalPrice         float64                 `json:"total_price,omitempty"`
 	SubTotal           float64                 `json:"sub_total,omitempty"`
 	ShippingFee        float64                 `json:"shipping_fee,omitempty"`
+	ServiceFee         float64                 `json:"service_fee,omitempty"`
+	Tax                float64                 `json:"tax"`
+	TaxType            string                  `json:"tax_type" gorm:"type:varchar"`
+	TaxAmount          float64                 `json:"tax_amount"`
+	TotalTaxAmount     float64                 `json:"total_tax_amount"`
 	ShippingData       string                  `gorm:"type:json" json:"-"`
 	Distance           float64                 `json:"distance"`
 	ExpiresAt          time.Time               `json:"expires_at,omitempty"` // Batas waktu pengambilan order

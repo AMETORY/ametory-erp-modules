@@ -1,6 +1,7 @@
 package brand
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -67,4 +68,23 @@ func (s *BrandService) GetBrands(request http.Request, search string) (paginate.
 	page := pg.With(stmt).Request(request).Response(&[]models.BrandModel{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (s *BrandService) GetBrandByName(name string) (*models.BrandModel, error) {
+	var brand models.BrandModel
+	err := s.db.Where("name = ?", name).First(&brand).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			brand = models.BrandModel{
+				Name: name,
+			}
+			err := s.db.Create(&brand).Error
+			if err != nil {
+				return nil, err
+			}
+			return &brand, nil
+		}
+		return nil, err
+	}
+	return &brand, nil
 }

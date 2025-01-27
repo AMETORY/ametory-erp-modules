@@ -54,8 +54,15 @@ func (s *OfferingService) CreateOffer(merchant models.MerchantAvailableProduct, 
 		MerchantID:                   merchant.MerchantID,
 		SubTotal:                     merchant.SubTotal,
 		TotalPrice:                   merchant.TotalPrice,
+		ServiceFee:                   merchant.ServiceFee,
 		ShippingFee:                  merchant.ShippingFee,
+		ShippingType:                 merchant.ShippingType,
+		CourierName:                  merchant.CourierName,
 		Distance:                     merchant.Distance,
+		Tax:                          merchant.Tax,
+		TaxType:                      merchant.TaxType,
+		TaxAmount:                    merchant.TaxAmount,
+		TotalTaxAmount:               merchant.TotalTaxAmount,
 		Status:                       "PENDING",
 		MerchantAvailableProductData: string(b),
 		MerchantAvailableProduct:     merchant,
@@ -69,7 +76,7 @@ func (s *OfferingService) CreateOffer(merchant models.MerchantAvailableProduct, 
 	return &offer, nil
 }
 
-func (s *OfferingService) CreateOffers(orderRequest models.OrderRequestModel, availableMerchants []models.MerchantModel) error {
+func (s *OfferingService) CreateOffers(orderRequest models.OrderRequestModel, availableMerchants []models.MerchantAvailableProduct) error {
 	if s.auditTrailService == nil {
 		return fmt.Errorf("audit trail service is not initialized")
 	}
@@ -82,10 +89,16 @@ func (s *OfferingService) CreateOffers(orderRequest models.OrderRequestModel, av
 			offer := models.OfferModel{
 				UserID:         orderRequest.UserID,
 				OrderRequestID: orderRequest.ID,
-				MerchantID:     merchant.ID,
+				MerchantID:     merchant.MerchantID,
 				SubTotal:       orderRequest.SubTotal,
 				TotalPrice:     orderRequest.TotalPrice,
 				ShippingFee:    orderRequest.ShippingFee,
+				ShippingType:   merchant.ShippingType,
+				CourierName:    merchant.CourierName,
+				Tax:            merchant.Tax,
+				TaxType:        merchant.TaxType,
+				TaxAmount:      merchant.TaxAmount,
+				TotalTaxAmount: merchant.TotalTaxAmount,
 				Status:         "PENDING",
 			}
 			err := tx.Create(&offer).Error

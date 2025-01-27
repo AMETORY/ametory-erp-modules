@@ -31,7 +31,7 @@ func NewAuthService(erpContext *context.ERPContext) *AuthService {
 
 func (s *AuthService) Migrate() error {
 	// s.db.Migrator().AlterColumn(&models.RoleModel{}, "name")
-	return s.db.AutoMigrate(&models.UserModel{}, &models.RoleModel{}, &models.PermissionModel{})
+	return s.db.AutoMigrate(&models.UserModel{}, &models.RoleModel{}, &models.PermissionModel{}, &models.PushTokenModel{})
 }
 
 func (s *AuthService) DB() *gorm.DB {
@@ -285,4 +285,37 @@ func (s *AuthService) UpdateLatLng(userID string, latitude, longitude float64) e
 	}
 
 	return nil
+}
+
+func (s *AuthService) CreatePushToken(userID *string, token, deviceType, tokenType string) (*models.PushTokenModel, error) {
+	// Check if the token already exists
+	var existingPushToken models.PushTokenModel
+	if err := s.db.Where("token = ? and user_id = ?", token, userID).First(&existingPushToken).Error; err == nil {
+		return nil, errors.New("token already exists")
+	}
+
+	pushToken := &models.PushTokenModel{
+		Token:      token,
+		DeviceType: deviceType,
+		UserID:     userID,
+		Type:       tokenType,
+	}
+
+	if err := s.db.Create(pushToken).Error; err != nil {
+		return nil, err
+	}
+
+	return pushToken, nil
+}
+
+func (s *AuthService) GetTokenFromUserID(userID string) ([]string, error) {
+	var pushTokens []models.PushTokenModel
+	if err := s.db.Where("user_id = ?", userID).Find(&pushTokens).Error; err != nil {
+		return nil, err
+	}
+	tokens := make([]string, len(pushTokens))
+	for i, token := range pushTokens {
+		tokens[i] = token.Token
+	}
+	return tokens, nil
 }

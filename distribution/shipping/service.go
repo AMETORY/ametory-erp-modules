@@ -28,28 +28,26 @@ func (s *ShippingService) SetProvider(provider provider.ShippingProvider) {
 	s.provider = provider
 }
 
-func (s *ShippingService) CreateShipping(orderID *string, method, destination string) (*models.ShippingModel, error) {
-	if s.provider == nil {
-		return nil, errors.New("shipping provider not set")
-	}
-	// Buat pengiriman menggunakan provider
-	shipment, err := s.provider.CreateShipment(orderID, destination)
-	if err != nil {
+func (s *ShippingService) CreateDraftShipment(data interface{}) (objects.Shipment, error) {
+	return s.provider.CreateDraftShipment(data)
+}
+
+func (s *ShippingService) CreateShipment(data interface{}) (objects.Shipment, error) {
+	return s.provider.CreateShipment(data)
+}
+
+func (s *ShippingService) GetShippingByOrderID(orderID string) (*models.ShippingModel, error) {
+	var shipping models.ShippingModel
+	if err := s.db.Where("order_id = ?", orderID).First(&shipping).Error; err != nil {
 		return nil, err
 	}
-
-	// Simpan data pengiriman ke database
-	shipping := models.ShippingModel{
-		OrderID:      orderID,
-		Method:       method,
-		TrackingID:   shipment.TrackingID,
-		Status:       shipment.Status,
-		TrackingData: "[]",
-	}
-	if err := s.db.Create(&shipping).Error; err != nil {
+	return &shipping, nil
+}
+func (s *ShippingService) GetShippingByID(ID string) (*models.ShippingModel, error) {
+	var shipping models.ShippingModel
+	if err := s.db.Where("id = ?", ID).First(&shipping).Error; err != nil {
 		return nil, err
 	}
-
 	return &shipping, nil
 }
 
@@ -61,18 +59,18 @@ func (s *ShippingService) GetShippingByTrackingID(trackingID string) (*models.Sh
 	return &shipping, nil
 }
 
-func (s *ShippingService) GetRates(origin, destination string, weight float64) ([]objects.Rate, error) {
+func (s *ShippingService) GetRates(origin, destination string, items []objects.Item) ([]objects.Rate, error) {
 	if s.provider == nil {
 		return nil, errors.New("shipping provider not set")
 	}
-	return s.provider.GetRates(origin, destination, weight)
+	return s.provider.GetRates(origin, destination, items)
 }
 
-func (s *ShippingService) GetExpressMotorRates(origin, destination objects.LocationPrecise) ([]objects.Rate, error) {
+func (s *ShippingService) GetExpressMotorRates(origin, destination objects.LocationPrecise, items []objects.Item) ([]objects.Rate, error) {
 	if s.provider == nil {
 		return nil, errors.New("shipping provider not set")
 	}
-	return s.provider.GetExpressMotorRates(origin, destination)
+	return s.provider.GetExpressMotorRates(origin, destination, items)
 }
 
 func (s *ShippingService) TrackShipment(trackingID string) (*objects.TrackingStatus, error) {
@@ -90,7 +88,7 @@ func (s *ShippingService) TrackShipment(trackingID string) (*objects.TrackingSta
 	if err != nil {
 		return nil, err
 	}
-	shipping.TrackingStatuses = append(shipping.TrackingStatuses, status)
+	shipping.TrackingStatuses = status.History
 
 	shipping.Status = status.Status
 

@@ -17,7 +17,6 @@ type ProductModel struct {
 	SKU              *string               `gorm:"type:varchar(255)" json:"sku,omitempty"`
 	Barcode          *string               `gorm:"type:varchar(255)" json:"barcode,omitempty"`
 	Price            float64               `gorm:"not null;default:0" json:"price,omitempty"`
-	OriginalPrice    float64               `gorm:"-" json:"original_price,omitempty"`
 	CompanyID        *string               `json:"company_id,omitempty"`
 	Company          *CompanyModel         `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 	DistributorID    *string               `gorm:"foreignKey:DistributorID;references:ID;constraint:OnDelete:CASCADE" json:"distributor_id,omitempty"`
@@ -39,6 +38,7 @@ type ProductModel struct {
 	Discounts        []DiscountModel       `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"discounts,omitempty"`
 	ActiveDiscount   *DiscountModel        `gorm:"-" json:"active_discount,omitempty"`
 	PriceList        []float64             `gorm:"-" json:"price_list,omitempty"`
+	OriginalPrice    float64               `gorm:"-" json:"original_price,omitempty"`
 	Variants         []VariantModel        `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"variants,omitempty"`
 	Tags             []*TagModel           `gorm:"many2many:product_tags;constraint:OnDelete:CASCADE;" json:"tags"`
 }

@@ -48,6 +48,13 @@ type MerchantAvailableProduct struct {
 	Items          []MerchantAvailableProductItem `json:"items"`
 	SubTotal       float64                        `json:"sub_total"`
 	ShippingFee    float64                        `json:"shipping_fee"`
+	ShippingType   string                         `json:"service_type"`
+	Tax            float64                        `json:"tax"`
+	TaxType        string                         `json:"tax_type" gorm:"type:varchar"`
+	TaxAmount      float64                        `json:"tax_amount"`
+	TotalTaxAmount float64                        `json:"total_tax_amount"`
+	CourierName    string                         `json:"courier_name"`
+	ServiceFee     float64                        `json:"service_fee"`
 	TotalPrice     float64                        `json:"total_price"`
 	Distance       float64                        `json:"distance"`
 }

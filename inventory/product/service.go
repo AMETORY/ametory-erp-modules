@@ -27,6 +27,7 @@ func NewProductService(db *gorm.DB, ctx *context.ERPContext, fileService *file.F
 }
 
 func Migrate(db *gorm.DB) error {
+	db.Migrator().AlterColumn(&models.VariantModel{}, "product_id")
 	return db.AutoMigrate(
 		&models.ProductModel{},
 		&models.ProductCategoryModel{},
@@ -42,6 +43,7 @@ func Migrate(db *gorm.DB) error {
 		&models.TagModel{},
 		&models.ProductTag{},
 		&models.VariantTag{},
+		&models.VarianMerchant{},
 	)
 }
 
@@ -57,6 +59,32 @@ func (s *ProductService) DeleteProduct(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.ProductModel{}).Error
 }
 
+func (s *ProductService) GetVariantByID(variantID string, request *http.Request) (*models.VariantModel, error) {
+	var variant models.VariantModel
+	err := s.db.Where("id = ?", variantID).First(&variant).Error
+	if err != nil {
+		return nil, err
+	}
+	merchantID := request.Header.Get("ID-Merchant")
+	if merchantID == "" {
+		return nil, errors.New("merchant not found")
+	}
+	price := s.GetVariantPrice(merchantID, &variant)
+	variant.Price = price
+
+	return &variant, nil
+}
+
+func (s *ProductService) GetVariantPrice(merchantID string, variant *models.VariantModel) float64 {
+	var variantMerchant models.VarianMerchant
+	err := s.db.Where("variant_id = ? AND merchant_id = ?", variant.ID, merchantID).First(&variantMerchant).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return variant.Price
+	}
+	variant.LastUpdatedStock = variantMerchant.LastUpdatedStock
+	variant.LastStock = variantMerchant.LastStock
+	return variantMerchant.Price
+}
 func (s *ProductService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
 	var product models.ProductModel
 	err := s.db.Preload("Tags").Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
@@ -162,6 +190,7 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 		for i, variant := range item.Variants {
 			variantStock, _ := s.GetVariantStock(item.ID, variant.ID, &request, warehouseID)
 			variant.TotalStock = variantStock
+			// variant.Price = s.GetVariantPrice(merchantID, &variant)
 			item.Variants[i] = variant
 			fmt.Println("VARIANT STOCK", variant.ID, variant.TotalStock)
 		}

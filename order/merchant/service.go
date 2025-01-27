@@ -163,15 +163,17 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			if warehouseID != nil {
 				totalVariantStock, _ := s.inventoryService.StockMovementService.GetVarianCurrentStock(v.ID, variant.ID, *warehouseID)
 				variant.TotalStock = totalVariantStock
+				variant.Price = s.inventoryService.ProductService.GetVariantPrice(merchantID, &variant)
 				v.Variants[j] = variant
 			}
 		}
 
 		var ProductMerchant models.ProductMerchant
-		err := s.db.Select("last_updated_stock", "last_stock").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
+		err := s.db.Select("last_updated_stock", "last_stock", "price").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
 		if err == nil {
 			v.LastUpdatedStock = ProductMerchant.LastUpdatedStock
 			v.LastStock = ProductMerchant.LastStock
+			v.Price = ProductMerchant.Price
 		}
 
 		newItems = append(newItems, v)
@@ -255,6 +257,30 @@ func (s *MerchantService) EditProductPrice(merchantID, productID string, price f
 	return tx.Commit().Error
 }
 
+func (s *MerchantService) EditVariantPrice(merchantID, variantID string, price float64) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var variantMerchant models.VarianMerchant
+
+		err := tx.Where("variant_id = ? AND merchant_id = ?", variantID, merchantID).
+			First(&variantMerchant).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			variantMerchant.VariantID = variantID
+			variantMerchant.MerchantID = merchantID
+			variantMerchant.Price = price
+			tx.Create(&variantMerchant)
+		}
+
+		if err := tx.Model(&models.VarianMerchant{}).Where("variant_id = ? AND merchant_id = ?", variantID, merchantID).
+			Updates(map[string]interface{}{
+				"price": price,
+			}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+}
+
 func (s *MerchantService) GetProductAvailableByMerchant(merchant models.MerchantModel, orderRequest *models.OrderRequestModel) (*models.MerchantAvailableProduct, error) {
 	var subTotal float64
 	var merchantAvailable models.MerchantAvailableProduct
@@ -274,6 +300,11 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 			var variant models.VariantModel
 			s.db.Select("price", "id", "display_name").Find(&variant, "id = ?", *item.VariantID)
 			price = variant.Price
+			var variantMerchant models.VarianMerchant
+			s.db.Select("price", "id").Find(&variantMerchant, "variant_id = ? AND merchant_id = ?", *item.VariantID, merchant.ID)
+			if variantMerchant.Price != 0 {
+				price = variantMerchant.Price
+			}
 			availableStock, _ = s.inventoryService.ProductService.GetVariantStock(*item.ProductID, *item.VariantID, nil, merchant.DefaultWarehouseID)
 			variantDisplayName = &variant.DisplayName
 		} else {
@@ -284,7 +315,7 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 			item.Status = "OUT_OF_STOCK"
 		} else {
 			item.Status = "AVAILABLE"
-			subTotal += float64(item.Quantity) * price
+			subTotal += item.Quantity * price
 
 		}
 		// orderRequest.Items[i] = item
@@ -296,11 +327,38 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 			Quantity:           item.Quantity,
 			UnitPrice:          price,
 			Status:             item.Status,
-			SubTotal:           float64(item.Quantity) * price,
+			SubTotal:           item.Quantity * price,
 		}
 
 	}
 	merchantAvailable.SubTotal = subTotal
 	merchantAvailable.OrderRequestID = orderRequest.ID
 	return &merchantAvailable, nil
+}
+
+func (s *MerchantService) GetPushTokenFromMerchantID(merchantID string) ([]string, error) {
+	var merchant models.MerchantModel
+	err := s.db.Preload("Company.Users").Find(&merchant, "id = ?", merchantID).Error
+	if err != nil {
+		return nil, err
+	}
+
+	userIDs := make([]string, 0)
+	for _, v := range merchant.Company.Users {
+		userIDs = append(userIDs, v.ID)
+	}
+	// merchant.Company.Users = make([]models.UserModel, 0)
+	// merchant.Company.Users = append(merchant.Company.Users, *merchant.User)
+
+	var pushToken []models.PushTokenModel
+	err = s.db.Where("user_id IN (?)", userIDs).Find(&pushToken).Error
+	if err != nil {
+		return nil, err
+	}
+
+	tokens := make([]string, 0)
+	for _, v := range pushToken {
+		tokens = append(tokens, v.Token)
+	}
+	return tokens, nil
 }

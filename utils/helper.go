@@ -84,3 +84,23 @@ func FixRequest(request *http.Request) {
 func Uuid() string {
 	return uuid.New().String()
 }
+
+func CalculateIncludeTax(subtotalInclTax float64, taxRate float64) float64 {
+	// Rumus: pajak = (subtotal_incl_tax * tax_rate) / (1 + tax_rate)
+	// jika tax_rate dalam persen maka konversi ke pecahan terlebih dahulu
+	taxRateFraction := taxRate / 100
+	tax := (subtotalInclTax * taxRateFraction) / (1 + taxRateFraction)
+	return tax
+}
+
+func CalculateExcludeTax(subtotalExclTax float64, taxRate float64) float64 {
+	// Rumus: pajak = subtotal_excl_tax * tax_rate
+	// jika tax_rate dalam persen maka konversi ke pecahan terlebih dahulu
+	taxRateFraction := taxRate / 100
+	tax := subtotalExclTax * taxRateFraction
+	// fmt.Println("taxRate", taxRate)
+	// fmt.Println("taxRateFraction", taxRateFraction)
+	// fmt.Println("subtotalExclTax", subtotalExclTax)
+	// fmt.Println("tax", tax)
+	return tax
+}

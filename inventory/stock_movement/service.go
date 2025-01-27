@@ -78,6 +78,13 @@ func (s *StockMovementService) UpdateLastStock(productID, merchant_model_id stri
 		Limit(1).
 		Updates(map[string]interface{}{"last_stock": quantity, "last_updated_stock": lastUpdatedAt}).Error
 }
+func (s *StockMovementService) UpdateVariantLastStock(varianID, merchantID string, quantity float64, lastUpdatedAt time.Time) error {
+	return s.db.Model(&models.VarianMerchant{}).
+		Where("variant_id = ? AND merchant_id = ?", varianID, merchantID).
+		Order("created_at desc").
+		Limit(1).
+		Updates(map[string]interface{}{"last_stock": quantity, "last_updated_stock": lastUpdatedAt}).Error
+}
 
 // AddMovement menambahkan pergerakan stok
 func (s *StockMovementService) AddMovement(date time.Time, productID, warehouseID string, variantID, merchantID *string, distributorID *string, quantity float64, movementType models.MovementType, referenceID, description string) (*models.StockMovementModel, error) {
