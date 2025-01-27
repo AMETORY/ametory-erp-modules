@@ -110,6 +110,21 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 	contactID = &ctct.ID
 	var items []models.POSSalesItemModel
 	for _, v := range merchantProductAvailable.Items {
+		var Height, Length, Weight, Width float64
+		product := models.ProductModel{}
+		s.db.Select("height, length, weight, width").First(&product, "id = ?", v.ProductID)
+		Height = product.Height
+		Length = product.Length
+		Weight = product.Weight
+		Width = product.Width
+		if v.VariantID != nil {
+			variant := models.VariantModel{}
+			s.db.Select("height, length, weight, width").First(&variant, "id = ?", v.VariantID)
+			Height = variant.Height
+			Length = variant.Length
+			Weight = variant.Weight
+			Width = variant.Width
+		}
 		items = append(items, models.POSSalesItemModel{
 			ProductID:          &v.ProductID,
 			VariantID:          v.VariantID,
@@ -117,6 +132,10 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 			UnitPrice:          v.UnitPrice,
 			SubtotalBeforeDisc: v.SubTotal,
 			WarehouseID:        merchant.DefaultWarehouseID,
+			Height:             Height,
+			Length:             Length,
+			Weight:             Weight,
+			Width:              Width,
 		})
 	}
 
@@ -309,7 +328,7 @@ func (s *POSService) GetUserPosSales(request http.Request, search, userID string
 }
 func (s *POSService) GetPosSales(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Items", func(tx *gorm.DB) *gorm.DB {
+	stmt := s.db.Preload("Merchant").Preload("Items", func(tx *gorm.DB) *gorm.DB {
 		return tx.Preload("Product").Preload("Variant")
 	}).Preload("Payment")
 	if search != "" {
@@ -386,6 +405,11 @@ func (s *POSService) UpdateDeliveredByID(id string) error {
 		}
 	}
 
+	pos.StockStatus = "DELIVERED"
+	if err := s.db.Save(&pos).Error; err != nil {
+		return err
+	}
+
 	return nil
 }
 func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
@@ -403,5 +427,20 @@ func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
 		v.Product.ProductImages = images
 		pos.Items[i] = v
 	}
+
+	var shipping models.ShippingModel
+	err := s.db.First(&shipping, "order_id = ?", id).Error
+	if err == nil {
+		pos.Shipping = &shipping
+	}
 	return &pos, nil
+}
+
+func (s *POSService) CountPosSalesByStatus(status string) (int64, error) {
+
+	var count int64
+	if err := s.db.Model(&models.POSModel{}).Where("status = ?", status).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }

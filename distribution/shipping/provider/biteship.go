@@ -156,7 +156,7 @@ func (b *BiteShipProvider) CreateShipment(data interface{}) (objects.Shipment, e
 		return objects.Shipment{}, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+b.APIKey)
+	req.Header.Set("Authorization", b.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -202,7 +202,7 @@ func (b *BiteShipProvider) TrackShipment(trackingID string) (objects.TrackingSta
 		return objects.TrackingStatus{}, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+b.APIKey)
+	req.Header.Set("Authorization", b.APIKey)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -225,7 +225,7 @@ func (b *BiteShipProvider) TrackShipment(trackingID string) (objects.TrackingSta
 		return objects.TrackingStatus{}, errors.New(response.Error)
 	}
 
-	// utils.LogJson(response)
+	utils.LogJson(response)
 	// Implementasi API GoSend untuk melacak pengiriman
 	return objects.TrackingStatus{
 		TrackingID: &trackingID,
@@ -233,5 +233,6 @@ func (b *BiteShipProvider) TrackShipment(trackingID string) (objects.TrackingSta
 		Status:     response.Status,
 		Link:       response.Link,
 		History:    response.History,
+		Shipment:   response.Courier,
 	}, nil
 }

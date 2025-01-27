@@ -89,6 +89,7 @@ func (s *ShippingService) TrackShipment(trackingID string) (*objects.TrackingSta
 		return nil, err
 	}
 	shipping.TrackingStatuses = status.History
+	shipping.Courier = status.Shipment
 
 	shipping.Status = status.Status
 
@@ -97,6 +98,13 @@ func (s *ShippingService) TrackShipment(trackingID string) (*objects.TrackingSta
 		return nil, err
 	}
 	shipping.TrackingData = string(b)
+
+	c, err := json.Marshal(shipping.Courier)
+	if err != nil {
+		return nil, err
+	}
+	shipping.CourierData = string(c)
+
 	if err := s.db.Save(&shipping).Error; err != nil {
 		return nil, err
 	}

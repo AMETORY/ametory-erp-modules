@@ -25,6 +25,10 @@ type VariantModel struct {
 	OriginalPrice    float64                        `gorm:"-" json:"original_price,omitempty"`
 	LastUpdatedStock *time.Time                     `gorm:"-" json:"last_updated_stock,omitempty"`
 	LastStock        float64                        `gorm:"-" json:"last_stock,omitempty"`
+	Height           float64                        `gorm:"default:10" json:"height,omitempty"`
+	Length           float64                        `gorm:"default:10" json:"length,omitempty"`
+	Weight           float64                        `gorm:"default:200" json:"weight,omitempty"`
+	Width            float64                        `gorm:"default:10" json:"width,omitempty"`
 }
 
 func (VariantModel) TableName() string {

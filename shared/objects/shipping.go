@@ -43,6 +43,7 @@ type TrackingStatus struct {
 	WaybillID  *string   `json:"waybill_id"`
 	Link       string    `json:"link"`
 	History    []History `json:"history"`
+	Shipment   Shipment  `json:"shipment"`
 }
 
 type LocationPrecise struct {
@@ -55,9 +56,9 @@ type Item struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Value       float64 `json:"value"`
-	Length      int     `json:"length"`
-	Width       int     `json:"width"`
-	Height      int     `json:"height"`
-	Weight      int     `json:"weight"`
-	Quantity    int     `json:"quantity"`
+	Length      float64 `json:"length"`
+	Width       float64 `json:"width"`
+	Height      float64 `json:"height"`
+	Weight      float64 `json:"weight"`
+	Quantity    float64 `json:"quantity"`
 }

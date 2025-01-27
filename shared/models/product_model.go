@@ -41,6 +41,10 @@ type ProductModel struct {
 	OriginalPrice    float64               `gorm:"-" json:"original_price,omitempty"`
 	Variants         []VariantModel        `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"variants,omitempty"`
 	Tags             []*TagModel           `gorm:"many2many:product_tags;constraint:OnDelete:CASCADE;" json:"tags"`
+	Height           float64               `gorm:"default:10" json:"height,omitempty"`
+	Length           float64               `gorm:"default:10" json:"length,omitempty"`
+	Weight           float64               `gorm:"default:200" json:"weight,omitempty"`
+	Width            float64               `gorm:"default:10" json:"width,omitempty"`
 }
 
 func (ProductModel) TableName() string {

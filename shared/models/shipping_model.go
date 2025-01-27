@@ -20,10 +20,12 @@ type ShippingModel struct {
 	Status               string                 `gorm:"not null" json:"status,omitempty"`                    // Status terakhir pengiriman
 	CourierName          string                 `gorm:"not null" json:"courier_name,omitempty"`
 	ServiceType          string                 `gorm:"not null" json:"service_type,omitempty"`
-	TrackingData         string                 `gorm:"type:json" json:"tracking_data,omitempty"`
+	TrackingData         string                 `gorm:"type:json" json:"-"`
 	ShippingData         string                 `gorm:"type:json" json:"-"`
+	CourierData          string                 `gorm:"type:json" json:"-"`
 	ShippingDataResponse map[string]interface{} `gorm:"-" json:"shipping_data_response,omitempty"`
 	TrackingStatuses     []objects.History      `gorm:"-" json:"tracking_statuses,omitempty"`
+	Courier              objects.Shipment       `gorm:"-" json:"courier,omitempty"`
 }
 
 func (s *ShippingModel) TableName() string {
@@ -38,8 +40,18 @@ func (s *ShippingModel) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (s *ShippingModel) AfterFind(tx *gorm.DB) error {
+	if s.TrackingData != "" {
+		if err := json.Unmarshal([]byte(s.TrackingData), &s.TrackingStatuses); err != nil {
+			return err
+		}
+	}
 	if s.ShippingData != "" {
 		if err := json.Unmarshal([]byte(s.ShippingData), &s.ShippingDataResponse); err != nil {
+			return err
+		}
+	}
+	if s.CourierData != "" {
+		if err := json.Unmarshal([]byte(s.CourierData), &s.Courier); err != nil {
 			return err
 		}
 	}

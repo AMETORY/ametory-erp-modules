@@ -51,6 +51,15 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 	if request.Header.Get("ID-Distributor") != "" {
 		stmt = stmt.Where("stock_movements.distributor = ?", request.Header.Get("ID-Distributor"))
 	}
+	if request.URL.Query().Get("product_id") != "" {
+		stmt = stmt.Where("stock_movements.product_id = ?", request.URL.Query().Get("product_id"))
+	}
+	if request.URL.Query().Get("warehouse_id") != "" {
+		stmt = stmt.Where("stock_movements.warehouse_id = ?", request.URL.Query().Get("warehouse_id"))
+	}
+	if request.URL.Query().Get("merchant_id") != "" {
+		stmt = stmt.Where("stock_movements.merchant_id = ?", request.URL.Query().Get("merchant_id"))
+	}
 	request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.StockMovementModel{})
 	utils.FixRequest(&request)

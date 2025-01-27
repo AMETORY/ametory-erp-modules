@@ -75,6 +75,7 @@ type POSModel struct {
 	Tax                 float64                `json:"tax"`
 	TaxType             string                 `json:"tax_type" gorm:"type:varchar"`
 	TaxAmount           float64                `json:"tax_amount"`
+	Shipping            *ShippingModel         `json:"shipping,omitempty" gorm:"-"`
 }
 
 type POSSalesItemModel struct {
@@ -94,6 +95,10 @@ type POSSalesItemModel struct {
 	Variant            *VariantModel   `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"variant,omitempty"`
 	WarehouseID        *string         `json:"warehouse_id,omitempty"`
 	Warehouse          *WarehouseModel `gorm:"foreignKey:WarehouseID;constraint:OnDelete:CASCADE" json:"warehouse,omitempty"`
+	Height             float64         `gorm:"default:10" json:"height,omitempty"`
+	Length             float64         `gorm:"default:10" json:"length,omitempty"`
+	Weight             float64         `gorm:"default:200" json:"weight,omitempty"`
+	Width              float64         `gorm:"default:10" json:"width,omitempty"`
 }
 
 func (s *POSModel) TableName() string {
