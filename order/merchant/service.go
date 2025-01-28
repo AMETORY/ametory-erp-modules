@@ -282,7 +282,7 @@ func (s *MerchantService) EditVariantPrice(merchantID, variantID string, price f
 }
 
 func (s *MerchantService) GetProductAvailableByMerchant(merchant models.MerchantModel, orderRequest *models.OrderRequestModel) (*models.MerchantAvailableProduct, error) {
-	var subTotal float64
+	var subTotal, totalDiscAmount float64
 	var merchantAvailable models.MerchantAvailableProduct
 	merchantAvailable.MerchantID = merchant.ID
 	merchantAvailable.Name = merchant.Name
@@ -310,29 +310,40 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 		} else {
 			availableStock, _ = s.inventoryService.ProductService.GetStock(*item.ProductID, nil, merchant.DefaultWarehouseID)
 		}
+
+		_, discAmount, discValue, discType, err := s.inventoryService.ProductService.CalculateDiscountedPrice(*item.ProductID, price)
+		if err != nil {
+			return nil, err
+		}
+
 		fmt.Println("AVAILABLE STOCK", merchant.Name, *item.ProductID, *item.VariantID, *merchant.DefaultWarehouseID, availableStock)
 		if availableStock < item.Quantity {
 			item.Status = "OUT_OF_STOCK"
 		} else {
 			item.Status = "AVAILABLE"
-			subTotal += item.Quantity * price
-
+			subTotal += item.Quantity * (price - discAmount)
 		}
+		totalDiscAmount += discAmount
 		// orderRequest.Items[i] = item
 		merchantAvailable.Items[i] = models.MerchantAvailableProductItem{
-			ProductID:          *item.ProductID,
-			ProductDisplayName: productDisplayName,
-			VariantDisplayName: variantDisplayName,
-			VariantID:          item.VariantID,
-			Quantity:           item.Quantity,
-			UnitPrice:          price,
-			Status:             item.Status,
-			SubTotal:           item.Quantity * price,
+			ProductID:              *item.ProductID,
+			ProductDisplayName:     productDisplayName,
+			VariantDisplayName:     variantDisplayName,
+			VariantID:              item.VariantID,
+			Quantity:               item.Quantity,
+			UnitPrice:              price,
+			Status:                 item.Status,
+			SubTotalBeforeDiscount: item.Quantity * price,
+			SubTotal:               item.Quantity * (price - discAmount),
+			DiscountAmount:         discAmount,
+			DiscountValue:          discValue,
+			DiscountType:           discType,
 		}
 
 	}
 	merchantAvailable.SubTotal = subTotal
 	merchantAvailable.OrderRequestID = orderRequest.ID
+	merchantAvailable.TotalDiscountAmount = totalDiscAmount
 	return &merchantAvailable, nil
 }
 

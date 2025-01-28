@@ -42,30 +42,35 @@ func (m *MerchantModel) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type MerchantAvailableProduct struct {
-	Name           string                         `json:"name" gorm:"not null"`
-	MerchantID     string                         `json:"merchant_id"`
-	OrderRequestID string                         `json:"order_request_id"`
-	Items          []MerchantAvailableProductItem `json:"items"`
-	SubTotal       float64                        `json:"sub_total"`
-	ShippingFee    float64                        `json:"shipping_fee"`
-	ShippingType   string                         `json:"service_type"`
-	Tax            float64                        `json:"tax"`
-	TaxType        string                         `json:"tax_type" gorm:"type:varchar"`
-	TaxAmount      float64                        `json:"tax_amount"`
-	TotalTaxAmount float64                        `json:"total_tax_amount"`
-	CourierName    string                         `json:"courier_name"`
-	ServiceFee     float64                        `json:"service_fee"`
-	TotalPrice     float64                        `json:"total_price"`
-	Distance       float64                        `json:"distance"`
+	Name                string                         `json:"name" gorm:"not null"`
+	MerchantID          string                         `json:"merchant_id"`
+	OrderRequestID      string                         `json:"order_request_id"`
+	Items               []MerchantAvailableProductItem `json:"items"`
+	SubTotal            float64                        `json:"sub_total"`
+	ShippingFee         float64                        `json:"shipping_fee"`
+	ShippingType        string                         `json:"service_type"`
+	Tax                 float64                        `json:"tax"`
+	TaxType             string                         `json:"tax_type" gorm:"type:varchar"`
+	TaxAmount           float64                        `json:"tax_amount"`
+	TotalTaxAmount      float64                        `json:"total_tax_amount"`
+	TotalDiscountAmount float64                        `json:"total_discount_amount"`
+	CourierName         string                         `json:"courier_name"`
+	ServiceFee          float64                        `json:"service_fee"`
+	TotalPrice          float64                        `json:"total_price"`
+	Distance            float64                        `json:"distance"`
 }
 
 type MerchantAvailableProductItem struct {
-	ProductID          string  `json:"product_id"`
-	ProductDisplayName string  `json:"product_display_name"`
-	VariantDisplayName *string `json:"variant_display_name"`
-	Status             string  `json:"status"`
-	VariantID          *string `json:"variant_id"`
-	Quantity           float64 `json:"quantity"`
-	UnitPrice          float64 `json:"unit_price"`
-	SubTotal           float64 `json:"sub_total"`
+	ProductID              string  `json:"product_id"`
+	ProductDisplayName     string  `json:"product_display_name"`
+	VariantDisplayName     *string `json:"variant_display_name"`
+	Status                 string  `json:"status"`
+	VariantID              *string `json:"variant_id"`
+	Quantity               float64 `json:"quantity"`
+	UnitPrice              float64 `json:"unit_price"`
+	SubTotal               float64 `json:"sub_total"`
+	SubTotalBeforeDiscount float64 `json:"sub_total_before_discount"`
+	DiscountAmount         float64 `json:"discount_amount"`
+	DiscountValue          float64 `json:"discount_value"`
+	DiscountType           string  `json:"discount_type"`
 }

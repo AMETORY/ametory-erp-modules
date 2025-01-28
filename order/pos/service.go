@@ -444,3 +444,41 @@ func (s *POSService) CountPosSalesByStatus(status string) (int64, error) {
 	}
 	return count, nil
 }
+
+func (s *POSService) GetPosSalesByDate(dateRange string, status string) ([]models.POSModel, error) {
+	var pos []models.POSModel
+	var start, end time.Time
+	switch dateRange {
+	case "TODAY":
+		start = time.Now().Truncate(24 * time.Hour)
+		end = start.Add(24 * time.Hour)
+	case "THIS_WEEK":
+		start = time.Now().Truncate(24*time.Hour).AddDate(0, 0, -int(time.Now().Weekday()))
+		end = start.Add(7 * 24 * time.Hour)
+	case "THIS_MONTH":
+		start = time.Now().Truncate(24*time.Hour).AddDate(0, 0, -int(time.Now().Day()))
+		end = start.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	case "THIS_YEAR":
+		start = time.Now().Truncate(24*time.Hour).AddDate(0, 0, -int(time.Now().Day()))
+		end = start.AddDate(1, 0, 0).Add(-time.Nanosecond)
+	case "LAST_7_DAYS":
+		start = time.Now().Truncate(24 * time.Hour).Add(-7 * 24 * time.Hour)
+		end = time.Now().Truncate(24 * time.Hour)
+	case "LAST_MONTH":
+		start = time.Now().Truncate(24*time.Hour).AddDate(0, 0, -int(time.Now().Day()))
+		end = start.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	case "LAST_QUARTER":
+		now := time.Now()
+		startMonth := (now.Month() - 1) / 3 * 3
+		start := time.Date(now.Year(), time.Month(startMonth+1), 1, 0, 0, 0, 0, now.Location())
+		end = start.AddDate(0, 3, 0).Add(-time.Nanosecond)
+	default:
+		return nil, errors.New("invalid date range")
+	}
+
+	if err := s.db.Where("created_at BETWEEN ? AND ?", start, end).Where("status = ?", status).Find(&pos).Error; err != nil {
+		return nil, err
+	}
+
+	return pos, nil
+}

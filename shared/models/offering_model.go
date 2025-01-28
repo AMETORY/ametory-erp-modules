@@ -18,6 +18,7 @@ type OfferModel struct {
 	PaymentID                    *string                  `json:"payment_id"`
 	Payment                      *PaymentModel            `gorm:"foreignKey:PaymentID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"payment,omitempty"`
 	SubTotal                     float64                  `json:"sub_total"`
+	TotalDiscountAmount          float64                  `json:"total_discount_amount"`
 	TotalPrice                   float64                  `json:"total_price"`
 	ShippingFee                  float64                  `json:"shipping_fee"`
 	ServiceFee                   float64                  `json:"service_fee"`
@@ -31,6 +32,10 @@ type OfferModel struct {
 	Status                       string                   `json:"status"` // Pending, Accepted, Taken
 	MerchantAvailableProduct     MerchantAvailableProduct `json:"merchant_available_product" gorm:"-"`
 	MerchantAvailableProductData string                   `json:"-" gorm:"type:json"`
+	SubTotalAfterDiscount        float64                  `json:"sub_total_after_discount"`
+	DiscountAmount               float64                  `json:"discount_amount"`
+	DiscountValue                float64                  `json:"discount_value"`
+	DiscountType                 string                   `json:"discount_type"`
 }
 
 func (OfferModel) TableName() string {

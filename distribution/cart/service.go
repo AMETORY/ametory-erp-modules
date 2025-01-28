@@ -44,7 +44,7 @@ func (s *CartService) GetCartByID(cartID string) (*models.CartModel, error) {
 
 func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, error) {
 	var cart models.CartModel
-	err := s.db.Preload("Items.Product").Where("user_id = ? AND status = ?", userID, "ACTIVE").First(&cart).Error
+	err := s.db.Preload("Items.Product.Tags").Where("user_id = ? AND status = ?", userID, "ACTIVE").First(&cart).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			cart = models.CartModel{
@@ -65,7 +65,7 @@ func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, e
 		v.Product.ProductImages = img
 		if v.VariantID != nil {
 			var variant models.VariantModel
-			if err := s.db.Where("id = ?", v.VariantID).First(&variant).Error; err != nil {
+			if err := s.db.Preload("Tags").Where("id = ?", v.VariantID).First(&variant).Error; err != nil {
 				return nil, err
 			}
 			v.Product.Variants = []models.VariantModel{variant}
@@ -81,10 +81,18 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 	if err != nil {
 		return err
 	}
+	price := float64(0)
+
 	var product models.ProductModel
-	if err := s.ctx.DB.Select("price").Model(&models.ProductModel{}).Where("id = ?", productID).First(&product).Error; err != nil {
+	if err := s.ctx.DB.Model(&models.ProductModel{}).Where("id = ?", productID).First(&product).Error; err != nil {
 		return err
 	}
+	var width, height, weight, length float64 = product.Width, product.Height, product.Weight, product.Length
+
+	price = product.Price
+	var discountAmount float64 = product.DiscountAmount
+	var discountType string = product.DiscountType
+	var discountRate float64 = product.DiscountRate
 
 	// Cek apakah item sudah ada di cart
 	var existingItem models.CartItemModel
@@ -92,16 +100,41 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 		err = s.db.Where("cart_id = ? AND product_id = ?", cart.ID, productID).First(&existingItem).Error
 	} else {
 		err = s.db.Where("cart_id = ? AND product_id = ? AND variant_id = ?", cart.ID, productID, variantID).First(&existingItem).Error
+		variant := models.VariantModel{}
+		s.ctx.DB.Where("id = ?", *variantID).First(&variant)
+		if variant.Width != 0 {
+			width = variant.Width
+		}
+		if variant.Height != 0 {
+			height = variant.Height
+		}
+		if variant.Weight != 0 {
+			weight = variant.Weight
+		}
+		if variant.Length != 0 {
+			length = variant.Length
+		}
+		price = variant.Price
+		discountAmount = variant.DiscountAmount
+		discountType = variant.DiscountType
+		discountRate = variant.DiscountRate
 	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Tambahkan item baru ke cart
 			item := models.CartItemModel{
-				CartID:    cart.ID,
-				ProductID: productID,
-				VariantID: variantID,
-				Quantity:  quantity,
-				Price:     product.Price,
+				CartID:         cart.ID,
+				ProductID:      productID,
+				VariantID:      variantID,
+				Quantity:       quantity,
+				Price:          price,
+				DiscountAmount: discountAmount,
+				DiscountType:   discountType,
+				DiscountRate:   discountRate,
+				Width:          width,
+				Height:         height,
+				Weight:         weight,
+				Length:         length,
 			}
 			if err := s.db.Create(&item).Error; err != nil {
 				return err
@@ -112,7 +145,7 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 	} else {
 		// Update quantity jika item sudah ada
 		existingItem.Quantity += quantity
-		existingItem.Price = product.Price
+		existingItem.Price = price
 		if err := s.db.Save(&existingItem).Error; err != nil {
 			return err
 		}
@@ -136,7 +169,7 @@ func (s *CartService) DeleteItemCart(userID string, itemID string) error {
 	return nil
 }
 
-func (s *CartService) UpdateItemCart(userID string, productID string, quantity float64) error {
+func (s *CartService) UpdateItemCart(userID string, itemID string, quantity float64) error {
 	// Dapatkan cart active
 	cart, err := s.GetOrCreateActiveCart(userID)
 	if err != nil {
@@ -145,7 +178,7 @@ func (s *CartService) UpdateItemCart(userID string, productID string, quantity f
 
 	// Update quantity item di cart
 	var existingItem models.CartItemModel
-	if err := s.db.Where("cart_id = ? AND product_id = ?", cart.ID, productID).First(&existingItem).Error; err != nil {
+	if err := s.db.Where("cart_id = ? AND id = ?", cart.ID, itemID).First(&existingItem).Error; err != nil {
 		return err
 	}
 	existingItem.Quantity = quantity

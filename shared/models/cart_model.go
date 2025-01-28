@@ -31,14 +31,21 @@ func (c *CartModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 type CartItemModel struct {
 	shared.BaseModel
-	CartID    string        `gorm:"not null" json:"cart_id,omitempty"`
-	Cart      *CartModel    `gorm:"foreignKey:CartID;constraint:OnDelete:CASCADE" json:"cart,omitempty"`
-	ProductID string        `gorm:"not null" json:"product_id,omitempty"`
-	Product   ProductModel  `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"product,omitempty"`
-	VariantID *string       `json:"variant_id,omitempty"`
-	Variant   *VariantModel `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
-	Quantity  float64       `gorm:"not null" json:"quantity,omitempty"`
-	Price     float64       `gorm:"not null" json:"price,omitempty"`
+	CartID         string        `gorm:"not null" json:"cart_id,omitempty"`
+	Cart           *CartModel    `gorm:"foreignKey:CartID;constraint:OnDelete:CASCADE" json:"cart,omitempty"`
+	ProductID      string        `gorm:"not null" json:"product_id,omitempty"`
+	Product        ProductModel  `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"product,omitempty"`
+	VariantID      *string       `json:"variant_id,omitempty"`
+	Variant        *VariantModel `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	Quantity       float64       `gorm:"not null" json:"quantity,omitempty"`
+	Price          float64       `gorm:"not null" json:"price,omitempty"`
+	DiscountAmount float64       `gorm:"-" json:"discount_amount,omitempty"`
+	DiscountType   string        `gorm:"-" json:"discount_type,omitempty"`
+	DiscountRate   float64       `gorm:"-" json:"discount_rate,omitempty"`
+	Height         float64       `gorm:"default:10" json:"height,omitempty"`
+	Length         float64       `gorm:"default:10" json:"length,omitempty"`
+	Weight         float64       `gorm:"default:200" json:"weight,omitempty"`
+	Width          float64       `gorm:"default:10" json:"width,omitempty"`
 }
 
 func (CartItemModel) TableName() string {

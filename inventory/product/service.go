@@ -77,13 +77,20 @@ func (s *ProductService) GetVariantByID(variantID string, request *http.Request)
 
 func (s *ProductService) GetVariantPrice(merchantID string, variant *models.VariantModel) float64 {
 	var variantMerchant models.VarianMerchant
+	price := variant.Price
 	err := s.db.Where("variant_id = ? AND merchant_id = ?", variant.ID, merchantID).First(&variantMerchant).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return variant.Price
+		return price
 	}
+
+	price = variantMerchant.Price
 	variant.LastUpdatedStock = variantMerchant.LastUpdatedStock
 	variant.LastStock = variantMerchant.LastStock
-	return variantMerchant.Price
+	discountedPrice, _, _, _, err := s.CalculateDiscountedPrice(variant.ProductID, price)
+	if err == nil {
+		price = discountedPrice
+	}
+	return price
 }
 func (s *ProductService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
 	var product models.ProductModel
@@ -190,6 +197,7 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 		for i, variant := range item.Variants {
 			variantStock, _ := s.GetVariantStock(item.ID, variant.ID, &request, warehouseID)
 			variant.TotalStock = variantStock
+
 			// variant.Price = s.GetVariantPrice(merchantID, &variant)
 			item.Variants[i] = variant
 			fmt.Println("VARIANT STOCK", variant.ID, variant.TotalStock)
@@ -363,7 +371,7 @@ func (s *ProductService) GetFirstActiveDiscount(productID string) (*models.Disco
 func (s *ProductService) GetActiveDiscounts(productID string) ([]models.DiscountModel, error) {
 	var discounts []models.DiscountModel
 	err := s.db.Where("product_id = ? AND is_active = ? AND start_date <= ?", productID, true, time.Now()).
-		Where("end_date IS NULL OR end_date >= ?", time.Now()).
+		Where("end_date IS NULL OR end_date >= ?", time.Now()).Order("created_at DESC").
 		Find(&discounts).Error
 	return discounts, err
 }
@@ -408,22 +416,28 @@ func (s *ProductService) GetBestDealByDiscountedPrice(limit int) ([]models.Produ
 	return products, err
 }
 
-func (s *ProductService) CalculateDiscountedPrice(productID string, originalPrice float64) (float64, error) {
+func (s *ProductService) CalculateDiscountedPrice(productID string, originalPrice float64) (float64, float64, float64, string, error) {
 	// Dapatkan diskon aktif untuk produk
 	discounts, err := s.GetActiveDiscounts(productID)
 	if err != nil {
-		return 0, err
+		return 0, 0, 0, "", err
+	}
+
+	if len(discounts) == 0 {
+		return originalPrice, 0, 0, "", nil
 	}
 
 	// Hitung harga setelah diskon
 	discountedPrice := originalPrice
-	for _, discount := range discounts {
-		switch discount.Type {
-		case models.DiscountPercentage:
-			discountedPrice -= originalPrice * (discount.Value / 100)
-		case models.DiscountAmount:
-			discountedPrice -= discount.Value
-		}
+	discount := discounts[0]
+	discAmount := float64(0)
+	switch discount.Type {
+	case models.DiscountPercentage:
+		discAmount = originalPrice * (discount.Value / 100)
+		discountedPrice -= discAmount
+	case models.DiscountAmount:
+		discAmount = discount.Value
+		discountedPrice -= discAmount
 	}
 
 	// Pastikan harga tidak negatif
@@ -431,7 +445,7 @@ func (s *ProductService) CalculateDiscountedPrice(productID string, originalPric
 		discountedPrice = 0
 	}
 
-	return discountedPrice, nil
+	return discountedPrice, discAmount, discount.Value, string(discount.Type), nil
 }
 
 func (s *ProductService) UpdateDiscount(discountID string, data models.DiscountModel) error {

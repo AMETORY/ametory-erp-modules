@@ -29,6 +29,9 @@ type VariantModel struct {
 	Length           float64                        `gorm:"default:10" json:"length,omitempty"`
 	Weight           float64                        `gorm:"default:200" json:"weight,omitempty"`
 	Width            float64                        `gorm:"default:10" json:"width,omitempty"`
+	DiscountAmount   float64                        `gorm:"-" json:"discount_amount,omitempty"`
+	DiscountType     string                         `gorm:"-" json:"discount_type,omitempty"`
+	DiscountRate     float64                        `gorm:"-" json:"discount_rate,omitempty"`
 }
 
 func (VariantModel) TableName() string {
@@ -88,6 +91,31 @@ func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
 		if v.Price != p.Price {
 			p.PriceList = append(p.PriceList, v.Price)
 		}
+	}
+	var discount DiscountModel
+	tx.Where("product_id = ? AND is_active = ? AND start_date <= ?", p.ProductID, true, time.Now()).
+		Where("end_date IS NULL OR end_date >= ?", time.Now()).Order("created_at DESC").
+		Find(&discount)
+	if discount.ID != "" {
+		discountAmount := float64(0)
+		discountedPrice := p.Price
+		switch discount.Type {
+		case DiscountPercentage:
+			discountAmount = p.Price * (discount.Value / 100)
+			discountedPrice -= p.Price * (discount.Value / 100)
+		case DiscountAmount:
+			discountAmount = discount.Value
+			discountedPrice -= discount.Value
+		}
+
+		// Pastikan harga tidak negatif
+		if discountedPrice < 0 {
+			discountedPrice = 0
+		}
+		p.Price = discountedPrice
+		p.DiscountAmount = discountAmount
+		p.DiscountType = string(discount.Type)
+		p.DiscountRate = discount.Value
 	}
 
 	// sort.Float64s(p.PriceList)
