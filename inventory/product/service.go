@@ -417,6 +417,7 @@ func (s *ProductService) GetBestDealByDiscountedPrice(limit int) ([]models.Produ
 }
 
 func (s *ProductService) CalculateDiscountedPrice(productID string, originalPrice float64) (float64, float64, float64, string, error) {
+	fmt.Println("ORIGINAL_PRICE", originalPrice)
 	// Dapatkan diskon aktif untuk produk
 	discounts, err := s.GetActiveDiscounts(productID)
 	if err != nil {
@@ -444,6 +445,8 @@ func (s *ProductService) CalculateDiscountedPrice(productID string, originalPric
 	if discountedPrice < 0 {
 		discountedPrice = 0
 	}
+
+	fmt.Println("DISCOUNT_AMOUNT", discAmount)
 
 	return discountedPrice, discAmount, discount.Value, string(discount.Type), nil
 }

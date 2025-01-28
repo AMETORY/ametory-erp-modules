@@ -18,6 +18,7 @@ type OfferModel struct {
 	PaymentID                    *string                  `json:"payment_id"`
 	Payment                      *PaymentModel            `gorm:"foreignKey:PaymentID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"payment,omitempty"`
 	SubTotal                     float64                  `json:"sub_total"`
+	SubTotalBeforeDiscount       float64                  `json:"sub_total_before_discount"`
 	TotalDiscountAmount          float64                  `json:"total_discount_amount"`
 	TotalPrice                   float64                  `json:"total_price"`
 	ShippingFee                  float64                  `json:"shipping_fee"`
