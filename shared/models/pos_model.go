@@ -77,6 +77,7 @@ type POSModel struct {
 	TaxType                string                 `json:"tax_type" gorm:"type:varchar"`
 	TaxAmount              float64                `json:"tax_amount"`
 	Shipping               *ShippingModel         `json:"shipping,omitempty" gorm:"-"`
+	ShippingStatus         string                 `json:"shipping_status,omitempty" gorm:"-"`
 }
 
 type POSSalesItemModel struct {

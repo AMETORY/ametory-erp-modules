@@ -430,11 +430,13 @@ func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
 		v.Product.ProductImages = images
 		pos.Items[i] = v
 	}
+	pos.ShippingStatus = "PENDING"
 
 	var shipping models.ShippingModel
 	err := s.db.First(&shipping, "order_id = ?", id).Error
 	if err == nil {
 		pos.Shipping = &shipping
+		pos.ShippingStatus = shipping.Status
 	}
 	return &pos, nil
 }
