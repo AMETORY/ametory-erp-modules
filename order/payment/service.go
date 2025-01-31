@@ -2,6 +2,7 @@ package payment
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/order/payment/payment_provider"
@@ -37,8 +38,8 @@ func Migrate(db *gorm.DB) error {
 }
 
 func (s *PaymentService) CreatePaymentLink(data interface{}) (interface{}, error) {
-	// fmt.Println("PROVIDER", s.activeProvider)
-	// fmt.Println("PROVIDER DATA", data)
+	fmt.Println("PROVIDER", s.activeProvider)
+	fmt.Println("PROVIDER DATA", data)
 	resp, err := s.PaymentProvider[s.activeProvider].CreatePaymentLink(data)
 	return resp, err
 }

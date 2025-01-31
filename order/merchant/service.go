@@ -26,7 +26,7 @@ func NewMerchantService(db *gorm.DB, ctx *context.ERPContext, financeService *fi
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&models.MerchantModel{})
+	return db.AutoMigrate(&models.MerchantModel{}, &models.MerchantTypeModel{})
 }
 
 func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) ([]models.MerchantModel, error) {
@@ -60,10 +60,26 @@ func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) (
 }
 
 func (s *MerchantService) CreateMerchant(data *models.MerchantModel) error {
+	if data.MerchantTypeID != nil {
+		var merchantType models.MerchantTypeModel
+		err := s.db.Where("id = ?", data.MerchantTypeID).First(&merchantType).Error
+		if err != nil {
+			return err
+		}
+		data.MerchantType = &merchantType.Name
+	}
 	return s.db.Create(data).Error
 }
 
 func (s *MerchantService) UpdateMerchant(id string, data *models.MerchantModel) error {
+	if data.MerchantTypeID != nil {
+		var merchantType models.MerchantTypeModel
+		err := s.db.Where("id = ?", data.MerchantTypeID).First(&merchantType).Error
+		if err != nil {
+			return err
+		}
+		data.MerchantType = &merchantType.Name
+	}
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
@@ -145,7 +161,7 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			"%"+search+"%",
 			"%"+search+"%")
 	}
-	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants.Attributes.Attribute").Preload("Tags").Model(&models.ProductModel{})
+	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants.Attributes.Attribute").Preload("Brand").Preload("Tags").Model(&models.ProductModel{})
 
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&products)
@@ -350,6 +366,22 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 	return &merchantAvailable, nil
 }
 
+func (s *MerchantService) GetPhoneNumberFromMerchantID(merchantID string) ([]string, error) {
+	var merchant models.MerchantModel
+	err := s.db.Preload("Company.Users").Find(&merchant, "id = ?", merchantID).Error
+	if err != nil {
+		return nil, err
+	}
+
+	phoneNumbers := make([]string, 0)
+	for _, v := range merchant.Company.Users {
+		if v.PhoneNumber != nil {
+			phoneNumbers = append(phoneNumbers, *v.PhoneNumber)
+		}
+	}
+
+	return phoneNumbers, nil
+}
 func (s *MerchantService) GetPushTokenFromMerchantID(merchantID string) ([]string, error) {
 	var merchant models.MerchantModel
 	err := s.db.Preload("Company.Users").Find(&merchant, "id = ?", merchantID).Error
@@ -375,4 +407,63 @@ func (s *MerchantService) GetPushTokenFromMerchantID(merchantID string) ([]strin
 		tokens = append(tokens, v.Token)
 	}
 	return tokens, nil
+}
+
+func (s *MerchantService) CreateMerchantType(data *models.MerchantTypeModel) error {
+
+	err := s.db.Create(&data).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *MerchantService) GetAllMerchantType(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	var merchantType []models.MerchantTypeModel
+
+	stmt := s.db
+
+	if search != "" {
+		stmt = stmt.Where("name ILIKE ? OR description ILIKE ? ",
+			"%"+search+"%",
+			"%"+search+"%")
+	}
+
+	stmt = stmt.Model(&models.MerchantTypeModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&merchantType)
+	page.Page = page.Page + 1
+
+	return page, nil
+}
+
+func (s *MerchantService) GetMerchantType(id string) (*models.MerchantTypeModel, error) {
+	var merchantType models.MerchantTypeModel
+	err := s.db.Where("id = ?", id).First(&merchantType).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &merchantType, nil
+}
+
+func (s *MerchantService) UpdateMerchantType(data *models.MerchantTypeModel) error {
+
+	err := s.db.Save(data).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *MerchantService) DeleteMerchantType(id string) error {
+	err := s.db.Delete(&models.MerchantTypeModel{}, "id = ?", id).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

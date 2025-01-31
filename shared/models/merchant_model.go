@@ -24,7 +24,8 @@ type MerchantModel struct {
 	DistrictID         *string            `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
 	VillageID          *string            `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
 	Status             string             `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
-	MerchantType       string             `json:"merchant_type" gorm:"type:VARCHAR(20);default:'REGULAR_STORE'"`
+	MerchantType       *string            `json:"merchant_type" gorm:"type:VARCHAR(20);default:'REGULAR_STORE'"`
+	MerchantTypeID     *string            `json:"merchant_type_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
 	Picture            *FileModel         `json:"picture,omitempty" gorm:"-"`
 	OrderRequest       *OrderRequestModel `json:"order_request,omitempty" gorm:"-"`
 	Distance           float64            `json:"distance" gorm:"-"`
@@ -75,4 +76,22 @@ type MerchantAvailableProductItem struct {
 	DiscountAmount          float64 `json:"discount_amount"`
 	DiscountValue           float64 `json:"discount_value"`
 	DiscountType            string  `json:"discount_type"`
+}
+
+type MerchantTypeModel struct {
+	shared.BaseModel
+	Name                string `gorm:"type:varchar(20);not null" json:"name,omitempty"`
+	Description         string `gorm:"type:varchar(255)" json:"description,omitempty"`
+	IconURL             string `gorm:"type:varchar(255)" json:"icon_url,omitempty"`
+	IconBackgroundColor string `gorm:"type:varchar(20)" json:"icon_background_color,omitempty"`
+}
+
+func (m *MerchantTypeModel) TableName() string {
+	return "pos_merchant_types"
+}
+func (m *MerchantTypeModel) BeforeCreate(tx *gorm.DB) (err error) {
+	if m.ID == "" {
+		m.ID = uuid.New().String()
+	}
+	return
 }

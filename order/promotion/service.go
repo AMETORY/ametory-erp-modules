@@ -71,6 +71,11 @@ func (s *PromotionService) CheckPromotionEligibility(promotionID string, ruleTyp
 		if !utils.ContainsString(categories, condition) {
 			return false, nil
 		}
+	case "products":
+		products := strings.Split(rule.RuleValue, ",")
+		if !utils.ContainsString(products, condition) {
+			return false, nil
+		}
 	case "customer_level":
 		if rule.RuleValue != condition {
 			return false, nil

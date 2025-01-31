@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -67,6 +68,10 @@ func CreateUsernameFromFullName(fullName string) string {
 func LogJson(data interface{}) {
 	jsonString, _ := json.MarshalIndent(data, "", "  ")
 	fmt.Println(string(jsonString))
+}
+func SaveJson(data interface{}) {
+	jsonString, _ := json.MarshalIndent(data, "", "  ")
+	log.Println(string(jsonString))
 }
 
 func FixRequest(request *http.Request) {

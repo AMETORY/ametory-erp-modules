@@ -15,6 +15,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type POSService struct {
@@ -376,6 +377,70 @@ func (s *POSService) GetPosSales(request http.Request, search string) (paginate.
 	return page, nil
 }
 
+func (s *POSService) GetPushTokenFromID(id string) ([]string, error) {
+	var pos models.POSModel
+	err := s.db.Preload("Contact.User").Find(&pos, "id = ?", id).Error
+	if err != nil {
+		return []string{}, err
+	}
+
+	userIDs := []string{pos.Contact.User.ID}
+	// merchant.Company.Users = make([]models.UserModel, 0)
+	// merchant.Company.Users = append(merchant.Company.Users, *merchant.User)
+
+	var pushToken []models.PushTokenModel
+	err = s.db.Where("user_id IN (?)", userIDs).Find(&pushToken).Error
+	if err != nil {
+		return nil, err
+	}
+
+	tokens := make([]string, 0)
+	for _, v := range pushToken {
+		tokens = append(tokens, v.Token)
+	}
+	return tokens, nil
+}
+
+func (s *POSService) UpdatePickedByID(id string) error {
+	fmt.Println("UPDATE PICKED BY ID", id)
+	var pos models.POSModel
+	err := s.db.Preload("Merchant").Preload("Items").Find(&pos, "id = ?", id).Error
+	if err != nil {
+		return err
+	}
+
+	var shipping models.ShippingModel
+	err = s.db.Find(&shipping, "order_id = ?", id).Error
+	if err != nil {
+		return err
+	}
+
+	var stockMovement models.StockMovementModel
+	err = s.db.First(&stockMovement, "reference_id = ?", id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		for _, v := range pos.Items {
+			s.inventoryService.StockMovementService.AddMovement(
+				time.Now(),
+				*v.ProductID,
+				*pos.Merchant.DefaultWarehouseID,
+				v.VariantID,
+				pos.MerchantID,
+				nil,
+				-v.Quantity,
+				models.MovementTypeSale,
+				pos.ID,
+				fmt.Sprintf("Sales #%s", pos.SalesNumber))
+		}
+	}
+
+	pos.StockStatus = "IN_DELIVERY"
+	if err := s.db.Omit(clause.Associations).Save(&pos).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *POSService) UpdateDeliveredByID(id string) error {
 	fmt.Println("UPDATE DELIVERED BY ID", id)
 	var pos models.POSModel
@@ -409,7 +474,7 @@ func (s *POSService) UpdateDeliveredByID(id string) error {
 	}
 
 	pos.StockStatus = "DELIVERED"
-	if err := s.db.Save(&pos).Error; err != nil {
+	if err := s.db.Omit(clause.Associations).Save(&pos).Error; err != nil {
 		return err
 	}
 
@@ -417,7 +482,7 @@ func (s *POSService) UpdateDeliveredByID(id string) error {
 }
 func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
 	var pos models.POSModel
-	if err := s.db.Preload("Merchant").Preload("Offer.Merchant", func(tx *gorm.DB) *gorm.DB {
+	if err := s.db.Preload("Contact.User").Preload("Merchant").Preload("Offer.Merchant", func(tx *gorm.DB) *gorm.DB {
 		return tx.Preload("Company").Preload("User")
 	}).Preload("Items", func(tx *gorm.DB) *gorm.DB {
 		return tx.Preload("Product.Tags").Preload("Variant.Tags")

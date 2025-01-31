@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/shared/objects"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 )
 
 const (
@@ -45,6 +46,7 @@ func (o *OyPaymentService) CreatePaymentLink(dataPayment interface{}) (interface
 	if data.ListEnabledEwallet == "" {
 		data.ListEnabledEwallet = DefaultListEnableEWallet
 	}
+	utils.LogJson(data)
 	client := &http.Client{}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
