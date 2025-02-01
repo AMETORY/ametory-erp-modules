@@ -284,13 +284,28 @@ func (s *POSService) GetTransactionsByMerchant(merchantID uint) ([]models.POSMod
 // GetUserPosSaleByID mengambil transaksi POS berdasarkan user dan id
 func (s *POSService) GetUserPosSaleByID(userID string, id string) (*models.POSModel, error) {
 	var pos models.POSModel
-	if err := s.db.Preload("Items", func(db *gorm.DB) *gorm.DB {
+	if err := s.db.Preload("Contact").Preload("Items", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Product", func(db *gorm.DB) *gorm.DB {
 			return db.Select("display_name", "id")
 		}).Preload("Variant", func(db *gorm.DB) *gorm.DB {
 			return db.Select("display_name", "id")
 		})
 	}).Preload("Payment").Where("user_id = ? AND id = ?", userID, id).First(&pos).Error; err != nil {
+		return nil, err
+	}
+	return &pos, nil
+}
+
+// GetUserPosSaleDetail mengambil detail transaksi POS berdasarkan user dan id
+func (s *POSService) GetUserPosSaleDetail(id string) (*models.POSModel, error) {
+	var pos models.POSModel
+	if err := s.db.Preload("Contact").Preload("Items", func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Product", func(db *gorm.DB) *gorm.DB {
+			return db.Select("display_name", "id")
+		}).Preload("Variant", func(db *gorm.DB) *gorm.DB {
+			return db.Select("display_name", "id")
+		})
+	}).Preload("Payment").Where("id = ?", id).First(&pos).Error; err != nil {
 		return nil, err
 	}
 	return &pos, nil
