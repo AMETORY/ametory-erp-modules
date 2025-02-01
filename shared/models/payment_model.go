@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -30,5 +32,15 @@ func (pm *PaymentModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if pm.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
+	return
+}
+
+func (pm *PaymentModel) AfterFind(tx *gorm.DB) (err error) {
+	if pm.PaymentData != "" {
+		var paymentData map[string]interface{}
+		json.Unmarshal([]byte(pm.PaymentData), &paymentData)
+		pm.PaymentDataResponse = paymentData
+	}
+
 	return
 }

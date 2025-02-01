@@ -1,7 +1,6 @@
 package payment
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -56,8 +55,6 @@ func (s *PaymentService) CreatePayment(data *models.PaymentModel) error {
 func (s *PaymentService) GetPaymentByCode(code string) (*models.PaymentModel, error) {
 	data := models.PaymentModel{}
 	err := s.ctx.DB.Where("code = ?", code).First(&data).Error
-	var paymentData map[string]interface{}
-	json.Unmarshal([]byte(data.PaymentData), &paymentData)
-	data.PaymentDataResponse = paymentData
+
 	return &data, err
 }

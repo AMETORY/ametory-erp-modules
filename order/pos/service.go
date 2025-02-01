@@ -330,6 +330,34 @@ func (s *POSService) GetUserPosSales(request http.Request, search, userID string
 	page.Page = page.Page + 1
 	return page, nil
 }
+
+func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
+	var pos models.POSModel
+	if err := s.db.Preload("Contact.User").Preload("Merchant").Preload("Offer.Merchant", func(tx *gorm.DB) *gorm.DB {
+		return tx.Preload("Company").Preload("User")
+	}).Preload("Items", func(tx *gorm.DB) *gorm.DB {
+		return tx.Preload("Product.Tags").Preload("Variant.Tags")
+	}).Preload("Payment").Where("id = ?", id).First(&pos).Error; err != nil {
+		return nil, err
+	}
+
+	for i, v := range pos.Items {
+		images, _ := s.inventoryService.ProductService.ListImagesOfProduct(*v.ProductID)
+		v.Product.ProductImages = images
+		pos.Items[i] = v
+	}
+	pos.ShippingStatus = "PENDING"
+
+	var shipping models.ShippingModel
+	err := s.db.First(&shipping, "order_id = ?", id).Error
+	if err == nil {
+		pos.Shipping = &shipping
+		pos.ShippingStatus = shipping.Status
+
+	}
+	return &pos, nil
+}
+
 func (s *POSService) GetPosSales(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Merchant").Preload("Items", func(tx *gorm.DB) *gorm.DB {
@@ -369,6 +397,16 @@ func (s *POSService) GetPosSales(request http.Request, search string) (paginate.
 		for _, v := range item.Items {
 			images, _ := s.inventoryService.ProductService.ListImagesOfProduct(*v.ProductID)
 			v.Product.ProductImages = images
+		}
+
+		item.ShippingStatus = "PENDING"
+
+		var shipping models.ShippingModel
+		err := s.db.First(&shipping, "order_id = ?", item.ID).Error
+		if err == nil {
+			item.Shipping = &shipping
+			item.ShippingStatus = shipping.Status
+
 		}
 		newItems = append(newItems, item)
 	}
@@ -479,31 +517,6 @@ func (s *POSService) UpdateDeliveredByID(id string) error {
 	}
 
 	return nil
-}
-func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
-	var pos models.POSModel
-	if err := s.db.Preload("Contact.User").Preload("Merchant").Preload("Offer.Merchant", func(tx *gorm.DB) *gorm.DB {
-		return tx.Preload("Company").Preload("User")
-	}).Preload("Items", func(tx *gorm.DB) *gorm.DB {
-		return tx.Preload("Product.Tags").Preload("Variant.Tags")
-	}).Preload("Payment").Where("id = ?", id).First(&pos).Error; err != nil {
-		return nil, err
-	}
-
-	for i, v := range pos.Items {
-		images, _ := s.inventoryService.ProductService.ListImagesOfProduct(*v.ProductID)
-		v.Product.ProductImages = images
-		pos.Items[i] = v
-	}
-	pos.ShippingStatus = "PENDING"
-
-	var shipping models.ShippingModel
-	err := s.db.First(&shipping, "order_id = ?", id).Error
-	if err == nil {
-		pos.Shipping = &shipping
-		pos.ShippingStatus = shipping.Status
-	}
-	return &pos, nil
 }
 
 func (s *POSService) CountPosSalesByStatus(status string) (int64, error) {
