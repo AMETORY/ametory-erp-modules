@@ -58,3 +58,7 @@ func (s *PaymentService) GetPaymentByCode(code string) (*models.PaymentModel, er
 
 	return &data, err
 }
+
+func (s *PaymentService) GetPaymentBankCode() map[string]string {
+	return models.BankCodes
+}

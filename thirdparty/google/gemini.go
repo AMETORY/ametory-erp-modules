@@ -218,13 +218,13 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 
 func (s *GeminiService) GetHistories() []models.GeminiHistoryModel {
 	var historyModels []models.GeminiHistoryModel
-	s.ctx.DB.Find(&historyModels)
+	s.ctx.DB.Order("created_at desc").Find(&historyModels)
 	return historyModels
 }
 
-func (s *GeminiService) UpdateHistory(history models.GeminiHistoryModel) error {
+func (s *GeminiService) UpdateHistory(id string, history models.GeminiHistoryModel) error {
 
-	if err := s.ctx.DB.Save(&history).Error; err != nil {
+	if err := s.ctx.DB.Where("id = ?", id).Updates(&history).Error; err != nil {
 		return fmt.Errorf("error updating history: %v", err)
 	}
 	return nil
@@ -244,4 +244,8 @@ func (s *GeminiService) DeleteHistory(id string) error {
 		return fmt.Errorf("error deleting history: %v", err)
 	}
 	return nil
+}
+
+func (s *GeminiService) SetResponseMIMEType(mimetype string) {
+	s.responseMimetype = mimetype
 }

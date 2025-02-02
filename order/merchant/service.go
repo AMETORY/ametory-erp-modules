@@ -152,15 +152,18 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 
 	stmt := s.db.Joins("JOIN product_merchants ON product_merchants.product_model_id = products.id").
 		Joins("JOIN brands ON brands.id = products.brand_id").
+		Joins("LEFT JOIN product_variants ON product_variants.product_id = products.id").
 		Where("product_merchants.merchant_model_id = ?", merchantID)
 
 	if search != "" {
-		stmt = stmt.Where("products.name ILIKE ? OR products.sku ILIKE ? OR products.description ILIKE ? OR brands.name ILIKE ?",
+		stmt = stmt.Where("products.name ILIKE ? OR products.sku ILIKE ? OR products.description ILIKE ? OR brands.name ILIKE ? OR product_variants.display_name ILIKE ?",
+			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%")
 	}
+	stmt = stmt.Distinct("products.id")
 	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants.Attributes.Attribute").Preload("Brand").Preload("Tags").Model(&models.ProductModel{})
 
 	utils.FixRequest(&request)
