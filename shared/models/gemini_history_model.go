@@ -8,8 +8,8 @@ import (
 
 type GeminiHistoryModel struct {
 	shared.BaseModel
-	Input    string
-	Output   string
+	Input    string `json:"input"`
+	Output   string `json:"output"`
 	FileURL  string `gorm:"type:varchar(255)" json:"file_url"`
 	MimeType string `gorm:"type:varchar(255)" json:"mime_type"`
 }

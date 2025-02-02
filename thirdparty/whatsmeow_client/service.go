@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 type WhatsmeowService struct {
@@ -28,6 +29,9 @@ func NewWhatsmeowService(baseURL, mockNumber string, isMock bool, redisKey strin
 }
 
 func (s *WhatsmeowService) SendMessage(msg WaMessage) (map[string]interface{}, error) {
+	if s.IsMock && s.MockNumber != "" {
+		msg.To = s.MockNumber
+	}
 	jsonBytes, err := json.Marshal(msg)
 	if err != nil {
 		log.Println(err)
@@ -61,18 +65,19 @@ func (s *WhatsmeowService) SendMessage(msg WaMessage) (map[string]interface{}, e
 	return response, nil
 }
 
-func (s *WhatsmeowService) CreateQR(sessionID string, webhook string) error {
-	req, err := http.NewRequest("POST", s.BaseURL+"/v1/create-qr", bytes.NewBufferString(`{"session_id":"`+sessionID+`","webhook":"`+webhook+`"}`))
+func (s *WhatsmeowService) CreateQR(sessionID, webhook, headerKey string) ([]byte, error) {
+	req, err := http.NewRequest("POST", s.BaseURL+"/v1/create-qr", bytes.NewBufferString(`{"session":"`+sessionID+`","webhook":"`+webhook+`", "header_key":"`+headerKey+`"}`))
 	if err != nil {
 		log.Println(err)
-		return err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
+	client.Timeout = 30 * time.Second
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println(err)
-		return err
+		return nil, err
 	}
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil {
@@ -80,7 +85,37 @@ func (s *WhatsmeowService) CreateQR(sessionID string, webhook string) error {
 		}
 	}()
 
-	return nil
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
+func (s *WhatsmeowService) GetDevices() ([]byte, error) {
+	req, err := http.NewRequest("GET", s.BaseURL+"/v1/devices", nil)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
 }
 
 func (s *WhatsmeowService) GetQRImage(sessionID string) ([]byte, error) {
@@ -140,8 +175,10 @@ func (s *WhatsmeowService) GetQR(sessionID string) (string, error) {
 	return response.Response, nil
 }
 
-func (s *WhatsmeowService) UpdateWebhook(sessionID string, webhook string) error {
-	req, err := http.NewRequest("PUT", s.BaseURL+"/v1/update-webhook/"+sessionID, bytes.NewBufferString(`{"webhook":"`+webhook+`"}`))
+func (s *WhatsmeowService) UpdateWebhook(sessionID string, webhook, headerKey string) error {
+	// fmt.Println(s.BaseURL + "/v1/update-webhook/" + sessionID)
+	// fmt.Println(`{"webhook":"` + webhook + `", "header_key":"` + headerKey + `"}`)
+	req, err := http.NewRequest("PUT", s.BaseURL+"/v1/update-webhook/"+sessionID, bytes.NewBufferString(`{"webhook":"`+webhook+`", "header_key":"`+headerKey+`"}`))
 	if err != nil {
 		log.Println(err)
 		return err

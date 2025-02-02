@@ -57,6 +57,10 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.GeminiHistoryModel{})
 }
 
+func (s *GeminiService) RefreshHistories() {
+	getHistories(*s.ctx.Ctx, s)
+}
+
 func getHistories(ctx context.Context, service *GeminiService) {
 	var historyModels []models.GeminiHistoryModel
 	service.ctx.DB.Find(&historyModels)
@@ -87,6 +91,7 @@ func getHistories(ctx context.Context, service *GeminiService) {
 		})
 
 	}
+
 	service.histories = histories
 }
 
@@ -145,9 +150,9 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 	model.SetTopP(service.setTopP)
 	model.SetMaxOutputTokens(service.setMaxOutputTokens)
 	model.ResponseMIMEType = service.responseMimetype
-	session := model.StartChat()
+	// session := model.StartChat()
 
-	session.History = append(session.History, service.histories...)
+	histories := service.histories
 	for _, v := range userHistories {
 		role, ok := v["role"].(string)
 		if !ok {
@@ -157,7 +162,7 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 		if !ok {
 			continue
 		}
-		session.History = append(session.History, &genai.Content{
+		histories = append(histories, &genai.Content{
 			Role: role,
 			Parts: []genai.Part{
 				genai.Text(content + "\n"),
@@ -170,19 +175,73 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 		}
 	}
 
-	if session == nil {
-		return "", fmt.Errorf("error starting chat session")
-	}
-	// fmt.Println("SESSION", session)
+	// for _, v := range session.History {
+	// 	fmt.Println(*v)
+
+	// }
+
+	// if session == nil {
+	// 	return "", fmt.Errorf("error starting chat session")
+	// }
+	// fmt.Println("SESSION", session.History)
 	// fmt.Println("ctx", ctx)
 
-	resp, err := session.SendMessage(ctx, genai.Text(input))
-	if err != nil {
-		return "", fmt.Errorf("error sending message: %v", err)
+	// resp, err := session.SendMessage(ctx, genai.Text(input))
+	// if err != nil {
+	// 	return "", fmt.Errorf("error sending message: %v", err)
+	// }
+	parts := []genai.Part{}
+	for _, part := range histories {
+		if part.Role == "user" {
+			parts = append(parts, genai.Text("input: "+part.Parts[0].(genai.Text)))
+		}
+		if part.Role == "model" {
+			parts = append(parts, genai.Text("output: "+part.Parts[0].(genai.Text)))
+		}
+
 	}
 
+	parts = append(parts, genai.Text("input: "+input))
+	parts = append(parts, genai.Text("output: "))
+	// fmt.Println("PARTS", parts)
+	// fmt.Println("RESPONSE", resp.Candidates[0].Content)
+
+	resp, err := model.GenerateContent(ctx, parts...)
+	if err != nil {
+		return "", fmt.Errorf("error generating content: %v", err)
+	}
 	for _, part := range resp.Candidates[0].Content.Parts {
 		return fmt.Sprintf("%v\n", part), nil
 	}
 	return "", nil
+}
+
+func (s *GeminiService) GetHistories() []models.GeminiHistoryModel {
+	var historyModels []models.GeminiHistoryModel
+	s.ctx.DB.Find(&historyModels)
+	return historyModels
+}
+
+func (s *GeminiService) UpdateHistory(history models.GeminiHistoryModel) error {
+
+	if err := s.ctx.DB.Save(&history).Error; err != nil {
+		return fmt.Errorf("error updating history: %v", err)
+	}
+	return nil
+}
+
+func (s *GeminiService) AddHistory(history models.GeminiHistoryModel) error {
+
+	if err := s.ctx.DB.Create(&history).Error; err != nil {
+		return fmt.Errorf("error creating history: %v", err)
+	}
+
+	return nil
+}
+
+func (s *GeminiService) DeleteHistory(id string) error {
+	if err := s.ctx.DB.Where("id = ?", id).Delete(&models.GeminiHistoryModel{}).Error; err != nil {
+		return fmt.Errorf("error deleting history: %v", err)
+	}
+	return nil
 }
