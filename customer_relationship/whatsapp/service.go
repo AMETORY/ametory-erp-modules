@@ -44,7 +44,7 @@ func (ws *WhatsappService) DeleteWhatsappMessage(id string) error {
 	return ws.db.Delete(&models.WhatsappMessageModel{}, "id = ?", id).Error
 }
 
-func (ws *WhatsappService) GetWhatsappMessages(request http.Request, search string, session string) (paginate.Page, error) {
+func (ws *WhatsappService) GetWhatsappMessages(request http.Request, search string, JID string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := ws.db.Model(&models.WhatsappMessageModel{})
 
@@ -52,11 +52,11 @@ func (ws *WhatsappService) GetWhatsappMessages(request http.Request, search stri
 		stmt = stmt.Where("sender ILIKE ? OR receiver ILIKE ? OR message ILIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 
-	if session == "" {
-		return paginate.Page{}, errors.New("session is required")
+	if JID == "" {
+		return paginate.Page{}, errors.New("jid is required")
 	}
 
-	stmt = stmt.Where("session = ?", session)
+	stmt = stmt.Where("j_id = ?", JID)
 
 	// if request.Header.Get("ID-Company") != "" {
 	// 	stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
@@ -66,4 +66,13 @@ func (ws *WhatsappService) GetWhatsappMessages(request http.Request, search stri
 	page := pg.With(stmt).Request(request).Response(&[]models.WhatsappMessageModel{})
 	return page, nil
 
+}
+
+func (ws *WhatsappService) GetMessageSession(JID string) ([]models.WhatsappMessageModel, error) {
+	var whatsappMessages []models.WhatsappMessageModel
+	err := ws.db.Where("j_id = ?", JID).Group("session").Order("created_at asc").Find(&whatsappMessages).Error
+	if err != nil {
+		return nil, err
+	}
+	return whatsappMessages, nil
 }

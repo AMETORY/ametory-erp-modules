@@ -10,6 +10,7 @@ import (
 
 type WhatsappMessageModel struct {
 	shared.BaseModel
+	JID       string        `gorm:"type:varchar(255)" json:"jid"`
 	Sender    string        `gorm:"type:varchar(255)" json:"sender"`
 	Receiver  string        `gorm:"type:varchar(255)" json:"receiver"`
 	Message   string        `json:"message"`
@@ -19,6 +20,8 @@ type WhatsappMessageModel struct {
 	Info      string        `gorm:"type:json" json:"info"`
 	ContactID *string       `json:"contact_id,omitempty" gorm:"column:contact_id"`
 	Contact   *ContactModel `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
+	IsFromMe  bool          `json:"is_from_me"`
+	IsGroup   bool          `json:"is_group"`
 }
 
 func (m *WhatsappMessageModel) TableName() string {

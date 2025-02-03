@@ -10,13 +10,13 @@ import (
 
 type CustomerRelationshipService struct {
 	ctx             *context.ERPContext
-	whatsappService *whatsapp.WhatsappService
+	WhatsappService *whatsapp.WhatsappService
 }
 
 func NewCustomerRelationshipService(ctx *context.ERPContext) *CustomerRelationshipService {
 	csService := CustomerRelationshipService{
 		ctx:             ctx,
-		whatsappService: whatsapp.NewWhatsappService(ctx.DB, ctx),
+		WhatsappService: whatsapp.NewWhatsappService(ctx.DB, ctx),
 	}
 	err := csService.Migrate()
 	if err != nil {
