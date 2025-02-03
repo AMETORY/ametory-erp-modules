@@ -14,22 +14,23 @@ type ERPContext struct {
 	Ctx     *context.Context // Context
 	Request *http.Request    // HTTP request
 	// Tambahkan service lainnya di sini
-	InventoryService    interface{} // Contoh: InventoryService
-	AuthService         interface{} // Contoh: AuthService
-	AdminAuthService    interface{} // Contoh: AdminAuthService
-	RBACService         interface{} // Contoh: RBACService
-	CompanyService      interface{} // Contoh: CompanyService
-	ContactService      interface{} // Contoh: ContactService
-	FinanceService      interface{} // Contoh: FinanceService
-	OrderService        interface{} // Contoh: OrderService
-	DistributionService interface{} // Contoh: DistributionService
-	FileService         interface{} // Contoh: FileService
-	Firestore           interface{} // Contoh: Firestore
-	FCMService          interface{} // Contoh: Firestore
-	IndonesiaRegService interface{} // Contoh: IndonesiaRegService
-	UserService         interface{} // Contoh: IndonesiaRegService
-	AppService          interface{}
-	InternalService     interface{}
+	InventoryService            interface{} // Contoh: InventoryService
+	AuthService                 interface{} // Contoh: AuthService
+	AdminAuthService            interface{} // Contoh: AdminAuthService
+	RBACService                 interface{} // Contoh: RBACService
+	CompanyService              interface{} // Contoh: CompanyService
+	ContactService              interface{} // Contoh: ContactService
+	FinanceService              interface{} // Contoh: FinanceService
+	OrderService                interface{} // Contoh: OrderService
+	DistributionService         interface{} // Contoh: DistributionService
+	CustomerRelationshipService interface{} // Contoh: CustomerRelationshipService
+	FileService                 interface{} // Contoh: FileService
+	Firestore                   interface{} // Contoh: Firestore
+	FCMService                  interface{} // Contoh: Firestore
+	IndonesiaRegService         interface{} // Contoh: IndonesiaRegService
+	UserService                 interface{} // Contoh: IndonesiaRegService
+	AppService                  interface{}
+	InternalService             interface{}
 
 	ThirdPartyServices map[string]interface{}
 	// Add additional services here
