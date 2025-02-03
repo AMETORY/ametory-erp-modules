@@ -166,6 +166,13 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 	stmt = stmt.Distinct("products.id")
 	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants.Attributes.Attribute").Preload("Brand").Preload("Tags").Model(&models.ProductModel{})
 
+	if request.URL.Query().Get("brand_id") != "" {
+		stmt = stmt.Where("brand_id = ?", request.URL.Query().Get("brand_id"))
+	}
+	if request.URL.Query().Get("category_id") != "" {
+		stmt = stmt.Where("category_id = ?", request.URL.Query().Get("category_id"))
+	}
+
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&products)
 	page.Page = page.Page + 1

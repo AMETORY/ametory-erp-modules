@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -10,18 +11,19 @@ import (
 
 type WhatsappMessageModel struct {
 	shared.BaseModel
-	JID       string        `gorm:"type:varchar(255)" json:"jid"`
-	Sender    string        `gorm:"type:varchar(255)" json:"sender"`
-	Receiver  string        `gorm:"type:varchar(255)" json:"receiver"`
-	Message   string        `json:"message"`
-	MediaURL  string        `gorm:"type:varchar(255)" json:"media_url"`
-	MimeType  string        `gorm:"type:varchar(255)" json:"mime_type"`
-	Session   string        `gorm:"type:varchar(255)" json:"session"`
-	Info      string        `gorm:"type:json" json:"info"`
-	ContactID *string       `json:"contact_id,omitempty" gorm:"column:contact_id"`
-	Contact   *ContactModel `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
-	IsFromMe  bool          `json:"is_from_me"`
-	IsGroup   bool          `json:"is_group"`
+	JID         string                 `gorm:"type:varchar(255)" json:"jid"`
+	Sender      string                 `gorm:"type:varchar(255)" json:"sender"`
+	Receiver    string                 `gorm:"type:varchar(255)" json:"receiver"`
+	Message     string                 `json:"message"`
+	MediaURL    string                 `gorm:"type:varchar(255)" json:"media_url"`
+	MimeType    string                 `gorm:"type:varchar(255)" json:"mime_type"`
+	Session     string                 `gorm:"type:varchar(255)" json:"session"`
+	Info        string                 `gorm:"type:json" json:"-"`
+	MessageInfo map[string]interface{} `gorm:"-" json:"message_info"`
+	ContactID   *string                `json:"contact_id,omitempty" gorm:"column:contact_id"`
+	Contact     *ContactModel          `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
+	IsFromMe    bool                   `json:"is_from_me"`
+	IsGroup     bool                   `json:"is_group"`
 }
 
 func (m *WhatsappMessageModel) TableName() string {
@@ -45,5 +47,17 @@ func (m *WhatsappMessageModel) BeforeCreate(tx *gorm.DB) error {
 		tx.Statement.SetColumn("contact_id", contact.ID)
 	}
 
+	return nil
+}
+
+func (m *WhatsappMessageModel) AfterFind(tx *gorm.DB) error {
+	if m.Info != "" {
+		var info map[string]interface{}
+		err := json.Unmarshal([]byte(m.Info), &info)
+		if err != nil {
+			return err
+		}
+		m.MessageInfo = info
+	}
 	return nil
 }

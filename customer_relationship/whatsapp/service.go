@@ -57,22 +57,40 @@ func (ws *WhatsappService) GetWhatsappMessages(request http.Request, search stri
 	}
 
 	stmt = stmt.Where("j_id = ?", JID)
+	stmt = stmt.Order("created_at DESC")
 
-	// if request.Header.Get("ID-Company") != "" {
-	// 	stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
-	// }
+	if request.URL.Query().Get("session") != "" {
+		stmt = stmt.Where("session = ?", request.URL.Query().Get("session"))
+	}
 
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.WhatsappMessageModel{})
 	return page, nil
 
 }
+func (ws *WhatsappService) GetWhatsappLastMessages(JID, session string) (models.WhatsappMessageModel, error) {
+	var msg models.WhatsappMessageModel
+	stmt := ws.db
+	stmt = stmt.Order("created_at DESC").Where("j_id = ? and session = ?", JID, session)
+	err := stmt.First(&msg).Error
+	return msg, err
+
+}
 
 func (ws *WhatsappService) GetMessageSession(JID string) ([]models.WhatsappMessageModel, error) {
-	var whatsappMessages []models.WhatsappMessageModel
-	err := ws.db.Where("j_id = ?", JID).Group("session").Order("created_at asc").Find(&whatsappMessages).Error
-	if err != nil {
-		return nil, err
+
+	var waGroup []struct {
+		Session string `db:"session"`
 	}
-	return whatsappMessages, nil
+	err := ws.db.Model(&models.WhatsappMessageModel{}).Select("session").Where("j_id = ?", JID).Group("session").Find(&waGroup).Error
+	if err != nil {
+		return []models.WhatsappMessageModel{}, err
+	}
+	var waMsgs []models.WhatsappMessageModel = []models.WhatsappMessageModel{}
+	for _, v := range waGroup {
+		var waMsg models.WhatsappMessageModel
+		ws.db.Where("j_id = ? AND session = ?", JID, v.Session).Order("created_at DESC").First(&waMsg)
+		waMsgs = append(waMsgs, waMsg)
+	}
+	return waMsgs, nil
 }

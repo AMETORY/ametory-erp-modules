@@ -31,6 +31,7 @@ func NewWhatsmeowService(baseURL, mockNumber string, isMock bool, redisKey strin
 func (s *WhatsmeowService) SendMessage(msg WaMessage) (map[string]interface{}, error) {
 	if s.IsMock && s.MockNumber != "" {
 		msg.To = s.MockNumber
+		msg.IsGroup = false
 	}
 	jsonBytes, err := json.Marshal(msg)
 	if err != nil {
@@ -218,4 +219,32 @@ func (s *WhatsmeowService) DeviceDelete(jid string) error {
 	}()
 
 	return nil
+}
+
+func (s *WhatsmeowService) GetGroupInfo(JID string, groupID string) (map[string]interface{}, error) {
+	req, err := http.NewRequest("GET", s.BaseURL+"/v1/get-group-info/"+JID+"/"+groupID, nil)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	var response map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return response, nil
 }

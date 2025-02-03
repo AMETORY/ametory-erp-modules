@@ -162,6 +162,13 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	if request.Header.Get("ID-Distributor") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Distributor"))
 	}
+
+	if request.URL.Query().Get("brand_id") != "" {
+		stmt = stmt.Where("brand_id = ?", request.URL.Query().Get("brand_id"))
+	}
+	if request.URL.Query().Get("category_id") != "" {
+		stmt = stmt.Where("category_id = ?", request.URL.Query().Get("category_id"))
+	}
 	stmt = stmt.Distinct("products.id")
 	stmt = stmt.Select("products.*")
 	stmt = stmt.Model(&models.ProductModel{})

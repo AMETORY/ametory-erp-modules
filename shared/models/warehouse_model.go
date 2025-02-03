@@ -30,5 +30,6 @@ func (p *WarehouseModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if p.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
+
 	return
 }

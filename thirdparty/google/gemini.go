@@ -3,8 +3,11 @@ package google
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 
 	erpContext "github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
@@ -100,6 +103,26 @@ func (service *GeminiService) SetUpSystemInstruction(systemInstruction string) {
 }
 
 func uploadToGemini(ctx context.Context, client *genai.Client, path, mimeType string) string {
+	if strings.HasPrefix(path, "http") {
+		resp, err := http.Get(path)
+		if err != nil {
+			log.Fatalf("Error downloading file: %v", err)
+		}
+		defer resp.Body.Close()
+
+		file, err := os.CreateTemp("tmp", "gemini-")
+		if err != nil {
+			log.Fatalf("Error creating temporary file: %v", err)
+		}
+		defer os.Remove(file.Name())
+
+		_, err = io.Copy(file, resp.Body)
+		if err != nil {
+			log.Fatalf("Error copying file: %v", err)
+		}
+
+		path = file.Name()
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatalf("Error opening file: %v", err)
@@ -136,7 +159,7 @@ func (service *GeminiService) SetupModel(
 	service.model = model
 
 }
-func (service *GeminiService) GenerateContent(ctx context.Context, input string, userHistories []map[string]interface{}) (string, error) {
+func (service *GeminiService) GenerateContent(ctx context.Context, input string, userHistories []map[string]interface{}, fileURL, mimeType string) (string, error) {
 	if service.client == nil {
 		return "", fmt.Errorf("client is not initialized")
 	}
@@ -201,6 +224,9 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 
 	}
 
+	if fileURL != "" {
+		parts = append(parts, genai.FileData{URI: uploadToGemini(ctx, service.client, fileURL, mimeType)})
+	}
 	parts = append(parts, genai.Text("input: "+input))
 	parts = append(parts, genai.Text("output: "))
 	// fmt.Println("PARTS", parts)
@@ -218,7 +244,7 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 
 func (s *GeminiService) GetHistories() []models.GeminiHistoryModel {
 	var historyModels []models.GeminiHistoryModel
-	s.ctx.DB.Order("created_at desc").Find(&historyModels)
+	s.ctx.DB.Order("created_at asc").Find(&historyModels)
 	return historyModels
 }
 
