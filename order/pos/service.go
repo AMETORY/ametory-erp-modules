@@ -111,6 +111,10 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		return nil, err
 	}
 	contactID = &ctct.ID
+	var payment models.PaymentModel
+	if err := s.db.First(&payment, "id = ?", paymentID).Error; err != nil {
+		return nil, err
+	}
 	var items []models.POSSalesItemModel
 	for _, v := range merchantProductAvailable.Items {
 		var Height, Length, Weight, Width float64
@@ -148,10 +152,11 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		ContactID:              contactID,
 		Code:                   utils.RandString(7, true),
 		MerchantID:             &offer.MerchantID,
-		Total:                  offer.TotalPrice,
+		Total:                  offer.TotalPrice + payment.PaymentFee,
 		Subtotal:               offer.SubTotal,
 		SubTotalBeforeDiscount: offer.SubTotalBeforeDiscount,
 		ShippingFee:            offer.ShippingFee,
+		PaymentFee:             payment.PaymentFee,
 		Tax:                    offer.Tax,
 		TaxAmount:              offer.TaxAmount,
 		TaxType:                offer.TaxType,

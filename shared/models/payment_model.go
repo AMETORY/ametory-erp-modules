@@ -22,6 +22,7 @@ type PaymentModel struct {
 	PaymentData         string      `gorm:"type:json" json:"-"`
 	PaymentDataResponse interface{} `gorm:"-" json:"payment_data_response"`
 	RefID               string      `gorm:"type:varchar(255);not null" json:"ref_id"`
+	PaymentFee          float64     `gorm:"type:decimal(10,2);not null;default:0" json:"payment_fee"`
 	Status              string      `gorm:"type:varchar(50);default:PENDING;not null" json:"status"`
 }
 
@@ -164,4 +165,5 @@ var BankCodes = map[string]string{
 	"536": "Bank BCA Syariah",
 	"547": "Bank BTPN Syariah",
 	"947": "Bank Aladin Syariah",
+	"213": "Bank SMBC Indonesia",
 }

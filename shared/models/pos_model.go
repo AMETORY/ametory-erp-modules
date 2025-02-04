@@ -46,6 +46,7 @@ type POSModel struct {
 	SubTotalBeforeDiscount float64                `json:"sub_total_before_discount,omitempty" gorm:"column:sub_total_before_discount"`
 	ShippingFee            float64                `json:"shipping_fee,omitempty" gorm:"column:shipping_fee"`
 	ServiceFee             float64                `json:"service_fee,omitempty" gorm:"column:service_fee"`
+	PaymentFee             float64                `json:"payment_fee,omitempty" gorm:"column:payment_fee"`
 	Paid                   float64                `json:"paid,omitempty" gorm:"column:paid"`
 	TotalBeforeTax         float64                `json:"total_before_tax,omitempty" gorm:"column:total_before_tax"`
 	TotalBeforeDisc        float64                `json:"total_before_disc,omitempty" gorm:"column:total_before_disc"`
