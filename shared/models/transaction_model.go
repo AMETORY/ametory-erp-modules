@@ -29,7 +29,7 @@ type TransactionModel struct {
 	TaxPaymentID           string             `json:"tax_payment_id,omitempty"`
 	TransactionRefID       *string            `json:"transaction_ref_id,omitempty"`
 	TransactionRefType     string             `json:"transaction_ref_type,omitempty"`
-	TransactionRefs        []TransactionModel `json:"transaction_refs,omitempty" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:TransactionRefID"`
+	TransactionRefs        []TransactionModel `json:"transaction_refs,omitempty" gorm:"-"`
 	CompanyID              *string            `json:"company_id,omitempty" gorm:"null"`
 	Company                *CompanyModel      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:CompanyID" json:"company,omitempty"`
 	File                   *string            `json:"file,omitempty"`

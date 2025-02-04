@@ -44,11 +44,14 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			return err
 		}
 	} else {
+		var transSourceID, transDestID string = uuid.New().String(), uuid.New().String()
 		if transaction.SourceID != nil {
-			transaction.ID = uuid.New().String()
+			transaction.ID = transSourceID
 			transaction.Code = code
 			transaction.AccountID = transaction.SourceID
 			transaction.Amount = amount
+			transaction.TransactionRefID = &transDestID
+			transaction.TransactionRefType = "transaction"
 			account, err := s.accountService.GetAccountByID(*transaction.AccountID)
 			if err != nil {
 				return err
@@ -60,10 +63,12 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			}
 		}
 		if transaction.DestinationID != nil {
-			transaction.ID = uuid.New().String()
+			transaction.ID = transDestID
 			transaction.Code = code
 			transaction.AccountID = transaction.DestinationID
 			transaction.Amount = amount
+			transaction.TransactionRefID = &transSourceID
+			transaction.TransactionRefType = "transaction"
 			account, err := s.accountService.GetAccountByID(*transaction.AccountID)
 			if err != nil {
 				return err
@@ -72,6 +77,7 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			if err := s.db.Create(transaction).Error; err != nil {
 				return err
 			}
+
 		}
 	}
 

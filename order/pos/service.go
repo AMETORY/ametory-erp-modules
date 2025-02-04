@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/contact"
@@ -174,7 +175,7 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		return nil, err
 	}
 
-	if (userPaymentStatus == "PAID" || userPaymentStatus == "COMPLETE") && pos.SaleAccountID != nil && pos.AssetAccountID != nil {
+	if (strings.ToLower(userPaymentStatus) == "paid" || strings.ToLower(userPaymentStatus) == "complete") && pos.SaleAccountID != nil && pos.AssetAccountID != nil {
 		if s.financeService.TransactionService != nil {
 			// Tambahkan transaksi ke jurnal
 			if pos.SaleAccountID != nil {
