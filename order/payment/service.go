@@ -38,12 +38,32 @@ func Migrate(db *gorm.DB) error {
 
 func (s *PaymentService) CreatePaymentLink(data interface{}) (interface{}, error) {
 	fmt.Println("PROVIDER", s.activeProvider)
-	fmt.Println("PROVIDER DATA", data)
+	// fmt.Println("PROVIDER DATA", data)
 	resp, err := s.PaymentProvider[s.activeProvider].CreatePaymentLink(data)
+	return resp, err
+}
+func (s *PaymentService) CreatePaymentVA(data interface{}) (interface{}, error) {
+	fmt.Println("PROVIDER", s.activeProvider)
+	// fmt.Println("PROVIDER DATA", data)
+	resp, err := s.PaymentProvider[s.activeProvider].CreatePaymentVA(data)
+	return resp, err
+}
+func (s *PaymentService) CreatePaymentEWallet(data interface{}) (interface{}, error) {
+	fmt.Println("PROVIDER", s.activeProvider)
+	// fmt.Println("PROVIDER DATA", data)
+	resp, err := s.PaymentProvider[s.activeProvider].CreatePaymentEWallet(data)
 	return resp, err
 }
 func (s *PaymentService) DetailPayment(data ...interface{}) (interface{}, error) {
 	resp, err := s.PaymentProvider[s.activeProvider].DetailPayment(data)
+	return resp, err
+}
+func (s *PaymentService) DetailPaymentVA(data ...interface{}) (interface{}, error) {
+	resp, err := s.PaymentProvider[s.activeProvider].DetailPaymentVA(data)
+	return resp, err
+}
+func (s *PaymentService) DetailPaymentEWallet(data ...interface{}) (interface{}, error) {
+	resp, err := s.PaymentProvider[s.activeProvider].DetailPaymentEWallet(data)
 	return resp, err
 }
 

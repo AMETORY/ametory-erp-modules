@@ -17,6 +17,67 @@ type OyCreatePaymentLinkRequest struct {
 	Expiration          string `json:"expiration"`                    // To set the expiration of the payment link (yyyy-MM-dd HH:mm:ss) e.g. 2022-12-31 23:59:59
 }
 
+type OyCreatePaymentVARequest struct {
+	PartnerUserID     string `json:"partner_user_id"`
+	BankCode          string `json:"bank_code"`
+	Amount            int64  `json:"amount"`
+	IsOpen            bool   `json:"is_open"`
+	IsSingleUse       bool   `json:"is_single_use"`
+	IsLifetime        bool   `json:"is_lifetime"`
+	ExpirationTime    int64  `json:"expiration_time"`
+	UsernameDisplay   string `json:"username_display"`
+	Email             string `json:"email"`
+	TrxExpirationTime int64  `json:"trx_expiration_time"`
+	PartnerTrxID      string `json:"partner_trx_id"`
+	TrxCounter        int64  `json:"trx_counter"`
+}
+type OyCreatePaymentEWalletRequest struct {
+	CustomerID         string `json:"customer_id"`
+	PartnerTxID        string `json:"partner_trx_id"`
+	SubMerchantID      string `json:"sub_merchant_id"`
+	Amount             int64  `json:"amount"`
+	Email              string `json:"email"`
+	EwalletCode        string `json:"ewallet_code"`
+	MobileNumber       string `json:"mobile_number"`
+	SuccessRedirectURL string `json:"success_redirect_url"`
+	ExpirationTime     int    `json:"expiration_time"`
+}
+
+type OyCreatePaymentEWalletResponse struct {
+	Status struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"status"`
+	EwalletTrxStatus string `json:"ewallet_trx_status"`
+	Amount           int64  `json:"amount"`
+	TrxID            string `json:"trx_id"`
+	CustomerID       string `json:"customer_id"`
+	PartnerTxID      string `json:"partner_trx_id"`
+	EwalletCode      string `json:"ewallet_code"`
+	EwalletURL       string `json:"ewallet_url"`
+}
+
+type OyCreatePaymentVAResponse struct {
+	ID     string `json:"id"`
+	Status struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"status"`
+	Amount                 float64 `json:"amount"`
+	VANumber               string  `json:"va_number"`
+	BankCode               string  `json:"bank_code"`
+	IsOpen                 bool    `json:"is_open"`
+	IsSingleUse            bool    `json:"is_single_use"`
+	ExpirationTime         int64   `json:"expiration_time"`
+	VAStatus               string  `json:"va_status"`
+	UsernameDisplay        string  `json:"username_display"`
+	PartnerUserID          string  `json:"partner_user_id"`
+	CounterIncomingPayment int     `json:"counter_incoming_payment"`
+	PartnerTrxID           string  `json:"partner_trx_id"`
+	TrxExpirationTime      int64   `json:"trx_expiration_time"`
+	TrxCounter             int     `json:"trx_counter"`
+}
+
 type OyCreatePaymentLinkResponse struct {
 	PaymentLinkID string `json:"payment_link_id"`
 	Message       string `json:"message"`

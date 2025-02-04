@@ -35,6 +35,68 @@ func NewOyPaymentService(username, apiKey string, env objects.EnvironmentType) *
 	}
 }
 
+func (o *OyPaymentService) CreatePaymentVA(dataPayment interface{}) (interface{}, error) {
+	data, ok := dataPayment.(OyCreatePaymentVARequest)
+	if !ok {
+		return nil, fmt.Errorf("invalid data type")
+	}
+	utils.LogJson(data)
+	client := &http.Client{}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", o.BaseURL+"/api/generate-static-va", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Oy-Username", o.Username)
+	req.Header.Set("X-Api-Key", o.APIKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	// fmt.Println(resp.Body)
+	var response OyCreatePaymentVAResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+func (o *OyPaymentService) CreatePaymentEWallet(dataPayment interface{}) (interface{}, error) {
+	data, ok := dataPayment.(OyCreatePaymentEWalletRequest)
+	if !ok {
+		return nil, fmt.Errorf("invalid data type")
+	}
+	utils.LogJson(data)
+	client := &http.Client{}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", o.BaseURL+"/api/e-wallet-aggregator/create-transaction", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Oy-Username", o.Username)
+	req.Header.Set("X-Api-Key", o.APIKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	// fmt.Println(resp.Body)
+	var response OyCreatePaymentEWalletResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
 func (o *OyPaymentService) CreatePaymentLink(dataPayment interface{}) (interface{}, error) {
 	data, ok := dataPayment.(OyCreatePaymentLinkRequest)
 	if !ok {
@@ -73,6 +135,72 @@ func (o *OyPaymentService) CreatePaymentLink(dataPayment interface{}) (interface
 	return response, nil
 }
 
+func (o *OyPaymentService) DetailPaymentVA(data ...interface{}) (interface{}, error) {
+	if len(data) < 1 {
+		return nil, fmt.Errorf("invalid data")
+	}
+	var ids = data[0].([]interface{})
+	id := ids[0].(string)
+	client := &http.Client{}
+	fmt.Println("GET  VA STATUS", fmt.Sprintf("%s/api/static-virtual-account/%s", o.BaseURL, id))
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/static-virtual-account/%s", o.BaseURL, id), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Oy-Username", o.Username)
+	req.Header.Set("X-Api-Key", o.APIKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var response OyCreatePaymentVAResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+
+	// utils.LogJson(response)
+	return response, nil
+
+}
+func (o *OyPaymentService) DetailPaymentEWallet(data ...interface{}) (interface{}, error) {
+	if len(data) < 1 {
+		return nil, fmt.Errorf("invalid data")
+	}
+	var ids = data[0].([]interface{})
+	id := ids[0].(string)
+	jsonData, err := json.Marshal(map[string]interface{}{
+		"partner_trx_id": id,
+	})
+	if err != nil {
+		return nil, err
+	}
+	client := &http.Client{}
+	// fmt.Println("GET  VA STATUS", fmt.Sprintf("%s/api/static-virtual-account/%s", o.BaseURL, id))
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/e-wallet-aggregator/check-status", o.BaseURL), bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Oy-Username", o.Username)
+	req.Header.Set("X-Api-Key", o.APIKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var response OyCreatePaymentEWalletResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+
+	// utils.LogJson(response)
+	return response, nil
+
+}
 func (o *OyPaymentService) DetailPayment(data ...interface{}) (interface{}, error) {
 
 	if len(data) < 1 {
