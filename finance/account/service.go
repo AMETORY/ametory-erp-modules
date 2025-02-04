@@ -60,6 +60,9 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 			"%"+search+"%",
 		)
 	}
+	if request.URL.Query().Get("type") != "" {
+		stmt = stmt.Where("accounts.type = ? ", request.URL.Query().Get("type"))
+	}
 	stmt = stmt.Model(&models.AccountModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.AccountModel{})

@@ -87,6 +87,7 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string) error {
 				detail.VariantID,
 				nil,
 				nil,
+				nil,
 				detail.Difference,
 				stockOpnameHeader.ID,
 				stockOpnameHeader.Notes,

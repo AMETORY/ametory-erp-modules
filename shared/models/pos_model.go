@@ -51,6 +51,7 @@ type POSModel struct {
 	TotalBeforeDisc        float64                `json:"total_before_disc,omitempty" gorm:"column:total_before_disc"`
 	Status                 string                 `json:"status,omitempty" gorm:"column:status"`
 	StockStatus            string                 `json:"stock_status,omitempty" gorm:"default:'pending';column:stock_status"`
+	UserPaymentStatus      string                 `json:"user_payment_status,omitempty" gorm:"column:user_payment_status"`
 	SalesDate              time.Time              `json:"sales_date,omitempty" gorm:"column:sales_date"`
 	DueDate                time.Time              `json:"due_date,omitempty" gorm:"column:due_date"`
 	PaymentTerms           string                 `json:"payment_terms,omitempty" gorm:"column:payment_terms"`

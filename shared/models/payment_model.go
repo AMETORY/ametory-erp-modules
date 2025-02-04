@@ -17,6 +17,7 @@ type PaymentModel struct {
 	Phone               string      `gorm:"type:varchar(50);not null" json:"phone"`
 	Total               float64     `gorm:"type:decimal(10,2);not null" json:"total"`
 	PaymentProvider     string      `gorm:"type:varchar(255);not null" json:"payment_provider"`
+	PaymentMethod       string      `gorm:"type:varchar(255);default:PAYMENT_LINK;not null" json:"payment_method"`
 	PaymentLink         string      `gorm:"type:varchar(255);not null" json:"payment_link"`
 	PaymentData         string      `gorm:"type:json" json:"-"`
 	PaymentDataResponse interface{} `gorm:"-" json:"payment_data_response"`

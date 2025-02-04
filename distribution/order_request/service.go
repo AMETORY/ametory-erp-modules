@@ -143,6 +143,9 @@ func (s *OrderRequestService) CancelOrderRequest(userID, orderRequestID, reason 
 		Updates(map[string]interface{}{"status": "CANCELLED", "cancellation_reason": reason}).
 		Error
 }
+func (s *OrderRequestService) DeleteOrderRequest(userID, orderRequestID string) error {
+	return s.db.Model(&models.OrderRequestModel{}).Where("user_id = ? AND id = ?", userID, orderRequestID).Unscoped().Delete(&models.OrderRequestModel{}).Error
+}
 
 // func (s *OrderRequestService) AcceptOrderRequest(orderRequestID, merchantID, offerID string, totalPrice, shippingFee float64) error {
 // 	tx := s.db.Begin()

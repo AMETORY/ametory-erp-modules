@@ -66,7 +66,8 @@ func (s *POSService) CreateMerchant(name, address, phone string) (*models.Mercha
 	return &merchant, nil
 }
 
-func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider string) (*models.POSModel, error) {
+func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, assetAccountID, saleAccountID *string) (*models.POSModel, error) {
+	now := time.Now()
 	var shippingData struct {
 		FullName        string  `json:"full_name"`
 		Email           string  `json:"email"`
@@ -156,6 +157,7 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		ServiceFee:             offer.ServiceFee,
 		CompanyID:              merchant.CompanyID,
 		Status:                 "PENDING",
+		UserPaymentStatus:      userPaymentStatus,
 		PaymentID:              &paymentID,
 		OfferID:                &offer.ID,
 		ContactData:            orderRequest.ShippingData,
@@ -165,9 +167,44 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		SalesNumber:            salesNumber,
 		PaymentProviderType:    models.PaymentProviderType(paymentTypeProvider),
 		Items:                  items,
+		AssetAccountID:         assetAccountID,
+		SaleAccountID:          saleAccountID,
 	}
 	if err := s.db.Create(&pos).Error; err != nil {
 		return nil, err
+	}
+
+	if (userPaymentStatus == "PAID" || userPaymentStatus == "COMPLETE") && pos.SaleAccountID != nil && pos.AssetAccountID != nil {
+		if s.financeService.TransactionService != nil {
+			// Tambahkan transaksi ke jurnal
+			if pos.SaleAccountID != nil {
+				if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:               now,
+					AccountID:          pos.SaleAccountID,
+					Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
+					Notes:              pos.Description,
+					TransactionRefID:   &pos.ID,
+					TransactionRefType: "pos_sales",
+					CompanyID:          pos.CompanyID,
+				}, offer.TotalPrice); err != nil {
+					return nil, err
+				}
+			}
+			if pos.AssetAccountID != nil {
+				if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:               now,
+					AccountID:          pos.AssetAccountID,
+					Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
+					Notes:              pos.Description,
+					TransactionRefID:   &pos.ID,
+					TransactionRefType: "pos_sales",
+					CompanyID:          pos.CompanyID,
+				}, offer.TotalPrice); err != nil {
+					return nil, err
+				}
+			}
+		}
+
 	}
 
 	return &pos, nil
@@ -212,7 +249,7 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID *string,
 
 		// Kurangi stok untuk setiap item
 		for _, item := range items {
-			_, err := invSrv.StockMovementService.AddMovement(now, *item.ProductID, warehouseID, item.VariantID, merchantID, nil, -item.Quantity, models.MovementTypeOut, pos.ID, description)
+			_, err := invSrv.StockMovementService.AddMovement(now, *item.ProductID, warehouseID, item.VariantID, merchantID, nil, nil, -item.Quantity, models.MovementTypeOut, pos.ID, description)
 			if err != nil {
 				return err
 			}
@@ -479,6 +516,7 @@ func (s *POSService) UpdatePickedByID(id string) error {
 				v.VariantID,
 				pos.MerchantID,
 				nil,
+				nil,
 				-v.Quantity,
 				models.MovementTypeSale,
 				pos.ID,
@@ -518,6 +556,7 @@ func (s *POSService) UpdateDeliveredByID(id string) error {
 				*pos.Merchant.DefaultWarehouseID,
 				v.VariantID,
 				pos.MerchantID,
+				nil,
 				nil,
 				-v.Quantity,
 				models.MovementTypeSale,

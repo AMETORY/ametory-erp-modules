@@ -157,17 +157,22 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 		)
 	}
 	if request.Header.Get("ID-Company") != "" {
-		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+		if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {
+			stmt = stmt.Where("products.company_id is null")
+		} else {
+			stmt = stmt.Where("products.company_id = ?", request.Header.Get("ID-Company"))
+
+		}
 	}
 	if request.Header.Get("ID-Distributor") != "" {
-		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Distributor"))
+		stmt = stmt.Where("products.company_id = ?", request.Header.Get("ID-Distributor"))
 	}
 
 	if request.URL.Query().Get("brand_id") != "" {
-		stmt = stmt.Where("brand_id = ?", request.URL.Query().Get("brand_id"))
+		stmt = stmt.Where("products.brand_id = ?", request.URL.Query().Get("brand_id"))
 	}
 	if request.URL.Query().Get("category_id") != "" {
-		stmt = stmt.Where("category_id = ?", request.URL.Query().Get("category_id"))
+		stmt = stmt.Where("products.category_id = ?", request.URL.Query().Get("category_id"))
 	}
 	stmt = stmt.Distinct("products.id")
 	stmt = stmt.Select("products.*")

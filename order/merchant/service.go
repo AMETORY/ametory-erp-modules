@@ -12,6 +12,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type MerchantService struct {
@@ -141,6 +142,75 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 	return page, nil
 }
 
+func (s *MerchantService) CreateProduct(data *models.ProductModel, merchantID, companyID string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	data.CompanyID = &companyID
+	err := tx.Create(data).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Model(&models.ProductMerchant{}).Where("product_model_id = ? AND merchant_model_id = ?", data.ID, merchantID).FirstOrCreate(&models.ProductMerchant{
+		ProductModelID:  data.ID,
+		MerchantModelID: merchantID,
+		Price:           data.Price,
+	}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) GetMerchantProductDetail(id, merchantID string, warehouseID *string) (*models.ProductModel, error) {
+	var merchant models.MerchantModel
+	s.db.Select("default_warehouse_id").Where("id = ?", merchantID).First(&merchant)
+	if warehouseID == nil {
+		warehouseID = merchant.DefaultWarehouseID
+	}
+
+	var product models.ProductModel
+	err := s.db.Select("products.*", "product_merchants.price as price").Preload("Variants.Attributes.Attribute").Preload("Brand").Preload("Tags").
+		Joins("JOIN product_merchants ON product_merchants.product_model_id = products.id").
+		Joins("JOIN brands ON brands.id = products.brand_id").
+		Joins("LEFT JOIN product_variants ON product_variants.product_id = products.id").
+		Where("product_merchants.merchant_model_id = ?", merchantID).
+		First(&product, "products.id = ?", id).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	if warehouseID != nil {
+		totalStock, _ := s.inventoryService.StockMovementService.GetCurrentStock(id, *warehouseID)
+		product.TotalStock = totalStock
+	}
+
+	for j, variant := range product.Variants {
+		if warehouseID != nil {
+			totalVariantStock, _ := s.inventoryService.StockMovementService.GetVarianCurrentStock(id, variant.ID, *warehouseID)
+			variant.TotalStock = totalVariantStock
+			variant.Price = s.inventoryService.ProductService.GetVariantPrice(merchantID, &variant)
+			product.Variants[j] = variant
+		}
+	}
+
+	var ProductMerchant models.ProductMerchant
+	err = s.db.Select("last_updated_stock", "last_stock", "price").Where("product_model_id = ? AND merchant_model_id = ?", id, merchantID).First(&ProductMerchant).Error
+	if err == nil {
+		product.LastUpdatedStock = ProductMerchant.LastUpdatedStock
+		product.LastStock = ProductMerchant.LastStock
+		product.Price = ProductMerchant.Price
+	}
+
+	return &product, nil
+}
 func (s *MerchantService) GetMerchantProducts(request http.Request, search string, merchantID string, warehouseID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	var products []models.ProductModel
@@ -476,4 +546,59 @@ func (s *MerchantService) DeleteMerchantType(id string) error {
 	}
 
 	return nil
+}
+
+func (s *MerchantService) UpdateProduct(id, merchantID, companyID string, data *models.ProductModel) error {
+	var products []models.ProductModel
+
+	err := s.db.First(&products, "id = ? and company_id = ?", id, companyID).Error
+	if err != nil {
+		return err
+	}
+	data.ID = id
+	data.CompanyID = &companyID
+
+	if err := s.db.Model(&models.ProductMerchant{}).Where("product_model_id = ? AND merchant_model_id = ?", data.ID, merchantID).Updates(&models.ProductMerchant{
+		ProductModelID:  data.ID,
+		MerchantModelID: merchantID,
+		Price:           data.Price,
+	}).Error; err != nil {
+		return err
+	}
+
+	return s.db.Omit(clause.Associations).Save(data).Error
+}
+
+func (s *MerchantService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
+	idCompany := ""
+	if request != nil {
+		idCompany = request.Header.Get("ID-Company")
+	} else {
+		return nil, errors.New("request is nil")
+	}
+	var product models.ProductModel
+	err := s.db.Preload("Tags").Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Where("id = ? and company_id = ?", id, idCompany).First(&product).Error
+	product.Prices, _ = s.inventoryService.ProductService.ListPricesOfProduct(product.ID)
+	product.ProductImages, _ = s.inventoryService.ProductService.ListImagesOfProduct(product.ID)
+	var warehouseID *string
+	if request != nil {
+		warehouseIDStr := request.Header.Get("ID-Warehouse")
+		if warehouseIDStr != "" {
+			warehouseID = &warehouseIDStr
+		}
+	}
+	stock, _ := s.inventoryService.ProductService.GetStock(product.ID, request, warehouseID)
+
+	product.TotalStock = stock
+	for i, v := range product.Variants {
+		variantStock, _ := s.inventoryService.ProductService.GetVariantStock(product.ID, v.ID, request, warehouseID)
+		v.TotalStock = variantStock
+		product.Variants[i] = v
+		fmt.Println("VARIANT STOCK", v.ID, variantStock)
+	}
+	return &product, err
 }
