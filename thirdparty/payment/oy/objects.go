@@ -78,6 +78,32 @@ type OyCreatePaymentVAResponse struct {
 	TrxCounter             int     `json:"trx_counter"`
 }
 
+type OyCreatePaymentVACallback struct {
+	VANumber          string  `json:"va_number"`
+	Amount            float64 `json:"amount"`
+	PartnerUserID     string  `json:"partner_user_id"`
+	Success           bool    `json:"success"`
+	TxDate            string  `json:"tx_date"`
+	UsernameDisplay   string  `json:"username_display"`
+	TrxExpirationDate string  `json:"trx_expiration_date"`
+	PartnerTrxID      string  `json:"partner_trx_id"`
+	TrxID             string  `json:"trx_id"`
+	SettlementTime    string  `json:"settlement_time"`
+	SettlementStatus  string  `json:"settlement_status"`
+}
+
+type OyCreatePaymentEWalletCallback struct {
+	Success            bool    `json:"success"`
+	TrxID              string  `json:"trx_id"`
+	CustomerID         string  `json:"customer_id"`
+	Amount             float64 `json:"amount"`
+	EwalletCode        string  `json:"ewallet_code"`
+	MobileNumber       string  `json:"mobile_number"`
+	SuccessRedirectURL string  `json:"success_redirect_url"`
+	SettlementTime     string  `json:"settlement_time"`
+	SettlementStatus   string  `json:"settlement_status"`
+}
+
 type OyCreatePaymentLinkResponse struct {
 	PaymentLinkID string `json:"payment_link_id"`
 	Message       string `json:"message"`

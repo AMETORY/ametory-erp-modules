@@ -22,6 +22,7 @@ type PaymentModel struct {
 	PaymentData         string      `gorm:"type:json" json:"-"`
 	PaymentDataResponse interface{} `gorm:"-" json:"payment_data_response"`
 	RefID               string      `gorm:"type:varchar(255);not null" json:"ref_id"`
+	RefType             string      `gorm:"type:varchar(255);default:ORDER" json:"ref_type"`
 	PaymentFee          float64     `gorm:"type:decimal(10,2);not null;default:0" json:"payment_fee"`
 	Status              string      `gorm:"type:varchar(50);default:PENDING;not null" json:"status"`
 }

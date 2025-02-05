@@ -32,6 +32,7 @@ type VariantModel struct {
 	DiscountAmount   float64                        `gorm:"-" json:"discount_amount,omitempty"`
 	DiscountType     string                         `gorm:"-" json:"discount_type,omitempty"`
 	DiscountRate     float64                        `gorm:"-" json:"discount_rate,omitempty"`
+	ActiveDiscount   *DiscountModel                 `gorm:"-" json:"active_discount,omitempty"`
 }
 
 func (VariantModel) TableName() string {
@@ -116,6 +117,7 @@ func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
 		p.DiscountAmount = discountAmount
 		p.DiscountType = string(discount.Type)
 		p.DiscountRate = discount.Value
+		p.ActiveDiscount = &discount
 	}
 
 	// sort.Float64s(p.PriceList)

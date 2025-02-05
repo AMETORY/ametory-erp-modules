@@ -67,6 +67,54 @@ func (s *POSService) CreateMerchant(name, address, phone string) (*models.Mercha
 	return &merchant, nil
 }
 
+func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, taxAmount float64, assetAccountID, saleAccountID *string) (*models.POSModel, error) {
+	customerData := struct {
+		FullName         string `json:"full_name"`
+		Email            string `json:"email"`
+		PhoneNumber      string `json:"phone_number"`
+		Address          string `json:"address"`
+		AutoRegistration bool   `json:"auto_registration"`
+	}{}
+
+	json.Unmarshal([]byte(cart.CustomerData), &customerData)
+	var items []models.POSSalesItemModel
+	for _, v := range cart.Items {
+		var Height, Length, Weight, Width float64
+		product := models.ProductModel{}
+		s.db.Select("height, length, weight, width").First(&product, "id = ?", v.ProductID)
+		Height = product.Height
+		Length = product.Length
+		Weight = product.Weight
+		Width = product.Width
+		if v.VariantID != nil {
+			variant := models.VariantModel{}
+			s.db.Select("height, length, weight, width").First(&variant, "id = ?", v.VariantID)
+			Height = variant.Height
+			Length = variant.Length
+			Weight = variant.Weight
+			Width = variant.Width
+		}
+		items = append(items, models.POSSalesItemModel{
+			ProductID: &v.ProductID,
+			VariantID: v.VariantID,
+			Quantity:  v.Quantity,
+			UnitPrice: v.Price,
+			// UnitPriceBeforeDiscount: v.UnitPriceBeforeDiscount,
+			// SubtotalBeforeDisc:      v.SubTotalBeforeDiscount,
+			// Subtotal:                v.SubTotal,
+			// WarehouseID:             merchant.DefaultWarehouseID,
+			Height: Height,
+			Length: Length,
+			Weight: Weight,
+			Width:  Width,
+		})
+	}
+
+	pos := models.POSModel{
+		Items: items,
+	}
+	return &pos, nil
+}
 func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, assetAccountID, saleAccountID *string) (*models.POSModel, error) {
 	now := time.Now()
 	var shippingData struct {

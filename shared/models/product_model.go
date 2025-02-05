@@ -93,6 +93,7 @@ func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
 		p.DiscountAmount = discountAmount
 		p.DiscountType = string(discount.Type)
 		p.DiscountRate = discount.Value
+		p.ActiveDiscount = &discount
 	}
 	return
 }

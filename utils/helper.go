@@ -118,3 +118,7 @@ func ContainsString(arr []string, str string) bool {
 	}
 	return false
 }
+
+func FormatCurrency(amount float64) string {
+	return fmt.Sprintf("%s%.f", strings.ReplaceAll(fmt.Sprintf("%d", int64(amount)), "", ","), amount-float64(int64(amount)))
+}
