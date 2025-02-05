@@ -22,6 +22,9 @@ type CartModel struct {
 	TaxAmount              float64         `gorm:"-" json:"tax_amount,omitempty"`
 	DiscountAmount         float64         `gorm:"-" json:"discount_amount,omitempty"`
 	CustomerData           string          `gorm:"-" json:"-"`
+	Tax                    float64         `gorm:"-" json:"-"`
+	ServiceFee             float64         `gorm:"-" json:"-"`
+	TaxType                string          `gorm:"-" json:"-"`
 }
 
 func (CartModel) TableName() string {
@@ -38,23 +41,27 @@ func (c *CartModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 type CartItemModel struct {
 	shared.BaseModel
-	CartID         string         `gorm:"not null" json:"cart_id,omitempty"`
-	Cart           *CartModel     `gorm:"foreignKey:CartID;constraint:OnDelete:CASCADE" json:"cart,omitempty"`
-	ProductID      string         `gorm:"not null" json:"product_id,omitempty"`
-	Product        ProductModel   `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"product,omitempty"`
-	VariantID      *string        `json:"variant_id,omitempty"`
-	Variant        *VariantModel  `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
-	Quantity       float64        `gorm:"not null" json:"quantity,omitempty"`
-	Price          float64        `gorm:"not null" json:"price,omitempty"`
-	OriginalPrice  float64        `gorm:"-" json:"original_price,omitempty"`
-	DiscountAmount float64        `gorm:"-" json:"discount_amount,omitempty"`
-	DiscountType   string         `gorm:"-" json:"discount_type,omitempty"`
-	DiscountRate   float64        `gorm:"-" json:"discount_rate,omitempty"`
-	ActiveDiscount *DiscountModel `gorm:"-" json:"active_discount,omitempty"`
-	Height         float64        `gorm:"default:10" json:"height,omitempty"`
-	Length         float64        `gorm:"default:10" json:"length,omitempty"`
-	Weight         float64        `gorm:"default:200" json:"weight,omitempty"`
-	Width          float64        `gorm:"default:10" json:"width,omitempty"`
+	CartID                 string         `gorm:"not null" json:"cart_id,omitempty"`
+	Cart                   *CartModel     `gorm:"foreignKey:CartID;constraint:OnDelete:CASCADE" json:"cart,omitempty"`
+	ProductID              string         `gorm:"not null" json:"product_id,omitempty"`
+	Product                ProductModel   `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"-"`
+	VariantID              *string        `json:"variant_id,omitempty"`
+	Variant                *VariantModel  `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	Quantity               float64        `gorm:"not null" json:"quantity,omitempty"`
+	Price                  float64        `gorm:"not null" json:"price,omitempty"`
+	OriginalPrice          float64        `gorm:"-" json:"original_price,omitempty"`
+	DiscountAmount         float64        `gorm:"-" json:"discount_amount,omitempty"`
+	DiscountType           string         `gorm:"-" json:"discount_type,omitempty"`
+	DiscountRate           float64        `gorm:"-" json:"discount_rate,omitempty"`
+	ActiveDiscount         *DiscountModel `gorm:"-" json:"active_discount,omitempty"`
+	DisplayName            string         `gorm:"-" json:"display_name,omitempty"`
+	ProductImages          []FileModel    `gorm:"-" json:"product_images,omitempty"`
+	Height                 float64        `gorm:"default:10" json:"height,omitempty"`
+	Length                 float64        `gorm:"default:10" json:"length,omitempty"`
+	Weight                 float64        `gorm:"default:200" json:"weight,omitempty"`
+	Width                  float64        `gorm:"default:10" json:"width,omitempty"`
+	SubTotal               float64        `gorm:"-" json:"sub_total,omitempty"`
+	SubTotalBeforeDiscount float64        `gorm:"-" json:"sub_total_before_discount,omitempty"`
 }
 
 func (CartItemModel) TableName() string {

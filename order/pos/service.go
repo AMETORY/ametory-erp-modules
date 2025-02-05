@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/auth"
 	"github.com/AMETORY/ametory-erp-modules/contact"
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
@@ -75,43 +76,83 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 		Address          string `json:"address"`
 		AutoRegistration bool   `json:"auto_registration"`
 	}{}
+	var payment models.PaymentModel
+	s.db.Find(&payment, "id = ?", *paymentID)
+	var merchant models.MerchantModel
+	s.db.Find(&merchant, "id = ?", cart.MerchantID)
 
 	json.Unmarshal([]byte(cart.CustomerData), &customerData)
 	var items []models.POSSalesItemModel
 	for _, v := range cart.Items {
-		var Height, Length, Weight, Width float64
-		product := models.ProductModel{}
-		s.db.Select("height, length, weight, width").First(&product, "id = ?", v.ProductID)
-		Height = product.Height
-		Length = product.Length
-		Weight = product.Weight
-		Width = product.Width
-		if v.VariantID != nil {
-			variant := models.VariantModel{}
-			s.db.Select("height, length, weight, width").First(&variant, "id = ?", v.VariantID)
-			Height = variant.Height
-			Length = variant.Length
-			Weight = variant.Weight
-			Width = variant.Width
-		}
+
 		items = append(items, models.POSSalesItemModel{
-			ProductID: &v.ProductID,
-			VariantID: v.VariantID,
-			Quantity:  v.Quantity,
-			UnitPrice: v.Price,
-			// UnitPriceBeforeDiscount: v.UnitPriceBeforeDiscount,
-			// SubtotalBeforeDisc:      v.SubTotalBeforeDiscount,
-			// Subtotal:                v.SubTotal,
-			// WarehouseID:             merchant.DefaultWarehouseID,
-			Height: Height,
-			Length: Length,
-			Weight: Weight,
-			Width:  Width,
+			ProductID:               &v.ProductID,
+			VariantID:               v.VariantID,
+			Quantity:                v.Quantity,
+			UnitPrice:               v.Price,
+			UnitPriceBeforeDiscount: v.OriginalPrice,
+			Subtotal:                v.SubTotal,
+			SubtotalBeforeDisc:      v.SubTotalBeforeDiscount,
+			Height:                  v.Height,
+			Length:                  v.Length,
+			Weight:                  v.Weight,
+			Width:                   v.Weight,
 		})
+	}
+	var contactID *string
+	if customerData.AutoRegistration {
+		var existingContact models.UserModel
+		if err := s.db.Where("email = ?", customerData.Email).First(&existingContact).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				contact, err := s.contactService.CreateContactFromUser(&existingContact, "", true, false, false, merchant.CompanyID)
+				if err != nil {
+					return nil, err
+				}
+				contactID = &contact.ID
+			} else {
+				authSrv, ok := s.ctx.AuthService.(*auth.AuthService)
+				if ok {
+					var randomPassword = utils.RandomStringNumber(10, false)
+					user, err := authSrv.Register(customerData.FullName, utils.CreateUsernameFromFullName(customerData.FullName), customerData.Email, randomPassword, customerData.PhoneNumber)
+					if err == nil {
+						contact, err := s.contactService.CreateContactFromUser(user, "", true, false, false, merchant.CompanyID)
+						if err != nil {
+							return nil, err
+						}
+						contactID = &contact.ID
+					}
+				}
+			}
+
+		}
 	}
 
 	pos := models.POSModel{
-		Items: items,
+		ContactID:              contactID,
+		Code:                   utils.RandString(7, true),
+		MerchantID:             cart.MerchantID,
+		Total:                  cart.Total,
+		Subtotal:               cart.SubTotal,
+		SubTotalBeforeDiscount: cart.SubTotalBeforeDiscount,
+		PaymentFee:             payment.PaymentFee,
+		Tax:                    cart.TaxAmount,
+		TaxAmount:              cart.Tax,
+		TaxType:                cart.TaxType,
+		ServiceFee:             cart.ServiceFee,
+		CompanyID:              merchant.CompanyID,
+		Status:                 "PENDING",
+		UserPaymentStatus:      userPaymentStatus,
+		PaymentID:              paymentID,
+		OfferID:                &cart.ID,
+		ContactData:            cart.CustomerData,
+		SalesDate:              time.Now(),
+		DueDate:                time.Now().Add(time.Hour * 24),
+		PaymentType:            paymentType,
+		SalesNumber:            salesNumber,
+		PaymentProviderType:    models.PaymentProviderType(paymentTypeProvider),
+		Items:                  items,
+		AssetAccountID:         assetAccountID,
+		SaleAccountID:          saleAccountID,
 	}
 	return &pos, nil
 }

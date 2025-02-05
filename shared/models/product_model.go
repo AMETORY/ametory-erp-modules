@@ -48,6 +48,7 @@ type ProductModel struct {
 	DiscountAmount   float64               `gorm:"-" json:"discount_amount,omitempty"`
 	DiscountType     string                `gorm:"-" json:"discount_type,omitempty"`
 	DiscountRate     float64               `gorm:"-" json:"discount_rate,omitempty"`
+	MerchantID       *string               `json:"-" gorm:"-"`
 }
 
 func (ProductModel) TableName() string {
@@ -66,6 +67,13 @@ func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
 		if v.Price != p.Price {
 			p.PriceList = append(p.PriceList, v.Price)
 		}
+	}
+
+	if p.MerchantID != nil {
+		var productMerchant ProductMerchant
+		tx.Select("price").Where("product_model_id = ? AND merchant_model_id = ?", p.ID, *p.MerchantID).Find(&productMerchant) // TODO: check if variant_merchant exists
+		p.Price = productMerchant.Price
+		p.OriginalPrice = productMerchant.Price
 	}
 
 	sort.Float64s(p.PriceList)

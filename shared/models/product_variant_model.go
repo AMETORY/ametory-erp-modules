@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -33,6 +34,7 @@ type VariantModel struct {
 	DiscountType     string                         `gorm:"-" json:"discount_type,omitempty"`
 	DiscountRate     float64                        `gorm:"-" json:"discount_rate,omitempty"`
 	ActiveDiscount   *DiscountModel                 `gorm:"-" json:"active_discount,omitempty"`
+	MerchantID       *string                        `json:"-" gorm:"-"`
 }
 
 func (VariantModel) TableName() string {
@@ -92,6 +94,13 @@ func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
 		if v.Price != p.Price {
 			p.PriceList = append(p.PriceList, v.Price)
 		}
+	}
+	if p.MerchantID != nil {
+		var variantMerchant VarianMerchant
+		tx.Select("price").Where("variant_id = ? AND merchant_id = ?", p.ID, *p.MerchantID).Find(&variantMerchant) // TODO: check if variant_merchant exists
+		p.Price = variantMerchant.Price
+		p.OriginalPrice = variantMerchant.Price
+		fmt.Println("KESINI", variantMerchant)
 	}
 	var discount DiscountModel
 	tx.Where("product_id = ? AND is_active = ? AND start_date <= ?", p.ProductID, true, time.Now()).
