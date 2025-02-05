@@ -77,9 +77,14 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 		AutoRegistration bool   `json:"auto_registration"`
 	}{}
 	var payment models.PaymentModel
-	s.db.Find(&payment, "id = ?", *paymentID)
-	var merchant models.MerchantModel
-	s.db.Find(&merchant, "id = ?", cart.MerchantID)
+	err := s.db.Find(&payment, "id = ?", *paymentID).Error
+	if err != nil {
+		return nil, err
+	}
+	if cart.Merchant == nil {
+		return nil, errors.New("merchant not found")
+	}
+	var merchant models.MerchantModel = *cart.Merchant
 
 	json.Unmarshal([]byte(cart.CustomerData), &customerData)
 	var items []models.POSSalesItemModel
@@ -104,12 +109,6 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 		var existingContact models.UserModel
 		if err := s.db.Where("email = ?", customerData.Email).First(&existingContact).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				contact, err := s.contactService.CreateContactFromUser(&existingContact, "", true, false, false, merchant.CompanyID)
-				if err != nil {
-					return nil, err
-				}
-				contactID = &contact.ID
-			} else {
 				authSrv, ok := s.ctx.AuthService.(*auth.AuthService)
 				if ok {
 					var randomPassword = utils.RandomStringNumber(10, false)
@@ -122,6 +121,14 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 						contactID = &contact.ID
 					}
 				}
+
+			} else {
+
+				contact, err := s.contactService.CreateContactFromUser(&existingContact, "", true, false, false, merchant.CompanyID)
+				if err != nil {
+					return nil, err
+				}
+				contactID = &contact.ID
 			}
 
 		}
@@ -135,15 +142,15 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 		Subtotal:               cart.SubTotal,
 		SubTotalBeforeDiscount: cart.SubTotalBeforeDiscount,
 		PaymentFee:             payment.PaymentFee,
-		Tax:                    cart.TaxAmount,
-		TaxAmount:              cart.Tax,
+		Tax:                    cart.Tax,
+		TaxAmount:              cart.TaxAmount,
 		TaxType:                cart.TaxType,
 		ServiceFee:             cart.ServiceFee,
 		CompanyID:              merchant.CompanyID,
 		Status:                 "PENDING",
 		UserPaymentStatus:      userPaymentStatus,
 		PaymentID:              paymentID,
-		OfferID:                &cart.ID,
+		CartID:                 &cart.ID,
 		ContactData:            cart.CustomerData,
 		SalesDate:              time.Now(),
 		DueDate:                time.Now().Add(time.Hour * 24),
@@ -154,6 +161,44 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 		AssetAccountID:         assetAccountID,
 		SaleAccountID:          saleAccountID,
 	}
+
+	if err := s.db.Create(&pos).Error; err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	if (strings.ToLower(userPaymentStatus) == "paid" || strings.ToLower(userPaymentStatus) == "complete") && pos.SaleAccountID != nil && pos.AssetAccountID != nil {
+		if s.financeService.TransactionService != nil {
+			// Tambahkan transaksi ke jurnal
+			if pos.SaleAccountID != nil {
+				if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:               now,
+					AccountID:          pos.SaleAccountID,
+					Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
+					Notes:              pos.Description,
+					TransactionRefID:   &pos.ID,
+					TransactionRefType: "pos_sales",
+					CompanyID:          pos.CompanyID,
+				}, cart.Total); err != nil {
+					return nil, err
+				}
+			}
+			if pos.AssetAccountID != nil {
+				if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:               now,
+					AccountID:          pos.AssetAccountID,
+					Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
+					Notes:              pos.Description,
+					TransactionRefID:   &pos.ID,
+					TransactionRefType: "pos_sales",
+					CompanyID:          pos.CompanyID,
+				}, cart.Total); err != nil {
+					return nil, err
+				}
+			}
+		}
+
+	}
+
 	return &pos, nil
 }
 func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, assetAccountID, saleAccountID *string) (*models.POSModel, error) {

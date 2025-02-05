@@ -60,6 +60,8 @@ type POSModel struct {
 	Payment                *PaymentModel          `gorm:"foreignKey:PaymentID;constraint:OnDelete:CASCADE" json:"payment,omitempty"`
 	OfferID                *string                `json:"offer_id,omitempty" gorm:"column:offer_id"`
 	Offer                  *OfferModel            `gorm:"foreignKey:OfferID;constraint:OnDelete:CASCADE" json:"offer,omitempty"`
+	CartID                 *string                `json:"cart_id,omitempty" gorm:"column:cart_id"`
+	Cart                   *CartModel             `gorm:"foreignKey:CartID;constraint:OnDelete:CASCADE" json:"cart,omitempty"`
 	MerchantID             *string                `json:"merchant_id,omitempty" gorm:"column:merchant_id"`
 	Merchant               *MerchantModel         `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE" json:"merchant,omitempty"`
 	CompanyID              *string                `json:"company_id,omitempty" gorm:"column:company_id"`
