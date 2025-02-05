@@ -120,5 +120,31 @@ func ContainsString(arr []string, str string) bool {
 }
 
 func FormatCurrency(amount float64) string {
-	return fmt.Sprintf("%s%.f", strings.ReplaceAll(fmt.Sprintf("%d", int64(amount)), "", ","), amount-float64(int64(amount)))
+	return FormatFloatWithThousandSeparator(amount)
+}
+
+func FormatFloatWithThousandSeparator(number float64) string {
+	// Format angka menjadi string dengan 2 digit desimal
+	formatted := fmt.Sprintf("%.2f", number)
+
+	// Pisahkan bagian integer dan desimal
+	parts := strings.Split(formatted, ".")
+	integerPart := parts[0]
+	decimalPart := parts[1]
+
+	// Tambahkan separator ribuan ke bagian integer
+	var result strings.Builder
+	length := len(integerPart)
+	for i, char := range integerPart {
+		result.WriteRune(char)
+		if (length-i-1)%3 == 0 && i != length-1 {
+			result.WriteString(",")
+		}
+	}
+
+	// Gabungkan bagian integer dan desimal
+	result.WriteString(".")
+	result.WriteString(decimalPart)
+
+	return result.String()
 }

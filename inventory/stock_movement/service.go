@@ -24,6 +24,9 @@ func NewStockMovementService(db *gorm.DB, ctx *context.ERPContext) *StockMovemen
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.StockMovementModel{})
 }
+func (s *StockMovementService) SetDB(db *gorm.DB) {
+	s.db = db
+}
 
 // CreateStockMovement membuat pergerakan stok
 func (s *StockMovementService) CreateStockMovement(movement *models.StockMovementModel) error {

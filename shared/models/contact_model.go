@@ -20,7 +20,7 @@ type ContactModel struct {
 	IsVendor              bool          `gorm:"default:false" json:"is_vendor"`   // Flag untuk vendor
 	IsSupplier            bool          `gorm:"default:false" json:"is_supplier"` // Flag untuk supplier
 	UserID                *string       `json:"user_id" gorm:"user_id"`
-	User                  *UserModel    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	User                  *UserModel    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 	CompanyID             *string       `json:"company_id" gorm:"company_id"`
 	Company               *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 }

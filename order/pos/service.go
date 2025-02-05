@@ -14,6 +14,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/shared/objects"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -68,7 +69,8 @@ func (s *POSService) CreateMerchant(name, address, phone string) (*models.Mercha
 	return &merchant, nil
 }
 
-func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, taxAmount float64, assetAccountID, saleAccountID *string) (*models.POSModel, error) {
+func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, taxAmount float64, assetAccountID, saleAccountID *string) (*models.POSModel, *objects.NewUserData, error) {
+	var notifUserData *objects.NewUserData
 	customerData := struct {
 		FullName         string `json:"full_name"`
 		Email            string `json:"email"`
@@ -79,10 +81,10 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 	var payment models.PaymentModel
 	err := s.db.Find(&payment, "id = ?", *paymentID).Error
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if cart.Merchant == nil {
-		return nil, errors.New("merchant not found")
+		return nil, nil, errors.New("merchant not found")
 	}
 	var merchant models.MerchantModel = *cart.Merchant
 
@@ -111,27 +113,32 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				authSrv, ok := s.ctx.AuthService.(*auth.AuthService)
 				if ok {
-					var randomPassword = utils.RandomStringNumber(10, false)
-					user, err := authSrv.Register(customerData.FullName, utils.CreateUsernameFromFullName(customerData.FullName), customerData.Email, randomPassword, customerData.PhoneNumber)
+					var randomPassword = utils.RandomStringNumber(6, false)
+					user, err := authSrv.Register(customerData.FullName, utils.CreateUsernameFromFullName(customerData.FullName), customerData.Email, randomPassword, "")
 					if err == nil {
-						contact, err := s.contactService.CreateContactFromUser(user, "", true, false, false, merchant.CompanyID)
-						if err != nil {
-							return nil, err
+						existingContact = *user
+						notifUserData = &objects.NewUserData{
+							Email:             user.Email,
+							FullName:          user.FullName,
+							Password:          randomPassword,
+							VerificationToken: user.VerificationToken,
 						}
-						contactID = &contact.ID
 					}
 				}
 
-			} else {
-
-				contact, err := s.contactService.CreateContactFromUser(&existingContact, "", true, false, false, merchant.CompanyID)
-				if err != nil {
-					return nil, err
-				}
-				contactID = &contact.ID
 			}
 
 		}
+		contact, err := s.contactService.CreateContactFromUser(&existingContact, "", true, false, false, merchant.CompanyID)
+		if err != nil {
+			return nil, nil, err
+		}
+		contactID = &contact.ID
+	}
+
+	paid := float64(0)
+	if paymentType == "CASH" {
+		paid = cart.Total
 	}
 
 	pos := models.POSModel{
@@ -146,6 +153,7 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 		TaxAmount:              cart.TaxAmount,
 		TaxType:                cart.TaxType,
 		ServiceFee:             cart.ServiceFee,
+		Paid:                   paid,
 		CompanyID:              merchant.CompanyID,
 		Status:                 "PENDING",
 		UserPaymentStatus:      userPaymentStatus,
@@ -163,46 +171,66 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 	}
 
 	if err := s.db.Create(&pos).Error; err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	now := time.Now()
+
 	if (strings.ToLower(userPaymentStatus) == "paid" || strings.ToLower(userPaymentStatus) == "complete") && pos.SaleAccountID != nil && pos.AssetAccountID != nil {
 		if s.financeService.TransactionService != nil {
 			// Tambahkan transaksi ke jurnal
-			if pos.SaleAccountID != nil {
-				if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-					Date:               now,
-					AccountID:          pos.SaleAccountID,
-					Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
-					Notes:              pos.Description,
-					TransactionRefID:   &pos.ID,
-					TransactionRefType: "pos_sales",
-					CompanyID:          pos.CompanyID,
-				}, cart.Total); err != nil {
-					return nil, err
-				}
-			}
-			if pos.AssetAccountID != nil {
-				if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-					Date:               now,
-					AccountID:          pos.AssetAccountID,
-					Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
-					Notes:              pos.Description,
-					TransactionRefID:   &pos.ID,
-					TransactionRefType: "pos_sales",
-					CompanyID:          pos.CompanyID,
-				}, cart.Total); err != nil {
-					return nil, err
-				}
+			err := s.UpdateTransaction(&pos, merchant)
+			if err != nil {
+				return nil, nil, err
 			}
 		}
 
 	}
 
-	return &pos, nil
+	return &pos, notifUserData, nil
+}
+
+func (s *POSService) UpdateTransaction(pos *models.POSModel, merchant models.MerchantModel) error {
+	var existingTransaction models.TransactionModel
+	err := s.db.Where("transaction_ref_type = ? AND transaction_ref_id = ?", "pos_sales", pos.ID).First(&existingTransaction).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	if err == nil {
+		// Transaction exists, handle accordingly
+		return nil
+	}
+	// Transaction does not exist, proceed with creating a new one
+
+	now := time.Now()
+	if pos.SaleAccountID != nil {
+		if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			Date:               now,
+			AccountID:          pos.SaleAccountID,
+			Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
+			Notes:              pos.Description,
+			TransactionRefID:   &pos.ID,
+			TransactionRefType: "pos_sales",
+			CompanyID:          pos.CompanyID,
+		}, pos.Total); err != nil {
+			return err
+		}
+	}
+	if pos.AssetAccountID != nil {
+		if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			Date:               now,
+			AccountID:          pos.AssetAccountID,
+			Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
+			Notes:              pos.Description,
+			TransactionRefID:   &pos.ID,
+			TransactionRefType: "pos_sales",
+			CompanyID:          pos.CompanyID,
+		}, pos.Total); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, assetAccountID, saleAccountID *string) (*models.POSModel, error) {
-	now := time.Now()
 	var shippingData struct {
 		FullName        string  `json:"full_name"`
 		Email           string  `json:"email"`
@@ -317,31 +345,9 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 	if (strings.ToLower(userPaymentStatus) == "paid" || strings.ToLower(userPaymentStatus) == "complete") && pos.SaleAccountID != nil && pos.AssetAccountID != nil {
 		if s.financeService.TransactionService != nil {
 			// Tambahkan transaksi ke jurnal
-			if pos.SaleAccountID != nil {
-				if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-					Date:               now,
-					AccountID:          pos.SaleAccountID,
-					Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
-					Notes:              pos.Description,
-					TransactionRefID:   &pos.ID,
-					TransactionRefType: "pos_sales",
-					CompanyID:          pos.CompanyID,
-				}, offer.TotalPrice); err != nil {
-					return nil, err
-				}
-			}
-			if pos.AssetAccountID != nil {
-				if err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-					Date:               now,
-					AccountID:          pos.AssetAccountID,
-					Description:        fmt.Sprintf("Penjualan [%s] %s ", merchant.Name, pos.SalesNumber),
-					Notes:              pos.Description,
-					TransactionRefID:   &pos.ID,
-					TransactionRefType: "pos_sales",
-					CompanyID:          pos.CompanyID,
-				}, offer.TotalPrice); err != nil {
-					return nil, err
-				}
+			err := s.UpdateTransaction(&pos, merchant)
+			if err != nil {
+				return nil, err
 			}
 		}
 
