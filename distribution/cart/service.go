@@ -171,6 +171,9 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 	if err := s.ctx.DB.Model(&models.ProductModel{}).Where("id = ?", productID).First(&product).Error; err != nil {
 		return err
 	}
+	if product.Status != "ACTIVE" {
+		return errors.New("product not active")
+	}
 	var width, height, weight, length float64 = product.Width, product.Height, product.Weight, product.Length
 	originalPrice := product.OriginalPrice
 	price = product.Price

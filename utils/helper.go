@@ -130,7 +130,7 @@ func FormatFloatWithThousandSeparator(number float64) string {
 	// Pisahkan bagian integer dan desimal
 	parts := strings.Split(formatted, ".")
 	integerPart := parts[0]
-	decimalPart := parts[1]
+	// decimalPart := parts[1]
 
 	// Tambahkan separator ribuan ke bagian integer
 	var result strings.Builder
@@ -143,8 +143,8 @@ func FormatFloatWithThousandSeparator(number float64) string {
 	}
 
 	// Gabungkan bagian integer dan desimal
-	result.WriteString(".")
-	result.WriteString(decimalPart)
+	// result.WriteString(".")
+	// result.WriteString(decimalPart)
 
 	return result.String()
 }

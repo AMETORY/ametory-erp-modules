@@ -167,6 +167,9 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	if request.Header.Get("ID-Distributor") != "" {
 		stmt = stmt.Where("products.company_id = ?", request.Header.Get("ID-Distributor"))
 	}
+	if request.Header.Get("status") != "" {
+		stmt = stmt.Where("products.status = ?", request.Header.Get("status"))
+	}
 
 	if request.URL.Query().Get("brand_id") != "" {
 		stmt = stmt.Where("products.brand_id = ?", request.URL.Query().Get("brand_id"))
@@ -174,6 +177,7 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	if request.URL.Query().Get("category_id") != "" {
 		stmt = stmt.Where("products.category_id = ?", request.URL.Query().Get("category_id"))
 	}
+
 	stmt = stmt.Distinct("products.id")
 	stmt = stmt.Select("products.*")
 	stmt = stmt.Model(&models.ProductModel{})

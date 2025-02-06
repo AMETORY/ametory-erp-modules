@@ -150,6 +150,7 @@ func (s *MerchantService) CreateProduct(data *models.ProductModel, merchantID, c
 		}
 	}()
 	data.CompanyID = &companyID
+	data.Status = "PENDING"
 	err := tx.Create(data).Error
 	if err != nil {
 		tx.Rollback()

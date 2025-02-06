@@ -22,7 +22,7 @@ type CartModel struct {
 	TaxAmount              float64         `gorm:"-" json:"tax_amount,omitempty"`
 	DiscountAmount         float64         `gorm:"-" json:"discount_amount,omitempty"`
 	CustomerData           string          `gorm:"-" json:"-"`
-	CustomerDataResponse   interface{}     `gorm:"-" json:"customer_data_response"`
+	CustomerDataResponse   interface{}     `gorm:"-" json:"customer_data_response,omitempty"`
 	Tax                    float64         `gorm:"-" json:"tax"`
 	ServiceFee             float64         `gorm:"-" json:"service_fee"`
 	TaxType                string          `gorm:"-" json:"tax_type"`
