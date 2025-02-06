@@ -1,9 +1,11 @@
 package pos
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
 	"time"
@@ -764,4 +766,113 @@ func (s *POSService) GetPosSalesByDate(dateRange string, status string) ([]model
 	}
 
 	return pos, nil
+}
+
+// get pos sales data and generate to invoice html
+func (s *POSService) DownloadInvoice(id, layout, body string) ([]byte, error) {
+	var pos models.POSModel
+	if err := s.db.Preload("Contact.User").Preload("Payment").Preload("Items.Product").Preload("Items.Variant").Preload("Merchant.Company").First(&pos, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+
+	var items []map[string]interface{}
+	for _, item := range pos.Items {
+		imageUrl := ""
+		images, _ := s.inventoryService.ProductService.ListImagesOfProduct(*item.ProductID)
+		if len(images) > 0 {
+			imageUrl = images[0].URL
+		}
+		productName := item.Product.DisplayName
+		if item.VariantID != nil {
+			productName = item.Variant.DisplayName
+		}
+		disc := ""
+		if item.DiscountPercent > 0 {
+			disc = utils.FormatCurrency(item.DiscountPercent) + "%"
+		}
+		items = append(items, map[string]interface{}{
+			"ProductName":        productName,
+			"Quantity":           utils.FormatCurrency(item.Quantity),
+			"Price":              utils.FormatCurrency(item.UnitPriceBeforeDiscount),
+			"SubTotal":           utils.FormatCurrency(item.SubtotalBeforeDisc),
+			"Image":              imageUrl,
+			"DiscountPercentage": disc,
+			"Description":        item.Product.Description,
+		})
+	}
+	var buyerAddress = ""
+	buyerAddress, ok := pos.DataContact["address"].(string)
+	if !ok {
+		buyerAddress, _ = pos.DataContact["shipping_address"].(string)
+
+	}
+
+	pdfData := struct {
+		SalesNumber            string
+		Items                  []map[string]interface{}
+		SalesDate              string
+		DueDate                string
+		CustomerData           map[string]interface{}
+		BuyerName              string
+		BuyerAddress           string
+		BuyerPhone             string
+		BuyerEmail             string
+		Code                   string
+		Description            string
+		Notes                  string
+		Total                  string
+		DiscountAmount         string
+		Subtotal               string
+		SubTotalBeforeDiscount string
+		ShippingFee            string
+		ServiceFee             string
+		PaymentFee             string
+		Tax                    string
+		TaxType                string
+		TaxAmount              string
+		MerchantName           string
+		MerchantAddress        string
+		MerchantPhone          string
+		MerchantEmail          string
+		PaymentMethod          string
+		UserPaymentStatus      string
+	}{
+		MerchantName:           pos.Merchant.Name,
+		MerchantAddress:        pos.Merchant.Address,
+		MerchantPhone:          pos.Merchant.Phone,
+		MerchantEmail:          pos.Merchant.Company.Email,
+		SalesNumber:            pos.SalesNumber,
+		Items:                  items,
+		SalesDate:              pos.SalesDate.Format("02/01/2006"),
+		DueDate:                pos.DueDate.Format("02/01/2006"),
+		CustomerData:           pos.DataContact,
+		Code:                   pos.Code,
+		Description:            pos.Description,
+		Notes:                  pos.Notes,
+		Total:                  utils.FormatCurrency(pos.Total),
+		Subtotal:               utils.FormatCurrency(pos.Subtotal),
+		SubTotalBeforeDiscount: utils.FormatCurrency(pos.SubTotalBeforeDiscount),
+		ShippingFee:            utils.FormatCurrency(pos.ShippingFee),
+		ServiceFee:             utils.FormatCurrency(pos.ServiceFee),
+		PaymentFee:             utils.FormatCurrency(pos.PaymentFee),
+		Tax:                    utils.FormatCurrency(pos.Tax),
+		DiscountAmount:         utils.FormatCurrency(pos.SubTotalBeforeDiscount - pos.Subtotal),
+		TaxType:                pos.TaxType,
+		TaxAmount:              utils.FormatCurrency(pos.TaxAmount),
+		PaymentMethod:          pos.Payment.PaymentMethod,
+		UserPaymentStatus:      pos.UserPaymentStatus,
+		BuyerName:              pos.DataContact["full_name"].(string),
+		BuyerAddress:           buyerAddress,
+		BuyerPhone:             pos.DataContact["phone_number"].(string),
+		BuyerEmail:             pos.DataContact["email"].(string),
+	}
+
+	t := template.Must(template.ParseFiles(layout, body))
+
+	var buf bytes.Buffer
+	if err := t.ExecuteTemplate(&buf, "layout", pdfData); err != nil {
+		return nil, err
+	}
+
+	return utils.GeneratePDF(s.ctx.Config.WkhtmltopdfPath, s.ctx.Config.PdfFooter, buf.String())
 }

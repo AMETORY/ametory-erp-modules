@@ -71,6 +71,7 @@ require (
 
 require (
 	firebase.google.com/go v3.13.0+incompatible
+	github.com/SebastiaanKlippert/go-wkhtmltopdf v1.9.3
 	github.com/appleboy/go-fcm v1.2.2
 	github.com/google/generative-ai-go v0.19.0
 	github.com/google/uuid v1.6.0

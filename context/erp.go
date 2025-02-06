@@ -31,6 +31,7 @@ type ERPContext struct {
 	UserService                 interface{} // Contoh: IndonesiaRegService
 	AppService                  interface{}
 	InternalService             interface{}
+	Config                      ctxConfig
 
 	ThirdPartyServices map[string]interface{}
 	// Add additional services here
@@ -51,6 +52,15 @@ func NewERPContext(db *gorm.DB, req *http.Request, ctx *context.Context, skipMig
 	}
 }
 
+func (erp *ERPContext) SetConfig(wkhtmltopdfPath, pdfFooter string) {
+	erp.Config.WkhtmltopdfPath = wkhtmltopdfPath
+	erp.Config.PdfFooter = pdfFooter
+}
 func (erp *ERPContext) AddThirdPartyService(name string, service interface{}) {
 	erp.ThirdPartyServices[name] = service
+}
+
+type ctxConfig struct {
+	WkhtmltopdfPath string
+	PdfFooter       string
 }
