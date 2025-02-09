@@ -25,10 +25,11 @@ type ERPContext struct {
 	DistributionService         interface{} // Contoh: DistributionService
 	CustomerRelationshipService interface{} // Contoh: CustomerRelationshipService
 	FileService                 interface{} // Contoh: FileService
+	MedicalService              interface{} // Contoh: MedicalService
 	Firestore                   interface{} // Contoh: Firestore
 	FCMService                  interface{} // Contoh: Firestore
 	IndonesiaRegService         interface{} // Contoh: IndonesiaRegService
-	UserService                 interface{} // Contoh: IndonesiaRegService
+	UserService                 interface{} // Contoh: UserService
 	AppService                  interface{}
 	InternalService             interface{}
 	Config                      ctxConfig
