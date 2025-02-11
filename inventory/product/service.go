@@ -347,7 +347,7 @@ func (s *ProductService) GetSalesVariantCount(productID, variantID string, reque
 	db = db.Where("type in (?)", []models.MovementType{models.MovementTypeReturn, models.MovementTypeSale})
 
 	if err := db.
-		Where("product_id = ? and variant_id", productID, variantID).
+		Where("product_id = ? and variant_id = ?", productID, variantID).
 		Select("COALESCE(SUM(quantity), 0)").
 		Scan(&totalStock).Error; err != nil {
 		return 0, err
