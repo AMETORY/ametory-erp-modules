@@ -30,6 +30,7 @@ type ProductModel struct {
 	BrandID          *string               `json:"brand_id,omitempty"`
 	ProductImages    []FileModel           `gorm:"-" json:"product_images,omitempty"`
 	TotalStock       float64               `gorm:"-" json:"total_stock,omitempty"`
+	SalesCount       float64               `gorm:"-" json:"sales_count,omitempty"`
 	LastUpdatedStock *time.Time            `gorm:"-" json:"last_updated_stock,omitempty"`
 	LastStock        float64               `gorm:"-" json:"last_stock,omitempty"`
 	Status           string                `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`

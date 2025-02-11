@@ -206,6 +206,8 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 			item.Prices = prices
 		}
 
+		salesCount, _ := s.GetSalesCount(item.ID, &request, warehouseID)
+		item.SalesCount = salesCount
 		stock, _ := s.GetStock(item.ID, &request, warehouseID)
 		item.TotalStock = stock
 
@@ -213,7 +215,8 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 		for i, variant := range item.Variants {
 			variantStock, _ := s.GetVariantStock(item.ID, variant.ID, &request, warehouseID)
 			variant.TotalStock = variantStock
-
+			salesCount, _ := s.GetSalesVariantCount(item.ID, variant.ID, &request, warehouseID)
+			variant.SalesCount = salesCount
 			// variant.Price = s.GetVariantPrice(merchantID, &variant)
 			item.Variants[i] = variant
 			fmt.Println("VARIANT STOCK", variant.ID, variant.TotalStock)
@@ -288,6 +291,70 @@ func (s *ProductService) GetStock(productID string, request *http.Request, wareh
 
 	return totalStock, nil
 }
+func (s *ProductService) GetSalesCount(productID string, request *http.Request, warehouseID *string) (float64, error) {
+
+	var totalStock float64
+	db := s.db.Table("stock_movements")
+	if request != nil {
+		if request.Header.Get("ID-Company") != "" {
+			if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {
+				db = db.Where("company_id is null")
+			} else {
+				db = db.Where("company_id = ?", request.Header.Get("ID-Company"))
+
+			}
+		}
+		if request.Header.Get("ID-Distributor") != "" {
+			db = db.Where("company_id = ?", request.Header.Get("ID-Distributor"))
+		}
+	}
+
+	if warehouseID != nil {
+		db = db.Where("warehouse_id = ?", *warehouseID)
+	}
+	db = db.Where("type in (?)", []models.MovementType{models.MovementTypeReturn, models.MovementTypeSale})
+
+	if err := db.
+		Where("product_id = ?", productID).
+		Select("COALESCE(SUM(quantity), 0)").
+		Scan(&totalStock).Error; err != nil {
+		return 0, err
+	}
+
+	return -totalStock, nil
+}
+func (s *ProductService) GetSalesVariantCount(productID, variantID string, request *http.Request, warehouseID *string) (float64, error) {
+
+	var totalStock float64
+	db := s.db.Table("stock_movements")
+	if request != nil {
+		if request.Header.Get("ID-Company") != "" {
+			if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {
+				db = db.Where("company_id is null")
+			} else {
+				db = db.Where("company_id = ?", request.Header.Get("ID-Company"))
+
+			}
+		}
+		if request.Header.Get("ID-Distributor") != "" {
+			db = db.Where("company_id = ?", request.Header.Get("ID-Distributor"))
+		}
+	}
+
+	if warehouseID != nil {
+		db = db.Where("warehouse_id = ?", *warehouseID)
+	}
+	db = db.Where("type in (?)", []models.MovementType{models.MovementTypeReturn, models.MovementTypeSale})
+
+	if err := db.
+		Where("product_id = ? and variant_id", productID, variantID).
+		Select("COALESCE(SUM(quantity), 0)").
+		Scan(&totalStock).Error; err != nil {
+		return 0, err
+	}
+
+	return -totalStock, nil
+}
 
 func (s *ProductService) GetVariantStock(productID string, variantID string, request *http.Request, warehouseID *string) (float64, error) {
 
@@ -295,7 +362,12 @@ func (s *ProductService) GetVariantStock(productID string, variantID string, req
 	db := s.db.Table("stock_movements")
 	if request != nil {
 		if request.Header.Get("ID-Company") != "" {
-			db = db.Where("company_id = ?", request.Header.Get("ID-Company"))
+			if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {
+				db = db.Where("company_id is null")
+			} else {
+				db = db.Where("company_id = ?", request.Header.Get("ID-Company"))
+
+			}
 		}
 		if request.Header.Get("ID-Distributor") != "" {
 			db = db.Where("company_id = ?", request.Header.Get("ID-Distributor"))
