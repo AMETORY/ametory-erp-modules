@@ -14,10 +14,15 @@ import (
 type RBACService struct {
 	erpContext *context.ERPContext
 	db         *gorm.DB
+	mode       string
 }
 
 func NewRBACService(erpContext *context.ERPContext) *RBACService {
 	return &RBACService{erpContext: erpContext, db: erpContext.DB}
+}
+
+func (s *RBACService) SetMode(mode string) {
+	s.mode = mode
 }
 
 // AssignRoleToUser menetapkan peran ke pengguna
@@ -209,8 +214,15 @@ func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate
 	if request.URL.Query().Get("is_merchant") != "" {
 		stmt = stmt.Where("is_merchant = ?", request.URL.Query().Get("is_merchant"))
 	}
+	if request.URL.Query().Get("is_owner") != "" {
+		stmt = stmt.Where("is_owner = ?", request.URL.Query().Get("is_owner"))
+	}
 	if request.URL.Query().Get("is_super_admin") != "" {
 		stmt = stmt.Where("is_super_admin = ?", request.URL.Query().Get("is_super_admin"))
+	}
+
+	if s.mode == "user" {
+		stmt = stmt.Where("is_admin = ?", false)
 	}
 
 	stmt = stmt.Model(&models.RoleModel{})
@@ -243,7 +255,7 @@ func (s *RBACService) GetRoleByID(roleID string) (*models.RoleModel, error) {
 }
 
 // UpdateRole memperbarui informasi peran berdasarkan ID
-func (s *RBACService) UpdateRole(roleID string, name string, isAdmin bool, isSuperAdmin bool, isMerchant bool) (*models.RoleModel, error) {
+func (s *RBACService) UpdateRole(roleID, name string, isAdmin, isSuperAdmin, isMerchant, isOwner bool) (*models.RoleModel, error) {
 	var role models.RoleModel
 	if err := s.db.First(&role, "id = ?", roleID).Error; err != nil {
 		return nil, errors.New("role not found")
@@ -253,6 +265,7 @@ func (s *RBACService) UpdateRole(roleID string, name string, isAdmin bool, isSup
 	role.IsAdmin = isAdmin
 	role.IsSuperAdmin = isSuperAdmin
 	role.IsMerchant = isMerchant
+	role.IsOwner = isOwner
 
 	if err := s.db.Save(&role).Error; err != nil {
 		return nil, err

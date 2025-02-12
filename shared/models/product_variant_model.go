@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -101,7 +100,7 @@ func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
 		tx.Select("price").Where("variant_id = ? AND merchant_id = ?", p.ID, *p.MerchantID).Find(&variantMerchant) // TODO: check if variant_merchant exists
 		p.Price = variantMerchant.Price
 		p.OriginalPrice = variantMerchant.Price
-		fmt.Println("KESINI", variantMerchant)
+		// fmt.Println("KESINI", variantMerchant)
 	}
 	var discount DiscountModel
 	tx.Where("product_id = ? AND is_active = ? AND start_date <= ?", p.ProductID, true, time.Now()).

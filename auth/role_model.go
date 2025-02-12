@@ -13,6 +13,7 @@ type RoleModel struct {
 	CompanyID    *string           `json:"company_id"`
 	IsAdmin      bool              `json:"is_admin"`
 	IsMerchant   bool              `json:"is_merchant"`
+	IsOwner      bool              `json:"is_owner"`
 	IsSuperAdmin bool              `json:"is_super_admin"`
 }
 

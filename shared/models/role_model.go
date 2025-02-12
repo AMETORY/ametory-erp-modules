@@ -14,6 +14,7 @@ type RoleModel struct {
 	IsAdmin      bool              `json:"is_admin"`
 	IsMerchant   bool              `json:"is_merchant"`
 	IsSuperAdmin bool              `json:"is_super_admin"`
+	IsOwner      bool              `json:"is_owner"`
 }
 
 // PermissionModel adalah model database untuk izin
