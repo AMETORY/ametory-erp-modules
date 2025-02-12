@@ -88,3 +88,10 @@ func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *
 
 	return s.ctx.DB.Save(fileObj).Error
 }
+
+func (s *FileService) UpdateFileByID(id string, file *models.FileModel) error {
+	return s.ctx.DB.Model(&models.FileModel{}).Where("id = ?", id).Updates(file).Error
+}
+func (s *FileService) UpdateFileRefByID(id string, refID, refType string) error {
+	return s.ctx.DB.Model(&models.FileModel{}).Where("id = ?", id).Updates(map[string]interface{}{"ref_id": refID, "ref_type": refType}).Error
+}

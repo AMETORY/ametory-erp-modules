@@ -31,7 +31,7 @@ func NewAuthService(erpContext *context.ERPContext) *AuthService {
 
 func (s *AuthService) Migrate() error {
 	// s.db.Migrator().AlterColumn(&models.RoleModel{}, "name")
-	return s.db.AutoMigrate(&models.UserModel{}, &models.RoleModel{}, &models.PermissionModel{}, &models.PushTokenModel{})
+	return s.db.AutoMigrate(&models.UserModel{}, &models.RoleModel{}, &models.PermissionModel{}, &models.PushTokenModel{}, &models.UserActivityModel{})
 }
 
 func (s *AuthService) DB() *gorm.DB {
