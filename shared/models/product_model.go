@@ -50,6 +50,7 @@ type ProductModel struct {
 	DiscountType     string                `gorm:"-" json:"discount_type,omitempty"`
 	DiscountRate     float64               `gorm:"-" json:"discount_rate,omitempty"`
 	MerchantID       *string               `json:"-" gorm:"-"`
+	ProductImageIDs  []string              `gorm:"-" json:"product_image_ids,omitempty"`
 }
 
 func (ProductModel) TableName() string {

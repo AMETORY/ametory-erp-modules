@@ -193,11 +193,11 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	}
 
 	for _, item := range *items {
-		img, err := s.ListImagesOfProduct(item.ID)
 		activeDiscount, _ := s.GetFirstActiveDiscount(item.ID)
 		if activeDiscount.ID != "" {
 			item.ActiveDiscount = activeDiscount
 		}
+		img, err := s.ListImagesOfProduct(item.ID)
 		if err == nil {
 			item.ProductImages = img
 		}

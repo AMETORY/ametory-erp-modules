@@ -252,6 +252,10 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 	newItems := make([]models.ProductModel, 0)
 
 	for _, v := range *items {
+		img, err := s.inventoryService.ProductService.ListImagesOfProduct(v.ID)
+		if err == nil {
+			v.ProductImages = img
+		}
 		if warehouseID != nil {
 			totalStock, _ := s.inventoryService.StockMovementService.GetCurrentStock(v.ID, *warehouseID)
 			v.TotalStock = totalStock
@@ -266,7 +270,7 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 		}
 
 		var ProductMerchant models.ProductMerchant
-		err := s.db.Select("last_updated_stock", "last_stock", "price").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
+		err = s.db.Select("last_updated_stock", "last_stock", "price").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
 		if err == nil {
 			v.LastUpdatedStock = ProductMerchant.LastUpdatedStock
 			v.LastStock = ProductMerchant.LastStock
