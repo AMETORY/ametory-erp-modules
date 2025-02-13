@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
@@ -89,20 +90,23 @@ func (s *MerchantService) DeleteMerchant(id string) error {
 }
 
 func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, error) {
-	var invoice models.MerchantModel
-	err := s.db.Preload("Company").Preload("User").Where("id = ?", id).First(&invoice).Error
-	return &invoice, err
+	var merchant models.MerchantModel
+	err := s.db.Preload("Company").Preload("User").Where("id = ?", id).First(&merchant).Error
+	return &merchant, err
 }
-func (s *MerchantService) GetActiveMerchantByID(id string) (*models.MerchantModel, error) {
-	var invoice models.MerchantModel
-	err := s.db.Preload("Company").Preload("User").Preload("DefaultWarehouse").Where("id = ? ", id).First(&invoice).Error
-	if invoice.Status == "PENDING" {
+func (s *MerchantService) GetActiveMerchantByID(id, companyID string) (*models.MerchantModel, error) {
+	var merchant models.MerchantModel
+	err := s.db.Preload("Company").Preload("User").Preload("DefaultWarehouse").Where("id = ? AND company_id = ?", id, companyID).First(&merchant).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.New("merchant not found")
+	}
+	if merchant.Status == "PENDING" {
 		return nil, errors.New("merchant is not active")
 	}
-	if invoice.Status == "SUSPENDED" {
+	if merchant.Status == "SUSPENDED" {
 		return nil, errors.New("merchant is suspended")
 	}
-	return &invoice, err
+	return &merchant, err
 }
 
 func (s *MerchantService) GetMerchants(request http.Request, search string) (paginate.Page, error) {
@@ -606,4 +610,119 @@ func (s *MerchantService) GetProductByID(id string, request *http.Request) (*mod
 		fmt.Println("VARIANT STOCK", v.ID, variantStock)
 	}
 	return &product, err
+}
+
+func (s *MerchantService) GetSalesCountByBrand(request *http.Request, merchantID, warehouseID, companyID, distributorID *string, startDate, endDate *time.Time) ([]map[string]interface{}, error) {
+	salesCountByBrand := make([]map[string]interface{}, 0)
+	db := s.db.Table("stock_movements")
+
+	if warehouseID != nil {
+		db = db.Where("stock_movements.warehouse_id = ?", *warehouseID)
+	}
+	if merchantID != nil {
+		db = db.Where("stock_movements.merchant_id = ?", *merchantID)
+	}
+
+	if distributorID != nil {
+		db = db.Where("stock_movements.distributor_id = ?", *distributorID)
+	}
+	if companyID != nil {
+		db = db.Where("stock_movements.company_id = ?", *companyID)
+	}
+	if startDate != nil {
+		db = db.Where("stock_movements.created_at >= ?", startDate)
+	}
+	if endDate != nil {
+		db = db.Where("stock_movements.created_at <= ?", endDate)
+	}
+
+	db = db.Where("type in (?)", []models.MovementType{models.MovementTypeReturn, models.MovementTypeSale})
+	rows, err := db.Joins("JOIN products ON products.id = stock_movements.product_id").
+		Joins("JOIN brands ON brands.id = products.brand_id").
+		Select("products.brand_id, brands.name, COALESCE(SUM(quantity), 0) as total_quantity").
+		Group("products.brand_id").
+		Group("brands.name").
+		Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var brandID string
+		var brandName string
+		var totalStock float64
+		if err := rows.Scan(&brandID, &brandName, &totalStock); err != nil {
+			return nil, err
+		}
+		salesCountByBrand = append(salesCountByBrand, map[string]interface{}{
+			"brand_id": brandID,
+			"name":     brandName,
+			"total":    -totalStock,
+		})
+	}
+
+	return salesCountByBrand, nil
+}
+
+func (s *MerchantService) GetSalesCountByBrandAndOrderType(request *http.Request, merchantID, warehouseID, companyID, distributorID *string) (interface{}, error) {
+	salesCountByBrand := make([]map[string]interface{}, 0)
+	db := s.db.Table("stock_movements")
+
+	if warehouseID != nil {
+		db = db.Where("stock_movements.warehouse_id = ?", *warehouseID)
+	}
+	if merchantID != nil {
+		db = db.Where("stock_movements.merchant_id = ?", *merchantID)
+	}
+
+	if distributorID != nil {
+		db = db.Where("stock_movements.distributor_id = ?", *distributorID)
+	}
+	if companyID != nil {
+		db = db.Where("stock_movements.company_id = ?", *companyID)
+	}
+	db = db.Where("type in (?)", []models.MovementType{models.MovementTypeReturn, models.MovementTypeSale})
+	rows, err := db.Joins("JOIN products ON products.id = stock_movements.product_id").
+		Joins("JOIN brands ON brands.id = products.brand_id").
+		Joins("JOIN pos_sales ON pos_sales.id = stock_movements.reference_id").
+		Select("products.brand_id, brands.name, pos_sales.order_type, COALESCE(SUM(quantity), 0) as total_quantity").
+		Group("products.brand_id").
+		Group("pos_sales.order_type").
+		Group("brands.name").
+		Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var brandID string
+		var brandName string
+		var orderType string
+		var totalStock float64
+		if err := rows.Scan(&brandID, &brandName, &orderType, &totalStock); err != nil {
+			return nil, err
+		}
+		salesCountByBrand = append(salesCountByBrand, map[string]interface{}{
+			"brand_id":   brandID,
+			"name":       brandName,
+			"order_type": orderType,
+			"total":      -totalStock,
+		})
+	}
+
+	grouped := make(map[string][]map[string]interface{})
+	for _, item := range salesCountByBrand {
+		orderType, ok := item["order_type"]
+		if !ok {
+			continue
+		}
+		grouped[orderType.(string)] = append(grouped[orderType.(string)], item)
+	}
+	// salesCountByBrand = make([]map[string]interface{}, 0, len(grouped))
+	// for _, value := range grouped {
+	// 	salesCountByBrand = append(salesCountByBrand, value...)
+	// }
+	return grouped, nil
 }
