@@ -82,6 +82,7 @@ type POSModel struct {
 	TaxAmount              float64                `json:"tax_amount"`
 	Shipping               *ShippingModel         `json:"shipping,omitempty" gorm:"-"`
 	ShippingStatus         string                 `json:"shipping_status,omitempty" gorm:"-"`
+	OrderType              string                 `json:"order_type,omitempty" gorm:"column:order_type;type:varchar(20);default:'OFFLINE'"`
 }
 
 type POSSalesItemModel struct {

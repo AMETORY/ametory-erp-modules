@@ -232,7 +232,7 @@ func (s *POSService) UpdateTransaction(pos *models.POSModel, merchant models.Mer
 
 	return nil
 }
-func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, assetAccountID, saleAccountID *string) (*models.POSModel, error) {
+func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, assetAccountID, saleAccountID *string, orderType string) (*models.POSModel, error) {
 	var shippingData struct {
 		FullName        string  `json:"full_name"`
 		Email           string  `json:"email"`
@@ -312,6 +312,10 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		})
 	}
 
+	if orderType == "" {
+		orderType = "ONLINE"
+	}
+
 	pos := models.POSModel{
 		ContactID:              contactID,
 		Code:                   utils.RandString(7, true),
@@ -339,6 +343,7 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		Items:                  items,
 		AssetAccountID:         assetAccountID,
 		SaleAccountID:          saleAccountID,
+		OrderType:              orderType,
 	}
 	if err := s.db.Create(&pos).Error; err != nil {
 		return nil, err
