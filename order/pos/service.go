@@ -491,12 +491,17 @@ func (s *POSService) GetUserPosSaleDetail(id string) (*models.POSModel, error) {
 	var pos models.POSModel
 	if err := s.db.Preload("Contact").Preload("Items", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Product", func(db *gorm.DB) *gorm.DB {
-			return db.Select("display_name", "id")
+			return db.Select("display_name", "id", "category_id", "brand_id").Preload("Category").Preload("Brand")
 		}).Preload("Variant", func(db *gorm.DB) *gorm.DB {
 			return db.Select("display_name", "id")
 		})
 	}).Preload("Payment").Where("id = ?", id).First(&pos).Error; err != nil {
 		return nil, err
+	}
+	for i, v := range pos.Items {
+		productImages, _ := s.inventoryService.ProductService.ListImagesOfProduct(*v.ProductID)
+		v.Product.ProductImages = productImages
+		pos.Items[i] = v
 	}
 	return &pos, nil
 }
@@ -504,7 +509,7 @@ func (s *POSService) GetUserPosSales(request http.Request, search, userID string
 	pg := paginate.New()
 	stmt := s.db.Preload("Items", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Product", func(db *gorm.DB) *gorm.DB {
-			return db.Select("display_name", "id")
+			return db.Select("display_name", "id", "category_id", "brand_id").Preload("Category").Preload("Brand")
 		}).Preload("Variant", func(db *gorm.DB) *gorm.DB {
 			return db.Select("display_name", "id")
 		})

@@ -83,6 +83,9 @@ type POSModel struct {
 	Shipping               *ShippingModel         `json:"shipping,omitempty" gorm:"-"`
 	ShippingStatus         string                 `json:"shipping_status,omitempty" gorm:"-"`
 	OrderType              string                 `json:"order_type,omitempty" gorm:"column:order_type;type:varchar(20);default:'OFFLINE'"`
+	CompletedAt            *time.Time             `json:"completed_at,omitempty" gorm:"column:completed_at"`
+	ReturnedAt             *time.Time             `json:"returned_at,omitempty" gorm:"column:returned_at"`
+	RefundedAt             *time.Time             `json:"refunded_at,omitempty" gorm:"column:refunded_at"`
 }
 
 type POSSalesItemModel struct {

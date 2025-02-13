@@ -2,7 +2,6 @@ package cart
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
@@ -85,7 +84,7 @@ func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, e
 	discountAmount := float64(0)
 	for i, v := range cart.Items {
 		product := models.ProductModel{}
-		if err := s.db.Model(&product).Where("id = ?", v.ProductID).First(&product).Error; err != nil {
+		if err := s.db.Preload("Category").Preload("Brand").Model(&product).Where("id = ?", v.ProductID).First(&product).Error; err != nil {
 			return nil, err
 		}
 		if v.VariantID != nil {
@@ -98,6 +97,8 @@ func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, e
 		}
 		s.parseItem(&v)
 		discountAmount += v.Quantity * v.DiscountAmount
+		v.Category = product.Category
+		v.Brand = product.Brand
 		cart.Items[i] = v
 		cart.SubTotalBeforeDiscount += v.Quantity * v.OriginalPrice
 	}
@@ -120,7 +121,7 @@ func (s *CartService) parseItem(v *models.CartItemModel) {
 	v.DiscountType = v.Product.DiscountType
 	if v.VariantID != nil {
 		v.DisplayName = v.Variant.DisplayName
-		fmt.Println("ORIGINAL PRICE", v.Variant.OriginalPrice)
+		// fmt.Println("ORIGINAL PRICE", v.Variant.OriginalPrice)
 		v.OriginalPrice = v.Variant.OriginalPrice
 		v.DiscountAmount = v.Variant.DiscountAmount
 		v.DiscountRate = v.Variant.DiscountRate
@@ -226,6 +227,8 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 				Height:         height,
 				Weight:         weight,
 				Length:         length,
+				CategoryID:     product.CategoryID,
+				BrandID:        product.BrandID,
 			}
 			if err := s.db.Create(&item).Error; err != nil {
 				return err

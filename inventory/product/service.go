@@ -94,7 +94,7 @@ func (s *ProductService) GetVariantPrice(merchantID string, variant *models.Vari
 }
 func (s *ProductService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
 	var product models.ProductModel
-	err := s.db.Preload("Tags").Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("Tags").Preload("Company").Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
@@ -135,7 +135,7 @@ func (s *ProductService) GetProductByCode(code string) (*models.ProductModel, er
 
 func (s *ProductService) GetProducts(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Tags").Preload("Variants.Attributes.Attribute").Preload("Category", func(db *gorm.DB) *gorm.DB {
+	stmt := s.db.Preload("Tags").Preload("Variants.Attributes.Attribute").Preload("Company").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")

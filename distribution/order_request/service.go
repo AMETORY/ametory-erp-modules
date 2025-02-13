@@ -2,6 +2,7 @@ package order_request
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -9,6 +10,8 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -36,11 +39,29 @@ func (s *OrderRequestService) GetOrderRequestByID(orderRequestID string) (*model
 	}
 	return &orderRequest, nil
 }
+
+func (s *OrderRequestService) GetOrderRequestByUserIDWithStatus(request http.Request, search string, userID string, status string) (paginate.Page, error) {
+	pg := paginate.New()
+	// pendingRequest := []models.OrderRequestModel{}
+	stmt := s.db.Preload("Offers").Preload("Items", func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Product", func(db *gorm.DB) *gorm.DB {
+			return db.Select("display_name", "id", "category_id", "brand_id").Preload("Category").Preload("Brand")
+		}).Preload("Variant", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "display_name")
+		})
+	}).Where("user_id = ? AND status = ?", userID, status)
+	stmt = stmt.Model(&models.OrderRequestModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.OrderRequestModel{})
+	page.Page = page.Page + 1
+
+	return page, nil
+}
 func (s *OrderRequestService) GetOrderByStatus(userID string, status []string) (*models.OrderRequestModel, error) {
 	pendingRequest := models.OrderRequestModel{}
 	err := s.db.Preload("Offers").Preload("Items", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Product", func(db *gorm.DB) *gorm.DB {
-			return db.Select("id", "display_name")
+			return db.Select("display_name", "id", "category_id", "brand_id").Preload("Category").Preload("Brand")
 		}).Preload("Variant", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id", "display_name")
 		})

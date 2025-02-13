@@ -46,18 +46,23 @@ func (orm *OrderRequestModel) BeforeCreate(tx *gorm.DB) (err error) {
 // OrderRequestItemModel adalah representasi di database untuk item order request
 type OrderRequestItemModel struct {
 	shared.BaseModel
-	OrderRequestID  string        `gorm:"type:char(36);index" json:"-"`
-	Description     string        `json:"description"`
-	Quantity        float64       `json:"quantity"`
-	UnitPrice       float64       `json:"unit_price"`
-	DiscountPercent float64       `json:"discount_percent"`
-	DiscountAmount  float64       `json:"discount_amount"`
-	Total           float64       `json:"total"`
-	ProductID       *string       `json:"product_id"`
-	Product         *ProductModel `gorm:"foreignKey:ProductID" json:"product,omitempty"`
-	VariantID       *string       `json:"variant_id"`
-	Variant         *VariantModel `gorm:"foreignKey:VariantID" json:"variant,omitempty"`
-	Status          string        `json:"status" gorm:"-"`
+	OrderRequestID  string                `gorm:"type:char(36);index" json:"-"`
+	Description     string                `json:"description"`
+	Quantity        float64               `json:"quantity"`
+	UnitPrice       float64               `json:"unit_price"`
+	DiscountPercent float64               `json:"discount_percent"`
+	DiscountAmount  float64               `json:"discount_amount"`
+	Total           float64               `json:"total"`
+	ProductID       *string               `json:"product_id"`
+	Product         *ProductModel         `gorm:"foreignKey:ProductID" json:"product,omitempty"`
+	VariantID       *string               `json:"variant_id"`
+	Variant         *VariantModel         `gorm:"foreignKey:VariantID" json:"variant,omitempty"`
+	Status          string                `json:"status" gorm:"-"`
+	CategoryID      *string               `json:"category_id,omitempty"`
+	Category        *ProductCategoryModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:CategoryID" json:"category,omitempty"`
+	Brand           *BrandModel           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:BrandID" json:"brand,omitempty"`
+	BrandID         *string               `json:"brand_id,omitempty"`
+	ProductImages   []FileModel           `gorm:"-" json:"product_images,omitempty"`
 }
 
 func (OrderRequestItemModel) TableName() string {
