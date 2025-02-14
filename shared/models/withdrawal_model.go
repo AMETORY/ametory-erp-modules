@@ -26,6 +26,7 @@ type WithdrawalModel struct {
 	BeneficiaryName  string                `json:"beneficiary_name,omitempty" gorm:"not null"`
 	Status           WithdrawalStatus      `json:"status,omitempty" gorm:"type:varchar(50);not null;default:PENDING"`
 	Remarks          string                `json:"remarks,omitempty" gorm:"type:text"`
+	RequestDate      time.Time             `json:"request_date,omitempty"`
 	DisbursementDate *time.Time            `json:"disbursement_date,omitempty"`
 	ApprovalDate     *time.Time            `json:"approval_date,omitempty"`
 	ApprovalBy       *string               `json:"approval_by,omitempty" gorm:"type:char(36)"`

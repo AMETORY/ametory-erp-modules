@@ -43,15 +43,24 @@ func (w *WithdrawalService) ProcessWithdrawal(withdrawalID string, status models
 
 func (w *WithdrawalService) GetWithdrawal(withdrawalID string) (withdrawal *models.WithdrawalModel, err error) {
 	withdrawal = &models.WithdrawalModel{}
-	return withdrawal, w.db.Preload("Merchant").Preload("Items", func(db *gorm.DB) *gorm.DB {
-		return db.Preload("Pos").Preload("Sales")
-	}).Where("id = ?", withdrawalID).First(withdrawal).Error
+	return withdrawal, w.db.Preload("Merchant").
+		Preload("ApprovalByUser").
+		Preload("RejectedByUser").
+		Preload("RequestedByUser").
+		Preload("Items", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("Pos").Preload("Sales")
+		}).Where("id = ?", withdrawalID).First(withdrawal).Error
 }
 func (w *WithdrawalService) GetWithdrawals(request http.Request, search string, merchantID, userID *string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := w.db.Preload("Merchant").Preload("Items", func(db *gorm.DB) *gorm.DB {
-		return db.Preload("Pos").Preload("Sales")
-	}).Model(&models.WithdrawalModel{})
+	stmt := w.db.
+		Preload("Merchant").
+		Preload("ApprovalByUser").
+		Preload("RejectedByUser").
+		Preload("RequestedByUser").
+		Preload("Items", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("Pos").Preload("Sales")
+		}).Model(&models.WithdrawalModel{})
 	if search != "" {
 		stmt = stmt.Where("withdrawals.code ILIKE ? OR withdrawals.description ILIKE ?",
 			"%"+search+"%",
