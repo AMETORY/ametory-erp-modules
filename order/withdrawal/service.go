@@ -48,7 +48,7 @@ func (w *WithdrawalService) GetWithdrawal(withdrawalID string) (withdrawal *mode
 		Preload("RejectedByUser").
 		Preload("RequestedByUser").
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
-			return db.Preload("Pos").Preload("Sales")
+			return db.Preload("Pos.Items").Preload("Sales.Items")
 		}).Where("id = ?", withdrawalID).First(withdrawal).Error
 }
 func (w *WithdrawalService) GetWithdrawals(request http.Request, search string, merchantID, userID *string) (paginate.Page, error) {
@@ -59,7 +59,7 @@ func (w *WithdrawalService) GetWithdrawals(request http.Request, search string, 
 		Preload("RejectedByUser").
 		Preload("RequestedByUser").
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
-			return db.Preload("Pos").Preload("Sales")
+			return db.Preload("Pos.Items").Preload("Sales.Items")
 		}).Model(&models.WithdrawalModel{})
 	if search != "" {
 		stmt = stmt.Where("withdrawals.code ILIKE ? OR withdrawals.description ILIKE ?",

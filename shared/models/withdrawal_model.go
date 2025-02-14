@@ -38,7 +38,7 @@ type WithdrawalModel struct {
 	MerchantID       *string               `json:"merchant_id,omitempty" gorm:"type:char(36)"`
 	Merchant         *MerchantModel        `gorm:"foreignKey:MerchantID;references:ID" json:"merchant,omitempty"`
 	Files            []FileModel           `gorm:"-" json:"files,omitempty"`
-	Items            []WithdrawalItemModel `gorm:"foreignKey:WithdrawalID;references:ID" json:"withdrawal_items,omitempty"`
+	Items            []WithdrawalItemModel `gorm:"foreignKey:WithdrawalID;references:ID;constraint:OnDelete:CASCADE" json:"withdrawal_items,omitempty"`
 }
 
 func (WithdrawalModel) TableName() string {
