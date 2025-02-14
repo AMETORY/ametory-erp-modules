@@ -538,6 +538,26 @@ func (s *POSService) GetUserPosSales(request http.Request, search, userID string
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.POSModel{})
 	page.Page = page.Page + 1
+	items := page.Items.(*[]models.POSModel)
+	newItems := make([]models.POSModel, 0)
+	for _, item := range *items {
+		for _, v := range item.Items {
+			images, _ := s.inventoryService.ProductService.ListImagesOfProduct(*v.ProductID)
+			v.Product.ProductImages = images
+		}
+
+		item.ShippingStatus = "PENDING"
+
+		var shipping models.ShippingModel
+		err := s.db.First(&shipping, "order_id = ?", item.ID).Error
+		if err == nil {
+			item.Shipping = &shipping
+			item.ShippingStatus = shipping.Status
+
+		}
+		newItems = append(newItems, item)
+	}
+	page.Items = &newItems
 	return page, nil
 }
 

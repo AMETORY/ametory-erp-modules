@@ -31,6 +31,9 @@ type CompanyModel struct {
 	Warehouses            []WarehouseModel `json:"warehouses,omitempty" gorm:"-"`
 	EmailVerifiedAt       *time.Time       `gorm:"index" json:"email_verified_at,omitempty"`
 	Users                 []UserModel      `gorm:"many2many:user_companies;" json:"users,omitempty"`
+	BankAccount           *string          `json:"bank_account" `
+	BankCode              *string          `json:"bank_code" `
+	BeneficiaryName       *string          `json:"beneficiary_name" `
 }
 
 func (CompanyModel) TableName() string {
