@@ -52,7 +52,7 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			transaction.Amount = amount
 			transaction.TransactionRefID = &transDestID
 			transaction.TransactionRefType = "transaction"
-			account, err := s.accountService.GetAccountByID(*transaction.AccountID)
+			account, err := s.accountService.GetAccountByID(*transaction.SourceID)
 			if err != nil {
 				return err
 			}
@@ -69,7 +69,7 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			transaction.Amount = amount
 			transaction.TransactionRefID = &transSourceID
 			transaction.TransactionRefType = "transaction"
-			account, err := s.accountService.GetAccountByID(*transaction.AccountID)
+			account, err := s.accountService.GetAccountByID(*transaction.DestinationID)
 			if err != nil {
 				return err
 			}

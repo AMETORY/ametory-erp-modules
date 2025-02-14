@@ -40,6 +40,8 @@ type SalesModel struct {
 	ContactData     string           `gorm:"type:json" json:"contact_data"`
 	Type            SalesType        `json:"type"`
 	Items           []SalesItemModel `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE" json:"items"`
+	WithdrawalID    *string          `json:"withdrawal_id,omitempty" gorm:"column:withdrawal_id"`
+	Withdrawal      *WithdrawalModel `gorm:"foreignKey:WithdrawalID;constraint:OnDelete:CASCADE" json:"withdrawal,omitempty"`
 }
 
 type SalesItemModel struct {

@@ -22,6 +22,15 @@ var GenericChartOfAccount = []models.AccountModel{
 		IsTax:            false,
 	},
 	{
+		Name:             "BANK",
+		Code:             "110023",
+		Type:             models.ASSET,
+		Category:         "Cash and Bank",
+		CashflowGroup:    "Operating",
+		CashflowSubGroup: "Cash",
+		IsTax:            false,
+	},
+	{
 		Name:             "Piutang Dagang",
 		Code:             "12001",
 		Type:             models.ASSET,

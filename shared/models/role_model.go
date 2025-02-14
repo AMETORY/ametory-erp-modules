@@ -72,6 +72,7 @@ var (
 			{"sales": cruds},
 			{"pos": cruds},
 			{"merchant": append(cruds, "approval")},
+			{"withdrawal": append(cruds, "approval")},
 		},
 		"distribution": {
 			{"distributor": append(cruds, "approval")},

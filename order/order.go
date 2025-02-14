@@ -11,15 +11,17 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/order/payment"
 	"github.com/AMETORY/ametory-erp-modules/order/pos"
 	"github.com/AMETORY/ametory-erp-modules/order/sales"
+	"github.com/AMETORY/ametory-erp-modules/order/withdrawal"
 	"gorm.io/gorm"
 )
 
 type OrderService struct {
-	ctx             *context.ERPContext
-	SalesService    *sales.SalesService
-	PosService      *pos.POSService
-	MerchantService *merchant.MerchantService
-	PaymentService  *payment.PaymentService
+	ctx               *context.ERPContext
+	SalesService      *sales.SalesService
+	PosService        *pos.POSService
+	MerchantService   *merchant.MerchantService
+	PaymentService    *payment.PaymentService
+	WithdrawalService *withdrawal.WithdrawalService
 }
 
 func NewOrderService(ctx *context.ERPContext) *OrderService {
@@ -32,11 +34,12 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 	inventoryService := inventory.NewInventoryService(ctx)
 
 	var service = OrderService{
-		ctx:             ctx,
-		SalesService:    sales.NewSalesService(ctx.DB, ctx, financeService),
-		PosService:      pos.NewPOSService(ctx.DB, ctx, financeService),
-		MerchantService: merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
-		PaymentService:  payment.NewPaymentService(ctx.DB, ctx),
+		ctx:               ctx,
+		SalesService:      sales.NewSalesService(ctx.DB, ctx, financeService),
+		PosService:        pos.NewPOSService(ctx.DB, ctx, financeService),
+		MerchantService:   merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
+		PaymentService:    payment.NewPaymentService(ctx.DB, ctx),
+		WithdrawalService: withdrawal.NewWithdrawalService(ctx.DB, ctx),
 	}
 	err := service.Migrate()
 	if err != nil {
@@ -64,6 +67,10 @@ func (s *OrderService) Migrate() error {
 	}
 	if err := payment.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR PAYMENT", err)
+		return err
+	}
+	if err := withdrawal.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR WITHDRAWAL", err)
 		return err
 	}
 

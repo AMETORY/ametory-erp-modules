@@ -86,6 +86,8 @@ type POSModel struct {
 	CompletedAt            *time.Time             `json:"completed_at,omitempty" gorm:"column:completed_at"`
 	ReturnedAt             *time.Time             `json:"returned_at,omitempty" gorm:"column:returned_at"`
 	RefundedAt             *time.Time             `json:"refunded_at,omitempty" gorm:"column:refunded_at"`
+	WithdrawalID           *string                `json:"withdrawal_id,omitempty" gorm:"column:withdrawal_id"`
+	Withdrawal             *WithdrawalModel       `gorm:"foreignKey:WithdrawalID;constraint:OnDelete:CASCADE" json:"withdrawal,omitempty"`
 }
 
 type POSSalesItemModel struct {
