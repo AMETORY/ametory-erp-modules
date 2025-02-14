@@ -503,6 +503,16 @@ func (s *POSService) GetUserPosSaleDetail(id string) (*models.POSModel, error) {
 		v.Product.ProductImages = productImages
 		pos.Items[i] = v
 	}
+
+	pos.ShippingStatus = "PENDING"
+
+	var shipping models.ShippingModel
+	err := s.db.First(&shipping, "order_id = ?", pos.ID).Error
+	if err == nil {
+		pos.Shipping = &shipping
+		pos.ShippingStatus = shipping.Status
+
+	}
 	return &pos, nil
 }
 func (s *POSService) GetUserPosSales(request http.Request, search, userID string) (paginate.Page, error) {

@@ -28,7 +28,7 @@ func (w *WithdrawalService) RequestWithdrawal(request *models.WithdrawalModel) (
 	return w.db.Create(request).Error
 }
 
-func (w *WithdrawalService) ProcessWithdrawal(withdrawalID string, status models.WithdrawalStatus, fileIDs []string) error {
+func (w *WithdrawalService) ProcessWithdrawal(withdrawalID string, status models.WithdrawalModel, fileIDs []string) error {
 	for _, v := range fileIDs {
 		var file models.FileModel
 		if err := w.db.Where("id = ?", v).First(&file).Error; err != nil {
@@ -43,13 +43,13 @@ func (w *WithdrawalService) ProcessWithdrawal(withdrawalID string, status models
 
 func (w *WithdrawalService) GetWithdrawal(withdrawalID string) (withdrawal *models.WithdrawalModel, err error) {
 	withdrawal = &models.WithdrawalModel{}
-	return withdrawal, w.db.Preload("Items", func(db *gorm.DB) *gorm.DB {
+	return withdrawal, w.db.Preload("Merchant").Preload("Items", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Pos").Preload("Sales")
 	}).Where("id = ?", withdrawalID).First(withdrawal).Error
 }
 func (w *WithdrawalService) GetWithdrawals(request http.Request, search string, merchantID, userID *string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := w.db.Preload("Items", func(db *gorm.DB) *gorm.DB {
+	stmt := w.db.Preload("Merchant").Preload("Items", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Pos").Preload("Sales")
 	}).Model(&models.WithdrawalModel{})
 	if search != "" {
@@ -92,4 +92,8 @@ func (w *WithdrawalService) DisbursementTransaction(withdrawalID string, expense
 	}, withdrawal.Total)
 
 	return
+}
+
+func (w *WithdrawalService) CountWithdrawalByStatus(status string) (count int64, err error) {
+	return count, w.db.Model(&models.WithdrawalModel{}).Where("status = ?", status).Count(&count).Error
 }
