@@ -191,6 +191,18 @@ func (s *AuthService) GetUserByEmail(email string) bool {
 	}
 	return true
 }
+
+func (s *AuthService) GetUserByEmailOrPhone(emailOrPhone string) (*models.UserModel, error) {
+	var user models.UserModel
+	// Cari user berdasarkan email atau phone number
+	if err := s.db.Where("email = ? OR phone_number = ?", emailOrPhone, emailOrPhone).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
 func (s *AuthService) GetUserByID(userID string) (*models.UserModel, error) {
 	var user models.UserModel
 	// fmt.Println("s.db.", s.db)

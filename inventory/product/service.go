@@ -448,6 +448,9 @@ func (s *ProductService) AddDiscount(productID string, discountType models.Disco
 	return &discount, nil
 }
 
+func (s *ProductService) DeleteDiscount(productID, discountID string) error {
+	return s.db.Where("id = ? and product_id =?", discountID, productID).Unscoped().Delete(&models.DiscountModel{}).Error
+}
 func (s *ProductService) GetFirstActiveDiscount(productID string) (*models.DiscountModel, error) {
 	var discount *models.DiscountModel
 	err := s.db.Where("product_id = ? AND is_active = ? AND start_date <= ?", productID, true, time.Now()).

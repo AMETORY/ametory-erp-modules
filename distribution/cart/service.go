@@ -2,6 +2,7 @@ package cart
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
@@ -178,6 +179,7 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 	var width, height, weight, length float64 = product.Width, product.Height, product.Weight, product.Length
 	originalPrice := product.OriginalPrice
 	price = product.Price
+	fmt.Println("PRICE #1", price)
 	var discountAmount float64 = product.DiscountAmount
 	var discountType string = product.DiscountType
 	var discountRate float64 = product.DiscountRate
@@ -205,6 +207,7 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 			length = variant.Length
 		}
 		price = variant.Price
+		fmt.Println("PRICE #2", price)
 		discountAmount = variant.DiscountAmount
 		discountType = variant.DiscountType
 		discountRate = variant.DiscountRate
@@ -213,6 +216,8 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Tambahkan item baru ke cart
+
+			fmt.Println("PRICE #3", price)
 			item := models.CartItemModel{
 				CartID:         cart.ID,
 				ProductID:      productID,
@@ -237,6 +242,7 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 			return err
 		}
 	} else {
+		fmt.Println("PRICE #4", price)
 		// Update quantity jika item sudah ada
 		existingItem.Quantity += quantity
 		existingItem.Price = price

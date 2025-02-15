@@ -34,6 +34,8 @@ type UserModel struct {
 	RegencyID                  *string            `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
 	DistrictID                 *string            `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
 	VillageID                  *string            `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
+	IdentityNumber             string             `gorm:"type:varchar(255)" json:"identity_number,omitempty"`
+	IdentityType               string             `gorm:"type:varchar(255)" json:"identity_type,omitempty"` // KTP, SIM, NPWP, dll
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {

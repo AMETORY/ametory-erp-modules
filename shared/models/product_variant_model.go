@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -97,9 +98,11 @@ func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
 	}
 	if p.MerchantID != nil {
 		var variantMerchant VarianMerchant
-		tx.Select("price").Where("variant_id = ? AND merchant_id = ?", p.ID, *p.MerchantID).Find(&variantMerchant) // TODO: check if variant_merchant exists
-		p.Price = variantMerchant.Price
-		p.OriginalPrice = variantMerchant.Price
+		err := tx.Select("price").Where("variant_id = ? AND merchant_id = ?", p.ID, *p.MerchantID).First(&variantMerchant) // TODO: check if variant_merchant exists
+		if err == nil {
+			p.Price = variantMerchant.Price
+			p.OriginalPrice = variantMerchant.Price
+		}
 		// fmt.Println("KESINI", variantMerchant)
 	}
 	var discount DiscountModel
@@ -112,7 +115,8 @@ func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
 		switch discount.Type {
 		case DiscountPercentage:
 			discountAmount = p.Price * (discount.Value / 100)
-			discountedPrice -= p.Price * (discount.Value / 100)
+			fmt.Println("discountAmount", discountAmount)
+			discountedPrice -= discountAmount
 		case DiscountAmount:
 			discountAmount = discount.Value
 			discountedPrice -= discount.Value

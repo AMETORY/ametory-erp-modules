@@ -73,9 +73,11 @@ func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
 
 	if p.MerchantID != nil {
 		var productMerchant ProductMerchant
-		tx.Select("price").Where("product_model_id = ? AND merchant_model_id = ?", p.ID, *p.MerchantID).Find(&productMerchant) // TODO: check if variant_merchant exists
-		p.Price = productMerchant.Price
-		p.OriginalPrice = productMerchant.Price
+		err := tx.Select("price").Where("product_model_id = ? AND merchant_model_id = ?", p.ID, *p.MerchantID).First(&productMerchant) // TODO: check if variant_merchant exists
+		if err == nil {
+			p.Price = productMerchant.Price
+			p.OriginalPrice = productMerchant.Price
+		}
 	}
 
 	sort.Float64s(p.PriceList)

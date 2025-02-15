@@ -78,8 +78,9 @@ func (s *OrderRequestService) CreateOrderRequest(userID string, userLat, userLng
 			if err := s.db.Save(&pendingRequest).Error; err != nil {
 				return nil, err
 			}
-		} else {
-			return nil, fmt.Errorf("you have a PENDING/OFFERING order request")
+		}
+		if pendingRequest.Status == "OFFERING" {
+			s.db.Where("id = ?", pendingRequest.ID).Unscoped().Delete(&models.OfferModel{})
 		}
 	}
 
