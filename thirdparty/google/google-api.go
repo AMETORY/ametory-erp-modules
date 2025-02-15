@@ -76,7 +76,9 @@ func (s *GoogleAPIService) SearchPlaceByCoordinate(latitude float64, longitude f
 	fmt.Println("Response Status:", resp.Status)
 	fmt.Println("Response Body:", string(body))
 
-	var response PlacesResponse
+	response := PlacesResponse{
+		Places: []Place{},
+	}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		fmt.Println("Error unmarshalling response:", err)
@@ -134,7 +136,9 @@ func (s *GoogleAPIService) SearchPlace(keyword string) (*PlacesResponse, error) 
 	fmt.Println("Response Status:", resp.Status)
 	fmt.Println("Response Body:", string(body))
 
-	var response PlacesResponse
+	response := PlacesResponse{
+		Places: []Place{},
+	}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		fmt.Println("Error unmarshalling response:", err)
