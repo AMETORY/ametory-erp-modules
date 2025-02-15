@@ -14,7 +14,11 @@ type NotificationService struct {
 }
 
 func NewNotificationService(ctx *context.ERPContext) *NotificationService {
-	return &NotificationService{ctx: ctx}
+	service := NotificationService{ctx: ctx}
+	if !service.ctx.SkipMigration {
+		service.Migrate()
+	}
+	return &service
 }
 
 func (s *NotificationService) Migrate() error {
@@ -33,7 +37,7 @@ func (s *NotificationService) MarkAsRead(id string) error {
 	return s.ctx.DB.Model(&models.NotificationModel{}).Where("id = ?", id).Update("is_read", true).Error
 }
 
-func (s *NotificationService) GetBrands(request http.Request, search string) (paginate.Page, error) {
+func (s *NotificationService) GetNotifications(request http.Request, search string, userID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.ctx.DB
 	if search != "" {
@@ -50,6 +54,9 @@ func (s *NotificationService) GetBrands(request http.Request, search string) (pa
 	}
 	if request.Header.Get("ID-Distributor") != "" {
 		stmt = stmt.Where("distributor_id = ?", request.Header.Get("ID-Distributor"))
+	}
+	if userID != nil {
+		stmt = stmt.Where("user_id = ?", userID)
 	}
 	request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.NotificationModel{})
