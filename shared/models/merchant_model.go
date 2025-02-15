@@ -63,19 +63,20 @@ type MerchantAvailableProduct struct {
 }
 
 type MerchantAvailableProductItem struct {
-	ProductID               string  `json:"product_id"`
-	ProductDisplayName      string  `json:"product_display_name"`
-	VariantDisplayName      *string `json:"variant_display_name"`
-	Status                  string  `json:"status"`
-	VariantID               *string `json:"variant_id"`
-	Quantity                float64 `json:"quantity"`
-	UnitPrice               float64 `json:"unit_price"`
-	UnitPriceBeforeDiscount float64 `json:"unit_price_before_discount"`
-	SubTotal                float64 `json:"sub_total"`
-	SubTotalBeforeDiscount  float64 `json:"sub_total_before_discount"`
-	DiscountAmount          float64 `json:"discount_amount"`
-	DiscountValue           float64 `json:"discount_value"`
-	DiscountType            string  `json:"discount_type"`
+	ProductID               string      `json:"product_id"`
+	ProductDisplayName      string      `json:"product_display_name"`
+	VariantDisplayName      *string     `json:"variant_display_name"`
+	Status                  string      `json:"status"`
+	VariantID               *string     `json:"variant_id"`
+	Quantity                float64     `json:"quantity"`
+	UnitPrice               float64     `json:"unit_price"`
+	UnitPriceBeforeDiscount float64     `json:"unit_price_before_discount"`
+	SubTotal                float64     `json:"sub_total"`
+	SubTotalBeforeDiscount  float64     `json:"sub_total_before_discount"`
+	DiscountAmount          float64     `json:"discount_amount"`
+	DiscountValue           float64     `json:"discount_value"`
+	DiscountType            string      `json:"discount_type"`
+	ProductImages           []FileModel `gorm:"-" json:"product_images,omitempty"`
 }
 
 type MerchantTypeModel struct {
@@ -93,5 +94,12 @@ func (m *MerchantTypeModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if m.ID == "" {
 		m.ID = uuid.New().String()
 	}
+	return
+}
+
+func (m *MerchantAvailableProductItem) AfterFind(tx *gorm.DB) (err error) {
+	var images []FileModel
+	tx.Where("ref_id = ? and ref_type = ?", m.ProductID, "product").Find(&images)
+	m.ProductImages = images
 	return
 }
