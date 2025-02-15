@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -21,6 +23,7 @@ type NotificationModel struct {
 	CompanyID     *string           `gorm:"type:char(36);index" json:"company_id"`
 	Company       *CompanyModel     `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
 	IsRead        bool              `gorm:"type:boolean;default:false" json:"is_read"`
+	Date          *time.Time        `json:"date"`
 }
 
 func (NotificationModel) TableName() string {
@@ -30,6 +33,15 @@ func (NotificationModel) TableName() string {
 func (n *NotificationModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if n.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	tx.Statement.SetColumn("date", time.Now())
+	return
+}
+
+func (n *NotificationModel) AfterFind(tx *gorm.DB) (err error) {
+	if n.Date != nil {
+		n.Date = &n.CreatedAt
+		tx.Save(n)
 	}
 	return
 }
