@@ -1,7 +1,9 @@
 package file
 
 import (
+	"encoding/base64"
 	"fmt"
+	"mime"
 	"net/http"
 	"os"
 	"strings"
@@ -34,6 +36,14 @@ func NewFileService(ctx *context.ERPContext, baseURL string) *FileService {
 	return &service
 }
 
+func (s *FileService) UploadFileFromBase64(base64String, provider, folder string, fileObj *models.FileModel) error {
+	file, err := base64.StdEncoding.DecodeString(base64String)
+	if err != nil {
+		return fmt.Errorf("error decoding base64 string: %v", err)
+	}
+	return s.UploadFile(file, provider, folder, fileObj)
+}
+
 func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *models.FileModel) error {
 	// TODO: implement upload file logic
 	firestoreSrv, ok := s.ctx.Firestore.(*thirdparty.Firestore)
@@ -44,9 +54,14 @@ func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *
 	mimeType = http.DetectContentType(file)
 	fileObj.MimeType = mimeType
 
+	ext := ""
 	fileNameSplit := strings.Split(fileObj.FileName, ".")
 	if len(fileNameSplit) == 1 {
-		fileObj.FileName = fmt.Sprintf("%s-%d", fileObj.FileName, time.Now().UnixMilli())
+		exts, _ := mime.ExtensionsByType(mimeType)
+		if len(exts) > 0 {
+			ext = exts[0]
+		}
+		fileObj.FileName = fmt.Sprintf("%s-%d%s", fileObj.FileName, time.Now().UnixMilli(), ext)
 	} else {
 		fileObj.FileName = fmt.Sprintf("%s-%d.%s", fileNameSplit[0], time.Now().UnixMilli(), fileNameSplit[1])
 	}
