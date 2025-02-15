@@ -55,6 +55,12 @@ func (o *OfferModel) AfterFind(tx *gorm.DB) (err error) {
 		if err = json.Unmarshal([]byte(o.MerchantAvailableProductData), &o.MerchantAvailableProduct); err != nil {
 			return err
 		}
+		for i, v := range o.MerchantAvailableProduct.Items {
+			var images []FileModel
+			tx.Where("ref_id = ? and ref_type = ?", v.ProductID, "product").Find(&images)
+			v.ProductImages = images
+			o.MerchantAvailableProduct.Items[i] = v
+		}
 	}
 	return
 }
