@@ -10,20 +10,20 @@ import (
 
 type NotificationModel struct {
 	shared.BaseModel
-	Title         string            `gorm:"type:varchar(255);not null" json:"title"`
-	Description   string            `gorm:"type:text" json:"description"`
-	RefType       string            `gorm:"type:varchar(255);index" json:"ref_type"`
-	RefID         string            `gorm:"type:char(36);index" json:"ref_id"`
-	UserID        *string           `gorm:"type:char(36);index" json:"user_id"`
+	Title         string            `gorm:"type:varchar(255);not null" json:"title,omitempty"`
+	Description   string            `gorm:"type:text" json:"description,omitempty"`
+	RefType       string            `gorm:"type:varchar(255);index" json:"ref_type,omitempty"`
+	RefID         string            `gorm:"type:char(36);index" json:"ref_id,omitempty"`
+	UserID        *string           `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	User          *UserModel        `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"user,omitempty"`
-	MerchantID    *string           `gorm:"type:char(36);index" json:"merchant_id"`
+	MerchantID    *string           `gorm:"type:char(36);index" json:"merchant_id,omitempty"`
 	Merchant      *MerchantModel    `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
-	DistributorID *string           `gorm:"type:char(36);index" json:"distributor_id"`
+	DistributorID *string           `gorm:"type:char(36);index" json:"distributor_id,omitempty"`
 	Distributor   *DistributorModel `gorm:"foreignKey:DistributorID;constraint:OnDelete:CASCADE;" json:"distributor,omitempty"`
-	CompanyID     *string           `gorm:"type:char(36);index" json:"company_id"`
+	CompanyID     *string           `gorm:"type:char(36);index" json:"company_id,omitempty"`
 	Company       *CompanyModel     `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
-	IsRead        bool              `gorm:"type:boolean;default:false" json:"is_read"`
-	Date          *time.Time        `json:"date"`
+	IsRead        bool              `gorm:"type:boolean;default:false" json:"is_read,omitempty"`
+	Date          *time.Time        `json:"date,omitempty"`
 }
 
 func (NotificationModel) TableName() string {
