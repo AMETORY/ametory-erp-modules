@@ -33,6 +33,7 @@ type ERPContext struct {
 	AppService                  interface{}
 	NotificationService         interface{}
 	InternalService             interface{}
+	HRISService                 interface{}
 	Config                      ctxConfig
 
 	ThirdPartyServices map[string]interface{}
@@ -65,4 +66,18 @@ func (erp *ERPContext) AddThirdPartyService(name string, service interface{}) {
 type ctxConfig struct {
 	WkhtmltopdfPath string
 	PdfFooter       string
+}
+
+func (erp *ERPContext) AlterColumn(dst interface{}, field string) error {
+	if !erp.SkipMigration {
+		return erp.DB.Migrator().AlterColumn(dst, field)
+	}
+	return nil
+}
+func (erp *ERPContext) Migrate(models ...interface{}) error {
+	if !erp.SkipMigration {
+
+		return erp.DB.AutoMigrate(models)
+	}
+	return nil
 }

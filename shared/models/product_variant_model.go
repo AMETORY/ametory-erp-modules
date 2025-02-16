@@ -36,6 +36,7 @@ type VariantModel struct {
 	DiscountRate     float64                        `gorm:"-" json:"discount_rate,omitempty"`
 	ActiveDiscount   *DiscountModel                 `gorm:"-" json:"active_discount,omitempty"`
 	MerchantID       *string                        `json:"-" gorm:"-"`
+	Feedbacks        []*ProductFeedbackModel        `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE" json:"feedbacks,omitempty"`
 }
 
 func (VariantModel) TableName() string {

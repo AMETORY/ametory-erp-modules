@@ -70,6 +70,7 @@ type PushTokenModel struct {
 	Token      string  `json:"token" gorm:"uniqueIndex:idx_token"`
 	UserID     *string `json:"user_id" gorm:"uniqueIndex:idx_token"`
 	AdminID    *string `json:"admin_id" gorm:"uniqueIndex:idx_token"`
+	EmployeeID *string `json:"employee_id" gorm:"uniqueIndex:idx_token"`
 }
 
 func (PushTokenModel) TableName() string {

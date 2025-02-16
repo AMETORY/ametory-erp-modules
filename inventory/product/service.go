@@ -227,6 +227,21 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	return page, nil
 }
 
+func (s *ProductService) GetProductFeedbacks(productID string, variantID *string, request *http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if variantID == nil {
+		stmt = stmt.Where("product_id = ?", productID)
+	} else {
+		stmt = stmt.Where("product_id = ? AND variant_id = ?", productID, *variantID)
+	}
+	stmt = stmt.Model(&models.ProductFeedbackModel{})
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.ProductFeedbackModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
 func (s *ProductService) CountProductByMerchantID(merchantID string) (int64, error) {
 	var count int64
 	err := s.db.Model(&models.ProductMerchant{}).Where("merchant_model_id = ?", merchantID).Count(&count).Error
@@ -598,4 +613,12 @@ func (s *ProductService) AddVariantTagByName(productID string, name string) erro
 	// Tambahkan tag ke produk
 	err = s.db.Model(&models.VariantModel{}).Where("id = ?", productID).Association("Tags").Append(tag)
 	return err
+}
+
+func (s *ProductService) CreateProductFeedback(data *models.ProductFeedbackModel) error {
+	return s.db.Create(data).Error
+}
+
+func (s *ProductService) DeleteProductFeedback(id string) error {
+	return s.db.Delete(&models.ProductFeedbackModel{}, "id = ?", id).Error
 }

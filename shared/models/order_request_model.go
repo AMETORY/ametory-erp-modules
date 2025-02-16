@@ -11,9 +11,9 @@ import (
 type OrderRequestModel struct {
 	shared.BaseModel
 	UserID             string                  `json:"user_id,omitempty"`
-	User               UserModel               `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	User               UserModel               `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 	ContactID          *string                 `json:"contact_id,omitempty"`
-	Contact            *ContactModel           `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
+	Contact            *ContactModel           `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE" json:"contact,omitempty"`
 	UserLat            float64                 `json:"user_lat,omitempty"`
 	UserLng            float64                 `json:"user_lng,omitempty"`
 	Status             string                  `json:"status,omitempty"`                                 // "Pending", "Accepted", "Rejected"

@@ -219,7 +219,7 @@ func (s *AuthService) GetUserByID(userID string) (*models.UserModel, error) {
 	}
 
 	file := models.FileModel{}
-	s.db.Where("ref_id = ? and ref_type = ?", user.ID, "user").First(&file)
+	s.db.Where("ref_id = ? and ref_type = ?", user.ID, "user").Order("updated_at desc").First(&file)
 	if file.ID != "" {
 		user.ProfilePicture = &file
 	}
