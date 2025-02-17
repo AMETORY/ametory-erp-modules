@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"html/template"
@@ -102,10 +103,24 @@ func (s *SMTPSender) send(subject string, attachment []string) error {
 		return err
 	}
 
-	// Send the email message
-	if err := e.Send(fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort), auth); err != nil {
-		log.Printf("ERROR #2 %v", err)
-		return err
+	// Send the email message with TLS
+	if s.smtpPort == 587 {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true,
+			ServerName:         s.smtpServer,
+		}
+
+		// Send the email message with TLS
+		if err := e.SendWithTLS(fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort), auth, tlsConfig); err != nil {
+			log.Printf("ERROR #2 %v", err)
+			return err
+		}
+	} else {
+		// Send the email message
+		if err := e.Send(fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort), auth); err != nil {
+			log.Printf("ERROR #2 %v", err)
+			return err
+		}
 	}
 
 	return nil
