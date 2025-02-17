@@ -44,6 +44,7 @@ func Migrate(db *gorm.DB) error {
 		&models.ProductTag{},
 		&models.VariantTag{},
 		&models.VarianMerchant{},
+		&models.ProductFeedbackModel{},
 	)
 }
 
@@ -227,13 +228,16 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	return page, nil
 }
 
-func (s *ProductService) GetProductFeedbacks(productID string, variantID *string, request *http.Request) (paginate.Page, error) {
+func (s *ProductService) GetProductFeedbacks(productID string, variantID *string, request *http.Request, status []string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
 	if variantID == nil {
 		stmt = stmt.Where("product_id = ?", productID)
 	} else {
 		stmt = stmt.Where("product_id = ? AND variant_id = ?", productID, *variantID)
+	}
+	if len(status) > 0 {
+		stmt = stmt.Where("status IN (?)", status)
 	}
 	stmt = stmt.Model(&models.ProductFeedbackModel{})
 	utils.FixRequest(request)
