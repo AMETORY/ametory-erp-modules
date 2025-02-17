@@ -28,14 +28,15 @@ type UserModel struct {
 	ProfilePicture             *FileModel         `json:"profile_picture,omitempty" gorm:"-"`
 	RoleID                     *string            `json:"role_id,omitempty" gorm:"-"`
 	BirthDate                  *time.Time         `gorm:"null" json:"birth_date,omitempty"`
-	Latitude                   float64            `json:"latitude" gorm:"type:decimal(10,8);default:-6.9951754;not null"`
-	Longitude                  float64            `json:"longitude" gorm:"type:decimal(11,8);default:107.5946778;not null"`
+	Latitude                   float64            `json:"latitude" gorm:"type:decimal(10,8);"`
+	Longitude                  float64            `json:"longitude" gorm:"type:decimal(11,8);"`
 	ProvinceID                 *string            `json:"province_id,omitempty" gorm:"type:char(2);index;constraint:OnDelete:SET NULL;"`
 	RegencyID                  *string            `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
 	DistrictID                 *string            `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
 	VillageID                  *string            `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
 	IdentityNumber             string             `gorm:"type:varchar(255)" json:"identity_number,omitempty"`
 	IdentityType               string             `gorm:"type:varchar(255)" json:"identity_type,omitempty"` // KTP, SIM, NPWP, dll
+	IsVerified                 bool               `json:"is_verified,omitempty" gorm:"-"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {
@@ -81,5 +82,10 @@ func (pt *PushTokenModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if pt.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
+	return
+}
+
+func (u *UserModel) AfterFind(tx *gorm.DB) (err error) {
+	u.IsVerified = u.VerifiedAt != nil
 	return
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/mail"
 	"net/smtp"
 
@@ -81,41 +82,34 @@ func (s *SMTPSender) send(subject string, attachment []string) error {
 	// for _, v := range s.to {
 	// 	e.To = append(e.To, v.String())
 	// }
-	e.To = []string{s.to[0].Address}
+	e.To = []string{"toko21tva@gmail.com"}
 	e.Subject = subject
 	e.HTML = []byte(s.body)
 	for _, v := range attachment {
 		e.AttachFile(v)
 	}
-
-	auth := unencryptedAuth{smtp.PlainAuth("", s.smtpUsername, s.smtpPassword, s.smtpServer)}
-
-	// Connect to the SMTP server
-	client, err := smtp.Dial(fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort))
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	// Authenticate with the server
-	if err := client.Auth(auth); err != nil {
-		log.Printf("ERROR #1 %v", err)
-		return err
-	}
-
-	// Send the email message with TLS
+	var client *smtp.Client
+	var auth smtp.Auth
+	var err error
 	if s.smtpPort == 587 {
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: true,
-			ServerName:         s.smtpServer,
-		}
-
-		// Send the email message with TLS
-		if err := e.SendWithTLS(fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort), auth, tlsConfig); err != nil {
-			log.Printf("ERROR #2 %v", err)
+		_, err := s.sendEmailWithTLS(e)
+		if err != nil {
 			return err
 		}
 	} else {
+		auth = unencryptedAuth{smtp.PlainAuth("", s.smtpUsername, s.smtpPassword, s.smtpServer)}
+
+		client, err = smtp.Dial(fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort))
+		if err != nil {
+			return err
+		}
+		defer client.Close()
+
+		// Authenticate with the server
+		if err := client.Auth(auth); err != nil {
+			log.Printf("ERROR #1 %v", err)
+			return err
+		}
 		// Send the email message
 		if err := e.Send(fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort), auth); err != nil {
 			log.Printf("ERROR #2 %v", err)
@@ -134,4 +128,54 @@ func (a unencryptedAuth) Start(server *smtp.ServerInfo) (string, []byte, error) 
 	s := *server
 	s.TLS = true
 	return a.Auth.Start(&s)
+}
+
+func (s *SMTPSender) sendEmailWithTLS(e *email.Email) (*smtp.Client, error) {
+	// Konfigurasi SMTP server
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true, // Hati-hati dengan ini, sebaiknya gunakan sertifikat yang valid
+		ServerName:         s.smtpServer,
+	}
+
+	// Auth untuk SMTP
+	auth := smtp.PlainAuth("", s.smtpUsername, s.smtpPassword, s.smtpServer)
+
+	// Header dan pesan email dalam format HTML
+	// headers := fmt.Sprintf("To: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n", to, subject)
+	// msg := headers + body
+
+	// Koneksi TLS
+
+	// Buat koneksi ke server SMTP
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort))
+	if err != nil {
+		return nil, fmt.Errorf("gagal membuat koneksi TLS: %v", err)
+	}
+	defer conn.Close()
+
+	// Buat client SMTP
+	client, err := smtp.NewClient(conn, s.smtpServer)
+	if err != nil {
+		return nil, fmt.Errorf("gagal membuat client SMTP: %v", err)
+	}
+	defer client.Quit()
+
+	if err = client.StartTLS(tlsConfig); err != nil {
+		return nil, err
+	}
+
+	// Autentikasi
+	if err := client.Auth(auth); err != nil {
+		return nil, fmt.Errorf("gagal autentikasi: %v", err)
+	}
+
+	if err := e.Send(fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort), auth); err != nil {
+		log.Printf("ERROR TLS #2 %v", err)
+		return nil, err
+	}
+
+	fmt.Println("SEND EMAIL to", e.To)
+
+	return client, nil
+
 }

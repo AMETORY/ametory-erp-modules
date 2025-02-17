@@ -70,7 +70,7 @@ func (s *AuthService) Register(fullname, username, email, password, phoneNumber 
 }
 
 // Login memverifikasi username/email dan password
-func (s *AuthService) Login(usernameOrEmail, password string) (*models.UserModel, error) {
+func (s *AuthService) Login(usernameOrEmail, password string, checkVerified bool) (*models.UserModel, error) {
 	var user models.UserModel
 
 	// Cari user berdasarkan username atau email
@@ -81,10 +81,11 @@ func (s *AuthService) Login(usernameOrEmail, password string) (*models.UserModel
 		return nil, err
 	}
 	// Periksa apakah user sudah terverifikasi
-	if user.VerifiedAt == nil {
-		return nil, errors.New("user not verified")
+	if checkVerified {
+		if user.VerifiedAt == nil {
+			return nil, errors.New("user not verified")
+		}
 	}
-
 	// Verifikasi password
 	if err := models.CheckPassword(user.Password, password); err != nil {
 		return nil, errors.New("invalid password")
@@ -283,6 +284,25 @@ func (s *AuthService) GetCompanies(userID string) ([]models.CompanyModel, error)
 	return user.Companies, nil
 }
 
+func (s *AuthService) UpdateEmail(userID string, email string, verificationToken string, verificationExpiredAt time.Time) error {
+	user := &models.UserModel{}
+	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
+		return err
+	}
+	if user.VerifiedAt != nil {
+		return errors.New("user already verified")
+	}
+
+	user.Email = email
+	user.VerificationToken = verificationToken
+	user.VerificationTokenExpiredAt = &verificationExpiredAt
+
+	if err := s.db.Save(user).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
 func (s *AuthService) UpdateAddress(userID string, address string) error {
 	user := &models.UserModel{}
 	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
