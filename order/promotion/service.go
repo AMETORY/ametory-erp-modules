@@ -2,13 +2,16 @@ package promotion
 
 import (
 	"errors"
+	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -38,7 +41,7 @@ func (s *PromotionService) CheckPromotionEligibility(promotionID string, ruleTyp
 	}
 
 	switch rule.RuleType {
-	case "min_purchase":
+	case "MIN_PURCHASE":
 		minPurchase, err := strconv.ParseFloat(rule.RuleValue, 64)
 		if err != nil {
 			return false, err
@@ -50,7 +53,7 @@ func (s *PromotionService) CheckPromotionEligibility(promotionID string, ruleTyp
 		if orderTotal < minPurchase {
 			return false, nil
 		}
-	case "max_purchase":
+	case "MAX_PURCHASE":
 		maxPurchase, err := strconv.ParseFloat(rule.RuleValue, 64)
 		if err != nil {
 			return false, err
@@ -62,21 +65,21 @@ func (s *PromotionService) CheckPromotionEligibility(promotionID string, ruleTyp
 		if orderTotal > maxPurchase {
 			return false, nil
 		}
-	case "category":
+	case "CATEGORY":
 		if rule.RuleValue != condition {
 			return false, nil
 		}
-	case "categories":
+	case "CATEGORIES":
 		categories := strings.Split(rule.RuleValue, ",")
 		if !utils.ContainsString(categories, condition) {
 			return false, nil
 		}
-	case "products":
+	case "PRODUCTS":
 		products := strings.Split(rule.RuleValue, ",")
 		if !utils.ContainsString(products, condition) {
 			return false, nil
 		}
-	case "customer_level":
+	case "CUSTOMER_LEVEL":
 		if rule.RuleValue != condition {
 			return false, nil
 		}
@@ -102,34 +105,34 @@ func (s *PromotionService) ApplyPromotion(promotionID string, orderTotal float64
 
 	for _, action := range actions {
 		switch action.ActionType {
-		case "discount":
+		case "DISCOUNT":
 			discountValue, err := strconv.ParseFloat(action.ActionValue, 64)
 			if err != nil {
 				return nil, err
 			}
 			discount += discountValue // Bisa berupa nilai tetap atau persentase
-		case "discount_percent":
+		case "DISCOUNT_PERCENT":
 			discountPercent, err := strconv.ParseFloat(action.ActionValue, 64)
 			if err != nil {
 				return nil, err
 			}
 			discount += (orderTotal * discountPercent / 100)
-		case "free_shipping":
+		case "FREE_SHIPPING":
 			freeShipping = true
-		case "discount_shipping":
+		case "DISCOUNT_SHIPPING":
 			discountShipping, err := strconv.ParseFloat(action.ActionValue, 64)
 			if err != nil {
 				return nil, err
 			}
 			discountShippingRate += discountShipping
-		case "discount_amount_shipping":
+		case "DISCOUNT_AMOUNT_SHIPPING":
 			discountShipping, err := strconv.ParseFloat(action.ActionValue, 64)
 			if err != nil {
 				return nil, err
 			}
 			discountShippingAmount += discountShipping
 
-		case "free_item":
+		case "FREE_ITEM":
 			// Free item biasanya berupa produk tertentu
 
 			// Contoh menggunakan inventory service
@@ -162,4 +165,109 @@ type PromotionResult struct {
 	FreeItems              map[string]int `json:"free_items"`
 	DiscountShippingRate   float64        `json:"discount_shipping_rate"`
 	DiscountShippingAmount float64        `json:"discount_shipping_amount"`
+}
+
+func (s *PromotionService) CreatePromotion(data *models.PromotionModel) error {
+	return s.db.Create(data).Error
+}
+
+func (s *PromotionService) UpdatePromotion(id string, data *models.PromotionModel) error {
+	return s.db.Where("id = ?", id).Updates(data).Error
+}
+
+func (s *PromotionService) DeletePromotion(id string) error {
+	return s.db.Where("id = ?", id).Delete(&models.PromotionModel{}).Error
+}
+
+func (s *PromotionService) GetPromotionByID(id string) (*models.PromotionModel, error) {
+	var invoice models.PromotionModel
+	err := s.db.Where("id = ?", id).First(&invoice).Error
+	return &invoice, err
+}
+
+func (s *PromotionService) GetPromotionByCode(code string) (*models.PromotionModel, error) {
+	var invoice models.PromotionModel
+	err := s.db.Where("code = ?", code).First(&invoice).Error
+	return &invoice, err
+}
+
+func (s *PromotionService) AddRule(promotionID string, data *models.PromotionRuleModel) error {
+	data.PromotionID = promotionID
+	return s.db.Create(data).Error
+}
+
+func (s *PromotionService) AddAction(promotionID string, data *models.PromotionActionModel) error {
+	data.PromotionID = promotionID
+	return s.db.Create(data).Error
+}
+
+func (s *PromotionService) DeleteRule(ruleID string) error {
+	return s.db.Where("id = ?", ruleID).Delete(&models.PromotionRuleModel{}).Error
+}
+
+func (s *PromotionService) DeleteAction(actionID string) error {
+	return s.db.Where("id = ?", actionID).Delete(&models.PromotionActionModel{}).Error
+}
+func (s *PromotionService) GetPromotions(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("banners.description ILIKE ? OR banners.title ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.PromotionModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.PromotionModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+func (s *PromotionService) GetUserPromotions(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("banners.description ILIKE ? OR banners.title ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+
+	stmt = stmt.Where("start_date <= ? AND end_date >= ?", time.Now(), time.Now())
+
+	stmt = stmt.Where("is_active = ?", true)
+
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.PromotionModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.PromotionModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *PromotionService) GetPromotionByName(title string) (*models.PromotionModel, error) {
+	var banner models.PromotionModel
+	err := s.db.Where("title = ?", title).First(&banner).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			banner = models.PromotionModel{
+				Name: title,
+			}
+			err := s.db.Create(&banner).Error
+			if err != nil {
+				return nil, err
+			}
+			return &banner, nil
+		}
+		return nil, err
+	}
+	return &banner, nil
 }

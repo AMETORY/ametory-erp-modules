@@ -7,9 +7,11 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
+	"github.com/AMETORY/ametory-erp-modules/order/banner"
 	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"github.com/AMETORY/ametory-erp-modules/order/payment"
 	"github.com/AMETORY/ametory-erp-modules/order/pos"
+	"github.com/AMETORY/ametory-erp-modules/order/promotion"
 	"github.com/AMETORY/ametory-erp-modules/order/sales"
 	"github.com/AMETORY/ametory-erp-modules/order/withdrawal"
 	"gorm.io/gorm"
@@ -22,6 +24,8 @@ type OrderService struct {
 	MerchantService   *merchant.MerchantService
 	PaymentService    *payment.PaymentService
 	WithdrawalService *withdrawal.WithdrawalService
+	BannerService     *banner.BannerService
+	PromotionService  *promotion.PromotionService
 }
 
 func NewOrderService(ctx *context.ERPContext) *OrderService {
@@ -40,6 +44,8 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 		MerchantService:   merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
 		PaymentService:    payment.NewPaymentService(ctx.DB, ctx),
 		WithdrawalService: withdrawal.NewWithdrawalService(ctx.DB, ctx),
+		BannerService:     banner.NewBannerService(ctx.DB, ctx),
+		PromotionService:  promotion.NewPromotionService(ctx.DB, ctx),
 	}
 	err := service.Migrate()
 	if err != nil {
@@ -71,6 +77,14 @@ func (s *OrderService) Migrate() error {
 	}
 	if err := withdrawal.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR WITHDRAWAL", err)
+		return err
+	}
+	if err := banner.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR BANNER", err)
+		return err
+	}
+	if err := promotion.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR PROMOTION", err)
 		return err
 	}
 

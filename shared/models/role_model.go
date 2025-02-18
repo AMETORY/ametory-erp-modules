@@ -69,6 +69,8 @@ var (
 			{"company": append(cruds, "approval")},
 		},
 		"order": {
+			{"banner": cruds},
+			{"promotion": cruds},
 			{"sales": cruds},
 			{"pos": cruds},
 			{"merchant": append(cruds, "approval")},
