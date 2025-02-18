@@ -38,6 +38,7 @@ type UserModel struct {
 	IdentityType               string             `gorm:"type:varchar(255)" json:"identity_type,omitempty"` // KTP, SIM, NPWP, dll
 	IsVerified                 bool               `json:"is_verified,omitempty" gorm:"-"`
 	CustomerLevel              *string            `json:"customer_level,omitempty" `
+	QRCode                     *string            `json:"qrcode,omitempty" gorm:"-"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {
