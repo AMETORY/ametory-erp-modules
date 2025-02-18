@@ -8,10 +8,11 @@ import (
 
 type ProductCategoryModel struct {
 	shared.BaseModel
-	Name        string `gorm:"unique;not null" json:"name"`
-	Description string `json:"description"`
-	Color       string `gorm:"type:varchar(255);default:'#94CFCD'" json:"color"`
-	IconUrl     string `gorm:"type:varchar(255)" json:"icon_url"`
+	Name        string         `gorm:"unique;not null" json:"name"`
+	Description string         `json:"description"`
+	Color       string         `gorm:"type:varchar(255);default:'#94CFCD'" json:"color"`
+	IconUrl     string         `gorm:"type:varchar(255)" json:"icon_url"`
+	Products    []ProductModel `gorm:"foreignKey:CategoryID" json:"products"`
 }
 
 func (ProductCategoryModel) TableName() string {

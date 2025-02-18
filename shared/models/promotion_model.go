@@ -20,6 +20,7 @@ type PromotionModel struct {
 	Images      []FileModel            `gorm:"-" json:"images,omitempty"`
 	Rules       []PromotionRuleModel   `gorm:"foreignKey:PromotionID;constraint:OnDelete:CASCADE" json:"rules,omitempty"`
 	Actions     []PromotionActionModel `gorm:"foreignKey:PromotionID;constraint:OnDelete:CASCADE" json:"actions,omitempty"`
+	IsEligible  bool                   `gorm:"-" json:"is_eligible,omitempty"`
 }
 
 func (PromotionModel) TableName() string {

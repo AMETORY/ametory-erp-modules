@@ -33,6 +33,79 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.PromotionModel{}, &models.PromotionRuleModel{}, &models.PromotionActionModel{})
 }
 
+func (s *PromotionService) CheckPromotionEligibilityByPosSales(ruleID string, ruleType string, cartID string, user *models.UserModel) (bool, error) {
+	var cart models.CartModel
+	if err := s.db.Model(&models.CartModel{}).Preload("Items").Where("id = ?", cartID).First(&cart).Error; err != nil {
+		return false, err
+	}
+	var rule models.PromotionRuleModel
+	err := s.ctx.DB.Where("id = ? and rule_type = ?", ruleID, ruleType).Find(&rule).Error
+	if err != nil {
+		return false, err
+	}
+
+	switch rule.RuleType {
+	case "MIN_PURCHASE":
+		minPurchase, err := strconv.ParseFloat(rule.RuleValue, 64)
+		if err != nil {
+			return false, err
+		}
+		orderTotal := cart.Total
+
+		if orderTotal < minPurchase {
+			return false, nil
+		}
+	case "MAX_PURCHASE":
+		maxPurchase, err := strconv.ParseFloat(rule.RuleValue, 64)
+		if err != nil {
+			return false, err
+		}
+		orderTotal := cart.Total
+		if orderTotal > maxPurchase {
+			return false, nil
+		}
+	case "CATEGORY":
+		for _, v := range cart.Items {
+			if v.CategoryID == nil {
+				continue
+			}
+
+			if &rule.RuleValue == v.CategoryID {
+				return true, nil
+			}
+		}
+		return false, nil
+	case "CATEGORIES":
+		for _, v := range cart.Items {
+			if v.CategoryID == nil {
+				continue
+			}
+
+			if utils.ContainsString(strings.Split(rule.RuleValue, ","), *v.CategoryID) {
+				return true, nil
+			}
+		}
+		return false, nil
+	case "PRODUCTS":
+		for _, v := range cart.Items {
+			if utils.ContainsString(strings.Split(rule.RuleValue, ","), v.ProductID) {
+				return true, nil
+			}
+		}
+		return false, nil
+	case "CUSTOMER_LEVEL":
+		if user != nil {
+			if rule.RuleValue == *user.CustomerLevel {
+				return false, nil
+			}
+		}
+		return false, nil
+	default:
+		return false, errors.New("unknown rule type")
+	}
+
+	return true, nil
+}
 func (s *PromotionService) CheckPromotionEligibility(promotionID string, ruleType string, condition string) (bool, error) {
 	var rule models.PromotionRuleModel
 	err := s.ctx.DB.Where("promotion_id = ? and rule_type = ?", promotionID, ruleType).Find(&rule).Error
@@ -181,7 +254,10 @@ func (s *PromotionService) DeletePromotion(id string) error {
 
 func (s *PromotionService) GetPromotionByID(id string) (*models.PromotionModel, error) {
 	var invoice models.PromotionModel
-	err := s.db.Where("id = ?", id).First(&invoice).Error
+	err := s.db.Where("id = ?", id).
+		Preload("Rules").
+		Preload("Actions").
+		First(&invoice).Error
 	return &invoice, err
 }
 
@@ -230,7 +306,7 @@ func (s *PromotionService) GetPromotions(request http.Request, search string) (p
 }
 func (s *PromotionService) GetUserPromotions(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Rules").Preload("Actions")
 	if search != "" {
 		stmt = stmt.Where("banners.description ILIKE ? OR banners.title ILIKE ?",
 			"%"+search+"%",
