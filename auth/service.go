@@ -303,6 +303,33 @@ func (s *AuthService) UpdateEmail(userID string, email string, verificationToken
 
 	return nil
 }
+func (s *AuthService) UpdateReferralCode(userID string, referralCode string) error {
+	user := &models.UserModel{}
+	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
+		return err
+	}
+	if user.VerifiedAt != nil {
+		return errors.New("user already verified")
+	}
+
+	if user.ReferralCode != nil {
+		return errors.New("user already has a referral code")
+	}
+
+	existingUser := &models.UserModel{}
+	err := s.db.Where("referral_code = ?", referralCode).First(existingUser).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.New("user with referral code not found")
+	}
+
+	user.ReferralCode = &referralCode
+
+	if err := s.db.Save(user).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
 func (s *AuthService) UpdateAddress(userID string, address string) error {
 	user := &models.UserModel{}
 	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
