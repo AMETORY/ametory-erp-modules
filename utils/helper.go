@@ -148,3 +148,16 @@ func FormatFloatWithThousandSeparator(number float64) string {
 
 	return result.String()
 }
+
+func URLify(str string) string {
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case ' ', '\n', '\t':
+			return '-'
+		case '&', '=', '?', '#', '+':
+			return '_'
+		default:
+			return r
+		}
+	}, str)
+}
