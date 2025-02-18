@@ -27,6 +27,13 @@ func (service *UserService) GetUserByID(userID string) (*models.UserModel, error
 	}
 	return user, nil
 }
+func (service *UserService) GetUserByCode(code string) (*models.UserModel, error) {
+	user := &models.UserModel{}
+	if err := service.db.Where("code = ?", code).First(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
 
 func (s *UserService) GetUsers(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()

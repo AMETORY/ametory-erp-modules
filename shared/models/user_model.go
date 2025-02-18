@@ -39,6 +39,9 @@ type UserModel struct {
 	IsVerified                 bool               `json:"is_verified,omitempty" gorm:"-"`
 	CustomerLevel              *string            `json:"customer_level,omitempty" `
 	QRCode                     *string            `json:"qrcode,omitempty" gorm:"-"`
+	ReferralCode               *string            `json:"referral_code,omitempty" `
+	Upline                     *UserModel         `gorm:"foreignKey:ReferralCode;references:Code" json:"upline,omitempty"`
+	Downlines                  []UserModel        `gorm:"-" json:"downlines,omitempty"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {
