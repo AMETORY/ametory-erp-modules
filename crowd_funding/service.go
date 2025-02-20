@@ -4,6 +4,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/crowd_funding/campaign"
 	"github.com/AMETORY/ametory-erp-modules/crowd_funding/donation"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 )
 
 type CrowdFundingService struct {
@@ -30,5 +31,5 @@ func (cs *CrowdFundingService) Migrate() error {
 	if cs.ctx.SkipMigration {
 		return nil
 	}
-	return cs.ctx.DB.AutoMigrate()
+	return cs.ctx.DB.AutoMigrate(&models.CrowdFundingCampaignModel{}, &models.CrowdFundingDonationModel{})
 }
