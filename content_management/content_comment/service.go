@@ -21,9 +21,6 @@ func NewContentCommentService(db *gorm.DB, ctx *context.ERPContext) *ContentComm
 		ctx: ctx,
 	}
 }
-func (as *ContentCommentService) Migrate() error {
-	return as.db.AutoMigrate(&models.ContentCommentModel{}, &models.ContentCommentModel{}, &models.ContentCommentModel{})
-}
 
 func (s *ContentCommentService) CreateContentComment(data *models.ContentCommentModel) error {
 	return s.db.Create(data).Error

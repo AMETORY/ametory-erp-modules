@@ -21,9 +21,6 @@ func NewContentCategoryService(db *gorm.DB, ctx *context.ERPContext) *ContentCat
 		ctx: ctx,
 	}
 }
-func (as *ContentCategoryService) Migrate() error {
-	return as.db.AutoMigrate(&models.ContentCategoryModel{}, &models.ContentCategoryModel{}, &models.ContentCommentModel{})
-}
 
 func (s *ContentCategoryService) CreateContentCategory(data *models.ContentCategoryModel) error {
 	return s.db.Create(data).Error
