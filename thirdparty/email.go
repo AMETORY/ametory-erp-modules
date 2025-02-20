@@ -79,10 +79,9 @@ func (s *SMTPSender) send(subject string, attachment []string) error {
 
 	e := email.NewEmail()
 	e.From = s.from.String()
-	// for _, v := range s.to {
-	// 	e.To = append(e.To, v.String())
-	// }
-	e.To = []string{"toko21tva@gmail.com"}
+	for _, v := range s.to {
+		e.To = append(e.To, v.String())
+	}
 	e.Subject = subject
 	e.HTML = []byte(s.body)
 	for _, v := range attachment {
