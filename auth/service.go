@@ -198,7 +198,7 @@ func (s *AuthService) GetUserByEmailOrPhone(emailOrPhone string) (*models.UserMo
 	// Cari user berdasarkan email atau phone number
 	if err := s.db.Where("email = ? OR phone_number = ?", emailOrPhone, emailOrPhone).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
+			return nil, errors.New("user not found")
 		}
 		return nil, err
 	}

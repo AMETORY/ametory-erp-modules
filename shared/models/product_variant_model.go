@@ -25,6 +25,7 @@ type VariantModel struct {
 	Tags             []*TagModel                    `gorm:"many2many:variant_tags;constraint:OnDelete:CASCADE;" json:"tags,omitempty"`
 	PriceList        []float64                      `gorm:"-" json:"price_list,omitempty"`
 	OriginalPrice    float64                        `gorm:"-" json:"original_price,omitempty"`
+	AdjustmentPrice  float64                        `gorm:"-" json:"adjustment_price,omitempty"`
 	LastUpdatedStock *time.Time                     `gorm:"-" json:"last_updated_stock,omitempty"`
 	LastStock        float64                        `gorm:"-" json:"last_stock,omitempty"`
 	Height           float64                        `gorm:"default:10" json:"height,omitempty"`
@@ -84,7 +85,7 @@ func (v *VariantModel) GenerateDisplayName(tx *gorm.DB) {
 	v.DisplayName = strings.Join(displayNames, " ")
 }
 
-func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
+func (p *VariantModel) GetPriceAndDiscount(tx *gorm.DB) (err error) {
 	var pp VariantModel
 	tx.Select("price").Model(&p).First(&pp, "id = ?", p.ID)
 	p.OriginalPrice = pp.Price
@@ -98,35 +99,42 @@ func (p *VariantModel) AfterFind(tx *gorm.DB) (err error) {
 		}
 	}
 	if p.MerchantID != nil {
+		fmt.Println("MERCHANT ID", *p.MerchantID)
 		var variantMerchant VarianMerchant
-		err := tx.Select("price").Where("variant_id = ? AND merchant_id = ?", p.ID, *p.MerchantID).First(&variantMerchant) // TODO: check if variant_merchant exists
+		err := tx.Select("price", "adjustment_price").Where("variant_id = ? AND merchant_id = ?", p.ID, *p.MerchantID).First(&variantMerchant).Error // TODO: check if variant_merchant exists
+		// b, _ := json.MarshalIndent(variantMerchant, "", "  ")
+		// fmt.Println(string(b))
+
 		if err == nil {
-			p.Price = variantMerchant.Price
-			p.OriginalPrice = variantMerchant.Price
+			p.AdjustmentPrice = variantMerchant.AdjustmentPrice
+			p.Price += variantMerchant.AdjustmentPrice
+			// p.OriginalPrice = variantMerchant.Price
 		}
 		// fmt.Println("KESINI", variantMerchant)
+	} else {
+		fmt.Println("MERCHANT ID NOT FOUND")
 	}
 	var discount DiscountModel
 	tx.Where("product_id = ? AND is_active = ? AND start_date <= ?", p.ProductID, true, time.Now()).
 		Where("end_date IS NULL OR end_date >= ?", time.Now()).Order("created_at DESC").
 		Find(&discount)
+
 	if discount.ID != "" {
 		discountAmount := float64(0)
 		discountedPrice := p.Price
 		switch discount.Type {
 		case DiscountPercentage:
 			discountAmount = p.Price * (discount.Value / 100)
-			fmt.Println("discountAmount", discountAmount)
-			discountedPrice -= discountAmount
 		case DiscountAmount:
 			discountAmount = discount.Value
-			discountedPrice -= discount.Value
 		}
 
+		discountedPrice -= discountAmount
 		// Pastikan harga tidak negatif
 		if discountedPrice < 0 {
 			discountedPrice = 0
 		}
+		fmt.Println("VARIANT DISCOUNT", discountedPrice, discountAmount)
 		p.Price = discountedPrice
 		p.DiscountAmount = discountAmount
 		p.DiscountType = string(discount.Type)
@@ -146,7 +154,8 @@ type VarianMerchant struct {
 	Merchant         MerchantModel `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE"`
 	LastUpdatedStock *time.Time    `gorm:"column:last_updated_stock" json:"last_updated_stock"`
 	LastStock        float64       `gorm:"column:last_stock" json:"last_stock"`
-	Price            float64
+	Price            float64       `json:"price"`
+	AdjustmentPrice  float64       `json:"adjustment_price" gorm:"default:0"`
 }
 
 func (vm *VarianMerchant) BeforeCreate(tx *gorm.DB) error {

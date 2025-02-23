@@ -60,6 +60,9 @@ type MerchantAvailableProduct struct {
 	ServiceFee             float64                        `json:"service_fee"`
 	TotalPrice             float64                        `json:"total_price"`
 	Distance               float64                        `json:"distance"`
+	// SecondaryShippingFee   float64                        `json:"secondary_shipping_fee"`
+	// SecondaryShippingType  string                         `json:"secondary_service_type"`
+	// SecondaryCourierName   string                         `json:"secondary_courier_name"`
 }
 
 type MerchantAvailableProductItem struct {

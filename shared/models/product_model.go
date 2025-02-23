@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -40,6 +41,7 @@ type ProductModel struct {
 	ActiveDiscount   *DiscountModel         `gorm:"-" json:"active_discount,omitempty"`
 	PriceList        []float64              `gorm:"-" json:"price_list,omitempty"`
 	OriginalPrice    float64                `gorm:"-" json:"original_price,omitempty"`
+	AdjustmentPrice  float64                `gorm:"-" json:"adjustment_price,omitempty"`
 	Variants         []VariantModel         `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"variants,omitempty"`
 	Tags             []*TagModel            `gorm:"many2many:product_tags;constraint:OnDelete:CASCADE;" json:"tags"`
 	Height           float64                `gorm:"default:10" json:"height,omitempty"`
@@ -58,7 +60,11 @@ func (ProductModel) TableName() string {
 	return "products"
 }
 
-func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
+// func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
+// 	return p.GetPriceAndDiscount(tx)
+// }
+
+func (p *ProductModel) GetPriceAndDiscount(tx *gorm.DB) (err error) {
 	var pp ProductModel
 	tx.Select("price").Model(&p).First(&pp, "id = ?", p.ID)
 	p.OriginalPrice = pp.Price
@@ -73,12 +79,18 @@ func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
 	}
 
 	if p.MerchantID != nil {
+		fmt.Println("MERCHANT ID @ PRODUCT", *p.MerchantID)
 		var productMerchant ProductMerchant
-		err := tx.Select("price").Where("product_model_id = ? AND merchant_model_id = ?", p.ID, *p.MerchantID).First(&productMerchant) // TODO: check if variant_merchant exists
+		err := tx.Select("price", "adjustment_price").Where("product_model_id = ? AND merchant_model_id = ?", p.ID, *p.MerchantID).First(&productMerchant) // TODO: check if variant_merchant exists
+
 		if err == nil {
-			p.Price = productMerchant.Price
-			p.OriginalPrice = productMerchant.Price
+			p.AdjustmentPrice = productMerchant.AdjustmentPrice
+			p.Price += productMerchant.AdjustmentPrice
+			fmt.Println("MERCHANT PRICE 2", p.Price)
+			// p.OriginalPrice = productMerchant.Price
 		}
+	} else {
+		fmt.Println("MERCHANT ID @ PRODUCT", "NOT FOUND")
 	}
 
 	sort.Float64s(p.PriceList)
@@ -92,12 +104,11 @@ func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
 		switch discount.Type {
 		case DiscountPercentage:
 			discountAmount = p.Price * (discount.Value / 100)
-			discountedPrice -= p.Price * (discount.Value / 100)
 		case DiscountAmount:
 			discountAmount = discount.Value
-			discountedPrice -= discount.Value
 		}
 
+		discountedPrice -= discountAmount
 		// Pastikan harga tidak negatif
 		if discountedPrice < 0 {
 			discountedPrice = 0
@@ -108,6 +119,7 @@ func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
 		p.DiscountRate = discount.Value
 		p.ActiveDiscount = &discount
 	}
+
 	return
 }
 
@@ -129,6 +141,7 @@ type ProductMerchant struct {
 	LastUpdatedStock *time.Time `gorm:"column:last_updated_stock" json:"last_updated_stock"`
 	LastStock        float64    `gorm:"column:last_stock" json:"last_stock"`
 	Price            float64    `gorm:"column:price" json:"price"`
+	AdjustmentPrice  float64    `gorm:"column:adjustment_price;default:0" json:"adjustment_price"`
 }
 
 func (v *ProductModel) GenerateDisplayName(tx *gorm.DB) {

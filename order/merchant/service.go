@@ -165,6 +165,7 @@ func (s *MerchantService) CreateProduct(data *models.ProductModel, merchantID, c
 		ProductModelID:  data.ID,
 		MerchantModelID: merchantID,
 		Price:           data.Price,
+		AdjustmentPrice: data.AdjustmentPrice,
 	}).Error; err != nil {
 		tx.Rollback()
 		return err
@@ -196,8 +197,11 @@ func (s *MerchantService) GetMerchantProductDetail(id, merchantID string, wareho
 		totalStock, _ := s.inventoryService.StockMovementService.GetCurrentStock(id, *warehouseID)
 		product.TotalStock = totalStock
 	}
+	product.MerchantID = &merchantID
 
 	for j, variant := range product.Variants {
+		variant.MerchantID = &merchantID
+		variant.GetPriceAndDiscount(s.db)
 		if warehouseID != nil {
 			totalVariantStock, _ := s.inventoryService.StockMovementService.GetVarianCurrentStock(id, variant.ID, *warehouseID)
 			variant.TotalStock = totalVariantStock
@@ -212,12 +216,14 @@ func (s *MerchantService) GetMerchantProductDetail(id, merchantID string, wareho
 		product.LastUpdatedStock = ProductMerchant.LastUpdatedStock
 		product.LastStock = ProductMerchant.LastStock
 		product.Price = ProductMerchant.Price
+		product.GetPriceAndDiscount(s.db)
 	}
 
 	return &product, nil
 }
-func (s *MerchantService) GetMerchantProducts(request http.Request, search string, merchantID string, warehouseID *string) (paginate.Page, error) {
+func (s *MerchantService) GetMerchantProducts(request http.Request, search string, merchantID string, warehouseID *string, status []string) (paginate.Page, error) {
 	pg := paginate.New()
+
 	var products []models.ProductModel
 	var merchant models.MerchantModel
 	s.db.Select("default_warehouse_id").Where("id = ?", merchantID).First(&merchant)
@@ -248,6 +254,10 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 		stmt = stmt.Where("category_id = ?", request.URL.Query().Get("category_id"))
 	}
 
+	if len(status) > 0 {
+		stmt = stmt.Where("status IN (?)", status)
+	}
+
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&products)
 	page.Page = page.Page + 1
@@ -256,6 +266,8 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 	newItems := make([]models.ProductModel, 0)
 
 	for _, v := range *items {
+		v.MerchantID = &merchantID
+		v.GetPriceAndDiscount(s.db)
 		img, err := s.inventoryService.ProductService.ListImagesOfProduct(v.ID)
 		if err == nil {
 			v.ProductImages = img
@@ -265,10 +277,12 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			v.TotalStock = totalStock
 		}
 		for j, variant := range v.Variants {
+			variant.MerchantID = &merchantID
+			variant.GetPriceAndDiscount(s.db)
 			if warehouseID != nil {
 				totalVariantStock, _ := s.inventoryService.StockMovementService.GetVarianCurrentStock(v.ID, variant.ID, *warehouseID)
 				variant.TotalStock = totalVariantStock
-				variant.Price = s.inventoryService.ProductService.GetVariantPrice(merchantID, &variant)
+				// variant.Price = s.inventoryService.ProductService.GetVariantPrice(merchantID, &variant)
 				v.Variants[j] = variant
 			}
 		}
@@ -279,6 +293,7 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			v.LastUpdatedStock = ProductMerchant.LastUpdatedStock
 			v.LastStock = ProductMerchant.LastStock
 			v.Price = ProductMerchant.Price
+			v.AdjustmentPrice = ProductMerchant.AdjustmentPrice
 		}
 
 		newItems = append(newItems, v)
@@ -315,7 +330,7 @@ func (s *MerchantService) AddProductsToMerchant(merchantID string, productIDs []
 		if err := tx.Model(&models.ProductMerchant{}).Where("product_model_id = ? AND merchant_model_id = ?", productID, merchantID).FirstOrCreate(&models.ProductMerchant{
 			ProductModelID:  productID,
 			MerchantModelID: merchantID,
-			Price:           product.Price,
+			Price:           product.OriginalPrice,
 		}).Error; err != nil {
 			tx.Rollback()
 			return err
@@ -353,7 +368,7 @@ func (s *MerchantService) EditProductPrice(merchantID, productID string, price f
 
 	if err := tx.Model(&models.ProductMerchant{}).Where("product_model_id = ? AND merchant_model_id = ?", productID, merchantID).
 		Updates(map[string]interface{}{
-			"price": price,
+			"adjustment_price": price,
 		}).Error; err != nil {
 		tx.Rollback()
 		return err
@@ -369,15 +384,21 @@ func (s *MerchantService) EditVariantPrice(merchantID, variantID string, price f
 		err := tx.Where("variant_id = ? AND merchant_id = ?", variantID, merchantID).
 			First(&variantMerchant).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			var variant models.VariantModel
+			err = tx.Where("id = ?", variantID).First(&variant).Error
+			if err != nil {
+				return err
+			}
 			variantMerchant.VariantID = variantID
 			variantMerchant.MerchantID = merchantID
-			variantMerchant.Price = price
+			variantMerchant.Price = variant.OriginalPrice
+			variantMerchant.AdjustmentPrice = price
 			tx.Create(&variantMerchant)
 		}
 
 		if err := tx.Model(&models.VarianMerchant{}).Where("variant_id = ? AND merchant_id = ?", variantID, merchantID).
 			Updates(map[string]interface{}{
-				"price": price,
+				"adjustment_price": price,
 			}).Error; err != nil {
 			return err
 		}
@@ -398,38 +419,32 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 		var product models.ProductModel
 		s.db.Select("price", "id", "display_name").Find(&product, "id = ?", item.ProductID)
 		var productDisplayName string = product.DisplayName
-		var availableStock, price float64
-		price = product.Price
+		var availableStock float64
+		// price = item.UnitPrice
 		var variantDisplayName *string
 		if item.VariantID != nil {
 			var variant models.VariantModel
 			s.db.Select("price", "id", "display_name").Find(&variant, "id = ?", *item.VariantID)
-			price = variant.Price
-			var variantMerchant models.VarianMerchant
-			s.db.Select("price", "id").Find(&variantMerchant, "variant_id = ? AND merchant_id = ?", *item.VariantID, merchant.ID)
-			if variantMerchant.Price != 0 {
-				price = variantMerchant.Price
-			}
 			availableStock, _ = s.inventoryService.ProductService.GetVariantStock(*item.ProductID, *item.VariantID, nil, merchant.DefaultWarehouseID)
 			variantDisplayName = &variant.DisplayName
 		} else {
 			availableStock, _ = s.inventoryService.ProductService.GetStock(*item.ProductID, nil, merchant.DefaultWarehouseID)
 		}
 
-		_, discAmount, discValue, discType, err := s.inventoryService.ProductService.CalculateDiscountedPrice(*item.ProductID, price)
-		if err != nil {
-			return nil, err
-		}
+		// _, discAmount, discValue, discType, err := s.inventoryService.ProductService.CalculateDiscountedPrice(*item.ProductID, price)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
 		fmt.Println("AVAILABLE STOCK", merchant.Name, *item.ProductID, *item.VariantID, *merchant.DefaultWarehouseID, availableStock)
 		if availableStock < item.Quantity {
 			item.Status = "OUT_OF_STOCK"
 		} else {
 			item.Status = "AVAILABLE"
-			subTotal += item.Quantity * (price - discAmount)
-			subTotalBeforeDiscount += item.Quantity * price
+			subTotal += item.Total
+			subTotalBeforeDiscount += item.TotalBeforeDiscount
 		}
-		totalDiscAmount += discAmount
+		totalDiscAmount += item.DiscountAmount
 		// orderRequest.Items[i] = item
 		merchantAvailable.Items[i] = models.MerchantAvailableProductItem{
 			ProductID:               *item.ProductID,
@@ -437,14 +452,14 @@ func (s *MerchantService) GetProductAvailableByMerchant(merchant models.Merchant
 			VariantDisplayName:      variantDisplayName,
 			VariantID:               item.VariantID,
 			Quantity:                item.Quantity,
-			UnitPrice:               price - discAmount,
-			UnitPriceBeforeDiscount: price,
+			UnitPrice:               item.UnitPrice,
+			UnitPriceBeforeDiscount: item.OriginalPrice,
 			Status:                  item.Status,
-			SubTotalBeforeDiscount:  item.Quantity * price,
-			SubTotal:                item.Quantity * (price - discAmount),
-			DiscountAmount:          discAmount,
-			DiscountValue:           discValue,
-			DiscountType:            discType,
+			SubTotalBeforeDiscount:  item.TotalBeforeDiscount,
+			SubTotal:                item.Total,
+			DiscountAmount:          item.DiscountAmount,
+			DiscountValue:           item.DiscountPercent,
+			DiscountType:            item.DiscountType,
 		}
 
 	}
@@ -580,8 +595,12 @@ func (s *MerchantService) UpdateProduct(id, merchantID, companyID string, data *
 
 func (s *MerchantService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
 	idCompany := ""
+	idMerchant := ""
 	if request != nil {
-		idCompany = request.Header.Get("ID-Company")
+		if request.Header != nil {
+			idCompany = request.Header.Get("ID-Company")
+			idMerchant = request.Header.Get("ID-Merchant")
+		}
 	} else {
 		return nil, errors.New("request is nil")
 	}
@@ -601,14 +620,22 @@ func (s *MerchantService) GetProductByID(id string, request *http.Request) (*mod
 		}
 	}
 	stock, _ := s.inventoryService.ProductService.GetStock(product.ID, request, warehouseID)
-
+	if idMerchant != "" {
+		product.MerchantID = &idMerchant
+	}
+	product.GetPriceAndDiscount(s.db)
 	product.TotalStock = stock
 	for i, v := range product.Variants {
+		if idMerchant != "" {
+			v.MerchantID = &idMerchant
+		}
+		v.GetPriceAndDiscount(s.db)
 		variantStock, _ := s.inventoryService.ProductService.GetVariantStock(product.ID, v.ID, request, warehouseID)
 		v.TotalStock = variantStock
 		product.Variants[i] = v
 		fmt.Println("VARIANT STOCK", v.ID, variantStock)
 	}
+
 	return &product, err
 }
 

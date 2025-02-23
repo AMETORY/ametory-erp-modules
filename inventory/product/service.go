@@ -70,8 +70,9 @@ func (s *ProductService) GetVariantByID(variantID string, request *http.Request)
 	if merchantID == "" {
 		return nil, errors.New("merchant not found")
 	}
-	price := s.GetVariantPrice(merchantID, &variant)
-	variant.Price = price
+	// price := s.GetVariantPrice(merchantID, &variant)
+	// variant.Price = price
+	variant.GetPriceAndDiscount(s.db)
 
 	return &variant, nil
 }
@@ -94,6 +95,14 @@ func (s *ProductService) GetVariantPrice(merchantID string, variant *models.Vari
 	return price
 }
 func (s *ProductService) GetProductByID(id string, request *http.Request) (*models.ProductModel, error) {
+	idMerchant := ""
+	if request != nil {
+		if request.Header != nil {
+			idMerchant = request.Header.Get("ID-Merchant")
+		}
+	} else {
+		return nil, errors.New("request is nil")
+	}
 	var product models.ProductModel
 	err := s.db.Preload("Tags").Preload("Company").Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
@@ -113,11 +122,19 @@ func (s *ProductService) GetProductByID(id string, request *http.Request) (*mode
 
 	product.TotalStock = stock
 	for i, v := range product.Variants {
+		if idMerchant != "" {
+			v.MerchantID = &idMerchant
+		}
+		v.GetPriceAndDiscount(s.db)
 		variantStock, _ := s.GetVariantStock(product.ID, v.ID, request, warehouseID)
 		v.TotalStock = variantStock
 		product.Variants[i] = v
 		fmt.Println("VARIANT STOCK", v.ID, variantStock)
 	}
+	if idMerchant != "" {
+		product.MerchantID = &idMerchant
+	}
+	product.GetPriceAndDiscount(s.db)
 	return &product, err
 }
 
@@ -130,7 +147,7 @@ func (s *ProductService) GetProductByCode(code string) (*models.ProductModel, er
 	}).Where("sku = ?", code).First(&product).Error
 	product.Prices, _ = s.ListPricesOfProduct(product.ID)
 	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
-
+	product.GetPriceAndDiscount(s.db)
 	return &product, err
 }
 
@@ -194,6 +211,7 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	}
 
 	for _, item := range *items {
+		item.GetPriceAndDiscount(s.db)
 		activeDiscount, _ := s.GetFirstActiveDiscount(item.ID)
 		if activeDiscount.ID != "" {
 			item.ActiveDiscount = activeDiscount
@@ -214,6 +232,7 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 
 		item.TotalStock = stock
 		for i, variant := range item.Variants {
+			variant.GetPriceAndDiscount(s.db)
 			variantStock, _ := s.GetVariantStock(item.ID, variant.ID, &request, warehouseID)
 			variant.TotalStock = variantStock
 			salesCount, _ := s.GetSalesVariantCount(item.ID, variant.ID, &request, warehouseID)
@@ -414,6 +433,10 @@ func (s *ProductService) GetProductsByMerchant(merchantID string, productIDs []s
 		db = db.Where("id in (?)", productIDs)
 	}
 	err := db.Find(&products).Error
+	for i, v := range products {
+		v.GetPriceAndDiscount(s.db)
+		products[i] = v
+	}
 	return products, err
 }
 
@@ -429,6 +452,7 @@ func (s *ProductService) GetProductVariants(productID string, request http.Reque
 		warehouseID = &warehouseIDStr
 	}
 	for i, v := range variants {
+		v.GetPriceAndDiscount(s.db)
 		variantStock, _ := s.GetVariantStock(productID, v.ID, &request, warehouseID)
 		v.TotalStock = variantStock
 		variants[i] = v
