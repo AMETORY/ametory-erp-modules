@@ -88,6 +88,7 @@ type POSModel struct {
 	RefundedAt             *time.Time             `json:"refunded_at,omitempty" gorm:"column:refunded_at"`
 	WithdrawalID           *string                `json:"withdrawal_id,omitempty" gorm:"column:withdrawal_id"`
 	Withdrawal             *WithdrawalModel       `gorm:"foreignKey:WithdrawalID;constraint:OnDelete:CASCADE" json:"withdrawal,omitempty"`
+	TotalDiscount          float64                `json:"total_discount"`
 }
 
 type POSSalesItemModel struct {
@@ -101,6 +102,7 @@ type POSSalesItemModel struct {
 	Total                   float64         `json:"total,omitempty"`
 	DiscountPercent         float64         `json:"discount_percent,omitempty"`
 	DiscountAmount          float64         `json:"discount_amount,omitempty"`
+	DiscountType            string          `json:"discount_type,omitempty"`
 	Subtotal                float64         `json:"subtotal,omitempty"`
 	SubtotalBeforeDisc      float64         `json:"subtotal_before_disc,omitempty"`
 	ProductID               *string         `json:"product_id,omitempty"`

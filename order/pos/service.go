@@ -89,7 +89,7 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 		return nil, nil, errors.New("merchant not found")
 	}
 	var merchant models.MerchantModel = *cart.Merchant
-
+	totalDiscount := float64(0)
 	json.Unmarshal([]byte(cart.CustomerData), &customerData)
 	var items []models.POSSalesItemModel
 	for _, v := range cart.Items {
@@ -106,7 +106,11 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 			Length:                  v.Length,
 			Weight:                  v.Weight,
 			Width:                   v.Weight,
+			DiscountPercent:         v.DiscountRate,
+			DiscountAmount:          v.DiscountAmount,
+			DiscountType:            v.DiscountType,
 		})
+		totalDiscount += v.DiscountAmount
 	}
 	var contactID *string
 	if customerData.AutoRegistration {
@@ -170,6 +174,7 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 		Items:                  items,
 		AssetAccountID:         assetAccountID,
 		SaleAccountID:          saleAccountID,
+		TotalDiscount:          totalDiscount,
 	}
 
 	if err := s.db.Create(&pos).Error; err != nil {
@@ -280,6 +285,7 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		return nil, err
 	}
 	var items []models.POSSalesItemModel
+	totalDiscount := float64(0)
 	for _, v := range merchantProductAvailable.Items {
 		var Height, Length, Weight, Width float64
 		product := models.ProductModel{}
@@ -309,7 +315,11 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 			Length:                  Length,
 			Weight:                  Weight,
 			Width:                   Width,
+			DiscountPercent:         v.DiscountValue,
+			DiscountAmount:          v.DiscountAmount,
+			DiscountType:            v.DiscountType,
 		})
+		totalDiscount += v.DiscountAmount
 	}
 
 	if orderType == "" {
@@ -344,6 +354,7 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 		AssetAccountID:         assetAccountID,
 		SaleAccountID:          saleAccountID,
 		OrderType:              orderType,
+		TotalBeforeDisc:        totalDiscount,
 	}
 	if err := s.db.Create(&pos).Error; err != nil {
 		return nil, err
