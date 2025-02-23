@@ -46,6 +46,8 @@ func (s *CartService) GetCartByID(cartID string) (*models.CartModel, error) {
 		if err := s.db.Model(&product).Where("id = ?", v.ProductID).First(&product).Error; err != nil {
 			return nil, err
 		}
+		product.GetPriceAndDiscount(s.db)
+		var adjustmentPrice, originalPrice float64 = product.AdjustmentPrice, product.OriginalPrice
 		if v.VariantID != nil {
 			var variant models.VariantModel
 			variant.MerchantID = s.merchantID
@@ -53,8 +55,11 @@ func (s *CartService) GetCartByID(cartID string) (*models.CartModel, error) {
 				return nil, err
 			}
 			v.Variant = &variant
+			variant.GetPriceAndDiscount(s.db)
+			adjustmentPrice = variant.AdjustmentPrice
+			originalPrice = variant.OriginalPrice
 		}
-		s.parseItem(&v)
+		s.parseItem(&v, originalPrice, adjustmentPrice)
 		discountAmount += v.Quantity * v.DiscountAmount
 		cart.Items[i] = v
 		cart.SubTotalBeforeDiscount += v.Quantity * v.OriginalPrice
@@ -88,6 +93,8 @@ func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, e
 		if err := s.db.Preload("Category").Preload("Brand").Model(&product).Where("id = ?", v.ProductID).First(&product).Error; err != nil {
 			return nil, err
 		}
+		product.GetPriceAndDiscount(s.db)
+		var adjustmentPrice, originalPrice float64 = product.AdjustmentPrice, product.OriginalPrice
 		if v.VariantID != nil {
 			var variant models.VariantModel
 			variant.MerchantID = s.merchantID
@@ -95,8 +102,11 @@ func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, e
 				return nil, err
 			}
 			v.Variant = &variant
+			variant.GetPriceAndDiscount(s.db)
+			adjustmentPrice = variant.AdjustmentPrice
+			originalPrice = variant.OriginalPrice
 		}
-		s.parseItem(&v)
+		s.parseItem(&v, originalPrice, adjustmentPrice)
 		discountAmount += v.Quantity * v.DiscountAmount
 		v.Category = product.Category
 		v.Brand = product.Brand
@@ -108,7 +118,7 @@ func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, e
 	return &cart, nil
 }
 
-func (s *CartService) parseItem(v *models.CartItemModel) {
+func (s *CartService) parseItem(v *models.CartItemModel, originalPrice, adjustmentPrice float64) {
 	img, _ := s.inventoryService.ProductService.ListImagesOfProduct(v.ProductID)
 	v.OriginalPrice = v.Product.Price
 	v.ProductImages = img
@@ -134,6 +144,8 @@ func (s *CartService) parseItem(v *models.CartItemModel) {
 
 	v.SubTotal = v.Quantity * v.Price
 	v.SubTotalBeforeDiscount = v.Quantity * v.OriginalPrice
+	v.OriginalPrice = originalPrice
+	v.AdjustmentPrice = adjustmentPrice
 
 }
 
@@ -176,6 +188,7 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 	if product.Status != "ACTIVE" {
 		return errors.New("product not active")
 	}
+	product.GetPriceAndDiscount(s.db)
 	var width, height, weight, length float64 = product.Width, product.Height, product.Weight, product.Length
 	originalPrice := product.OriginalPrice
 	price = product.Price
@@ -183,6 +196,7 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 	var discountAmount float64 = product.DiscountAmount
 	var discountType string = product.DiscountType
 	var discountRate float64 = product.DiscountRate
+	var adjustmentPrice float64 = product.AdjustmentPrice
 
 	// Cek apakah item sudah ada di cart
 	var existingItem models.CartItemModel
@@ -193,6 +207,7 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 		variant := models.VariantModel{}
 		variant.MerchantID = s.merchantID
 		s.ctx.DB.Where("id = ?", *variantID).First(&variant)
+		variant.GetPriceAndDiscount(s.db)
 
 		if variant.Width != 0 {
 			width = variant.Width
@@ -207,33 +222,35 @@ func (s *CartService) AddItemToCart(userID string, productID string, variantID *
 			length = variant.Length
 		}
 		price = variant.Price
-		fmt.Println("PRICE #2", price)
 		discountAmount = variant.DiscountAmount
 		discountType = variant.DiscountType
 		discountRate = variant.DiscountRate
 		originalPrice = variant.OriginalPrice
+		adjustmentPrice = variant.AdjustmentPrice
+		fmt.Println("PRICE #2", price, originalPrice, adjustmentPrice)
 	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Tambahkan item baru ke cart
 
-			fmt.Println("PRICE #3", price)
+			fmt.Println("PRICE #3", price, originalPrice, adjustmentPrice)
 			item := models.CartItemModel{
-				CartID:         cart.ID,
-				ProductID:      productID,
-				VariantID:      variantID,
-				Quantity:       quantity,
-				Price:          price,
-				DiscountAmount: discountAmount,
-				DiscountType:   discountType,
-				DiscountRate:   discountRate,
-				OriginalPrice:  originalPrice,
-				Width:          width,
-				Height:         height,
-				Weight:         weight,
-				Length:         length,
-				CategoryID:     product.CategoryID,
-				BrandID:        product.BrandID,
+				CartID:          cart.ID,
+				ProductID:       productID,
+				VariantID:       variantID,
+				Quantity:        quantity,
+				Price:           price,
+				DiscountAmount:  discountAmount,
+				DiscountType:    discountType,
+				DiscountRate:    discountRate,
+				OriginalPrice:   originalPrice,
+				AdjustmentPrice: adjustmentPrice,
+				Width:           width,
+				Height:          height,
+				Weight:          weight,
+				Length:          length,
+				CategoryID:      product.CategoryID,
+				BrandID:         product.BrandID,
 			}
 			if err := s.db.Create(&item).Error; err != nil {
 				return err

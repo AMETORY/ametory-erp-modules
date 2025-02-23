@@ -54,6 +54,7 @@ type CartItemModel struct {
 	DiscountAmount         float64               `gorm:"-" json:"discount_amount,omitempty"`
 	DiscountType           string                `gorm:"-" json:"discount_type,omitempty"`
 	DiscountRate           float64               `gorm:"-" json:"discount_rate,omitempty"`
+	AdjustmentPrice        float64               `gorm:"-" json:"adjustment_price,omitempty"`
 	ActiveDiscount         *DiscountModel        `gorm:"-" json:"active_discount,omitempty"`
 	DisplayName            string                `gorm:"-" json:"display_name,omitempty"`
 	ProductImages          []FileModel           `gorm:"-" json:"product_images,omitempty"`
