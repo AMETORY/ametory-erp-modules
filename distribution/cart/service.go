@@ -69,6 +69,28 @@ func (s *CartService) GetCartByID(cartID string) (*models.CartModel, error) {
 	return &cart, nil
 }
 
+func (s *CartService) ClearActiveCart(userID string) error {
+	var cart models.CartModel
+	err := s.db.Preload("Items").Where("user_id = ? AND status = ?", userID, "ACTIVE").First(&cart).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			cart = models.CartModel{
+				UserID: userID,
+				Status: "ACTIVE",
+			}
+			if err := s.db.Create(&cart).Error; err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	for _, v := range cart.Items {
+		s.DeleteItemCart(userID, v.ID)
+	}
+	return nil
+}
 func (s *CartService) GetOrCreateActiveCart(userID string) (*models.CartModel, error) {
 	var cart models.CartModel
 	err := s.db.Preload("Items").Where("user_id = ? AND status = ?", userID, "ACTIVE").First(&cart).Error

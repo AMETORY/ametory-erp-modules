@@ -2,22 +2,24 @@ package google
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/context"
+
 	"firebase.google.com/go/v4/messaging"
 
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	fcm "github.com/appleboy/go-fcm"
 )
 
 type FCMService struct {
 	serverKey *string
-	ctx       context.Context
+	ctx       *context.ERPContext
 	client    *fcm.Client
 }
 
@@ -26,12 +28,12 @@ type FCMMessage struct {
 	Data map[string]string `json:"data"`
 }
 
-func NewFCMService(ctx context.Context, serverKey, credentialPath *string) *FCMService {
+func NewFCMService(ctx *context.ERPContext, serverKey, credentialPath *string) *FCMService {
 	var client *fcm.Client
 	// fmt.Println("LOAD CONFIG", *serverKey, *credentialPath)
 	if credentialPath != nil {
 		cl, err := fcm.NewClient(
-			ctx,
+			*ctx.Ctx,
 			fcm.WithCredentialsFile(*credentialPath),
 		)
 		if err == nil {
@@ -41,6 +43,34 @@ func NewFCMService(ctx context.Context, serverKey, credentialPath *string) *FCMS
 	return &FCMService{serverKey: serverKey, ctx: ctx, client: client}
 }
 
+func (s *FCMService) SendFCMV2MessageByUserID(userID, title, body string, data map[string]string) error {
+	var user = models.UserModel{}
+	err := s.ctx.DB.Model(&user).Where("id = ? or email = ?", userID, userID).First(&user).Error
+	if err != nil {
+		log.Println("Error getting user", err)
+		return err
+	}
+
+	var pushTokens []models.PushTokenModel
+	err = s.ctx.DB.Model(&pushTokens).Where("user_id = ? AND type = ?", user.ID, "fcm").Find(&pushTokens).Error
+	if err != nil {
+		log.Println("Error getting push token", err)
+		return err
+	}
+
+	for _, pushToken := range pushTokens {
+		err = s.SendFCMV2Message(pushToken.Token, "HALLO", "INI CUMAN TEST", map[string]string{})
+		if err != nil {
+			log.Println("Error sending fcm message", err)
+			return err
+		}
+	}
+
+	log.Println("Success sending fcm message to", user.FullName)
+	// var user = models.UserModel{}
+
+	return nil
+}
 func (s *FCMService) SendFCMV2Message(token, title, body string, data map[string]string) error {
 	if s.client == nil {
 		return fmt.Errorf("client is not set")
@@ -49,7 +79,7 @@ func (s *FCMService) SendFCMV2Message(token, title, body string, data map[string
 	data["body"] = body
 	utils.LogJson(data)
 	resp, err := s.client.Send(
-		s.ctx,
+		*s.ctx.Ctx,
 		&messaging.Message{
 			Notification: &messaging.Notification{
 				Title: title,
