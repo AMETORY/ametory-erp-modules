@@ -3,6 +3,7 @@ package withdrawal
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
@@ -18,6 +19,8 @@ type WithdrawalService struct {
 }
 
 func Migrate(db *gorm.DB) error {
+	// db.Migrator().AlterColumn(&models.WithdrawalItemModel{}, "pos_id")
+	db.Migrator().CreateConstraint(&models.WithdrawalModel{}, "pos_id")
 	return db.AutoMigrate(&models.WithdrawalModel{}, &models.WithdrawalItemModel{})
 }
 func NewWithdrawalService(db *gorm.DB, ctx *context.ERPContext) *WithdrawalService {
@@ -50,6 +53,33 @@ func (w *WithdrawalService) GetWithdrawal(withdrawalID string) (withdrawal *mode
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
 			return db.Preload("Pos.Items").Preload("Sales.Items")
 		}).Where("id = ?", withdrawalID).First(withdrawal).Error
+}
+func (w *WithdrawalService) SettlementWithdrawalByID(withdrawalID string, approverID *string) (*models.WithdrawalModel, error) {
+	withdrawal := &models.WithdrawalModel{}
+	err := w.db.Preload("Merchant").
+		Preload("ApprovalByUser").
+		Preload("RejectedByUser").
+		Preload("RequestedByUser").
+		Preload("Items", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("Pos.Items").Preload("Sales.Items")
+		}).Where("id = ? and status = ?", withdrawalID, "PENDING").First(withdrawal).Error
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	withdrawal.Status = "SETTLEMENT"
+	withdrawal.DisbursementDate = &now
+	withdrawal.ApprovalBy = approverID
+	withdrawal.ApprovalDate = &now
+
+	for _, v := range withdrawal.Items {
+		if v.Pos != nil {
+			v.Pos.Status = "COMPLETE"
+			w.db.Save(&v.Pos)
+		}
+	}
+
+	return withdrawal, w.db.Save(withdrawal).Error
 }
 func (w *WithdrawalService) GetWithdrawals(request http.Request, search string, merchantID, userID *string) (paginate.Page, error) {
 	pg := paginate.New()

@@ -79,14 +79,14 @@ func (p *ProductModel) GetPriceAndDiscount(tx *gorm.DB) (err error) {
 	}
 
 	if p.MerchantID != nil {
-		fmt.Println("MERCHANT ID @ PRODUCT", *p.MerchantID)
+		// fmt.Println("MERCHANT ID @ PRODUCT", *p.MerchantID)
 		var productMerchant ProductMerchant
 		err := tx.Select("price", "adjustment_price").Where("product_model_id = ? AND merchant_model_id = ?", p.ID, *p.MerchantID).First(&productMerchant) // TODO: check if variant_merchant exists
 
 		if err == nil {
 			p.AdjustmentPrice = productMerchant.AdjustmentPrice
 			p.Price += productMerchant.AdjustmentPrice
-			fmt.Println("MERCHANT PRICE 2", p.Price)
+			// fmt.Println("MERCHANT PRICE 2", p.Price)
 			// p.OriginalPrice = productMerchant.Price
 		}
 	} else {

@@ -644,6 +644,17 @@ func (s *POSService) GetPosSales(request http.Request, search string) (paginate.
 	if request.URL.Query().Get("order_type") != "" {
 		stmt = stmt.Where("order_type = ?", request.URL.Query().Get("order_type"))
 	}
+	if request.URL.Query().Get("status") != "" {
+		stmt = stmt.Where("status = ?", request.URL.Query().Get("status"))
+	}
+	if request.URL.Query().Get("shipping_status") != "" {
+		if request.URL.Query().Get("shipping_status") == "PENDING" {
+			stmt = stmt.Joins("LEFT JOIN shippings ON shippings.order_id = pos_sales.id").Where("shippings.status is null")
+		} else {
+			stmt = stmt.Joins("LEFT JOIN shippings ON shippings.order_id = pos_sales.id").Where("shippings.status = ?", request.URL.Query().Get("shipping_status"))
+		}
+
+	}
 
 	stmt = stmt.Model(&models.POSModel{})
 	utils.FixRequest(&request)
