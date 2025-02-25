@@ -30,6 +30,8 @@ type ERPContext struct {
 	FCMService                  interface{} // Contoh: Firestore
 	IndonesiaRegService         interface{} // Contoh: IndonesiaRegService
 	UserService                 interface{} // Contoh: UserService
+	ContentManagementService    interface{}
+	ProjectManagemetService     interface{}
 	AppService                  interface{}
 	CrowdFundingService         interface{}
 	NotificationService         interface{}
