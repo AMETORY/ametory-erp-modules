@@ -59,7 +59,7 @@ func (s *FCMService) SendFCMV2MessageByUserID(userID, title, body string, data m
 	}
 
 	for _, pushToken := range pushTokens {
-		err = s.SendFCMV2Message(pushToken.Token, "HALLO", "INI CUMAN TEST", map[string]string{})
+		err = s.SendFCMV2Message(pushToken.Token, title, body, map[string]string{})
 		if err != nil {
 			log.Println("Error sending fcm message", err)
 			return err

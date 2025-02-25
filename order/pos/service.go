@@ -641,6 +641,10 @@ func (s *POSService) GetPosSales(request http.Request, search string) (paginate.
 	}
 	stmt = stmt.Order(orderBy + " " + order)
 
+	if request.URL.Query().Get("order_type") != "" {
+		stmt = stmt.Where("order_type = ?", request.URL.Query().Get("order_type"))
+	}
+
 	stmt = stmt.Model(&models.POSModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.POSModel{})

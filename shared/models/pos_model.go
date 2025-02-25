@@ -89,6 +89,7 @@ type POSModel struct {
 	WithdrawalID           *string                `json:"withdrawal_id,omitempty" gorm:"column:withdrawal_id"`
 	Withdrawal             *WithdrawalModel       `gorm:"foreignKey:WithdrawalID;constraint:OnDelete:CASCADE" json:"withdrawal,omitempty"`
 	TotalDiscount          float64                `json:"total_discount"`
+	CanBeWithdrawed        bool                   `json:"can_be_withdrawed" gorm:"_"`
 }
 
 type POSSalesItemModel struct {
