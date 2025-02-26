@@ -11,25 +11,28 @@ import (
 
 type TaskModel struct {
 	shared.BaseModel
-	Name        string        `gorm:"type:varchar(255);not null" json:"name,omitempty"`
-	Description string        `gorm:"type:text" json:"description,omitempty"`
-	ProjectID   string        `gorm:"type:char(36);not null" json:"project_id,omitempty"`
-	Project     ProjectModel  `json:"project,omitempty"`
-	CreatedByID *string       `gorm:"type:char(36);index" json:"created_by_id,omitempty"`
-	CreatedBy   *MemberModel  `json:"created_by,omitempty"`
-	AssigneeID  *string       `gorm:"type:char(36);index" json:"assignee_id,omitempty"`
-	Assignee    *MemberModel  `json:"assignee,omitempty"`
-	ParentID    *string       `gorm:"type:char(36);index" json:"parent_id,omitempty"`
-	Parent      *TaskModel    `json:"parent,omitempty"`
-	Children    []TaskModel   `gorm:"foreignKey:ParentID" json:"children,omitempty"`
-	Order       int           `json:"order,omitempty"`
-	Status      string        `gorm:"type:varchar(50);not null" json:"status,omitempty"`
-	IsDone      bool          `json:"is_done,omitempty"`
-	StartDate   *time.Time    `json:"start_date,omitempty"`
-	EndDate     *time.Time    `json:"end_date,omitempty"`
-	Files       []FileModel   `gorm:"-" json:"files,omitempty"`
-	Cover       *FileModel    `json:"cover,omitempty"`
-	Watchers    []MemberModel `gorm:"many2many:task_watchers" json:"watchers,omitempty"`
+	Name          string        `gorm:"type:varchar(255);not null" json:"name,omitempty"`
+	Description   string        `gorm:"type:text" json:"description,omitempty"`
+	ProjectID     string        `gorm:"type:char(36);not null" json:"project_id,omitempty"`
+	Project       ProjectModel  `json:"project,omitempty"`
+	ColumnID      *string       `gorm:"type:char(36);not null" json:"column_id,omitempty"`
+	Column        *ColumnModel  `json:"column,omitempty"`
+	CreatedByID   *string       `gorm:"type:char(36);index" json:"created_by_id,omitempty"`
+	CreatedBy     *MemberModel  `json:"created_by,omitempty"`
+	AssigneeID    *string       `gorm:"type:char(36);index" json:"assignee_id,omitempty"`
+	Assignee      *MemberModel  `json:"assignee,omitempty"`
+	ParentID      *string       `gorm:"type:char(36);index" json:"parent_id,omitempty"`
+	Parent        *TaskModel    `json:"parent,omitempty"`
+	Children      []TaskModel   `gorm:"foreignKey:ParentID" json:"children,omitempty"`
+	Order         int           `json:"order,omitempty"`
+	Status        string        `gorm:"type:varchar(50);not null" json:"status,omitempty"`
+	Completed     bool          `json:"completed,omitempty"`
+	CompletedDate *time.Time    `json:"completed_date,omitempty"`
+	StartDate     *time.Time    `json:"start_date,omitempty"`
+	EndDate       *time.Time    `json:"end_date,omitempty"`
+	Files         []FileModel   `gorm:"-" json:"files,omitempty"`
+	Cover         *FileModel    `json:"cover,omitempty"`
+	Watchers      []MemberModel `gorm:"many2many:task_watchers" json:"watchers,omitempty"`
 }
 
 func (TaskModel) TableName() string {

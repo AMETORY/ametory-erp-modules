@@ -62,6 +62,87 @@ func (s *TaskService) GetTasks(request http.Request, search string) (paginate.Pa
 	return page, nil
 }
 
+func (s *TaskService) MoveTask(columnID string, taskID string, sourceColumnID string) error {
+	tx := s.db.Begin()
+	defer tx.Rollback()
+	var task models.TaskModel
+	if err := tx.Where("id = ?", taskID).First(&task).Error; err != nil {
+		return err
+	}
+	var sourceColumn models.ColumnModel
+	if err := tx.Where("id = ?", sourceColumnID).First(&sourceColumn).Error; err != nil {
+		return err
+	}
+	var targetColumn models.ColumnModel
+	if err := tx.Where("id = ?", columnID).First(&targetColumn).Error; err != nil {
+		return err
+	}
+	task.ColumnID = &columnID
+	task.Order = 0
+	if err := tx.Save(&task).Error; err != nil {
+		return err
+	}
+	sourceTasks := make([]models.TaskModel, 0)
+	if err := tx.Where("column_id = ? AND order > ?", sourceColumnID, task.Order).Find(&sourceTasks).Error; err != nil {
+		return err
+	}
+	for _, t := range sourceTasks {
+		t.Order = t.Order - 1
+		if err := tx.Save(&t).Error; err != nil {
+			return err
+		}
+	}
+	targetTasks := make([]models.TaskModel, 0)
+	if err := tx.Where("column_id = ? AND order >= ?", columnID, task.Order).Find(&targetTasks).Error; err != nil {
+		return err
+	}
+	for _, t := range targetTasks {
+		t.Order = t.Order + 1
+		if err := tx.Save(&t).Error; err != nil {
+			return err
+		}
+	}
+	return tx.Commit().Error
+}
+
+func (s *TaskService) MarkCompleted(id string) error {
+	tx := s.db.Begin()
+	defer tx.Rollback()
+	var task models.TaskModel
+	if err := tx.Where("id = ?", id).First(&task).Error; err != nil {
+		return err
+	}
+	task.CompletedDate = &time.Time{}
+	if err := tx.Save(&task).Error; err != nil {
+		return err
+	}
+	return tx.Commit().Error
+}
+
+func (s *TaskService) ReorderTask(taskID string, order int) error {
+	tx := s.db.Begin()
+	defer tx.Rollback()
+	var task models.TaskModel
+	if err := tx.Where("id = ?", taskID).First(&task).Error; err != nil {
+		return err
+	}
+	var tasks []models.TaskModel
+	if err := tx.Where("column_id = ? AND order >= ?", task.ColumnID, order).Find(&tasks).Error; err != nil {
+		return err
+	}
+	for _, t := range tasks {
+		t.Order = t.Order + 1
+		if err := tx.Save(&t).Error; err != nil {
+			return err
+		}
+	}
+	task.Order = order
+	if err := tx.Save(&task).Error; err != nil {
+		return err
+	}
+	return tx.Commit().Error
+}
+
 func (s *TaskService) AddWatchers(id string, watchers []string) error {
 	tx := s.db.Begin()
 	defer tx.Rollback()

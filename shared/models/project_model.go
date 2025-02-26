@@ -12,7 +12,8 @@ type ProjectModel struct {
 	Description string        `json:"description,omitempty"`
 	Deadline    string        `json:"deadline,omitempty"`
 	Status      string        `json:"status,omitempty"` // e.g., "ongoing", "completed"
-	Columns     []ColumnModel `json:"columns,omitempty" gorm:"foreignKey:ProjectID"`
+	Columns     []ColumnModel `json:"columns,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
+	Tasks       []TaskModel   `json:"tasks,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
 }
 
 func (ProjectModel) TableName() string {
@@ -37,8 +38,9 @@ func (c *ColumnModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 type ColumnModel struct {
 	shared.BaseModel
-	ProjectID string  `gorm:"type:char(36)" json:"project_id,omitempty"`
-	Name      string  `json:"name,omitempty"`
-	Order     int     `json:"order,omitempty"` // Urutan kolom
-	Color     *string `json:"color,omitempty"`
+	ProjectID string      `gorm:"type:char(36)" json:"project_id,omitempty"`
+	Name      string      `json:"name,omitempty"`
+	Order     int         `json:"order,omitempty"` // Urutan kolom
+	Color     *string     `json:"color,omitempty"`
+	Tasks     []TaskModel `json:"tasks,omitempty" gorm:"foreignKey:ColumnID"`
 }
