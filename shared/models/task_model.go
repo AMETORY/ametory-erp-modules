@@ -31,7 +31,7 @@ type TaskModel struct {
 	StartDate     *time.Time    `json:"start_date,omitempty"`
 	EndDate       *time.Time    `json:"end_date,omitempty"`
 	Files         []FileModel   `gorm:"-" json:"files,omitempty"`
-	Cover         *FileModel    `json:"cover,omitempty"`
+	Cover         *FileModel    `json:"cover,omitempty" gorm:"-"`
 	Watchers      []MemberModel `gorm:"many2many:task_watchers" json:"watchers,omitempty"`
 }
 

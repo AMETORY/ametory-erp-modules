@@ -42,7 +42,7 @@ type MemberInvitationModel struct {
 	Role      *RoleModel
 	InviterID string     `gorm:"type:char(36)" json:"inviter_id"`
 	Inviter   *UserModel `gorm:"foreignKey:InviterID"`
-	ExpiredAt *time.Time `gorm:"type:datetime" json:"expired_at"`
+	ExpiredAt *time.Time `json:"expired_at"`
 	Token     string     `gorm:"type:varchar(255)" json:"token"`
 }
 
