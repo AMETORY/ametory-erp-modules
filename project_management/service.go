@@ -22,6 +22,9 @@ func NewProjectManagementService(ctx *context.ERPContext) *ProjectManagementServ
 		TeamService:    team.NewTeamService(ctx),
 		MemberService:  member.NewMemberService(ctx),
 	}
+	if !ctx.SkipMigration {
+		service.Migrate()
+	}
 	return &service
 }
 

@@ -1,6 +1,7 @@
 package team
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -13,14 +14,18 @@ import (
 )
 
 type TaskService struct {
-	db  *gorm.DB
-	ctx *context.ERPContext
+	db              *gorm.DB
+	ctx             *context.ERPContext
+	queryConditions map[string][]interface{}
+	joinConditions  map[string][]interface{}
 }
 
 func NewTaskService(ctx *context.ERPContext) *TaskService {
 	return &TaskService{
-		db:  ctx.DB,
-		ctx: ctx,
+		db:              ctx.DB,
+		ctx:             ctx,
+		queryConditions: make(map[string][]interface{}, 0),
+		joinConditions:  make(map[string][]interface{}, 0),
 	}
 }
 
@@ -42,6 +47,12 @@ func (s *TaskService) GetTaskByID(id string) (*models.TaskModel, error) {
 	return &invoice, err
 }
 
+func (s *TaskService) SetQuery(query map[string][]interface{}) {
+	s.queryConditions = query
+}
+func (s *TaskService) SetJoins(joins map[string][]interface{}) {
+	s.joinConditions = joins
+}
 func (s *TaskService) GetTasks(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -54,12 +65,58 @@ func (s *TaskService) GetTasks(request http.Request, search string) (paginate.Pa
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
+
+	if request.URL.Query().Get("column_id") != "" {
+		stmt = stmt.Where("column_id = ?", request.URL.Query().Get("column_id"))
+	}
+
+	if request.URL.Query().Get("project_id") != "" {
+		stmt = stmt.Where("project_id = ?", request.URL.Query().Get("project_id"))
+	}
+	if request.URL.Query().Get("created_by_id") != "" {
+		stmt = stmt.Where("created_by_id = ?", request.URL.Query().Get("created_by_id"))
+	}
+	if request.URL.Query().Get("assignee_id") != "" {
+		stmt = stmt.Where("assignee_id = ?", request.URL.Query().Get("assignee_id"))
+	}
+	if request.URL.Query().Get("parent_id") != "" {
+		stmt = stmt.Where("parent_id = ?", request.URL.Query().Get("parent_id"))
+	}
+
+	if startDate, endDate, err := s.GetDateRangeFromRequest(request); err == nil {
+		stmt = stmt.Where("date BETWEEN ? AND ?", startDate, endDate)
+	}
+
+	for k, v := range s.queryConditions {
+		stmt = stmt.Where(k, v...)
+	}
+	for k, v := range s.joinConditions {
+		stmt = stmt.Joins(k, v...)
+	}
+
 	request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.TaskModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.TaskModel{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (s *TaskService) GetDateRangeFromRequest(request http.Request) (time.Time, time.Time, error) {
+	startDateStr := request.URL.Query().Get("start_date")
+	endDateStr := request.URL.Query().Get("end_date")
+	if startDateStr == "" || endDateStr == "" {
+		return time.Time{}, time.Time{}, errors.New("start-date and end-date are required")
+	}
+	startDate, err := time.Parse("2006-01-02", startDateStr)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	endDate, err := time.Parse("2006-01-02", endDateStr)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return startDate, endDate, nil
 }
 
 func (s *TaskService) MoveTask(columnID string, taskID string, sourceColumnID string) error {

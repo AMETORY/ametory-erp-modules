@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -8,9 +10,9 @@ import (
 
 type ProjectModel struct {
 	shared.BaseModel
-	Name        string        `json:"name,omitempty"`
+	Name        string        `gorm:"type:varchar(255)" json:"name,omitempty"`
 	Description string        `json:"description,omitempty"`
-	Deadline    string        `json:"deadline,omitempty"`
+	Deadline    *time.Time    `json:"deadline,omitempty"`
 	Status      string        `json:"status,omitempty"` // e.g., "ongoing", "completed"
 	Columns     []ColumnModel `json:"columns,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
 	Tasks       []TaskModel   `json:"tasks,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
@@ -39,7 +41,7 @@ func (c *ColumnModel) BeforeCreate(tx *gorm.DB) (err error) {
 type ColumnModel struct {
 	shared.BaseModel
 	ProjectID string      `gorm:"type:char(36)" json:"project_id,omitempty"`
-	Name      string      `json:"name,omitempty"`
+	Name      string      `gorm:"type:varchar(255)" json:"name,omitempty"`
 	Order     int         `json:"order,omitempty"` // Urutan kolom
 	Color     *string     `json:"color,omitempty"`
 	Tasks     []TaskModel `json:"tasks,omitempty" gorm:"foreignKey:ColumnID"`
