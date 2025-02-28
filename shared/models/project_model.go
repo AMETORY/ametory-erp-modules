@@ -16,6 +16,7 @@ type ProjectModel struct {
 	Status      string        `json:"status,omitempty"` // e.g., "ongoing", "completed"
 	Columns     []ColumnModel `json:"columns,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
 	Tasks       []TaskModel   `json:"tasks,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
+	Members     []MemberModel `json:"members,omitempty" gorm:"many2many:project_members;"`
 }
 
 func (ProjectModel) TableName() string {
