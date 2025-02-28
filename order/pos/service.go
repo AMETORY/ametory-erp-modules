@@ -147,7 +147,7 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 	if paymentType == "CASH" {
 		paid = cart.Total
 		cart.ServiceFee = 0
-		status = "COMPLETE"
+		status = "COMPLETED"
 	}
 
 	pos := models.POSModel{

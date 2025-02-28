@@ -74,7 +74,7 @@ func (w *WithdrawalService) SettlementWithdrawalByID(withdrawalID string, approv
 
 	for _, v := range withdrawal.Items {
 		if v.Pos != nil {
-			v.Pos.Status = "COMPLETE"
+			v.Pos.Status = "COMPLETED"
 			w.db.Save(&v.Pos)
 		}
 	}
@@ -109,6 +109,60 @@ func (w *WithdrawalService) GetWithdrawals(request http.Request, search string, 
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.WithdrawalModel{})
 	page.Page = page.Page + 1
+	return page, nil
+}
+func (w *WithdrawalService) GetOrderWithdrawable(request http.Request, search string, merchantID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := w.db.Preload("Merchant").Preload("Items", func(tx *gorm.DB) *gorm.DB {
+		return tx.Preload("Product").Preload("Variant")
+	}).Preload("Payment").
+		Joins("JOIN payments ON payments.id = pos_sales.payment_id").
+		Joins("LEFT JOIN withdrawal_items ON withdrawal_items.pos_id = pos_sales.id").
+		Where("withdrawal_items.pos_id IS NULL").
+		Where("merchant_id = ?", merchantID).
+		Where("payments.status = ?", "COMPLETE").
+		Where("pos_sales.user_payment_status = ?", "PAID").
+		Where("payments.payment_method <> ?", "CASH")
+	if search != "" {
+		stmt = stmt.Where("pos_sales.code ILIKE ? OR pos_sales.description ILIKE ? OR pos_sales.sales_number ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+
+	stmt = stmt.Where("merchant_id = ?", merchantID)
+
+	stmt = stmt.Order("created_at asc")
+
+	stmt = stmt.Model(&models.POSModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.POSModel{})
+	page.Page = page.Page + 1
+	// items := page.Items.(*[]models.POSModel)
+	// newItems := make([]models.POSModel, 0)
+	// for _, item := range *items {
+	// 	for _, v := range item.Items {
+	// 		images, _ := s.inventoryService.ProductService.ListImagesOfProduct(*v.ProductID)
+	// 		v.Product.ProductImages = images
+	// 	}
+
+	// 	item.ShippingStatus = "PENDING"
+
+	// 	var shipping models.ShippingModel
+	// 	err := s.db.First(&shipping, "order_id = ?", item.ID).Error
+	// 	if err == nil {
+	// 		item.Shipping = &shipping
+	// 		item.ShippingStatus = shipping.Status
+
+	// 	}
+	// 	newItems = append(newItems, item)
+	// }
+	// page.Items = &newItems
+
 	return page, nil
 }
 

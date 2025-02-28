@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 )
 
@@ -160,4 +161,19 @@ func URLify(str string) string {
 			return r
 		}
 	}, str)
+}
+
+func GenerateJWT(userID string, expiredAt int64, secretKey string) (string, error) {
+	claims := jwt.StandardClaims{
+		Id:        userID,
+		ExpiresAt: expiredAt,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signedToken, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+	// fmt.Println("token: ", config.App.Server.SecretKey)
+	return signedToken, nil
 }

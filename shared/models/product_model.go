@@ -70,10 +70,10 @@ func (p *ProductModel) GetPriceAndDiscount(tx *gorm.DB) (err error) {
 	p.OriginalPrice = pp.Price
 
 	var pm []ProductMerchant
-	tx.Select("price").Where("product_model_id = ?", p.ID).Find(&pm)
+	tx.Select("price").Where("product_model_id = ? and price > 0", p.ID).Find(&pm)
 	p.PriceList = []float64{pp.Price}
 	for _, v := range pm {
-		if v.Price != p.Price {
+		if v.Price != p.Price && v.Price > 0 {
 			p.PriceList = append(p.PriceList, v.Price)
 		}
 	}

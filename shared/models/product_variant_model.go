@@ -91,10 +91,10 @@ func (p *VariantModel) GetPriceAndDiscount(tx *gorm.DB) (err error) {
 	p.OriginalPrice = pp.Price
 
 	var pm []VarianMerchant
-	tx.Select("price").Where("variant_id = ?", p.ID).Find(&pm)
+	tx.Select("price").Where("variant_id = ? and price > 0", p.ID).Find(&pm)
 	p.PriceList = []float64{pp.Price}
 	for _, v := range pm {
-		if v.Price != p.Price {
+		if v.Price != p.Price && v.Price > 0 {
 			p.PriceList = append(p.PriceList, v.Price)
 		}
 	}
