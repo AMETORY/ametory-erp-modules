@@ -17,6 +17,8 @@ type ProjectModel struct {
 	Columns     []ColumnModel `json:"columns,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
 	Tasks       []TaskModel   `json:"tasks,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
 	Members     []MemberModel `json:"members,omitempty" gorm:"many2many:project_members;"`
+	CreatedByID *string       `gorm:"type:char(36);index" json:"created_by_id,omitempty"`
+	CreatedBy   *UserModel    `json:"created_by,omitempty"`
 }
 
 func (ProjectModel) TableName() string {

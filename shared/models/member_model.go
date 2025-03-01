@@ -17,8 +17,6 @@ type MemberModel struct {
 	User      UserModel
 	RoleID    *string `gorm:"type:char(36)" json:"role_id"`
 	Role      *RoleModel
-	TeamID    *string `gorm:"type:char(36)" json:"team_id"`
-	Team      *TeamModel
 }
 
 func (MemberModel) TableName() string {

@@ -85,8 +85,24 @@ func (s *MemberService) AcceptMemberInvitation(token string, userID string) erro
 	data := models.MemberModel{
 		UserID:    userID,
 		CompanyID: invitation.CompanyID,
-		TeamID:    invitation.TeamID,
 		RoleID:    invitation.RoleID,
 	}
-	return s.db.Create(&data).Error
+	err := s.db.Create(&data).Error
+	if err != nil {
+		return err
+	}
+
+	if invitation.TeamID != nil {
+		var team models.TeamModel
+		if err := s.db.Where("id = ?", *invitation.TeamID).First(&team).Error; err == nil {
+			team.Members = append(team.Members, data)
+			s.db.Save(&team)
+		}
+
+	}
+	err = s.db.Delete(&invitation).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }

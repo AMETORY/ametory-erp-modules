@@ -10,7 +10,7 @@ import (
 type TeamModel struct {
 	shared.BaseModel
 	Name    string        `json:"name"`
-	Members []MemberModel `json:"members" gorm:"foreignKey:TeamID"`
+	Members []MemberModel `gorm:"many2many:team_members;"`
 }
 
 func (TeamModel) TableName() string {
