@@ -2,7 +2,9 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
@@ -90,6 +92,7 @@ func (s *RBACService) CheckPermission(userID string, permissionNames []string) (
 			if role.IsSuperAdmin {
 				return true, nil
 			}
+
 			for _, permission := range role.Permissions {
 				if permission.Name == roleName {
 					return true, nil
@@ -98,7 +101,7 @@ func (s *RBACService) CheckPermission(userID string, permissionNames []string) (
 		}
 	}
 
-	return false, nil
+	return false, fmt.Errorf("permissions %s not found", strings.Join(permissionNames, ", "))
 }
 func (s *RBACService) CheckPermissionWithCompanyID(userID, companyID string, permissionNames []string) (bool, error) {
 	var user models.UserModel

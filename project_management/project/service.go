@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
-	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -33,13 +32,22 @@ func (s *ProjectService) DeleteProject(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.ProjectModel{}).Error
 }
 
-func (s *ProjectService) GetProjectByID(id string) (*models.ProjectModel, error) {
+func (s *ProjectService) GetProjectByID(id string, memberID *string) (*models.ProjectModel, error) {
 	var invoice models.ProjectModel
-	err := s.db.Preload("Columns").Preload("Members.User").Where("id = ?", id).First(&invoice).Error
+	db := s.db.Preload("Columns", func(db *gorm.DB) *gorm.DB {
+		return db.Order(`"order" asc`)
+	}).Preload("Members.User")
+	if memberID != nil {
+		db = db.
+			Joins("JOIN project_members ON project_members.project_model_id = projects.id").
+			// Joins("JOIN members ON members.id = project_members.member_model_id").
+			Where("project_members.member_model_id = ?", *memberID)
+	}
+	err := db.Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
 
-func (s *ProjectService) GetProjects(request http.Request, search string) (paginate.Page, error) {
+func (s *ProjectService) GetProjects(request http.Request, search string, memberID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Members.User")
 	if search != "" {
@@ -51,6 +59,13 @@ func (s *ProjectService) GetProjects(request http.Request, search string) (pagin
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
+	if memberID != nil {
+		stmt = stmt.
+			Joins("JOIN project_members ON project_members.project_model_id = projects.id").
+			// Joins("JOIN members ON members.id = project_members.member_model_id").
+			Where("project_members.member_model_id = ?", *memberID)
+	}
+
 	request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.ProjectModel{})
 	utils.FixRequest(&request)
@@ -95,7 +110,10 @@ func (s *ProjectService) GetColumns(request http.Request, search string) (pagina
 }
 
 func (s *ProjectService) AddMemberToProject(projectID string, memberID string) error {
-	return s.db.Model(&models.ProjectModel{}).Where("id = ?", projectID).Association("Members").Append(&models.MemberModel{BaseModel: shared.BaseModel{ID: memberID}})
+	return s.db.Table("project_members").Create(map[string]interface{}{
+		"project_model_id": projectID,
+		"member_model_id":  memberID,
+	}).Error
 }
 
 func (s *ProjectService) GetMembersByProjectID(projectID string) ([]models.MemberModel, error) {

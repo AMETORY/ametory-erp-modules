@@ -43,7 +43,7 @@ func (s *TaskService) DeleteTask(id string) error {
 
 func (s *TaskService) GetTaskByID(id string) (*models.TaskModel, error) {
 	var invoice models.TaskModel
-	err := s.db.Preload("Comments.Member.User").Where("id = ?", id).First(&invoice).Error
+	err := s.db.Preload("Assignee.User").Preload("Comments.Member.User").Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
 
@@ -55,7 +55,7 @@ func (s *TaskService) SetJoins(joins map[string][]interface{}) {
 }
 func (s *TaskService) GetTasks(request http.Request, search string, projectId *string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Assignee.User")
 	if search != "" {
 		stmt = stmt.Where("tasks.name ILIKE ? OR tasks.description ILIKE ?",
 			"%"+search+"%",
