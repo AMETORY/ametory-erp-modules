@@ -16,9 +16,9 @@ type ProjectModel struct {
 	Status      string        `json:"status,omitempty"` // e.g., "ongoing", "completed"
 	Columns     []ColumnModel `json:"columns,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
 	Tasks       []TaskModel   `json:"tasks,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
-	Members     []MemberModel `json:"members,omitempty" gorm:"many2many:project_members;"`
+	Members     []MemberModel `json:"members,omitempty" gorm:"many2many:project_members;constraint:OnDelete:CASCADE"`
 	CreatedByID *string       `gorm:"type:char(36);index" json:"created_by_id,omitempty"`
-	CreatedBy   *UserModel    `json:"created_by,omitempty"`
+	CreatedBy   *UserModel    `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;constraint:OnDelete:CASCADE"`
 	CompanyID   *string       `gorm:"type:char(36);index" json:"company_id,omitempty"`
 	Company     *CompanyModel `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
 }

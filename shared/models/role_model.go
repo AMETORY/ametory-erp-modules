@@ -9,7 +9,7 @@ import (
 type RoleModel struct {
 	shared.BaseModel
 	Name         string            `gorm:"not null" json:"name"`
-	Permissions  []PermissionModel `gorm:"many2many:role_permissions;" json:"permissions"`
+	Permissions  []PermissionModel `gorm:"many2many:role_permissions;constraint:OnDelete:CASCADE;" json:"permissions"`
 	CompanyID    *string           `json:"company_id"`
 	IsAdmin      bool              `json:"is_admin"`
 	IsMerchant   bool              `json:"is_merchant"`

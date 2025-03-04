@@ -42,13 +42,11 @@ func (s *MemberService) GetMemberByID(id string) (*models.MemberModel, error) {
 
 func (s *MemberService) GetMembers(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("User")
 	if search != "" {
 		stmt = stmt.
-			Joins("LEFT JOIN users ON users.id = members.user_id").
-			Joins("LEFT JOIN teams ON teams.id = members.team_id")
-		stmt = stmt.Where("users.full_name ILIKE ? OR users.email ILIKE ? OR users.phone_number ILIKE ? OR teams.name ILIKE ?",
-			"%"+search+"%",
+			Joins("LEFT JOIN users ON users.id = members.user_id")
+		stmt = stmt.Where("users.full_name ILIKE ? OR users.email ILIKE ? OR users.phone_number ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
