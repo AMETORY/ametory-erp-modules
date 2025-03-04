@@ -4,6 +4,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/project_management/member"
 	"github.com/AMETORY/ametory-erp-modules/project_management/project"
+	"github.com/AMETORY/ametory-erp-modules/project_management/task"
 	"github.com/AMETORY/ametory-erp-modules/project_management/team"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 )
@@ -13,6 +14,7 @@ type ProjectManagementService struct {
 	ProjectService *project.ProjectService
 	TeamService    *team.TeamService
 	MemberService  *member.MemberService
+	TaskService    *task.TaskService
 }
 
 func NewProjectManagementService(ctx *context.ERPContext) *ProjectManagementService {
@@ -21,6 +23,7 @@ func NewProjectManagementService(ctx *context.ERPContext) *ProjectManagementServ
 		ProjectService: project.NewProjectService(ctx),
 		TeamService:    team.NewTeamService(ctx),
 		MemberService:  member.NewMemberService(ctx),
+		TaskService:    task.NewTaskService(ctx),
 	}
 	if !ctx.SkipMigration {
 		service.Migrate()

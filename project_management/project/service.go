@@ -33,13 +33,13 @@ func (s *ProjectService) DeleteProject(id string) error {
 
 func (s *ProjectService) GetProjectByID(id string) (*models.ProjectModel, error) {
 	var invoice models.ProjectModel
-	err := s.db.Where("id = ?", id).First(&invoice).Error
+	err := s.db.Preload("Columns").Preload("Members.User").Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
 
 func (s *ProjectService) GetProjects(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Members.User")
 	if search != "" {
 		stmt = stmt.Where("projects.description ILIKE ? OR projects.name ILIKE ?",
 			"%"+search+"%",

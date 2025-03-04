@@ -19,6 +19,8 @@ type ProjectModel struct {
 	Members     []MemberModel `json:"members,omitempty" gorm:"many2many:project_members;"`
 	CreatedByID *string       `gorm:"type:char(36);index" json:"created_by_id,omitempty"`
 	CreatedBy   *UserModel    `json:"created_by,omitempty"`
+	CompanyID   *string       `gorm:"type:char(36);index" json:"company_id,omitempty"`
+	Company     *CompanyModel `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
 }
 
 func (ProjectModel) TableName() string {
@@ -45,6 +47,7 @@ type ColumnModel struct {
 	shared.BaseModel
 	ProjectID string      `gorm:"type:char(36)" json:"project_id,omitempty"`
 	Name      string      `gorm:"type:varchar(255)" json:"name,omitempty"`
+	Icon      *string     `json:"icon,omitempty"`
 	Order     int         `json:"order,omitempty"` // Urutan kolom
 	Color     *string     `json:"color,omitempty"`
 	Tasks     []TaskModel `json:"tasks,omitempty" gorm:"foreignKey:ColumnID"`

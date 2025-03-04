@@ -11,12 +11,12 @@ import (
 
 type MemberModel struct {
 	shared.BaseModel
-	CompanyID *string `gorm:"type:char(36)" json:"company_id"`
-	Company   *CompanyModel
-	UserID    string `gorm:"type:char(36)" json:"user_id"`
-	User      UserModel
-	RoleID    *string `gorm:"type:char(36)" json:"role_id"`
-	Role      *RoleModel
+	CompanyID *string       `gorm:"type:char(36)" json:"company_id,omitempty"`
+	Company   *CompanyModel `json:"company,omitempty"`
+	UserID    string        `gorm:"type:char(36)" json:"user_id,omitempty"`
+	User      UserModel     `json:"user,omitempty"`
+	RoleID    *string       `gorm:"type:char(36)" json:"role_id,omitempty"`
+	Role      *RoleModel    `json:"role,omitempty"`
 }
 
 func (MemberModel) TableName() string {

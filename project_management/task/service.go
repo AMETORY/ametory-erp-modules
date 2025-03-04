@@ -1,4 +1,4 @@
-package team
+package task
 
 import (
 	"errors"
@@ -43,7 +43,7 @@ func (s *TaskService) DeleteTask(id string) error {
 
 func (s *TaskService) GetTaskByID(id string) (*models.TaskModel, error) {
 	var invoice models.TaskModel
-	err := s.db.Where("id = ?", id).First(&invoice).Error
+	err := s.db.Preload("Comments.Member.User").Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
 
@@ -53,7 +53,7 @@ func (s *TaskService) SetQuery(query map[string][]interface{}) {
 func (s *TaskService) SetJoins(joins map[string][]interface{}) {
 	s.joinConditions = joins
 }
-func (s *TaskService) GetTasks(request http.Request, search string) (paginate.Page, error) {
+func (s *TaskService) GetTasks(request http.Request, search string, projectId *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
@@ -62,14 +62,20 @@ func (s *TaskService) GetTasks(request http.Request, search string) (paginate.Pa
 			"%"+search+"%",
 		)
 	}
-	if request.Header.Get("ID-Company") != "" {
-		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
-	}
+	// if request.Header.Get("ID-Company") != "" {
+	// 	stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	// }
 
 	if request.URL.Query().Get("column_id") != "" {
 		stmt = stmt.Where("column_id = ?", request.URL.Query().Get("column_id"))
 	}
 
+	if request.URL.Query().Get("column_id") != "" {
+		stmt = stmt.Where("column_id = ?", request.URL.Query().Get("column_id"))
+	}
+	if projectId != nil {
+		stmt = stmt.Where("project_id = ?", *projectId)
+	}
 	if request.URL.Query().Get("project_id") != "" {
 		stmt = stmt.Where("project_id = ?", request.URL.Query().Get("project_id"))
 	}
@@ -94,6 +100,7 @@ func (s *TaskService) GetTasks(request http.Request, search string) (paginate.Pa
 		stmt = stmt.Joins(k, v...)
 	}
 
+	stmt = stmt.Order("order_number")
 	request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.TaskModel{})
 	utils.FixRequest(&request)
@@ -119,47 +126,56 @@ func (s *TaskService) GetDateRangeFromRequest(request http.Request) (time.Time, 
 	return startDate, endDate, nil
 }
 
-func (s *TaskService) MoveTask(columnID string, taskID string, sourceColumnID string) error {
-	tx := s.db.Begin()
-	defer tx.Rollback()
+func (s *TaskService) CountTasksInColumn(columnID string) (int64, error) {
+	stmt := s.db.Model(&models.TaskModel{}).Where("column_id = ?", columnID)
+	var count int64
+	if err := stmt.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (s *TaskService) MoveTask(columnID string, taskID string, sourceColumnID string, orderNumber int) error {
+
 	var task models.TaskModel
-	if err := tx.Where("id = ?", taskID).First(&task).Error; err != nil {
+	if err := s.db.Where("id = ?", taskID).First(&task).Error; err != nil {
 		return err
 	}
 	var sourceColumn models.ColumnModel
-	if err := tx.Where("id = ?", sourceColumnID).First(&sourceColumn).Error; err != nil {
+	if err := s.db.Where("id = ?", sourceColumnID).First(&sourceColumn).Error; err != nil {
 		return err
 	}
 	var targetColumn models.ColumnModel
-	if err := tx.Where("id = ?", columnID).First(&targetColumn).Error; err != nil {
+	if err := s.db.Where("id = ?", columnID).First(&targetColumn).Error; err != nil {
 		return err
 	}
 	task.ColumnID = &columnID
-	task.Order = 0
-	if err := tx.Save(&task).Error; err != nil {
+	task.OrderNumber = orderNumber
+	if err := s.db.Save(&task).Error; err != nil {
 		return err
 	}
 	sourceTasks := make([]models.TaskModel, 0)
-	if err := tx.Where("column_id = ? AND order > ?", sourceColumnID, task.Order).Find(&sourceTasks).Error; err != nil {
+	if err := s.db.Where("column_id = ? AND order_number > ?", sourceColumnID, task.OrderNumber).Find(&sourceTasks).Error; err != nil {
 		return err
 	}
 	for _, t := range sourceTasks {
-		t.Order = t.Order - 1
-		if err := tx.Save(&t).Error; err != nil {
+		t.OrderNumber = t.OrderNumber - 1
+		if err := s.db.Save(&t).Error; err != nil {
 			return err
 		}
 	}
 	targetTasks := make([]models.TaskModel, 0)
-	if err := tx.Where("column_id = ? AND order >= ?", columnID, task.Order).Find(&targetTasks).Error; err != nil {
+	if err := s.db.Where("column_id = ? AND order_number >= ?", columnID, task.OrderNumber).Find(&targetTasks).Error; err != nil {
 		return err
 	}
 	for _, t := range targetTasks {
-		t.Order = t.Order + 1
-		if err := tx.Save(&t).Error; err != nil {
+		t.OrderNumber = t.OrderNumber + 1
+		if err := s.db.Save(&t).Error; err != nil {
 			return err
 		}
 	}
-	return tx.Commit().Error
+	return nil
+
 }
 
 func (s *TaskService) MarkCompleted(id string) error {
@@ -184,16 +200,16 @@ func (s *TaskService) ReorderTask(taskID string, order int) error {
 		return err
 	}
 	var tasks []models.TaskModel
-	if err := tx.Where("column_id = ? AND order >= ?", task.ColumnID, order).Find(&tasks).Error; err != nil {
+	if err := tx.Where("column_id = ? AND order_number >= ?", task.ColumnID, order).Find(&tasks).Error; err != nil {
 		return err
 	}
 	for _, t := range tasks {
-		t.Order = t.Order + 1
+		t.OrderNumber = t.OrderNumber + 1
 		if err := tx.Save(&t).Error; err != nil {
 			return err
 		}
 	}
-	task.Order = order
+	task.OrderNumber = order
 	if err := tx.Save(&task).Error; err != nil {
 		return err
 	}
