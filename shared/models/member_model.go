@@ -11,9 +11,9 @@ import (
 
 type MemberModel struct {
 	shared.BaseModel
-	CompanyID *string       `gorm:"type:char(36)" json:"company_id,omitempty"`
+	CompanyID *string       `gorm:"uniqueIndex:idx_member;type:char(36)" json:"company_id,omitempty"`
 	Company   *CompanyModel `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
-	UserID    string        `gorm:"type:char(36)" json:"user_id,omitempty"`
+	UserID    string        `gorm:"uniqueIndex:idx_member;type:char(36)" json:"user_id,omitempty"`
 	User      UserModel     `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
 	RoleID    *string       `gorm:"type:char(36)" json:"role_id,omitempty"`
 	Role      *RoleModel    `json:"role,omitempty" gorm:"foreignKey:RoleID;constraint:OnDelete:CASCADE;"`
@@ -36,7 +36,10 @@ type MemberInvitationModel struct {
 	User      UserModel
 	TeamID    *string `gorm:"type:char(36)" json:"team_id"`
 	Team      *TeamModel
-	RoleID    *string `gorm:"type:char(36)" json:"role_id"`
+	FullName  string        `gorm:"type:varchar(255)" json:"full_name"`
+	ProjectID *string       `gorm:"type:char(36)" json:"project_id"`
+	Project   *ProjectModel `json:"project,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE;"`
+	RoleID    *string       `gorm:"type:char(36)" json:"role_id"`
 	Role      *RoleModel
 	InviterID string     `gorm:"type:char(36)" json:"inviter_id"`
 	Inviter   *UserModel `gorm:"foreignKey:InviterID"`

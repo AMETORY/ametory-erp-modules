@@ -4,10 +4,12 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ProjectService struct {
@@ -20,7 +22,7 @@ func NewProjectService(ctx *context.ERPContext) *ProjectService {
 }
 
 func (s *ProjectService) CreateProject(data *models.ProjectModel) error {
-	return s.db.Create(data).Error
+	return s.db.Omit(clause.Associations).Create(data).Error
 }
 
 func (s *ProjectService) UpdateProject(id string, data *models.ProjectModel) error {
@@ -90,4 +92,14 @@ func (s *ProjectService) GetColumns(request http.Request, search string) (pagina
 	page := pg.With(stmt).Request(request).Response(&[]models.ColumnModel{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (s *ProjectService) AddMemberToProject(projectID string, memberID string) error {
+	return s.db.Model(&models.ProjectModel{}).Where("id = ?", projectID).Association("Members").Append(&models.MemberModel{BaseModel: shared.BaseModel{ID: memberID}})
+}
+
+func (s *ProjectService) GetMembersByProjectID(projectID string) ([]models.MemberModel, error) {
+	var project models.ProjectModel
+	err := s.db.Model(&models.ProjectModel{}).Where("id = ?", projectID).Preload("Members.User").Find(&project).Error
+	return project.Members, err
 }

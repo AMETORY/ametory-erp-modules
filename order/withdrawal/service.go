@@ -121,6 +121,7 @@ func (w *WithdrawalService) GetOrderWithdrawable(request http.Request, search st
 		Where("withdrawal_items.pos_id IS NULL").
 		Where("merchant_id = ?", merchantID).
 		Where("payments.status = ?", "COMPLETE").
+		Where("pos_sales.status = ?", "COMPLETED").
 		Where("pos_sales.user_payment_status = ?", "PAID").
 		Where("payments.payment_method <> ?", "CASH")
 	if search != "" {
@@ -136,7 +137,15 @@ func (w *WithdrawalService) GetOrderWithdrawable(request http.Request, search st
 
 	stmt = stmt.Where("merchant_id = ?", merchantID)
 
-	stmt = stmt.Order("created_at asc")
+	orderBy := request.URL.Query().Get("order_by")
+	order := request.URL.Query().Get("order")
+	if orderBy == "" {
+		orderBy = "created_at"
+	}
+	if order == "" {
+		order = "desc"
+	}
+	stmt = stmt.Order(orderBy + " " + order)
 
 	stmt = stmt.Model(&models.POSModel{})
 	utils.FixRequest(&request)

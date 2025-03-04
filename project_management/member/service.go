@@ -98,9 +98,21 @@ func (s *MemberService) AcceptMemberInvitation(token string, userID string) erro
 		}
 
 	}
+	var role models.RoleModel
+	if err := s.db.Where("id = ?", invitation.RoleID).First(&role).Error; err == nil {
+		var user models.UserModel
+		if err := s.db.Where("id = ?", userID).First(&user).Error; err == nil {
+			user.Roles = append(user.Roles, role)
+			s.db.Save(&user)
+		}
+	}
+
 	err = s.db.Delete(&invitation).Error
 	if err != nil {
 		return err
 	}
+
+	// add role to user
+
 	return nil
 }
