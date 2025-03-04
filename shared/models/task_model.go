@@ -14,15 +14,15 @@ type TaskModel struct {
 	Name          string             `gorm:"type:varchar(255);not null" json:"name,omitempty"`
 	Description   string             `gorm:"type:text" json:"description,omitempty"`
 	ProjectID     string             `gorm:"type:char(36);not null" json:"project_id,omitempty"`
-	Project       ProjectModel       `json:"project,omitempty"`
+	Project       ProjectModel       `json:"project,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE;"`
 	ColumnID      *string            `gorm:"type:char(36);not null" json:"column_id,omitempty"`
-	Column        *ColumnModel       `json:"column,omitempty"`
+	Column        *ColumnModel       `json:"column,omitempty" gorm:"foreignKey:ColumnID;constraint:OnDelete:CASCADE;"`
 	CreatedByID   *string            `gorm:"type:char(36);index" json:"created_by_id,omitempty"`
-	CreatedBy     *MemberModel       `json:"created_by,omitempty"`
+	CreatedBy     *MemberModel       `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;constraint:OnDelete:CASCADE;"`
 	AssigneeID    *string            `gorm:"type:char(36);index" json:"assignee_id,omitempty"`
-	Assignee      *MemberModel       `json:"assignee,omitempty"`
+	Assignee      *MemberModel       `json:"assignee,omitempty" gorm:"foreignKey:AssigneeID;constraint:OnDelete:CASCADE;"`
 	ParentID      *string            `gorm:"type:char(36);index" json:"parent_id,omitempty"`
-	Parent        *TaskModel         `json:"parent,omitempty"`
+	Parent        *TaskModel         `json:"parent,omitempty" gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;"`
 	Children      []TaskModel        `gorm:"foreignKey:ParentID" json:"children,omitempty"`
 	OrderNumber   int                `json:"order_number,omitempty"`
 	Status        string             `gorm:"type:varchar(50);not null" json:"status,omitempty"`
