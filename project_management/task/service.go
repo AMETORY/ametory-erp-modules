@@ -43,7 +43,9 @@ func (s *TaskService) DeleteTask(id string) error {
 
 func (s *TaskService) GetTaskByID(id string) (*models.TaskModel, error) {
 	var invoice models.TaskModel
-	err := s.db.Preload("Assignee.User").Preload("Watchers.User").Preload("Comments.Member.User").Where("id = ?", id).First(&invoice).Error
+	err := s.db.Preload("Assignee.User").Preload("Watchers.User").Preload("Comments", func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Member.User").Order("published_at").Where("status = ?", "PUBLISHED")
+	}).Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
 
@@ -264,11 +266,9 @@ func isContains(arr []models.MemberModel, str string) bool {
 
 func (s *TaskService) CreateComment(taskID string, comment *models.TaskCommentModel, autoPublish bool) error {
 	now := time.Now()
-	tx := s.db.Begin()
-	defer tx.Rollback()
 
 	var task models.TaskModel
-	if err := tx.Where("id = ?", taskID).First(&task).Error; err != nil {
+	if err := s.db.Where("id = ?", taskID).First(&task).Error; err != nil {
 		return err
 	}
 
@@ -277,11 +277,8 @@ func (s *TaskService) CreateComment(taskID string, comment *models.TaskCommentMo
 		comment.Status = "PUBLISHED"
 		comment.PublishedAt = &now
 	}
-	if err := tx.Create(comment).Error; err != nil {
-		return err
-	}
 
-	return tx.Commit().Error
+	return s.db.Create(comment).Error
 }
 
 func (s *TaskService) UpdateStatusComment(commentID string, status string) error {

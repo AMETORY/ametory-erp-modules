@@ -37,6 +37,7 @@ func (cs *ProjectManagementService) Migrate() error {
 	}
 	return cs.ctx.DB.AutoMigrate(
 		&models.ProjectModel{},
+		&models.ProjectActivityModel{},
 		&models.ColumnModel{},
 		&models.TeamModel{},
 		&models.MemberModel{},
