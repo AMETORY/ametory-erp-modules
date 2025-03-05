@@ -43,7 +43,9 @@ func (s *TaskService) DeleteTask(id string) error {
 
 func (s *TaskService) GetTaskByID(id string) (*models.TaskModel, error) {
 	var invoice models.TaskModel
-	err := s.db.Preload("Assignee.User").Preload("Watchers.User").Preload("Comments", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("Activities", func(db *gorm.DB) *gorm.DB {
+		return s.db.Preload("Member.User").Preload("Column").Preload("Task")
+	}).Preload("Assignee.User").Preload("Watchers.User").Preload("Comments", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Member.User").Order("published_at").Where("status = ?", "PUBLISHED")
 	}).Where("id = ?", id).First(&invoice).Error
 	return &invoice, err

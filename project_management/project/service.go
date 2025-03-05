@@ -121,3 +121,20 @@ func (s *ProjectService) GetMembersByProjectID(projectID string) ([]models.Membe
 	err := s.db.Model(&models.ProjectModel{}).Where("id = ?", projectID).Preload("Members.User").Find(&project).Error
 	return project.Members, err
 }
+
+func (s *ProjectService) AddActivity(projectID, memberID string, columnID, taskID *string, activityType string, notes *string) (*models.ProjectActivityModel, error) {
+	var activity models.ProjectActivityModel = models.ProjectActivityModel{
+		ProjectID:    projectID,
+		MemberID:     memberID,
+		TaskID:       taskID,
+		ColumnID:     columnID,
+		ActivityType: activityType,
+		Notes:        notes,
+	}
+
+	if err := s.db.Create(&activity).Error; err != nil {
+		return nil, err
+	}
+
+	return &activity, nil
+}

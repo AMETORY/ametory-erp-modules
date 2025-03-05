@@ -20,7 +20,7 @@ type ProjectActivityModel struct {
 	Column       *ColumnModel `gorm:"foreignKey:ColumnID;constraint:OnDelete:CASCADE;" json:"column,omitempty"`
 	TaskID       *string      `gorm:"type:char(36)" json:"task_id,omitempty"`
 	Task         *TaskModel   `gorm:"foreignKey:TaskID;constraint:OnDelete:CASCADE;" json:"task,omitempty"`
-	ActivityDate *time.Time   `gorm:"type:datetime" json:"activity_date,omitempty"`
+	ActivityDate *time.Time   `json:"activity_date,omitempty"`
 }
 
 func (m *ProjectActivityModel) TableName() string {
