@@ -41,8 +41,10 @@ func (TaskModel) TableName() string {
 }
 
 func (t *TaskModel) BeforeCreate(tx *gorm.DB) error {
-	t.ID = uuid.New().String()
 
+	if t.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }
 

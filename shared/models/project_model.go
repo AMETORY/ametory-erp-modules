@@ -29,7 +29,10 @@ func (ProjectModel) TableName() string {
 
 func (p *ProjectModel) BeforeCreate(tx *gorm.DB) (err error) {
 	// Add any custom logic before creating a ProjectModel
-	p.ID = uuid.New().String()
+
+	if p.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }
 
@@ -39,7 +42,10 @@ func (ColumnModel) TableName() string {
 
 func (c *ColumnModel) BeforeCreate(tx *gorm.DB) (err error) {
 	// Add any custom logic before creating a ColumnModel
-	c.ID = uuid.New().String()
+
+	if c.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }
 

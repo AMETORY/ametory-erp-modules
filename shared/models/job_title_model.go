@@ -20,6 +20,9 @@ func (j *JobTitleModel) TableName() string {
 }
 
 func (j *JobTitleModel) BeforeCreate(tx *gorm.DB) (err error) {
-	j.ID = uuid.New().String()
+
+	if j.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }

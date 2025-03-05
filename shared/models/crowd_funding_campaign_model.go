@@ -30,8 +30,11 @@ func (CrowdFundingCampaignModel) TableName() string {
 }
 
 func (c *CrowdFundingCampaignModel) BeforeCreate(tx *gorm.DB) (err error) {
-	c.ID = uuid.NewString() // generate a random ID
+
 	// Add any logic you need to execute before creating a record
+	if c.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }
 
@@ -52,7 +55,10 @@ func (CrowdFundingCampaignCategoryModel) TableName() string {
 }
 
 func (c *CrowdFundingCampaignCategoryModel) BeforeCreate(tx *gorm.DB) (err error) {
-	c.ID = uuid.NewString() // generate a random ID
+
 	// Add any logic you need to execute before creating a record
+	if c.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

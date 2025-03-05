@@ -22,6 +22,9 @@ func (ReimbursementItemModel) TableName() string {
 }
 
 func (r *ReimbursementItemModel) BeforeCreate(tx *gorm.DB) (err error) {
-	r.ID = uuid.New().String()
+
+	if r.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }

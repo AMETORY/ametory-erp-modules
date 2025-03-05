@@ -35,7 +35,10 @@ func (d DoctorModel) TableName() string {
 }
 
 func (d *DoctorModel) BeforeCreate(tx *gorm.DB) error {
-	d.ID = uuid.NewString()
+
+	if d.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }
 
@@ -51,6 +54,9 @@ func (n NurseModel) TableName() string {
 }
 
 func (n *NurseModel) BeforeCreate(tx *gorm.DB) error {
-	n.ID = uuid.NewString()
+
+	if n.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

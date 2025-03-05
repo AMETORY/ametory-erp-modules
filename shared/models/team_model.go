@@ -18,6 +18,9 @@ func (TeamModel) TableName() string {
 }
 
 func (t *TeamModel) BeforeCreate(tx *gorm.DB) (err error) {
-	t.ID = uuid.New().String()
+
+	if t.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

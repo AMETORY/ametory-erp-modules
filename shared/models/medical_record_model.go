@@ -31,6 +31,9 @@ func (m *MedicalRecordModel) TableName() string {
 }
 
 func (m *MedicalRecordModel) BeforeCreate(tx *gorm.DB) (err error) {
-	m.ID = uuid.New().String()
+
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }

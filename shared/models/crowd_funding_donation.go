@@ -25,6 +25,9 @@ func (CrowdFundingDonationModel) TableName() string {
 
 func (model *CrowdFundingDonationModel) BeforeCreate(tx *gorm.DB) (err error) {
 	// Add any logic you want to execute before creating a record
-	model.ID = uuid.NewString()
+
+	if model.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

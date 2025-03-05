@@ -22,6 +22,9 @@ func (pi *PayRollInstallment) TableName() string {
 }
 
 func (pi *PayRollInstallment) BeforeCreate(tx *gorm.DB) (err error) {
-	pi.ID = uuid.New().String()
+
+	if pi.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

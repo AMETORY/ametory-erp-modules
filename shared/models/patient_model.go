@@ -29,6 +29,7 @@ func (PatientModel) TableName() string {
 }
 
 func (p *PatientModel) BeforeCreate(tx *gorm.DB) (err error) {
+
 	if p.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}

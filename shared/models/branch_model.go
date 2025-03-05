@@ -20,6 +20,9 @@ func (b *BranchModel) TableName() string {
 }
 
 func (b *BranchModel) BeforeCreate(tx *gorm.DB) (err error) {
-	b.ID = uuid.New().String()
+
+	if b.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }

@@ -47,6 +47,9 @@ func (EmployeeOvertimeModel) TableName() string {
 }
 
 func (e *EmployeeOvertimeModel) BeforeCreate(tx *gorm.DB) (err error) {
-	e.ID = uuid.NewString()
+
+	if e.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

@@ -23,6 +23,9 @@ func (TaskCommentModel) TableName() string {
 }
 
 func (m *TaskCommentModel) BeforeCreate(tx *gorm.DB) error {
-	m.ID = uuid.New().String()
+
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

@@ -17,6 +17,9 @@ func (bm *BankModel) TableName() string {
 }
 
 func (bm *BankModel) BeforeCreate(tx *gorm.DB) (err error) {
-	bm.ID = uuid.NewString()
+
+	if bm.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }

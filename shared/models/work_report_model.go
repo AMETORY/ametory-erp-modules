@@ -41,7 +41,10 @@ func (wr *WorkReport) BeforeCreate(tx *gorm.DB) error {
 	if wr.SubmittedAt.IsZero() {
 		wr.SubmittedAt = time.Now()
 	}
-	wr.ID = uuid.New().String()
+
+	if wr.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }
 

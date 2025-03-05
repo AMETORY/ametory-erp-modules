@@ -35,7 +35,7 @@ func (s *ProjectService) DeleteProject(id string) error {
 func (s *ProjectService) GetProjectByID(id string, memberID *string) (*models.ProjectModel, error) {
 	var invoice models.ProjectModel
 	db := s.db.Preload("Columns", func(db *gorm.DB) *gorm.DB {
-		return db.Order(`"order" asc`)
+		return db.Order(`"order" asc`).Preload("Tasks")
 	}).Preload("Members.User")
 	if memberID != nil {
 		db = db.
@@ -79,7 +79,7 @@ func (s *ProjectService) CreateColumn(data *models.ColumnModel) error {
 }
 
 func (s *ProjectService) UpdateColumn(id string, data *models.ColumnModel) error {
-	return s.db.Where("id = ?", id).Updates(data).Error
+	return s.db.Where("id = ?", id).Omit(clause.Associations).Updates(data).Error
 }
 
 func (s *ProjectService) DeleteColumn(id string) error {

@@ -27,6 +27,9 @@ func (PayRollCostModel) TableName() string {
 }
 
 func (pc *PayRollCostModel) BeforeCreate(tx *gorm.DB) error {
-	pc.ID = uuid.New().String()
+
+	if pc.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

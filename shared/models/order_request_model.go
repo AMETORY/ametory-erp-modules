@@ -40,7 +40,10 @@ func (OrderRequestModel) TableName() string {
 }
 
 func (orm *OrderRequestModel) BeforeCreate(tx *gorm.DB) (err error) {
-	orm.ID = uuid.New().String()
+
+	if orm.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }
 

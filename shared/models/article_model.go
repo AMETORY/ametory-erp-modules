@@ -34,7 +34,9 @@ func (m *ArticleModel) TableName() string {
 
 func (m *ArticleModel) BeforeCreate(tx *gorm.DB) error {
 	m.Slug = utils.URLify(m.Title)
-	m.ID = uuid.New().String()
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }
 

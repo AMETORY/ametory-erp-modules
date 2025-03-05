@@ -52,6 +52,9 @@ func (e EmployeeActivityModel) TableName() string {
 }
 
 func (e *EmployeeActivityModel) BeforeCreate(tx *gorm.DB) error {
-	e.ID = uuid.New().String()
+
+	if e.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

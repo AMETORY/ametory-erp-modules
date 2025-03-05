@@ -39,6 +39,9 @@ func (PayrollItemModel) TableName() string {
 }
 
 func (pi *PayrollItemModel) BeforeCreate(tx *gorm.DB) error {
-	pi.ID = uuid.New().String()
+
+	if pi.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

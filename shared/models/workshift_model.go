@@ -21,6 +21,9 @@ func (WorkShiftModel) TableName() string {
 	return "workshifts"
 }
 func (w *WorkShiftModel) BeforeCreate(tx *gorm.DB) error {
-	w.ID = uuid.New().String()
+
+	if w.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }

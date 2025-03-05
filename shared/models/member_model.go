@@ -24,7 +24,9 @@ func (MemberModel) TableName() string {
 }
 
 func (m *MemberModel) BeforeCreate(tx *gorm.DB) (err error) {
-	m.ID = uuid.New().String()
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return nil
 }
 
@@ -52,7 +54,10 @@ func (MemberInvitationModel) TableName() string {
 }
 
 func (m *MemberInvitationModel) BeforeCreate(tx *gorm.DB) (err error) {
-	m.ID = uuid.New().String()
+
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	m.Token = utils.RandString(32, false)
 	if m.ExpiredAt == nil {
 		expAt := time.Now().AddDate(0, 0, 7)

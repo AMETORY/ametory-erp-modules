@@ -29,7 +29,10 @@ func (BannerModel) TableName() string {
 }
 
 func (b *BannerModel) BeforeCreate(tx *gorm.DB) (err error) {
-	b.ID = uuid.New().String()
+
+	if b.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }
 

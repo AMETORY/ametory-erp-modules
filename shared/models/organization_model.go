@@ -24,6 +24,9 @@ func (o OrganizationModel) TableName() string {
 }
 
 func (o *OrganizationModel) BeforeCreate(tx *gorm.DB) (err error) {
-	o.ID = uuid.New().String()
+
+	if o.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }

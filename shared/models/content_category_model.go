@@ -20,6 +20,9 @@ func (ContentCategoryModel) TableName() string {
 
 func (m *ContentCategoryModel) BeforeCreate(tx *gorm.DB) (err error) {
 	m.Slug = utils.URLify(m.Name)
-	m.ID = uuid.New().String()
+
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
 	return
 }
