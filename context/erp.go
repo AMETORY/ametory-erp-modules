@@ -31,6 +31,7 @@ type ERPContext struct {
 	IndonesiaRegService         interface{} // Contoh: IndonesiaRegService
 	UserService                 interface{} // Contoh: UserService
 	ContentManagementService    interface{}
+	MessageService              interface{}
 	ProjectManagementService    interface{}
 	AppService                  interface{}
 	CrowdFundingService         interface{}

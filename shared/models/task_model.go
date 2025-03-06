@@ -36,6 +36,7 @@ type TaskModel struct {
 	Comments      []TaskCommentModel     `gorm:"foreignKey:TaskID" json:"comments,omitempty"`
 	Activities    []ProjectActivityModel `gorm:"foreignKey:TaskID" json:"activities,omitempty"`
 	CommentCount  int                    `gorm:"-" json:"comment_count,omitempty"`
+	Percentage    float64                `json:"percentage,omitempty" binding:"max=100"`
 }
 
 func (TaskModel) TableName() string {
@@ -47,6 +48,15 @@ func (t *TaskModel) BeforeCreate(tx *gorm.DB) error {
 	if t.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
+
+	if t.Percentage == 100 || t.Completed {
+		t.Status = "COMPLETED"
+		t.Completed = true
+		t.Percentage = 100
+		now := time.Now()
+		t.CompletedDate = &now
+	}
+
 	return nil
 }
 
