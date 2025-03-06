@@ -137,3 +137,17 @@ func (s *MemberService) AcceptMemberInvitation(token string, userID string) erro
 
 	return nil
 }
+
+func (s *MemberService) DeleteInvitation(id string) error {
+	var invitation models.MemberInvitationModel
+	if err := s.db.Where("id = ?", id).First(&invitation).Error; err != nil {
+		return err
+	}
+
+	err := s.db.Delete(&invitation).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
