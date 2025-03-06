@@ -30,6 +30,22 @@ func (s *InboxService) GetInboxes(userID *string, memberID *string) ([]models.In
 			return nil, err
 		}
 	}
+	if len(inboxes) == 0 {
+		var inbox models.InboxModel
+		if memberID != nil {
+			inbox.MemberID = memberID
+		}
+		if userID != nil {
+			inbox.UserID = userID
+		}
+		inbox.IsDefault = true
+		err := s.db.Create(&inbox).Error
+		if err != nil {
+			return nil, err
+		}
+
+		inboxes = append(inboxes, inbox)
+	}
 	return inboxes, nil
 }
 
