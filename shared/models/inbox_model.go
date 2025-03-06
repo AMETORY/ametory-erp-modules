@@ -34,11 +34,11 @@ type InboxMessageModel struct {
 	InboxID              *string            `gorm:"type:char(36);index" json:"inbox_id"`
 	Inbox                *InboxModel        `gorm:"foreignKey:InboxID;constraint:OnDelete:CASCADE;" json:"inbox,omitempty"`
 	SenderUserID         *string            `gorm:"type:char(36);index" json:"sender_id"`
-	SenderUser           *UserModel         `gorm:"foreignKey:SenderID;constraint:OnDelete:CASCADE;" json:"sender,omitempty"`
+	SenderUser           *UserModel         `gorm:"foreignKey:SenderUserID;constraint:OnDelete:CASCADE;" json:"sender,omitempty"`
 	SenderMemberID       *string            `gorm:"type:char(36);index" json:"sender_member_id"`
 	SenderMember         *MemberModel       `gorm:"foreignKey:SenderMemberID;constraint:OnDelete:CASCADE;" json:"sender_member,omitempty"`
 	RecipientUserID      *string            `gorm:"type:char(36);index" json:"recipient_id"`
-	RecipientUser        *UserModel         `gorm:"foreignKey:RecipientID;constraint:OnDelete:CASCADE;" json:"recipient,omitempty"`
+	RecipientUser        *UserModel         `gorm:"foreignKey:RecipientUserID;constraint:OnDelete:CASCADE;" json:"recipient,omitempty"`
 	RecipientMemberID    *string            `gorm:"type:char(36);index" json:"recipient_member_id"`
 	RecipientMember      *MemberModel       `gorm:"foreignKey:RecipientMemberID;constraint:OnDelete:CASCADE;" json:"recipient_member,omitempty"`
 	CCUsers              []*UserModel       `gorm:"many2many:inbox_message_cc_users;constraint:OnDelete:CASCADE;" json:"cc_users,omitempty"`
@@ -52,7 +52,7 @@ type InboxMessageModel struct {
 }
 
 func (InboxMessageModel) TableName() string {
-	return "inbox_message"
+	return "inbox_messages"
 }
 
 func (m *InboxMessageModel) BeforeCreate(tx *gorm.DB) (err error) {

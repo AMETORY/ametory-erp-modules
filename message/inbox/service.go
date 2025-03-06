@@ -1,8 +1,12 @@
 package inbox
 
 import (
+	"net/http"
+
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -13,6 +17,20 @@ type InboxService struct {
 
 func NewInboxService(db *gorm.DB, ctx *context.ERPContext) *InboxService {
 	return &InboxService{db: db, ctx: ctx}
+}
+
+func (s *InboxService) GetInboxes(userID *string, memberID *string) ([]models.InboxModel, error) {
+	var inboxes []models.InboxModel
+	if userID != nil {
+		if err := s.db.Where("user_id = ?", userID).Find(&inboxes).Error; err != nil {
+			return nil, err
+		}
+	} else if memberID != nil {
+		if err := s.db.Where("member_id = ?", memberID).Find(&inboxes).Error; err != nil {
+			return nil, err
+		}
+	}
+	return inboxes, nil
 }
 
 func (s *InboxService) SendMessage(data *models.InboxMessageModel) error {
@@ -48,4 +66,24 @@ func (s *InboxService) SendMessage(data *models.InboxMessageModel) error {
 		return err
 	}
 	return nil
+}
+
+func (s *InboxService) GetMessageByInboxID(request http.Request, search string, inboxID *string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Where("parent_inbox_message_id IS NULL")
+	if inboxID != nil {
+		stmt = stmt.Where("inbox_id = ?", *inboxID)
+	}
+	if search != "" {
+		stmt = stmt.Where("subject ILIKE ? OR message ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	stmt = stmt.Model(&models.InboxMessageModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.InboxMessageModel{})
+	page.Page = page.Page + 1
+	return page, nil
 }
