@@ -32,21 +32,22 @@ func (m *MemberModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 type MemberInvitationModel struct {
 	shared.BaseModel
-	CompanyID *string `gorm:"type:char(36)" json:"company_id"`
-	Company   *CompanyModel
-	UserID    string `gorm:"type:char(36)" json:"user_id"`
-	User      UserModel
-	TeamID    *string `gorm:"type:char(36)" json:"team_id"`
-	Team      *TeamModel
+	CompanyID *string       `gorm:"type:char(36)" json:"company_id,omitempty"`
+	Company   *CompanyModel `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
+	UserID    string        `gorm:"type:char(36)" json:"user_id,omitempty"`
+	User      UserModel     `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
+	TeamID    *string       `gorm:"type:char(36)" json:"team_id,omitempty"`
+	Team      *TeamModel    `json:"team,omitempty" gorm:"foreignKey:TeamID;constraint:OnDelete:CASCADE;"`
 	FullName  string        `gorm:"type:varchar(255)" json:"full_name"`
-	ProjectID *string       `gorm:"type:char(36)" json:"project_id"`
+	ProjectID *string       `gorm:"type:char(36)" json:"project_id,omitempty"`
 	Project   *ProjectModel `json:"project,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE;"`
-	RoleID    *string       `gorm:"type:char(36)" json:"role_id"`
-	Role      *RoleModel
-	InviterID string     `gorm:"type:char(36)" json:"inviter_id"`
-	Inviter   *UserModel `gorm:"foreignKey:InviterID"`
-	ExpiredAt *time.Time `json:"expired_at"`
-	Token     string     `gorm:"type:varchar(255)" json:"token"`
+	RoleID    *string       `gorm:"type:char(36)" json:"role_id,omitempty"`
+	Role      *RoleModel    `json:"role,omitempty" gorm:"foreignKey:RoleID;constraint:OnDelete:CASCADE;"`
+	InviterID string        `gorm:"type:char(36)" json:"inviter_id,omitempty"`
+	Inviter   *UserModel    `gorm:"foreignKey:InviterID" json:"inviter,omitempty"`
+	ExpiredAt *time.Time    `json:"expired_at,omitempty"`
+	Token     string        `gorm:"type:varchar(255)" json:"token,omitempty"`
+	Email     string        `gorm:"type:varchar(255)" json:"email,omitempty"`
 }
 
 func (MemberInvitationModel) TableName() string {

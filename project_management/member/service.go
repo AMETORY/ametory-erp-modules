@@ -42,7 +42,7 @@ func (s *MemberService) GetMemberByID(id string) (*models.MemberModel, error) {
 
 func (s *MemberService) GetMembers(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("User")
+	stmt := s.db.Preload("User").Preload("Role")
 	if search != "" {
 		stmt = stmt.
 			Joins("LEFT JOIN users ON users.id = members.user_id")
@@ -73,6 +73,27 @@ func (s *MemberService) InviteMember(data *models.MemberInvitationModel) (string
 		return "", err
 	}
 	return data.Token, nil
+}
+
+func (s *MemberService) GetInvitedMembers(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Preload("Inviter").Preload("Role")
+
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if search != "" {
+		stmt = stmt.Where("full_name ILIKE ?",
+			"%"+search+"%",
+		)
+	}
+
+	utils.FixRequest(&request)
+	stmt = stmt.Model(&models.MemberInvitationModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.MemberInvitationModel{})
+	utils.FixRequest(&request)
+	page.Page = page.Page + 1
+	return page, nil
 }
 
 func (s *MemberService) AcceptMemberInvitation(token string, userID string) error {

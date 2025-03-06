@@ -35,6 +35,7 @@ type TaskModel struct {
 	Watchers      []MemberModel          `gorm:"many2many:task_watchers" json:"watchers,omitempty"`
 	Comments      []TaskCommentModel     `gorm:"foreignKey:TaskID" json:"comments,omitempty"`
 	Activities    []ProjectActivityModel `gorm:"foreignKey:TaskID" json:"activities,omitempty"`
+	CommentCount  int                    `gorm:"-" json:"comment_count,omitempty"`
 }
 
 func (TaskModel) TableName() string {
@@ -59,8 +60,14 @@ func (t *TaskModel) AfterFind(tx *gorm.DB) error {
 			}
 		}
 	}
+	var count int64
+	if err := tx.Model(&TaskCommentModel{}).Where("task_id = ?", t.ID).Count(&count).Error; err != nil {
+		return err
+	}
 
+	t.CommentCount = int(count)
 	return nil
+
 }
 
 func (t *TaskModel) GetRecursiveChildren(tx *gorm.DB) ([]TaskModel, error) {

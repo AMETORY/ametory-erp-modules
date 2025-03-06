@@ -113,6 +113,45 @@ func (s *TaskService) GetTasks(request http.Request, search string, projectId *s
 	return page, nil
 }
 
+func (s *TaskService) GetMyTask(request http.Request, search string, memberID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Preload("Watchers.User").Preload("Assignee.User").Preload("Column").Preload("Project").Preload("Parent")
+	if search != "" {
+		stmt = stmt.Where("tasks.name ILIKE ? OR tasks.description ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	stmt = stmt.Where("assignee_id = ?", memberID)
+	stmt = stmt.Order("order_number")
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.TaskModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.TaskModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *TaskService) GetWatchedTask(request http.Request, search string, memberID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Preload("Watchers.User").Preload("Assignee.User").Preload("Column").Preload("Project").Preload("Parent")
+	if search != "" {
+		stmt = stmt.Where("tasks.name ILIKE ? OR tasks.description ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	stmt = stmt.Joins("JOIN task_watchers ON tasks.id = task_watchers.task_model_id").
+		Where("task_watchers.member_model_id = ?", memberID)
+	stmt = stmt.Order("order_number")
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.TaskModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.TaskModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
 func (s *TaskService) GetDateRangeFromRequest(request http.Request) (time.Time, time.Time, error) {
 	startDateStr := request.URL.Query().Get("start_date")
 	endDateStr := request.URL.Query().Get("end_date")
