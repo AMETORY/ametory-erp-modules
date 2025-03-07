@@ -31,24 +31,25 @@ func (m *InboxModel) BeforeCreate(tx *gorm.DB) (err error) {
 // InboxMessageModel adalah model database untuk menampung data inbox message
 type InboxMessageModel struct {
 	shared.BaseModel
-	InboxID              *string            `gorm:"type:char(36);index" json:"inbox_id"`
-	Inbox                *InboxModel        `gorm:"foreignKey:InboxID;constraint:OnDelete:CASCADE;" json:"inbox,omitempty"`
-	SenderUserID         *string            `gorm:"type:char(36);index" json:"sender_id"`
-	SenderUser           *UserModel         `gorm:"foreignKey:SenderUserID;constraint:OnDelete:CASCADE;" json:"sender,omitempty"`
-	SenderMemberID       *string            `gorm:"type:char(36);index" json:"sender_member_id"`
-	SenderMember         *MemberModel       `gorm:"foreignKey:SenderMemberID;constraint:OnDelete:CASCADE;" json:"sender_member,omitempty"`
-	RecipientUserID      *string            `gorm:"type:char(36);index" json:"recipient_id"`
-	RecipientUser        *UserModel         `gorm:"foreignKey:RecipientUserID;constraint:OnDelete:CASCADE;" json:"recipient,omitempty"`
-	RecipientMemberID    *string            `gorm:"type:char(36);index" json:"recipient_member_id"`
-	RecipientMember      *MemberModel       `gorm:"foreignKey:RecipientMemberID;constraint:OnDelete:CASCADE;" json:"recipient_member,omitempty"`
-	CCUsers              []*UserModel       `gorm:"many2many:inbox_message_cc_users;constraint:OnDelete:CASCADE;" json:"cc_users,omitempty"`
-	CCMembers            []*MemberModel     `gorm:"many2many:inbox_message_cc_members;constraint:OnDelete:CASCADE;" json:"cc_members,omitempty"`
-	Subject              string             `gorm:"type:varchar(255)" json:"subject"`
-	Message              string             `gorm:"type:text" json:"message"`
-	Read                 bool               `gorm:"type:boolean;default:false" json:"read"`
-	ParentInboxMessageID *string            `gorm:"type:char(36);index" json:"parent_id"`
-	ParentInboxMessage   *InboxMessageModel `gorm:"foreignKey:ParentInboxMessageID;constraint:OnDelete:CASCADE;" json:"parent,omitempty"`
-	Attachments          []FileModel        `json:"attachments" gorm:"-"`
+	InboxID              *string             `gorm:"type:char(36);index" json:"inbox_id"`
+	Inbox                *InboxModel         `gorm:"foreignKey:InboxID;constraint:OnDelete:CASCADE;" json:"inbox,omitempty"`
+	SenderUserID         *string             `gorm:"type:char(36);index" json:"sender_id"`
+	SenderUser           *UserModel          `gorm:"foreignKey:SenderUserID;constraint:OnDelete:CASCADE;" json:"sender,omitempty"`
+	SenderMemberID       *string             `gorm:"type:char(36);index" json:"sender_member_id"`
+	SenderMember         *MemberModel        `gorm:"foreignKey:SenderMemberID;constraint:OnDelete:CASCADE;" json:"sender_member,omitempty"`
+	RecipientUserID      *string             `gorm:"type:char(36);index" json:"recipient_id"`
+	RecipientUser        *UserModel          `gorm:"foreignKey:RecipientUserID;constraint:OnDelete:CASCADE;" json:"recipient,omitempty"`
+	RecipientMemberID    *string             `gorm:"type:char(36);index" json:"recipient_member_id"`
+	RecipientMember      *MemberModel        `gorm:"foreignKey:RecipientMemberID;constraint:OnDelete:CASCADE;" json:"recipient_member,omitempty"`
+	CCUsers              []*UserModel        `gorm:"many2many:inbox_message_cc_users;constraint:OnDelete:CASCADE;" json:"cc_users,omitempty"`
+	CCMembers            []*MemberModel      `gorm:"many2many:inbox_message_cc_members;constraint:OnDelete:CASCADE;" json:"cc_members,omitempty"`
+	Subject              string              `gorm:"type:varchar(255)" json:"subject"`
+	Message              string              `gorm:"type:text" json:"message"`
+	Read                 bool                `gorm:"type:boolean;default:false" json:"read"`
+	ParentInboxMessageID *string             `gorm:"type:char(36);index" json:"parent_id"`
+	ParentInboxMessage   *InboxMessageModel  `gorm:"foreignKey:ParentInboxMessageID;constraint:OnDelete:CASCADE;" json:"parent,omitempty"`
+	Attachments          []FileModel         `json:"attachments" gorm:"-"`
+	Replies              []InboxMessageModel `gorm:"-" json:"replies,omitempty"`
 }
 
 func (InboxMessageModel) TableName() string {
@@ -60,4 +61,21 @@ func (m *InboxMessageModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return nil
+}
+
+func (m *InboxMessageModel) LoadRecursiveChildren(tx *gorm.DB) ([]InboxMessageModel, error) {
+	children := make([]InboxMessageModel, 0)
+	if err := tx.Where("parent_id = ?", m.ID).Find(&children).Error; err != nil {
+		return nil, err
+	}
+
+	for _, child := range children {
+		subChildren, err := child.LoadRecursiveChildren(tx)
+		if err != nil {
+			return nil, err
+		}
+		children = append(children, subChildren...)
+	}
+
+	return children, nil
 }

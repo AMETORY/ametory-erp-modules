@@ -103,3 +103,50 @@ func (s *InboxService) GetMessageByInboxID(request http.Request, search string, 
 	page.Page = page.Page + 1
 	return page, nil
 }
+
+func (s *InboxService) GetDefaultInbox(userID *string, memberID *string) (*models.InboxModel, error) {
+	var inbox models.InboxModel
+	if userID != nil {
+		if err := s.db.Where("user_id = ? AND is_default = ?", userID, true).First(&inbox).Error; err != nil {
+			return nil, err
+		}
+	} else if memberID != nil {
+		if err := s.db.Where("member_id = ? AND is_default = ?", memberID, true).First(&inbox).Error; err != nil {
+			return nil, err
+		}
+	}
+	return &inbox, nil
+}
+
+func (s *InboxService) CountUnread(userID *string, memberID *string) (int64, error) {
+	var count int64
+	if userID != nil {
+		if err := s.db.Model(&models.InboxMessageModel{}).Where("inbox_id IN (SELECT id FROM inboxes WHERE user_id = ? AND is_default = ?) AND recipient_user_id = ? AND read = ?", userID, true, userID, false).Count(&count).Error; err != nil {
+			return 0, err
+		}
+	} else if memberID != nil {
+		if err := s.db.Model(&models.InboxMessageModel{}).Where("inbox_id IN (SELECT id FROM inboxes WHERE member_id = ? AND is_default = ?) AND recipient_member_id = ? AND read = ?", memberID, true, memberID, false).Count(&count).Error; err != nil {
+			return 0, err
+		}
+	}
+	return count, nil
+}
+
+func (s *InboxService) GetInboxMessageDetail(inboxMessageID string) (*models.InboxMessageModel, error) {
+	var inboxMessage models.InboxMessageModel
+	if err := s.db.
+		Preload("SenderUser").
+		Preload("SenderMember").
+		Preload("RecipientUser").
+		Preload("RecipientMember").
+		Where("id = ?", inboxMessageID).First(&inboxMessage).Error; err != nil {
+		return nil, err
+	}
+
+	replies, err := inboxMessage.LoadRecursiveChildren(s.db)
+	if err != nil {
+		return nil, err
+	}
+	inboxMessage.Replies = replies
+	return &inboxMessage, nil
+}
