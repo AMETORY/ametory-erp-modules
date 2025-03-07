@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -14,6 +16,7 @@ type InboxModel struct {
 	MemberID  *string      `gorm:"type:char(36);index" json:"member_id"`
 	Member    *MemberModel `gorm:"foreignKey:MemberID;constraint:OnDelete:CASCADE;" json:"member,omitempty"`
 	Name      string       `gorm:"type:varchar(255);default:'INBOX'" json:"name"`
+	IsTrash   bool         `gorm:"default:false" json:"is_trash"`
 	IsDefault bool         `gorm:"default:false" json:"is_default"`
 }
 
@@ -33,11 +36,11 @@ type InboxMessageModel struct {
 	shared.BaseModel
 	InboxID              *string             `gorm:"type:char(36);index" json:"inbox_id"`
 	Inbox                *InboxModel         `gorm:"foreignKey:InboxID;constraint:OnDelete:CASCADE;" json:"inbox,omitempty"`
-	SenderUserID         *string             `gorm:"type:char(36);index" json:"sender_id"`
+	SenderUserID         *string             `gorm:"type:char(36);index" json:"sender_user_id"`
 	SenderUser           *UserModel          `gorm:"foreignKey:SenderUserID;constraint:OnDelete:CASCADE;" json:"sender,omitempty"`
 	SenderMemberID       *string             `gorm:"type:char(36);index" json:"sender_member_id"`
 	SenderMember         *MemberModel        `gorm:"foreignKey:SenderMemberID;constraint:OnDelete:CASCADE;" json:"sender_member,omitempty"`
-	RecipientUserID      *string             `gorm:"type:char(36);index" json:"recipient_id"`
+	RecipientUserID      *string             `gorm:"type:char(36);index" json:"recipient_user_id"`
 	RecipientUser        *UserModel          `gorm:"foreignKey:RecipientUserID;constraint:OnDelete:CASCADE;" json:"recipient,omitempty"`
 	RecipientMemberID    *string             `gorm:"type:char(36);index" json:"recipient_member_id"`
 	RecipientMember      *MemberModel        `gorm:"foreignKey:RecipientMemberID;constraint:OnDelete:CASCADE;" json:"recipient_member,omitempty"`
@@ -50,6 +53,9 @@ type InboxMessageModel struct {
 	ParentInboxMessage   *InboxMessageModel  `gorm:"foreignKey:ParentInboxMessageID;constraint:OnDelete:CASCADE;" json:"parent,omitempty"`
 	Attachments          []FileModel         `json:"attachments" gorm:"-"`
 	Replies              []InboxMessageModel `gorm:"-" json:"replies,omitempty"`
+	FavoritedByUsers     []*UserModel        `gorm:"many2many:inbox_message_favorited_by_users;constraint:OnDelete:CASCADE;" json:"favorited_by_users,omitempty"`
+	FavoritedByMembers   []*MemberModel      `gorm:"many2many:inbox_message_favorited_by_members;constraint:OnDelete:CASCADE;" json:"favorited_by_members,omitempty"`
+	Date                 *time.Time          `json:"date" gorm:"-"`
 }
 
 func (InboxMessageModel) TableName() string {
@@ -59,6 +65,21 @@ func (InboxMessageModel) TableName() string {
 func (m *InboxMessageModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if m.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return nil
+}
+
+func (m *InboxMessageModel) AfterFind(tx *gorm.DB) error {
+	if m.Date == nil {
+		m.Date = &m.CreatedAt
+	}
+	var files []FileModel
+	if err := tx.Where("ref_id = ? AND ref_type = ?", m.ID, "inbox").Find(&files).Error; err == nil {
+		m.Attachments = files
+
+	}
+	if err := tx.Model(&m).Association("Replies").Find(&m.Replies); err != nil {
+		return err
 	}
 	return nil
 }

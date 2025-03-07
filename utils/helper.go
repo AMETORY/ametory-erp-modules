@@ -1,10 +1,13 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -176,4 +179,27 @@ func GenerateJWT(userID string, expiredAt int64, secretKey string) (string, erro
 	}
 	// fmt.Println("token: ", config.App.Server.SecretKey)
 	return signedToken, nil
+}
+
+func FileHeaderToBytes(fileHeader *multipart.FileHeader) ([]byte, error) {
+	// Open the file
+	file, err := fileHeader.Open()
+	if err != nil {
+		return nil, fmt.Errorf("error opening file: %w", err)
+	}
+	defer file.Close()
+
+	// Use a buffer to read the file content
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, file)
+	if err != nil {
+		return nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	// Return the content as a byte slice
+	return buf.Bytes(), nil
+}
+
+func FilenameTrimSpace(filename string) string {
+	return strings.ReplaceAll(filename, " ", "-")
 }
