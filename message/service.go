@@ -2,6 +2,7 @@ package message
 
 import (
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/message/chat"
 	"github.com/AMETORY/ametory-erp-modules/message/inbox"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 )
@@ -9,6 +10,7 @@ import (
 type MessageService struct {
 	ctx          *context.ERPContext
 	InboxService *inbox.InboxService
+	ChatService  *chat.ChatService
 }
 
 func NewMessageService(ctx *context.ERPContext) *MessageService {
@@ -27,5 +29,7 @@ func (cs *MessageService) Migrate() error {
 	return cs.ctx.DB.AutoMigrate(
 		&models.InboxModel{},
 		&models.InboxMessageModel{},
+		&models.ChatChannelModel{},
+		&models.ChatMessageModel{},
 	)
 }
