@@ -16,8 +16,8 @@ type ChatService struct {
 	ctx *context.ERPContext
 }
 
-func NewChatService(ctx *context.ERPContext) *ChatService {
-	return &ChatService{ctx: ctx, db: ctx.DB}
+func NewChatService(db *gorm.DB, ctx *context.ERPContext) *ChatService {
+	return &ChatService{ctx: ctx, db: db}
 }
 
 func (cs *ChatService) GetChannelByParticipantUserID(userID string) ([]*models.ChatChannelModel, error) {
@@ -214,4 +214,23 @@ func (cs *ChatService) ReadedByUser(channelID string, userID string) error {
 	}
 
 	return nil
+}
+
+func (cs *ChatService) DeleteChannel(channelID string, userID *string, memberID *string) error {
+	var channel models.ChatChannelModel
+	if err := cs.db.Where("id = ?", channelID).First(&channel).Error; err != nil {
+		return err
+	}
+
+	if userID != nil {
+		if userID != channel.CreatedByUserID {
+			return errors.New("you are not the creator of this channel")
+		}
+	}
+	if memberID != nil {
+		if memberID != channel.CreatedByUserID {
+			return errors.New("you are not the creator of this channel")
+		}
+	}
+	return cs.db.Delete(&channel).Error
 }

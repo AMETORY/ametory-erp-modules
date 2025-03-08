@@ -17,6 +17,7 @@ func NewMessageService(ctx *context.ERPContext) *MessageService {
 	service := MessageService{
 		ctx:          ctx,
 		InboxService: inbox.NewInboxService(ctx.DB, ctx),
+		ChatService:  chat.NewChatService(ctx.DB, ctx),
 	}
 	service.Migrate()
 	return &service
