@@ -133,15 +133,26 @@ func (s *InboxService) SendMessage(data *models.InboxMessageModel) error {
 }
 
 func (s *InboxService) GetMessageByInboxID(request http.Request, search string, inboxID *string) (paginate.Page, error) {
+
 	pg := paginate.New()
 	stmt := s.db.
 		Preload("SenderUser").
 		Preload("SenderMember.User").
 		Preload("RecipientUser").
-		Preload("RecipientMember.User").
-		Where("parent_inbox_message_id IS NULL")
+		Preload("RecipientMember.User")
+
 	if inboxID != nil {
-		stmt = stmt.Where("inbox_id = ?", *inboxID)
+		var inbox models.InboxModel
+		if err := s.db.Where("id = ?  ", inboxID).First(&inbox).Error; err != nil {
+			return paginate.Page{}, err
+		}
+		stmt = stmt.Where("inbox_id = ? AND parent_inbox_message_id IS NULL", *inboxID)
+		if inbox.MemberID != nil {
+			// stmt = stmt.Or("parent_inbox_message_id IS NOT NULL AND recipient_member_id = ? and sender_member_id != ?", *inbox.MemberID, *inbox.MemberID)
+		}
+		// if inbox.UserID != nil {
+		// 	stmt = stmt.Or("parent_inbox_message_id IS NOT NULL AND recipient_user_id = ? and sender_user_id != ?", *inbox.UserID, *inbox.UserID)
+		// }
 	}
 	if search != "" {
 		stmt = stmt.Where("subject ILIKE ? OR message ILIKE ?",
@@ -151,29 +162,6 @@ func (s *InboxService) GetMessageByInboxID(request http.Request, search string, 
 	}
 
 	stmt = stmt.Order("created_at desc")
-
-	stmt = stmt.Model(&models.InboxMessageModel{})
-	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]models.InboxMessageModel{})
-	page.Page = page.Page + 1
-	return page, nil
-}
-func (s *InboxService) GetSentMessages(request http.Request, search string, userID *string, memberID *string) (paginate.Page, error) {
-	pg := paginate.New()
-	stmt := s.db.Where("parent_inbox_message_id IS NULL")
-	if userID != nil && memberID != nil {
-		stmt = stmt.Where("sender_user_id = ? AND sender_member_id = ?", userID, memberID)
-	} else if userID != nil {
-		stmt = stmt.Where("sender_user_id = ?", userID)
-	} else if memberID != nil {
-		stmt = stmt.Where(" sender_member_id = ?", memberID)
-	}
-	if search != "" {
-		stmt = stmt.Where("subject ILIKE ? OR message ILIKE ?",
-			"%"+search+"%",
-			"%"+search+"%",
-		)
-	}
 
 	stmt = stmt.Model(&models.InboxMessageModel{})
 	utils.FixRequest(&request)
@@ -196,14 +184,92 @@ func (s *InboxService) GetDefaultInbox(userID *string, memberID *string) (*model
 	return &inbox, nil
 }
 
-func (s *InboxService) CountUnread(userID *string, memberID *string) (int64, error) {
+func (s *InboxService) GetSentMessages(request http.Request, search string, userID *string, memberID *string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Where("parent_inbox_message_id IS NULL").
+		Preload("SenderUser").
+		Preload("SenderMember.User").
+		Preload("RecipientUser").
+		Preload("RecipientMember.User")
+	if userID != nil && memberID != nil {
+		stmt = stmt.Where("sender_user_id = ? AND sender_member_id = ?", userID, memberID)
+	} else if userID != nil {
+		stmt = stmt.Where("sender_user_id = ?", userID)
+	} else if memberID != nil {
+		stmt = stmt.Where(" sender_member_id = ?", memberID)
+	}
+	stmt = stmt.Joins("JOIN inbox ON inbox_messages.inbox_id = inbox.id").
+		Where("inbox.is_trash = ?", false)
+	if search != "" {
+		stmt = stmt.Where("subject ILIKE ? OR message ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	stmt = stmt.Model(&models.InboxMessageModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.InboxMessageModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *InboxService) CountUnreadSendMessage(userID *string, memberID *string) (int64, error) {
 	var count int64
-	if userID != nil {
-		if err := s.db.Model(&models.InboxMessageModel{}).Where("inbox_id IN (SELECT id FROM inbox WHERE user_id = ? AND is_default = ?) AND recipient_user_id = ? AND read = ?", userID, true, userID, false).Count(&count).Error; err != nil {
+	if userID != nil && memberID != nil {
+		if err := s.db.Model(&models.InboxMessageModel{}).
+			Where("sender_user_id = ? AND sender_member_id = ?", userID, memberID).
+			Where("read = ?", false).
+			Where("parent_inbox_message_id IS NULL").
+			Count(&count).Error; err != nil {
+			return 0, err
+		}
+	} else if userID != nil {
+		if err := s.db.Model(&models.InboxMessageModel{}).
+			Where("sender_user_id = ? ", userID).
+			Where("read = ?", false).
+			Where("parent_inbox_message_id IS NULL").
+			Count(&count).Error; err != nil {
 			return 0, err
 		}
 	} else if memberID != nil {
-		if err := s.db.Model(&models.InboxMessageModel{}).Where("inbox_id IN (SELECT id FROM inbox WHERE member_id = ? AND is_default = ?) AND recipient_member_id = ? AND read = ?", memberID, true, memberID, false).Count(&count).Error; err != nil {
+		if err := s.db.Model(&models.InboxMessageModel{}).
+			Where("sender_member_id = ? ", memberID).
+			Where("read = ?", false).
+			Where("parent_inbox_message_id IS NULL").
+			Count(&count).Error; err != nil {
+			return 0, err
+		}
+	}
+	return count, nil
+}
+
+func (s *InboxService) CountUnread(userID *string, memberID *string) (int64, error) {
+	var count int64
+	if userID != nil {
+		if err := s.db.Model(&models.InboxMessageModel{}).
+			Joins("JOIN inbox ON inbox_messages.inbox_id = inbox.id").
+			Where("inbox.is_trash = ?", false).
+			Where("inbox.is_default = ?", true).
+			Where("inbox.user_id = ?", *userID).
+			Where("recipient_user_id = ?", *userID).
+			Where("read = ?", false).
+			Where("parent_inbox_message_id IS NULL").
+			// Where("inbox_id IN (SELECT id FROM inbox WHERE user_id = ? AND is_default = ?) AND recipient_user_id = ? AND read = ?", userID, true, userID, false).
+			Count(&count).Error; err != nil {
+			return 0, err
+		}
+	} else if memberID != nil {
+		if err := s.db.Model(&models.InboxMessageModel{}).
+			Joins("JOIN inbox ON inbox_messages.inbox_id = inbox.id").
+			// Where("inbox_id IN (SELECT id FROM inbox WHERE member_id = ? AND is_default = ?) AND recipient_member_id = ? AND read = ?", memberID, true, memberID, false).
+			Where("inbox.is_trash = ?", false).
+			Where("inbox.is_default = ?", true).
+			Where("inbox.member_id = ?", *memberID).
+			Where("recipient_member_id = ?", *memberID).
+			Where("read = ?", false).
+			Where("parent_inbox_message_id IS NULL").
+			Count(&count).Error; err != nil {
 			return 0, err
 		}
 	}
@@ -239,6 +305,12 @@ func (s *InboxService) DeleteMessage(inboxMessageID string, userID *string, memb
 func (s *InboxService) GetInboxMessageDetail(inboxMessageID string) (*models.InboxMessageModel, error) {
 	var inboxMessage models.InboxMessageModel
 	if err := s.db.
+		Preload("ParentInboxMessage", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("SenderUser").
+				Preload("SenderMember.User").
+				Preload("RecipientUser").
+				Preload("RecipientMember.User")
+		}).
 		Preload("SenderUser").
 		Preload("SenderMember.User").
 		Preload("RecipientUser").

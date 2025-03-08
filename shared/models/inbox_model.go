@@ -49,7 +49,7 @@ type InboxMessageModel struct {
 	Subject              string              `gorm:"type:varchar(255)" json:"subject"`
 	Message              string              `gorm:"type:text" json:"message"`
 	Read                 bool                `gorm:"type:boolean;default:false" json:"read"`
-	ParentInboxMessageID *string             `gorm:"type:char(36);index" json:"parent_id"`
+	ParentInboxMessageID *string             `gorm:"type:char(36);index" json:"parent_inbox_message_id"`
 	ParentInboxMessage   *InboxMessageModel  `gorm:"foreignKey:ParentInboxMessageID;constraint:OnDelete:CASCADE;" json:"parent,omitempty"`
 	Attachments          []FileModel         `json:"attachments" gorm:"-"`
 	Replies              []InboxMessageModel `gorm:"-" json:"replies,omitempty"`
@@ -78,15 +78,19 @@ func (m *InboxMessageModel) AfterFind(tx *gorm.DB) error {
 		m.Attachments = files
 
 	}
-	if err := tx.Model(&m).Association("Replies").Find(&m.Replies); err != nil {
-		return err
-	}
+
 	return nil
 }
 
 func (m *InboxMessageModel) LoadRecursiveChildren(tx *gorm.DB) ([]InboxMessageModel, error) {
 	children := make([]InboxMessageModel, 0)
-	if err := tx.Where("parent_id = ?", m.ID).Find(&children).Error; err != nil {
+	if err := tx.Preload("SenderMember.User").
+		Preload("SenderUser").
+		Preload("RecipientMember.User").
+		Preload("RecipientUser").
+		Where("parent_inbox_message_id = ?", m.ID).
+		Order("created_at").
+		Find(&children).Error; err != nil {
 		return nil, err
 	}
 
