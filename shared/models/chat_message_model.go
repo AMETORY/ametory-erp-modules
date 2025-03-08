@@ -21,6 +21,8 @@ type ChatChannelModel struct {
 	CreatedByMember    *MemberModel   `gorm:"foreignKey:CreatedByMemberID;constraint:OnDelete:SET NULL;" json:"created_by_member,omitempty"`
 	CreatedByMemberID  *string        `gorm:"type:char(36);index" json:"created_by_member_id,omitempty"`
 	Avatar             *FileModel     `gorm:"-" json:"avatar,omitempty"`
+	RefID              string         `gorm:"type:char(36);index" json:"ref_id,omitempty"`
+	RefType            string         `gorm:"type:varchar(255);index" json:"ref_type,omitempty"`
 }
 
 func (ChatChannelModel) TableName() string {
