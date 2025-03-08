@@ -73,6 +73,52 @@ func (cs *ChatService) CreateMessage(messageModel *models.ChatMessageModel) erro
 	return cs.db.Create(messageModel).Error
 }
 
+func (cs *ChatService) UpdateMessage(messageID string, messageModel *models.ChatMessageModel, userID, memberID *string) error {
+	if messageModel.ID == "" {
+		return errors.New("message id is required")
+	}
+	if messageModel.ChatChannelID == nil {
+		return errors.New("chat channel id is required")
+	}
+	if messageModel.SenderUserID == nil && messageModel.SenderMemberID == nil {
+		return errors.New("sender user id or member id is required")
+	}
+
+	var message models.ChatMessageModel
+	if err := cs.db.Model(&message).Where("id = ?", messageID).First(&message).Error; err != nil {
+		return err
+	}
+
+	if userID != nil {
+		if message.SenderUserID != userID {
+			return errors.New("you are not the sender of this message")
+		}
+	}
+	if memberID != nil {
+		if message.SenderMemberID != memberID {
+			return errors.New("you are not the sender of this message")
+		}
+	}
+
+	return cs.db.Save(messageModel).Error
+}
+
+func (cs *ChatService) DeleteMessage(messageID string, userID, memberID *string) error {
+	var message models.ChatMessageModel
+	if err := cs.db.Preload("ChatChannel").Where("id = ?", messageID).First(&message).Error; err != nil {
+		return err
+	}
+
+	if userID != nil && (message.SenderUserID != userID || message.ChatChannel.CreatedByUserID != userID) {
+		return errors.New("you are not the sender of this message")
+	}
+	if memberID != nil && (message.SenderMemberID != memberID || message.ChatChannel.CreatedByMemberID != memberID) {
+		return errors.New("you are not the sender of this message")
+	}
+
+	return cs.db.Delete(&message).Error
+}
+
 func (cs *ChatService) AddParticipant(channelID string, userID, memberID *string) error {
 	var channel models.ChatChannelModel
 	if err := cs.db.Model(&channel).Where("id = ?", channelID).First(&channel).Error; err != nil {
