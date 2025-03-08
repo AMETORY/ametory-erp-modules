@@ -89,6 +89,10 @@ func (cs *ChatService) UpdateMessage(messageID string, messageModel *models.Chat
 		return err
 	}
 
+	if messageModel.RepliesCount > 0 {
+		return errors.New("you cannot update message that has replies")
+	}
+
 	if userID != nil {
 		if message.SenderUserID != userID {
 			return errors.New("you are not the sender of this message")
