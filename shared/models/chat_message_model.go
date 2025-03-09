@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -34,6 +35,19 @@ func (channel *ChatChannelModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	// Add any logic to be executed before creating a ChatChannelModel record
+	return nil
+}
+
+func (channel *ChatChannelModel) AfterFind(tx *gorm.DB) error {
+	var file FileModel
+	fmt.Println("AFTER FIND", channel.ID)
+	err := tx.Model(&file).
+		Where("ref_id = ? and ref_type = ?", channel.ID, "chat").
+		First(&file).Error
+	if err == nil {
+		channel.Avatar = &file
+	}
+
 	return nil
 }
 

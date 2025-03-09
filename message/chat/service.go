@@ -20,28 +20,32 @@ func NewChatService(db *gorm.DB, ctx *context.ERPContext) *ChatService {
 	return &ChatService{ctx: ctx, db: db}
 }
 
-func (cs *ChatService) GetChannelByParticipantUserID(userID string) ([]*models.ChatChannelModel, error) {
-	var channels []*models.ChatChannelModel
-	err := cs.db.Model(&models.ChatChannelModel{}).
+func (cs *ChatService) GetChannelByParticipantUserID(userID string, request *http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := cs.db.Model(&models.ChatChannelModel{}).
 		Joins("JOIN chat_channel_participant_users ON chat_channel_participant_users.chat_channel_model_id = chat_channels.id").
-		Where("chat_channel_participant_users.user_model_id = ?", userID).
-		Find(&channels).Error
-	if err != nil {
-		return nil, err
+		Where("chat_channel_participant_users.user_model_id = ?", userID)
+	if search != "" {
+		stmt = stmt.Where("chat_channels.name LIKE ?", "%"+search+"%")
 	}
-	return channels, nil
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.ChatChannelModel{})
+	page.Page = page.Page + 1
+	return page, nil
 }
 
-func (cs *ChatService) GetChannelByParticipantMemberID(memberID string) ([]*models.ChatChannelModel, error) {
-	var channels []*models.ChatChannelModel
-	err := cs.db.Model(&models.ChatChannelModel{}).
+func (cs *ChatService) GetChannelByParticipantMemberID(memberID string, request *http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := cs.db.Model(&models.ChatChannelModel{}).
 		Joins("JOIN chat_channel_participant_members ON chat_channel_participant_members.chat_channel_model_id = chat_channels.id").
-		Where("chat_channel_participant_members.member_model_id = ?", memberID).
-		Find(&channels).Error
-	if err != nil {
-		return nil, err
+		Where("chat_channel_participant_members.member_model_id = ?", memberID)
+	if search != "" {
+		stmt = stmt.Where("chat_channels.name LIKE ?", "%"+search+"%")
 	}
-	return channels, nil
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.ChatChannelModel{})
+	page.Page = page.Page + 1
+	return page, nil
 }
 
 func (cs *ChatService) GetChatMessageByChannelID(channelID string, request *http.Request, search string) (paginate.Page, error) {
