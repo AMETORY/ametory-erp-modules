@@ -37,6 +37,8 @@ type TaskModel struct {
 	Activities    []ProjectActivityModel `gorm:"foreignKey:TaskID" json:"activities,omitempty"`
 	CommentCount  int                    `gorm:"-" json:"comment_count,omitempty"`
 	Percentage    float64                `json:"percentage,omitempty" binding:"max=100"`
+	Priority      string                 `gorm:"type:varchar(50)" json:"priority,omitempty"`
+	Severity      string                 `gorm:"type:varchar(50)" json:"severity,omitempty"`
 }
 
 func (TaskModel) TableName() string {

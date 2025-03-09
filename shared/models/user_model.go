@@ -91,7 +91,13 @@ func (pt *PushTokenModel) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-func (u *UserModel) AfterFind(tx *gorm.DB) (err error) {
+func (u *UserModel) AfterFind(tx *gorm.DB) error {
 	u.IsVerified = u.VerifiedAt != nil
-	return
+
+	file := FileModel{}
+	err := tx.Where("ref_id = ? and ref_type = ?", u.ID, "user").First(&file).Error
+	if err == nil {
+		u.ProfilePicture = &file
+	}
+	return nil
 }
