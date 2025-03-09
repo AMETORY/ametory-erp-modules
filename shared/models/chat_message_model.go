@@ -54,14 +54,14 @@ func (channel *ChatChannelModel) AfterFind(tx *gorm.DB) error {
 // ChatMessageModel adalah model database untuk menampung data chat message
 type ChatMessageModel struct {
 	shared.BaseModel
-	ChatChannelID   *string            `gorm:"type:char(36);index"`
+	ChatChannelID   *string            `gorm:"type:char(36);index" json:"chat_channel_id,omitempty"`
 	ChatChannel     *ChatChannelModel  `gorm:"foreignKey:ChatChannelID;constraint:OnDelete:CASCADE;" json:"chat_channel,omitempty"`
-	SenderUserID    *string            `gorm:"type:char(36);index"`
+	SenderUserID    *string            `gorm:"type:char(36);index" json:"sender_user_id,omitempty"`
 	SenderUser      *UserModel         `gorm:"foreignKey:SenderUserID;constraint:OnDelete:CASCADE;" json:"sender_user,omitempty"`
-	SenderMemberID  *string            `gorm:"type:char(36);index"`
+	SenderMemberID  *string            `gorm:"type:char(36);index" json:"sender_member_id,omitempty"`
 	SenderMember    *MemberModel       `gorm:"foreignKey:SenderMemberID;constraint:OnDelete:CASCADE;" json:"sender_member,omitempty"`
-	Message         string             `gorm:"type:text"`
-	Type            string             `gorm:"type:varchar(255);default:CHAT"`
+	Message         string             `gorm:"type:text" json:"message,omitempty"`
+	Type            string             `gorm:"type:varchar(255);default:CHAT" json:"type,omitempty"`
 	Files           []FileModel        `gorm:"-" json:"files,omitempty"`
 	Date            *time.Time         `json:"date,omitempty"`
 	ReadedBy        []*UserModel       `gorm:"many2many:chat_message_read_by_users;constraint:OnDelete:CASCADE;" json:"read_by,omitempty"`
@@ -69,9 +69,10 @@ type ChatMessageModel struct {
 	ParentID        *string            `gorm:"type:char(36);index" json:"parent_id,omitempty"`
 	ParentMessage   *ChatMessageModel  `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;" json:"parent_message,omitempty"`
 	Replies         []ChatMessageModel `gorm:"-" json:"replies,omitempty"`
-	ChatData        string             `gorm:"type:JSON" json:"chat_data"`
-	RepliesCount    int64              `gorm:"-" json:"replies_count"`
-	FilesCount      int64              `gorm:"-" json:"files_count"`
+	ChatData        string             `gorm:"type:JSON" json:"-"`
+	Data            interface{}        `gorm:"-" json:"data,omitempty"`
+	RepliesCount    int64              `gorm:"-" json:"replies_count,omitempty"`
+	FilesCount      int64              `gorm:"-" json:"files_count,omitempty"`
 }
 
 func (ChatMessageModel) TableName() string {

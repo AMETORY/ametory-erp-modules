@@ -48,6 +48,17 @@ func (cs *ChatService) GetChannelByParticipantMemberID(memberID string, request 
 	return page, nil
 }
 
+func (cs *ChatService) GetChannelDetail(channelID string) (*models.ChatChannelModel, error) {
+	var channel models.ChatChannelModel
+	if err := cs.db.
+		Preload("ParticipantUsers").
+		Preload("ParticipantMembers.User").
+		Where("id = ?", channelID).First(&channel).Error; err != nil {
+		return nil, err
+	}
+	return &channel, nil
+}
+
 func (cs *ChatService) GetChatMessageByChannelID(channelID string, request *http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := cs.db.Where("chat_channel_id = ?", channelID)
