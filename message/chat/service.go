@@ -61,7 +61,10 @@ func (cs *ChatService) GetChannelDetail(channelID string) (*models.ChatChannelMo
 
 func (cs *ChatService) GetChatMessageByChannelID(channelID string, request *http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := cs.db.Where("chat_channel_id = ?", channelID)
+	stmt := cs.db.
+		Preload("SenderUser").
+		Preload("SenderMember.User").
+		Where("chat_channel_id = ?", channelID)
 	if search != "" {
 		stmt = stmt.Where("message ILIKE ?", "%"+search+"%")
 	}
@@ -70,10 +73,19 @@ func (cs *ChatService) GetChatMessageByChannelID(channelID string, request *http
 	if request.URL.Query().Get("order_by") != "" {
 		stmt = stmt.Order(request.URL.Query().Get("order_by"))
 	}
+
 	stmt = stmt.Model(&models.ChatMessageModel{})
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ChatMessageModel{})
 	page.Page = page.Page + 1
+	items := page.Items.(*[]models.ChatMessageModel)
+	newItems := make([]models.ChatMessageModel, 0)
+	for _, item := range *items {
+		item.GetFiles(cs.db)
+		newItems = append(newItems, item)
+	}
+	page.Items = &newItems
+
 	return page, nil
 }
 
@@ -136,6 +148,27 @@ func (cs *ChatService) DeleteMessage(messageID string, userID, memberID *string)
 	}
 
 	return cs.db.Delete(&message).Error
+}
+
+func (cs *ChatService) DeleteParticipant(channelID string, userID, memberID *string) error {
+	var channel models.ChatChannelModel
+	if err := cs.db.Model(&channel).Where("id = ?", channelID).First(&channel).Error; err != nil {
+		return err
+	}
+
+	if userID != nil {
+		var user models.UserModel
+		cs.db.Model(&user).Where("id = ?", userID).Find(&user)
+		cs.db.Model(&channel).Association("ParticipantUsers").Delete(user)
+	}
+
+	if memberID != nil {
+		var member models.MemberModel
+		cs.db.Model(&member).Where("id = ?", memberID).Find(&member)
+		cs.db.Model(&channel).Association("ParticipantMembers").Delete(member)
+	}
+
+	return nil
 }
 
 func (cs *ChatService) AddParticipant(channelID string, userID, memberID *string) error {

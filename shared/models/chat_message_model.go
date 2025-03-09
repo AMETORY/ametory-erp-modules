@@ -63,7 +63,7 @@ type ChatMessageModel struct {
 	Message         string             `gorm:"type:text" json:"message,omitempty"`
 	Type            string             `gorm:"type:varchar(255);default:CHAT" json:"type,omitempty"`
 	Files           []FileModel        `gorm:"-" json:"files,omitempty"`
-	Date            *time.Time         `json:"date,omitempty"`
+	Date            *time.Time         `json:"date"`
 	ReadedBy        []*UserModel       `gorm:"many2many:chat_message_read_by_users;constraint:OnDelete:CASCADE;" json:"read_by,omitempty"`
 	ReadedByMembers []*MemberModel     `gorm:"many2many:chat_message_read_by_members;constraint:OnDelete:CASCADE;" json:"read_by_members,omitempty"`
 	ParentID        *string            `gorm:"type:char(36);index" json:"parent_id,omitempty"`
