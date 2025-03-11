@@ -65,6 +65,11 @@ var (
 			{"vendor": cruds},
 			{"supplier": cruds},
 		},
+		"customer_relationship": {
+			{"whatsapp": cruds},
+			{"form_template": cruds},
+			{"form": cruds},
+		},
 		"company": {
 			{"company": append(cruds, "approval")},
 		},

@@ -49,7 +49,7 @@ func (s *ProjectService) GetProjectByID(id string, memberID *string) (*models.Pr
 
 func (s *ProjectService) GetProjects(request http.Request, search string, memberID *string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Members.User")
+	stmt := s.db.Preload("Columns").Preload("Members.User")
 	if search != "" {
 		stmt = stmt.Where("projects.description ILIKE ? OR projects.name ILIKE ?",
 			"%"+search+"%",
