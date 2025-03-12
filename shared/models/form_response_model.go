@@ -8,13 +8,13 @@ import (
 
 type FormResponseModel struct {
 	shared.BaseModel
-	FormID   uint                  `json:"form_id" gorm:"index"`
-	Form     FormModel             `json:"form,omitempty" gorm:"foreignKey:FormID;constraint:OnDelete:CASCADE;"`
-	Sections []FormSectionResponse `json:"sections" gorm:"-"`
-	Metadata string                `json:"metadata,omitempty" gorm:"type:JSON"`
-	Data     string                `json:"Data" gorm:"type:JSON"`
-	RefID    string                `json:"ref_id,omitempty" gorm:"type:char(36);index"`
-	RefType  string                `json:"ref_type,omitempty" gorm:"type:varchar(255);index"`
+	FormID   string        `json:"form_id" gorm:"index"`
+	Form     FormModel     `json:"form,omitempty" gorm:"foreignKey:FormID;constraint:OnDelete:CASCADE;"`
+	Sections []FormSection `json:"sections" gorm:"-"`
+	Metadata string        `json:"metadata,omitempty" gorm:"type:JSON"`
+	Data     string        `json:"Data" gorm:"type:JSON"`
+	RefID    string        `json:"ref_id,omitempty" gorm:"type:char(36);index"`
+	RefType  string        `json:"ref_type,omitempty" gorm:"type:varchar(255);index"`
 }
 
 func (f *FormResponseModel) TableName() string {

@@ -113,6 +113,7 @@ type FormField struct {
 	DefaultValue string            `json:"default_value"`
 	HelpText     string            `json:"help_text"`
 	Disabled     bool              `json:"disabled"`
+	Value        any               `json:"value"`
 }
 
 type FormFieldOption struct {

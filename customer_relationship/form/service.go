@@ -77,6 +77,21 @@ func (s *FormService) GetForm(id string) (*models.FormModel, error) {
 
 	return &form, nil
 }
+func (s *FormService) GetFormByCode(code string) (*models.FormModel, error) {
+	var form models.FormModel
+
+	if err := s.db.
+		Preload("FormTemplate").
+		Preload("CreatedBy").
+		Preload("CreatedByMember.User").
+		Preload("Project").
+		Preload("Column").
+		First(&form, "code = ?", code).Error; err != nil {
+		return nil, err
+	}
+
+	return &form, nil
+}
 
 func (s *FormService) GetForms(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()

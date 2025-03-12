@@ -46,10 +46,6 @@ func (s *FileService) UploadFileFromBase64(base64String, provider, folder string
 
 func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *models.FileModel) error {
 	// TODO: implement upload file logic
-	firestoreSrv, ok := s.ctx.Firestore.(*thirdparty.Firestore)
-	if !ok && provider != "local" {
-		return fmt.Errorf("firestore service is not found")
-	}
 	var path, url, mimeType string
 	mimeType = http.DetectContentType(file)
 	fileObj.MimeType = mimeType
@@ -82,6 +78,10 @@ func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *
 		url = fmt.Sprintf("%s/assets/%s/%s", s.baseURL, folder, fileObj.FileName)
 
 	case "firebase":
+		firestoreSrv, ok := s.ctx.Firestore.(*thirdparty.Firestore)
+		if !ok {
+			return fmt.Errorf("firestore service is not found")
+		}
 		pathStr, urlStr, err := firestoreSrv.UploadFileToFirebaseStorage(file, folder, fileObj.FileName)
 		if err != nil {
 			return err
