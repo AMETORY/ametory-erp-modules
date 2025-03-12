@@ -66,6 +66,7 @@ func (s *FormService) GetForm(id string) (*models.FormModel, error) {
 	var form models.FormModel
 
 	if err := s.db.
+		Preload("Responses").
 		Preload("FormTemplate").
 		Preload("CreatedBy").
 		Preload("CreatedByMember.User").
