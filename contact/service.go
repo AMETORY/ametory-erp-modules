@@ -71,7 +71,7 @@ func (s *ContactService) GetContactByID(id string) (*models.ContactModel, error)
 }
 
 // UpdateContactRoles mengupdate roles (is_customer, is_vendor, is_supplier) dari contact
-func (s *ContactService) UpdateContactRoles(id uint, isCustomer, isVendor, isSupplier bool) (*models.ContactModel, error) {
+func (s *ContactService) UpdateContactRoles(id string, isCustomer, isVendor, isSupplier bool) (*models.ContactModel, error) {
 	var contact models.ContactModel
 	if err := s.ctx.DB.First(&contact, id).Error; err != nil {
 		return nil, err
@@ -99,8 +99,8 @@ func (s *ContactService) GetContactsByRole(isCustomer, isVendor, isSupplier bool
 }
 
 // DeleteContact menghapus contact berdasarkan ID
-func (s *ContactService) DeleteContact(id uint) error {
-	if err := s.ctx.DB.Delete(&models.ContactModel{}, id).Error; err != nil {
+func (s *ContactService) DeleteContact(id string) error {
+	if err := s.ctx.DB.Delete(&models.ContactModel{}, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("contact not found")
 		}
@@ -110,9 +110,9 @@ func (s *ContactService) DeleteContact(id uint) error {
 }
 
 // UpdateContact mengupdate informasi contact
-func (s *ContactService) UpdateContact(id uint, data *models.ContactModel) (*models.ContactModel, error) {
+func (s *ContactService) UpdateContact(id string, data *models.ContactModel) (*models.ContactModel, error) {
 	var contact models.ContactModel
-	if err := s.ctx.DB.First(&contact, id).Error; err != nil {
+	if err := s.ctx.DB.First(&contact, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("contact not found")
 		}

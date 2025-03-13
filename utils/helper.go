@@ -203,3 +203,14 @@ func FileHeaderToBytes(fileHeader *multipart.FileHeader) ([]byte, error) {
 func FilenameTrimSpace(filename string) string {
 	return strings.ReplaceAll(filename, " ", "-")
 }
+
+func ReduceMap(data map[string]interface{}, keys []string) map[string]interface{} {
+	res := make(map[string]interface{})
+	for _, key := range keys {
+		if val, exists := data[key]; exists {
+			res[key] = val
+		}
+	}
+
+	return res
+}
