@@ -33,7 +33,7 @@ func (s *ProjectService) DeleteProject(id string) error {
 }
 
 func (s *ProjectService) GetProjectByID(id string, memberID *string) (*models.ProjectModel, error) {
-	var invoice models.ProjectModel
+	var project models.ProjectModel
 	db := s.db.Preload("Columns", func(db *gorm.DB) *gorm.DB {
 		return db.Order(`"order" asc`).Preload("Tasks")
 	}).Preload("Members.User")
@@ -43,8 +43,8 @@ func (s *ProjectService) GetProjectByID(id string, memberID *string) (*models.Pr
 			// Joins("JOIN members ON members.id = project_members.member_model_id").
 			Where("project_members.member_model_id = ?", *memberID)
 	}
-	err := db.Where("id = ?", id).First(&invoice).Error
-	return &invoice, err
+	err := db.Where("id = ?", id).First(&project).Error
+	return &project, err
 }
 
 func (s *ProjectService) GetProjects(request http.Request, search string, memberID *string) (paginate.Page, error) {
@@ -137,4 +137,15 @@ func (s *ProjectService) AddActivity(projectID, memberID string, columnID, taskI
 	}
 
 	return &activity, nil
+}
+
+func (s *ProjectService) GetRecentActivities(projectID string, limit int) ([]models.ProjectActivityModel, error) {
+	var activities []models.ProjectActivityModel
+	err := s.db.
+		Preload("Project").Preload("Member.User").Preload("Column").Preload("Task").
+		Where("project_id = ?", projectID).
+		Order("activity_date desc").
+		Limit(limit).
+		Find(&activities).Error
+	return activities, err
 }

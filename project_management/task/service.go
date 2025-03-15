@@ -59,7 +59,7 @@ func (s *TaskService) SetJoins(joins map[string][]interface{}) {
 }
 func (s *TaskService) GetTasks(request http.Request, search string, projectId *string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Assignee.User")
+	stmt := s.db.Preload("Assignee.User").Preload("Watchers.User")
 	if search != "" {
 		stmt = stmt.Where("tasks.name ILIKE ? OR tasks.description ILIKE ?",
 			"%"+search+"%",
