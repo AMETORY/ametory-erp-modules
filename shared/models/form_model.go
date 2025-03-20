@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/utils"
@@ -22,10 +21,13 @@ const (
 	DateRangePicker FormFieldType = "date_range"
 	NumberField     FormFieldType = "number"
 	Currency        FormFieldType = "currency"
+	Price           FormFieldType = "price"
 	EmailField      FormFieldType = "email"
 	PasswordField   FormFieldType = "password"
 	FileUpload      FormFieldType = "file"
 	ToggleSwitch    FormFieldType = "toggle"
+	Product         FormFieldType = "product"
+	Contact         FormFieldType = "contact"
 )
 
 type FormModel struct {
@@ -78,7 +80,7 @@ func (f *FormModel) AfterFind(tx *gorm.DB) (err error) {
 		}
 	}
 
-	fmt.Println("GETTING FORM PICTURES")
+	// fmt.Println("GETTING FORM PICTURES")
 	var formPicture FileModel
 	if err := tx.Where("ref_id = ? AND ref_type = ?", f.ID, "form-picture").First(&formPicture).Error; err == nil {
 		f.Picture = &formPicture
@@ -109,6 +111,7 @@ type FormField struct {
 	Options      []FormFieldOption `json:"options"`
 	Required     bool              `json:"required"`
 	IsMulti      bool              `json:"is_multi"`
+	IsPinned     bool              `json:"is_pinned"`
 	Placeholder  string            `json:"placeholder"`
 	DefaultValue string            `json:"default_value"`
 	HelpText     string            `json:"help_text"`

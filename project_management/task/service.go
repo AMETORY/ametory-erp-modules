@@ -16,16 +16,16 @@ import (
 type TaskService struct {
 	db              *gorm.DB
 	ctx             *context.ERPContext
-	queryConditions map[string][]interface{}
-	joinConditions  map[string][]interface{}
+	queryConditions map[string][]any
+	joinConditions  map[string][]any
 }
 
 func NewTaskService(ctx *context.ERPContext) *TaskService {
 	return &TaskService{
 		db:              ctx.DB,
 		ctx:             ctx,
-		queryConditions: make(map[string][]interface{}, 0),
-		joinConditions:  make(map[string][]interface{}, 0),
+		queryConditions: make(map[string][]any, 0),
+		joinConditions:  make(map[string][]any, 0),
 	}
 }
 
@@ -43,7 +43,7 @@ func (s *TaskService) DeleteTask(id string) error {
 
 func (s *TaskService) GetTaskByID(id string) (*models.TaskModel, error) {
 	var invoice models.TaskModel
-	err := s.db.Preload("FormResponse").Preload("Activities", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("TaskAttribute").Preload("FormResponse").Preload("Activities", func(db *gorm.DB) *gorm.DB {
 		return s.db.Preload("Member.User").Preload("Column").Preload("Task")
 	}).Preload("Assignee.User").Preload("Watchers.User").Preload("Comments", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Member.User").Order("published_at").Where("status = ?", "PUBLISHED")

@@ -11,7 +11,9 @@ import (
 
 	erpContext "github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/generative-ai-go/genai"
+	"github.com/morkid/paginate"
 	"google.golang.org/api/option"
 	"gorm.io/gorm"
 )
@@ -28,6 +30,7 @@ type GeminiService struct {
 	responseMimetype   string
 	model              string
 	systemInstruction  string
+	agentID            *string
 }
 
 func NewGeminiService(ctx *erpContext.ERPContext, apiKey string) *GeminiService {
@@ -56,8 +59,31 @@ func NewGeminiService(ctx *erpContext.ERPContext, apiKey string) *GeminiService 
 	return &service
 }
 
+func (s *GeminiService) SetupAgentID(agentID string) {
+	s.agentID = &agentID
+}
+
+func (s *GeminiService) SetupAPIKey(apiKey string, skipHistory bool) {
+	s.apiKey = apiKey
+
+	client, err := genai.NewClient(*s.ctx.Ctx, option.WithAPIKey(apiKey))
+	if err != nil {
+		log.Panicf("Error creating client: %v", err)
+	}
+	// defer client.Close()
+
+	s.client = client
+
+	if !skipHistory {
+		s.RefreshHistories()
+	} else {
+		s.histories = []*genai.Content{}
+	}
+
+}
+
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&models.GeminiHistoryModel{})
+	return db.AutoMigrate(&models.GeminiHistoryModel{}, &models.GeminiAgent{})
 }
 
 func (s *GeminiService) RefreshHistories() {
@@ -66,7 +92,11 @@ func (s *GeminiService) RefreshHistories() {
 
 func getHistories(ctx context.Context, service *GeminiService) {
 	var historyModels []models.GeminiHistoryModel
-	service.ctx.DB.Find(&historyModels)
+	db := service.ctx.DB.Model(&models.GeminiHistoryModel{})
+	if service.agentID != nil {
+		db = db.Where("agent_id = ?", *service.agentID)
+	}
+	db.Find(&historyModels)
 	// parts := []genai.Part{}
 	histories := []*genai.Content{}
 	for _, v := range historyModels {
@@ -151,6 +181,15 @@ func (service *GeminiService) SetupModel(
 	model string,
 ) {
 
+	// fmt.Println(
+	// 	setTemperature,
+	// 	setTopK,
+	// 	setTopP,
+	// 	setMaxOutputTokens,
+	// 	responseMimetype,
+	// 	model,
+	// )
+
 	service.setTemperature = setTemperature
 	service.setTopK = setTopK
 	service.setTopP = setTopP
@@ -202,6 +241,8 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 	// 	fmt.Println(*v)
 
 	// }
+
+	utils.LogJson(histories)
 
 	// if session == nil {
 	// 	return "", fmt.Errorf("error starting chat session")
@@ -274,4 +315,45 @@ func (s *GeminiService) DeleteHistory(id string) error {
 
 func (s *GeminiService) SetResponseMIMEType(mimetype string) {
 	s.responseMimetype = mimetype
+}
+
+func (s *GeminiService) CreateAgent(agent *models.GeminiAgent) error {
+	if err := s.ctx.DB.Create(agent).Error; err != nil {
+		return fmt.Errorf("error creating agent: %v", err)
+	}
+
+	return nil
+}
+
+func (s *GeminiService) UpdateAgent(id string, agent *models.GeminiAgent) error {
+
+	if err := s.ctx.DB.Where("id = ?", id).Updates(agent).Error; err != nil {
+		return fmt.Errorf("error updating agent: %v", err)
+	}
+	return nil
+}
+
+func (s *GeminiService) DeleteAgent(id string) error {
+	if err := s.ctx.DB.Where("id = ?", id).Delete(&models.GeminiAgent{}).Error; err != nil {
+		return fmt.Errorf("error deleting agent: %v", err)
+	}
+	return nil
+}
+
+func (s *GeminiService) GetAgents(request http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.ctx.DB.Order("created_at desc").Model(&models.GeminiAgent{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.GeminiAgent{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *GeminiService) GetAgent(id string) (*models.GeminiAgent, error) {
+	var agent models.GeminiAgent
+
+	if err := s.ctx.DB.Where("id = ?", id).First(&agent).Error; err != nil {
+		return nil, fmt.Errorf("error getting agent: %v", err)
+	}
+	return &agent, nil
 }
