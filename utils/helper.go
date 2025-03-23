@@ -15,6 +15,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
+	"github.com/ttacon/libphonenumber"
 )
 
 func init() {
@@ -213,4 +214,19 @@ func ReduceMap(data map[string]interface{}, keys []string) map[string]interface{
 	}
 
 	return res
+}
+
+func ParsePhoneNumber(value string, country string) string {
+
+	if country == "" {
+		country = "ID"
+	}
+	num, err := libphonenumber.Parse(value, country)
+	if err != nil {
+		return value
+	}
+	countryCode := num.CountryCode
+	nationalNumber := num.NationalNumber
+
+	return fmt.Sprintf("%d%d", *countryCode, *nationalNumber)
 }

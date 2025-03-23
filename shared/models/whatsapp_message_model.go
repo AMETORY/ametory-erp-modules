@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
@@ -22,6 +23,8 @@ type WhatsappMessageModel struct {
 	MessageInfo map[string]interface{} `gorm:"-" json:"message_info"`
 	ContactID   *string                `json:"contact_id,omitempty" gorm:"column:contact_id"`
 	Contact     *ContactModel          `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
+	CompanyID   *string                `json:"company_id,omitempty" gorm:"column:company_id"`
+	Company     *CompanyModel          `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 	IsFromMe    bool                   `json:"is_from_me"`
 	IsGroup     bool                   `json:"is_group"`
 }
@@ -58,6 +61,24 @@ func (m *WhatsappMessageModel) AfterFind(tx *gorm.DB) error {
 			return err
 		}
 		m.MessageInfo = info
+	}
+	return nil
+}
+
+type WhatsappMessageSession struct {
+	shared.BaseModel
+	JID          string        `gorm:"type:varchar(255)" json:"jid"`
+	Session      string        `gorm:"type:varchar(255)" json:"session"`
+	SessionName  string        `gorm:"type:varchar(255)" json:"session_name"`
+	LastOnlineAt *time.Time    `json:"last_online_at"`
+	LastMessage  string        `json:"last_message"`
+	CompanyID    *string       `json:"company_id,omitempty" gorm:"column:company_id"`
+	Company      *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+}
+
+func (m *WhatsappMessageSession) BeforeCreate(tx *gorm.DB) error {
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return nil
 }

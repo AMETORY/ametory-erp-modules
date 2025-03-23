@@ -212,7 +212,7 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 	model.SetTopP(service.setTopP)
 	model.SetMaxOutputTokens(service.setMaxOutputTokens)
 	model.ResponseMIMEType = service.responseMimetype
-	// session := model.StartChat()
+	session := model.StartChat()
 
 	histories := service.histories
 	for _, v := range userHistories {
@@ -224,12 +224,23 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 		if !ok {
 			continue
 		}
-		histories = append(histories, &genai.Content{
-			Role: role,
-			Parts: []genai.Part{
-				genai.Text(content + "\n"),
-			},
-		})
+		if fileURL != "" {
+			upload := uploadToGemini(ctx, service.client, fileURL, mimeType)
+			histories = append(histories, &genai.Content{
+				Role: role,
+				Parts: []genai.Part{
+					genai.FileData{URI: upload, MIMEType: mimeType},
+				},
+			})
+		} else {
+			histories = append(histories, &genai.Content{
+				Role: role,
+				Parts: []genai.Part{
+					genai.Text(content + "\n"),
+				},
+			})
+		}
+
 	}
 	if service.systemInstruction != "" {
 		model.SystemInstruction = &genai.Content{
@@ -242,7 +253,10 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 
 	// }
 
-	utils.LogJson(histories)
+	// utils.LogJson(histories)
+	// for _, v := range histories {
+	// 	fmt.Printf("%s:\t %s\n", v.Role, v.Parts[0].(genai.Text))
+	// }
 
 	// if session == nil {
 	// 	return "", fmt.Errorf("error starting chat session")
@@ -254,26 +268,29 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 	// if err != nil {
 	// 	return "", fmt.Errorf("error sending message: %v", err)
 	// }
-	parts := []genai.Part{}
-	for _, part := range histories {
-		if part.Role == "user" {
-			parts = append(parts, genai.Text("input: "+part.Parts[0].(genai.Text)))
-		}
-		if part.Role == "model" {
-			parts = append(parts, genai.Text("output: "+part.Parts[0].(genai.Text)))
-		}
+	// parts := []genai.Part{}
+	// for _, part := range histories {
+	// 	if part.Role == "user" {
+	// 		parts = append(parts, genai.Text("input: "+part.Parts[0].(genai.Text)))
+	// 	}
+	// 	if part.Role == "model" {
+	// 		parts = append(parts, genai.Text("output: "+part.Parts[0].(genai.Text)))
+	// 	}
 
-	}
+	// }
 
-	if fileURL != "" {
-		parts = append(parts, genai.FileData{URI: uploadToGemini(ctx, service.client, fileURL, mimeType)})
-	}
-	parts = append(parts, genai.Text("input: "+input))
-	parts = append(parts, genai.Text("output: "))
+	// if fileURL != "" {
+	// 	parts = append(parts, genai.FileData{URI: uploadToGemini(ctx, service.client, fileURL, mimeType)})
+	// }
+	// parts = append(parts, genai.Text("input: "+input))
+	// parts = append(parts, genai.Text("output: "))
 	// fmt.Println("PARTS", parts)
 	// fmt.Println("RESPONSE", resp.Candidates[0].Content)
 
-	resp, err := model.GenerateContent(ctx, parts...)
+	session.History = histories
+
+	resp, err := session.SendMessage(ctx, genai.Text(input))
+	// resp, err := model.GenerateContent(ctx, parts...)
 	if err != nil {
 		return "", fmt.Errorf("error generating content: %v", err)
 	}

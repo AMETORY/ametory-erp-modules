@@ -34,6 +34,7 @@ func (cs *CustomerRelationshipService) Migrate() error {
 	}
 	return cs.ctx.DB.AutoMigrate(
 		&models.WhatsappMessageModel{},
+		&models.WhatsappMessageSession{},
 		&models.FormTemplate{},
 		&models.FormModel{},
 		&models.FormResponseModel{},

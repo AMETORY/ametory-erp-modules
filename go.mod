@@ -43,6 +43,7 @@ require (
 	github.com/klauspost/compress v1.11.12 // indirect
 	github.com/morkid/gocache v1.0.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
+	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.22.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
@@ -80,6 +81,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/morkid/paginate v1.1.8
+	github.com/ttacon/libphonenumber v1.2.1
 	golang.org/x/crypto v0.32.0
 	golang.org/x/text v0.21.0 // indirect
 )
