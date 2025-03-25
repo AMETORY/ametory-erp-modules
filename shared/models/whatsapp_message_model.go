@@ -27,6 +27,7 @@ type WhatsappMessageModel struct {
 	Company     *CompanyModel          `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 	IsFromMe    bool                   `json:"is_from_me"`
 	IsGroup     bool                   `json:"is_group"`
+	SentAt      *time.Time             `json:"sent_at" gorm:"-"`
 }
 
 func (m *WhatsappMessageModel) TableName() string {
@@ -44,11 +45,11 @@ func (m *WhatsappMessageModel) BeforeCreate(tx *gorm.DB) error {
 		tx.Statement.SetColumn("info", "{}")
 	}
 
-	var contact ContactModel
-	err := tx.Select("phone", "id").First(&contact, "phone = ?", m.Sender).Error
-	if err == nil {
-		tx.Statement.SetColumn("contact_id", contact.ID)
-	}
+	// var contact ContactModel
+	// err := tx.Select("phone", "id").First(&contact, "phone = ?", m.Sender).Error
+	// if err == nil {
+	// 	tx.Statement.SetColumn("contact_id", contact.ID)
+	// }
 
 	return nil
 }
@@ -61,7 +62,16 @@ func (m *WhatsappMessageModel) AfterFind(tx *gorm.DB) error {
 			return err
 		}
 		m.MessageInfo = info
+		sentAt, ok := info["Timestamp"].(string)
+		if ok {
+			t, err := time.Parse(time.RFC3339, sentAt)
+			if err == nil {
+				m.SentAt = &t
+			}
+		}
+
 	}
+
 	return nil
 }
 
@@ -74,6 +84,10 @@ type WhatsappMessageSession struct {
 	LastMessage  string        `json:"last_message"`
 	CompanyID    *string       `json:"company_id,omitempty" gorm:"column:company_id"`
 	Company      *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	ContactID    *string       `json:"contact_id,omitempty" gorm:"column:contact_id"`
+	Contact      *ContactModel `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
+	RefID        *string       `json:"ref_id,omitempty"`
+	RefType      *string       `json:"ref_type,omitempty"`
 }
 
 func (m *WhatsappMessageSession) BeforeCreate(tx *gorm.DB) error {

@@ -94,3 +94,36 @@ func (ws *WhatsappService) GetMessageSession(JID string) ([]models.WhatsappMessa
 	}
 	return waMsgs, nil
 }
+
+func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, request http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := ws.db.Preload("Contact").Model(&models.WhatsappMessageSession{})
+
+	if sessionName != "" {
+		stmt = stmt.Where("session = ?", sessionName)
+	}
+
+	stmt = stmt.Order("last_online_at DESC")
+
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.WhatsappMessageSession{})
+	return page, nil
+}
+
+func (ws *WhatsappService) GetMessageSessionChatBySessionName(sessionName string, contact_id *string, request http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := ws.db.Preload("Contact").Model(&models.WhatsappMessageModel{})
+
+	if sessionName != "" {
+		stmt = stmt.Where("session = ?", sessionName)
+	}
+	if contact_id != nil {
+		stmt = stmt.Where("contact_id = ?", *contact_id)
+	}
+
+	stmt = stmt.Order("created_at DESC")
+
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.WhatsappMessageModel{})
+	return page, nil
+}

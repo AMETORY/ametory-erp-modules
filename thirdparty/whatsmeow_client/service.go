@@ -66,6 +66,61 @@ func (s *WhatsmeowService) SendMessage(msg WaMessage) (map[string]interface{}, e
 	return response, nil
 }
 
+func (s *WhatsmeowService) GetContact(JID, search, page, limit string) ([]byte, error) {
+	req, err := http.NewRequest("GET", s.BaseURL+"/v1/contacts?jid="+JID+"&search="+search+"&limit="+limit+"&page="+page, nil)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	client.Timeout = 30 * time.Second
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
+func (s *WhatsmeowService) CheckConnected(JID string) ([]byte, error) {
+	req, err := http.NewRequest("GET", s.BaseURL+"/v1/connected/"+JID, nil)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	client.Timeout = 30 * time.Second
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
 func (s *WhatsmeowService) CreateQR(sessionID, webhook, headerKey string) ([]byte, error) {
 	req, err := http.NewRequest("POST", s.BaseURL+"/v1/create-qr", bytes.NewBufferString(`{"session":"`+sessionID+`","webhook":"`+webhook+`", "header_key":"`+headerKey+`"}`))
 	if err != nil {

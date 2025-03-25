@@ -61,7 +61,7 @@ func (s *ContactService) CreateContactFromUser(user *models.UserModel, code stri
 // GetContactByID mengambil contact berdasarkan ID
 func (s *ContactService) GetContactByID(id string) (*models.ContactModel, error) {
 	var contact models.ContactModel
-	if err := s.ctx.DB.First(&contact, id).Error; err != nil {
+	if err := s.ctx.DB.First(&contact, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("contact not found")
 		}
