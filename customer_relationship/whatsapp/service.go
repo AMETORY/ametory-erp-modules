@@ -127,3 +127,14 @@ func (ws *WhatsappService) GetMessageSessionChatBySessionName(sessionName string
 	page := pg.With(stmt).Request(request).Response(&[]models.WhatsappMessageModel{})
 	return page, nil
 }
+
+func (ws *WhatsappService) MarkMessageAsRead(messageId string) error {
+	stmt := ws.db.Model(&models.WhatsappMessageModel{}).Where("id= ?", messageId).Update("is_read", true)
+	if stmt.RowsAffected == 0 {
+		return errors.New("message not found")
+	}
+	if stmt.Error != nil {
+		return stmt.Error
+	}
+	return nil
+}

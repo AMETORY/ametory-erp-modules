@@ -28,6 +28,7 @@ type WhatsappMessageModel struct {
 	IsFromMe    bool                   `json:"is_from_me"`
 	IsGroup     bool                   `json:"is_group"`
 	SentAt      *time.Time             `json:"sent_at" gorm:"-"`
+	IsRead      bool                   `json:"is_read" gorm:"default:false"`
 }
 
 func (m *WhatsappMessageModel) TableName() string {
@@ -88,6 +89,8 @@ type WhatsappMessageSession struct {
 	Contact      *ContactModel `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
 	RefID        *string       `json:"ref_id,omitempty"`
 	RefType      *string       `json:"ref_type,omitempty"`
+	IsHumanAgent bool          `json:"is_human_agent"`
+	CountUnread  int           `json:"count_unread" gorm:"-"`
 }
 
 func (m *WhatsappMessageSession) BeforeCreate(tx *gorm.DB) error {

@@ -8,13 +8,29 @@ import (
 
 type RoleModel struct {
 	shared.BaseModel
-	Name         string            `gorm:"not null" json:"name"`
-	Permissions  []PermissionModel `gorm:"many2many:role_permissions;constraint:OnDelete:CASCADE;" json:"permissions"`
-	CompanyID    *string           `json:"company_id"`
-	IsAdmin      bool              `json:"is_admin"`
-	IsMerchant   bool              `json:"is_merchant"`
-	IsSuperAdmin bool              `json:"is_super_admin"`
-	IsOwner      bool              `json:"is_owner"`
+	Name            string            `gorm:"not null" json:"name"`
+	Permissions     []PermissionModel `gorm:"many2many:role_permissions;constraint:OnDelete:CASCADE;" json:"permissions"`
+	CompanyID       *string           `json:"company_id"`
+	IsAdmin         bool              `json:"is_admin"`
+	IsMerchant      bool              `json:"is_merchant"`
+	IsSuperAdmin    bool              `json:"is_super_admin"`
+	IsOwner         bool              `json:"is_owner"`
+	PermissionNames []string          `gorm:"-" json:"permission_names"`
+}
+
+func (r *RoleModel) AfterFind(tx *gorm.DB) (err error) {
+	if r.IsSuperAdmin {
+		var permissions []PermissionModel
+		if err := tx.Find(&permissions).Error; err != nil {
+			return err
+		}
+		r.Permissions = permissions
+	}
+	r.PermissionNames = make([]string, len(r.Permissions))
+	for i, p := range r.Permissions {
+		r.PermissionNames[i] = p.Name
+	}
+	return
 }
 
 // PermissionModel adalah model database untuk izin
