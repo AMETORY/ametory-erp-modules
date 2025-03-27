@@ -1,6 +1,10 @@
 package models
 
-import "github.com/AMETORY/ametory-erp-modules/shared"
+import (
+	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type CooperativeSettingModel struct {
 	shared.BaseModel
@@ -50,4 +54,15 @@ type CooperativeSettingModel struct {
 	RandomCharacterLength               int           `json:"random_character_length"`
 	InterestRatePerMonth                float64       `json:"interest_rate_per_month"`
 	ExpectedProfitRatePerMonth          float64       `json:"expected_profit_rate_per_month"`
+}
+
+func (c *CooperativeSettingModel) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == "" {
+		c.ID = uuid.New().String()
+	}
+	return nil
+}
+
+func (c *CooperativeSettingModel) TableName() string {
+	return "cooperative_settings"
 }

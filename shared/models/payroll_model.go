@@ -32,7 +32,7 @@ type PayRollModel struct {
 	TaxTariff                       float64              `json:"tax_tariff"`
 	IsGrossUp                       bool                 `json:"is_gross_up"`
 	IsEffectiveRateAverage          bool                 `json:"is_effective_rate_average"`
-	Status                          string               `json:"status" gorm:"type:enum('DRAFT', 'RUNNING', 'FINISHED');default:'DRAFT'"`
+	Status                          string               `json:"status" gorm:"type:varchar(20);default:'DRAFT'"` //'DRAFT', 'RUNNING', 'FINISHED'
 	Attachments                     []string             `json:"attachments" gorm:"-"`
 	Transactions                    []TransactionModel   `json:"transactions" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	PayableTransactions             []TransactionModel   `json:"payable_transactions" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`

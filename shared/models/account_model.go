@@ -14,6 +14,7 @@ const (
 	LIABILITY        AccountType = "LIABILITY"
 	EQUITY           AccountType = "EQUITY"
 	REVENUE          AccountType = "REVENUE"
+	INCOME           AccountType = "INCOME"
 	EXPENSE          AccountType = "EXPENSE"
 	COST             AccountType = "COST"
 	PAYABLE          AccountType = "PAYABLE"
@@ -47,6 +48,8 @@ type AccountModel struct {
 	CashflowSubGroupLabel string        `gorm:"-" json:"cashflow_subgroup_label,omitempty"`
 	CompanyID             *string       `json:"company_id,omitempty"`
 	Company               *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
+	UserID                *string       `json:"user_id,omitempty"`
+	User                  *UserModel    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"user,omitempty"`
 	TransactionCount      int64         `gorm:"-" json:"transaction_count,omitempty"`
 	Balance               float64       `gorm:"-" json:"balance,omitempty"`
 	BalanceBefore         float64       `gorm:"-" json:"balance_before,omitempty"`

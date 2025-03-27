@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type CooperativeMemberModel struct {
@@ -14,7 +16,7 @@ type CooperativeMemberModel struct {
 	JoinDate               time.Time          `json:"join_date"`
 	Active                 bool               `json:"active"`
 	Email                  string             `json:"email"`
-	Picture                string             `json:"picture"`
+	Picture                *FileModel         `gorm:"-" bson:"picture,omitempty" json:"picture,omitempty"`
 	PhoneNumber            string             `json:"phone_number"`
 	Address                string             `json:"address"`
 	City                   string             `json:"city"`
@@ -26,9 +28,21 @@ type CooperativeMemberModel struct {
 	TotalRemainLoans       float64            `json:"total_remain_loans" gorm:"-"`
 	TotalTransactions      float64            `json:"total_transactions" gorm:"-"`
 	TotalDisbursement      float64            `json:"total_disbursement" gorm:"-"`
-	NetSurplusTransactions []TransactionModel `gorm:"-"`
+	NetSurplusTransactions []TransactionModel `gorm:"-" bson:"net_surplus_transactions,omitempty" json:"net_surplus_transactions,omitempty"`
 }
 
 func (CooperativeMemberModel) TableName() string {
 	return "cooperative_members"
+}
+
+func (cm *CooperativeMemberModel) BeforeCreate(tx *gorm.DB) error {
+	if cm.ID == "" {
+		cm.ID = uuid.New().String()
+	}
+	var file FileModel
+	err := tx.First(&file, "ref_id = ? AND ref_type = ?", cm.ID, "cooperative-member").Error
+	if err == nil {
+		cm.Picture = &file
+	}
+	return nil
 }

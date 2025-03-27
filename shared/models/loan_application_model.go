@@ -13,7 +13,7 @@ type LoanApplicationModel struct {
 	CompanyID           *string                        `gorm:"size:30" json:"company_id"`
 	UserID              *string                        `gorm:"size:30" json:"user_id"`
 	MemberID            *string                        `json:"member_id"` // ID of the member submitting the application
-	Member              CooperativeMemberModel         `json:"member" gorm:"-"`
+	Member              *CooperativeMemberModel        `json:"member" gorm:"-"`
 	LoanNumber          string                         `json:"loan_number"`
 	LoanAmount          float64                        `json:"loan_amount"`                    // Amount of money requested
 	LoanPurpose         string                         `json:"loan_purpose"`                   // Purpose of the loan (e.g., "modal usaha")

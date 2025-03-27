@@ -7,6 +7,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/bank"
+	"github.com/AMETORY/ametory-erp-modules/finance/report"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"gorm.io/gorm"
 )
@@ -16,6 +17,7 @@ type FinanceService struct {
 	AccountService     *account.AccountService
 	TransactionService *transaction.TransactionService
 	BankService        *bank.BankService
+	ReportService      *report.FinanceReportService
 }
 
 func NewFinanceService(ctx *context.ERPContext) *FinanceService {
@@ -26,6 +28,7 @@ func NewFinanceService(ctx *context.ERPContext) *FinanceService {
 	service.AccountService = account.NewAccountService(ctx.DB, ctx)
 	service.TransactionService = transaction.NewTransactionService(ctx.DB, ctx, service.AccountService)
 	service.BankService = bank.NewBankService(ctx.DB, ctx)
+	service.ReportService = report.NewFinanceReportService(ctx.DB, ctx)
 	err := service.Migrate()
 	if err != nil {
 		panic(err)

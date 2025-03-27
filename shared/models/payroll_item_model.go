@@ -8,7 +8,7 @@ import (
 
 type PayrollItemModel struct {
 	shared.BaseModel
-	ItemType           string              `json:"item_type" gorm:"type:enum('SALARY', 'ALLOWANCE', 'OVERTIME', 'DEDUCTION', 'REIMBURSEMENT')"`
+	ItemType           string              `gorm:"type:varchar(20);not null" json:"item_type" ` //'SALARY', 'ALLOWANCE', 'OVERTIME', 'DEDUCTION', 'REIMBURSEMENT'
 	AccountPayableID   *string             `json:"account_payable_id"`
 	Title              string              `json:"title"`
 	Notes              string              `json:"notes"`

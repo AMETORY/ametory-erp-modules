@@ -21,7 +21,7 @@ type EmployeeOvertimeModel struct {
 	StartTimeRequest         time.Time        `json:"start_time_request"`
 	EndTimeRequest           time.Time        `json:"end_time_request"`
 	Reason                   string           `json:"reason"`
-	Status                   string           `json:"status" gorm:"type:enum('PENDING','APPROVED', 'REJECTED','FINISHED', 'REVIEWED') DEFAULT 'PENDING'"`
+	Status                   string           `json:"status" gorm:"default:'PENDING'"` // 'PENDING','APPROVED', 'REJECTED','FINISHED', 'REVIEWED'
 	DateRequested            time.Time        `json:"date_requested"`
 	DateApprovedOrRejected   *time.Time       `json:"date_approved_or_rejected"`
 	ClockIn                  *time.Time       `json:"clock_in"`
