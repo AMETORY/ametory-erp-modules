@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -68,4 +70,13 @@ func (u *AccountModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (AccountModel) TableName() string {
 	return "accounts"
+}
+
+type AccountReport struct {
+	Account        AccountModel `json:"account"`
+	TotalBalance   float64      `json:"total_balance"`
+	BalanceBefore  float64      `json:"balance_before"`
+	CurrentBalance float64      `json:"current_balance"`
+	StartDate      *time.Time   `json:"start_date"`
+	EndDate        *time.Time   `json:"end_date"`
 }

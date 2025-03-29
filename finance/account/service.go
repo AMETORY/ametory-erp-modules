@@ -3,6 +3,7 @@ package account
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/constants"
@@ -131,7 +132,19 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 		)
 	}
 	if request.URL.Query().Get("type") != "" {
-		stmt = stmt.Where("accounts.type = ? ", request.URL.Query().Get("type"))
+		types := strings.Split(request.URL.Query().Get("type"), ",")
+		stmt = stmt.Where("accounts.type IN (?) ", types)
+	}
+	if request.URL.Query().Get("cashflow_sub_group") != "" {
+		subgroups := strings.Split(request.URL.Query().Get("cashflow_sub_group"), ",")
+		stmt = stmt.Where("accounts.cashflow_sub_group IN (?) ", subgroups)
+	}
+	if request.URL.Query().Get("cashflow_group") != "" {
+		groups := strings.Split(request.URL.Query().Get("cashflow_group"), ",")
+		stmt = stmt.Where("accounts.cashflow_group IN (?) ", groups)
+	}
+	if request.URL.Query().Get("category") != "" {
+		stmt = stmt.Where("accounts.category = ? ", request.URL.Query().Get("category"))
 	}
 	stmt = stmt.Model(&models.AccountModel{})
 	utils.FixRequest(&request)

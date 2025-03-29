@@ -28,7 +28,7 @@ func NewFinanceService(ctx *context.ERPContext) *FinanceService {
 	service.AccountService = account.NewAccountService(ctx.DB, ctx)
 	service.TransactionService = transaction.NewTransactionService(ctx.DB, ctx, service.AccountService)
 	service.BankService = bank.NewBankService(ctx.DB, ctx)
-	service.ReportService = report.NewFinanceReportService(ctx.DB, ctx)
+	service.ReportService = report.NewFinanceReportService(ctx.DB, ctx, service.AccountService, service.TransactionService)
 	err := service.Migrate()
 	if err != nil {
 		panic(err)

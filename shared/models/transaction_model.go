@@ -20,6 +20,8 @@ type TransactionModel struct {
 	IsOpeningBalance            bool                    `json:"is_opening_balance"`
 	IsIncome                    bool                    `json:"is_income"`
 	IsExpense                   bool                    `json:"is_expense"`
+	IsEquity                    bool                    `json:"is_equity"`
+	IsTransfer                  bool                    `json:"is_transfer"`
 	IsJournal                   bool                    `json:"is_journal"`
 	IsRefund                    bool                    `json:"is_refund"`
 	IsLending                   bool                    `json:"is_lending"`
@@ -32,6 +34,7 @@ type TransactionModel struct {
 	TransactionRefID            *string                 `json:"transaction_ref_id,omitempty"`
 	TransactionRefType          string                  `json:"transaction_ref_type,omitempty"`
 	TransactionRefs             []TransactionModel      `json:"transaction_refs,omitempty" gorm:"-"`
+	TransactionRef              *TransactionModel       `gorm:"-" json:"transaction_ref,omitempty"`
 	CompanyID                   *string                 `json:"company_id,omitempty" gorm:"null"`
 	Company                     *CompanyModel           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:CompanyID" json:"company,omitempty"`
 	File                        *string                 `json:"file,omitempty"`
@@ -55,6 +58,7 @@ type TransactionModel struct {
 	CooperativeMember           *CooperativeMemberModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:CooperativeMemberID" json:"cooperative_member,omitempty"`
 	SavingID                    *string                 `json:"saving_id,omitempty"`
 	Saving                      *SavingModel            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:SavingID" json:"saving,omitempty"`
+	Balance                     float64                 `json:"balance" gorm:"-"`
 	// EmployeeID             *string              `json:"employee_id"`
 	// Employee               Employee             `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:EmployeeID" json:"-"`
 	// Images                 []Image            `json:"images" gorm:"-"`
