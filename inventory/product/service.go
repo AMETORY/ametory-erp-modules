@@ -27,7 +27,7 @@ func NewProductService(db *gorm.DB, ctx *context.ERPContext, fileService *file.F
 }
 
 func Migrate(db *gorm.DB) error {
-	db.Migrator().AlterColumn(&models.VariantModel{}, "product_id")
+	// db.Migrator().AlterColumn(&models.VariantModel{}, "product_id")
 	return db.AutoMigrate(
 		&models.ProductModel{},
 		&models.ProductCategoryModel{},

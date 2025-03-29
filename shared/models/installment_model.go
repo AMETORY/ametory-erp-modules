@@ -10,7 +10,7 @@ import (
 
 type InstallmentPayment struct {
 	shared.BaseModel
-	LoanApplicationID *string               `gorm:"size:30" json:"loan_application_id"`                                               // ID of the loan this payment belongs to
+	LoanApplicationID *string               `gorm:"size:36" json:"loan_application_id"`                                               // ID of the loan this payment belongs to
 	LoanApplication   *LoanApplicationModel `gorm:"foreignKey:LoanApplicationID;constraint:OnDelete:CASCADE" json:"loan_application"` // Loan application associated with the payment
 	MemberID          *string               `json:"member_id"`                                                                        // ID of the member making the payment
 	InstallmentNo     int                   `json:"installment_no"`                                                                   // Installment number (e.g., 1, 2, 3, ...)

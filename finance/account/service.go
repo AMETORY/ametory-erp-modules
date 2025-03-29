@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/shared/constants"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -14,6 +15,75 @@ import (
 type AccountService struct {
 	db  *gorm.DB
 	ctx *context.ERPContext
+}
+
+var defaultAccountGroups = []map[string]any{
+	{
+		"label": constants.OPERATING_VALUE,
+		"value": constants.OPERATING,
+		"subgroups": []map[string]any{
+			{
+				"label": constants.ACCEPTANCE_FROM_CUSTOMERS_VALUE,
+				"value": constants.ACCEPTANCE_FROM_CUSTOMERS,
+			},
+			{
+				"label": constants.OTHER_CURRENT_ASSETS_VALUE,
+				"value": constants.OTHER_CURRENT_ASSETS,
+			},
+			{
+				"label": constants.PAYMENT_TO_VENDORS_VALUE,
+				"value": constants.PAYMENT_TO_VENDORS,
+			},
+			{
+				"label": constants.CREDIT_CARDS_AND_OTHER_SHORT_TERM_LIABILITIES_VALUE,
+				"value": constants.CREDIT_CARDS_AND_OTHER_SHORT_TERM_LIABILITIES,
+			},
+			{
+				"label": constants.OTHER_INCOME_VALUE,
+				"value": constants.OTHER_INCOME,
+			},
+			{
+				"label": constants.OPERATIONAL_EXPENSES_VALUE,
+				"value": constants.OPERATIONAL_EXPENSES,
+			},
+			{
+				"label": constants.RETURNS_PAYMENT_OF_TAXES_VALUE,
+				"value": constants.RETURNS_PAYMENT_OF_TAXES,
+			},
+		},
+	},
+	{
+		"label": constants.INVESTING_VALUE,
+		"value": constants.INVESTING,
+		"subgroups": []map[string]any{
+			{
+				"label": constants.ACQUISITION_SALE_OF_ASSETS_VALUE,
+				"value": constants.ACQUISITION_SALE_OF_ASSETS,
+			},
+			{
+				"label": constants.OTHER_INVESTMENT_ACTIVITIES_VALUE,
+				"value": constants.OTHER_INVESTMENT_ACTIVITIES,
+			},
+			{
+				"label": constants.INVESTMENT_PARTNERSHIP_VALUE,
+				"value": constants.INVESTMENT_PARTNERSHIP,
+			},
+		},
+	},
+	{
+		"label": constants.FINANCING_VALUE,
+		"value": constants.FINANCING,
+		"subgroups": []map[string]any{
+			{
+				"label": constants.LOAN_PAYMENTS_RECEIPTS_VALUE,
+				"value": constants.LOAN_PAYMENTS_RECEIPTS,
+			},
+			{
+				"label": constants.EQUITY_CAPITAL_VALUE,
+				"value": constants.EQUITY_CAPITAL,
+			},
+		},
+	},
 }
 
 func NewAccountService(db *gorm.DB, ctx *context.ERPContext) *AccountService {
@@ -68,4 +138,93 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 	page := pg.With(stmt).Request(request).Response(&[]models.AccountModel{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (s *AccountService) GetTypes() map[string]any {
+
+	return map[string]any{
+		string(models.ASSET): map[string]any{
+			"name": string(models.ASSET),
+			"categories": []string{
+				constants.CATEGORY_FIXED_ASSET,
+				constants.CATEGORY_CURRENT_ASSET,
+			},
+			"groups": []map[string]any{
+				{
+					"label": constants.CASHFLOW_GROUP_FIXED_ASSET_VALUE,
+					"value": constants.CASHFLOW_GROUP_FIXED_ASSET,
+					"subgroups": []map[string]any{
+						{
+							"label": constants.CASHFLOW_GROUP_FIXED_ASSET_VALUE,
+							"value": constants.CASHFLOW_GROUP_FIXED_ASSET,
+						},
+						{
+							"label": constants.CASHFLOW_GROUP_DEPRECIATION_AMORTIZATION_VALUE,
+							"value": constants.CASHFLOW_GROUP_DEPRECIATION_AMORTIZATION,
+						},
+					},
+				},
+			},
+		},
+		string(models.RECEIVABLE): map[string]any{
+			"name": string(models.RECEIVABLE),
+			"categories": []string{
+				constants.CATEGORY_RECEIVABLE,
+			},
+			"groups": defaultAccountGroups,
+		},
+		string(models.LIABILITY): map[string]any{
+			"name": string(models.LIABILITY),
+			"categories": []string{
+				constants.CATEGORY_DEBT,
+			},
+			"groups": defaultAccountGroups,
+		},
+		string(models.EQUITY): map[string]any{
+			"name": string(models.EQUITY),
+			"categories": []string{
+				constants.CATEGORY_EQUITY,
+			},
+			"groups": []map[string]any{
+				{
+					"label": constants.FINANCING_VALUE,
+					"value": constants.FINANCING,
+					"subgroups": []map[string]any{
+						{
+							"label": constants.LOAN_PAYMENTS_RECEIPTS_VALUE,
+							"value": constants.LOAN_PAYMENTS_RECEIPTS,
+						},
+						{
+							"label": constants.EQUITY_CAPITAL_VALUE,
+							"value": constants.EQUITY_CAPITAL,
+						},
+					},
+				},
+			},
+		},
+		string(models.INCOME): map[string]any{
+			"name": string(models.INCOME),
+			"categories": []string{
+				constants.CATEGORY_SALES,
+				constants.CATEGORY_OTHER_INCOME,
+			},
+			"groups": defaultAccountGroups,
+		},
+		string(models.EXPENSE): map[string]any{
+			"name": string(models.EXPENSE),
+			"categories": []string{
+				constants.CATEGORY_EXPENSE,
+				constants.CATEGORY_OPERATING,
+			},
+			"groups": defaultAccountGroups,
+		},
+		string(models.COST): map[string]any{
+			"name": string(models.COST),
+			"categories": []string{
+				constants.CATEGORY_EXPENSE,
+				constants.CATEGORY_OPERATING,
+			},
+			"groups": defaultAccountGroups,
+		},
+	}
 }

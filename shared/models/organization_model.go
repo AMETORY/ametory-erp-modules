@@ -10,8 +10,8 @@ type OrganizationModel struct {
 	shared.BaseModel
 	Parent           *OrganizationModel
 	ParentId         *string             `gorm:"REFERENCES organizations" json:"parent_id,omitempty"`
-	Name             string              `gorm:"size:30" json:"name,omitempty"`
-	Code             string              `gorm:"size:30" json:"code,omitempty"`
+	Name             string              `gorm:"size:36" json:"name,omitempty"`
+	Code             string              `gorm:"size:36" json:"code,omitempty"`
 	Description      string              `gorm:"size:100" json:"description,omitempty"`
 	Employees        []EmployeeModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	SubOrganizations []OrganizationModel `json:"sub_organizations,omitempty" gorm:"foreignKey:parent_id"`

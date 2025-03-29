@@ -10,8 +10,8 @@ import (
 
 type NetSurplusModel struct {
 	shared.BaseModel
-	CompanyID        *string                `gorm:"size:30" json:"company_id"`
-	UserID           *string                `gorm:"size:30" json:"user_id"`
+	CompanyID        *string                `gorm:"size:36" json:"company_id"`
+	UserID           *string                `gorm:"size:36" json:"user_id"`
 	StartDate        time.Time              `json:"start_date"`
 	EndDate          time.Time              `json:"end_date"`
 	Date             time.Time              `json:"date"`
@@ -22,10 +22,9 @@ type NetSurplusModel struct {
 	DistributionData string                 `gorm:"type:JSON"`
 	MemberData       string                 `gorm:"type:JSON"`
 	ProfitLossData   string                 `gorm:"type:JSON"`
-	// ProfitLoss       ProfitLoss             `gorm:"-"`
-	Transactions     []TransactionModel `json:"transactions"`
-	Status           string             `json:"status"`
-	Tx               *gorm.DB
+	ProfitLoss       ProfitLoss             `gorm:"-"`
+	Transactions     []TransactionModel     `json:"transactions" gorm:"-"`
+	Status           string                 `json:"status"`
 	SavingsTotal     float64
 	LoanTotal        float64
 	TransactionTotal float64

@@ -8,7 +8,7 @@ import (
 
 type CooperativeSettingModel struct {
 	shared.BaseModel
-	CompanyID                           *string       `gorm:"size:30" json:"company_id"`
+	CompanyID                           *string       `gorm:"size:36" json:"company_id"`
 	Company                             CompanyModel  `gorm:"foreignKey:CompanyID;references:ID" json:"company"`
 	PrincipalSavingsAmount              float64       `json:"principal_savings_amount"`
 	MandatorySavingsAmount              float64       `json:"mandatory_savings_amount"`
@@ -46,7 +46,7 @@ type CooperativeSettingModel struct {
 	NetSurplusEducationFundAccount      *AccountModel `json:"net_surplus_education_fund_account,omitempty" gorm:"foreignKey:NetSurplusEducationFundAccountID"`
 	NetSurplusManagementAccount         *AccountModel `json:"net_surplus_management_account,omitempty" gorm:"foreignKey:NetSurplusManagementAccountID"`
 	NetSurplusOtherFundsAccount         *AccountModel `json:"net_surplus_other_funds_account,omitempty" gorm:"foreignKey:NetSurplusOtherFundsAccountID"`
-	TermCondition                       string        `json:"term_condition" gorm:"type:LONGTEXT"`
+	TermCondition                       string        `json:"term_condition" gorm:"type:TEXT"`
 	StaticCharacter                     string        `json:"static_character"`
 	NumberFormat                        string        `json:"number_format"`
 	AutoNumericLength                   int           `json:"auto_numeric_length"`
@@ -54,6 +54,7 @@ type CooperativeSettingModel struct {
 	RandomCharacterLength               int           `json:"random_character_length"`
 	InterestRatePerMonth                float64       `json:"interest_rate_per_month"`
 	ExpectedProfitRatePerMonth          float64       `json:"expected_profit_rate_per_month"`
+	IsIslamic                           bool          `json:"is_islamic"`
 }
 
 func (c *CooperativeSettingModel) BeforeCreate(tx *gorm.DB) error {

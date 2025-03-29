@@ -2,7 +2,7 @@ package report
 
 import (
 	"github.com/AMETORY/ametory-erp-modules/context"
-	"github.com/AMETORY/ametory-erp-modules/finance/report/report_object"
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"gorm.io/gorm"
 )
 
@@ -18,7 +18,7 @@ func NewFinanceReportService(db *gorm.DB, ctx *context.ERPContext) *FinanceRepor
 	}
 }
 
-func (s *FinanceReportService) GenerateProfitLoss(report *report_object.ProfitLoss) error {
+func (s *FinanceReportService) GenerateProfitLoss(report *models.ProfitLoss) error {
 
 	return nil
 }

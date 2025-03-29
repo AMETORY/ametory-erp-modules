@@ -10,7 +10,8 @@ import (
 
 type CooperativeMemberModel struct {
 	shared.BaseModel
-	CompanyID              *string            `gorm:"size:30" json:"-" bson:"company_id,omitempty"`
+	CompanyID              *string            `gorm:"size:36" json:"-" bson:"company_id,omitempty"`
+	Company                CompanyModel       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
 	Name                   string             `json:"name"`
 	MemberIDNumber         string             `json:"member_id_number" gorm:"member_id_number" sql:"member_id_number"`
 	JoinDate               time.Time          `json:"join_date"`
@@ -22,7 +23,8 @@ type CooperativeMemberModel struct {
 	City                   string             `json:"city"`
 	ZipCode                string             `json:"zip_code"`
 	Country                string             `json:"country"`
-	ConnectedTo            *string            `json:"connected_to" `
+	ConnectedTo            *string            `gorm:"size:36" json:"connected_to" `
+	User                   *UserModel         `gorm:"foreignKey:ConnectedTo;constraint:OnDelete:CASCADE;" json:"user,omitempty"`
 	TotalSavings           float64            `json:"total_savings" gorm:"-"`
 	TotalLoans             float64            `json:"total_loans" gorm:"-"`
 	TotalRemainLoans       float64            `json:"total_remain_loans" gorm:"-"`

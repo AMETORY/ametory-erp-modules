@@ -33,8 +33,12 @@ func (s *CompanyService) Migrate() error {
 	if s.ctx.SkipMigration {
 		return nil
 	}
-	s.ctx.DB.Migrator().AlterColumn(&models.CompanyModel{}, "status")
-	return s.ctx.DB.AutoMigrate(&models.CompanyModel{})
+	// s.ctx.DB.Migrator().AlterColumn(&models.CompanyModel{}, "status")
+	return s.ctx.DB.AutoMigrate(
+		&models.CompanyModel{},
+		&models.CompanySector{},
+		&models.CompanyCategory{},
+	)
 }
 
 func (s *CompanyService) DB() *gorm.DB {
@@ -103,4 +107,20 @@ func (s *CompanyService) GetCompanies(request http.Request, search string) (pagi
 	page := pg.With(stmt).Request(request).Response(&[]models.CompanyModel{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (s *CompanyService) GetCategories(sectorID *string) ([]models.CompanyCategory, error) {
+	var categories []models.CompanyCategory
+	db := s.ctx.DB
+	if sectorID != nil {
+		db = db.Where("sector_id = ?", sectorID)
+	}
+	err := db.Find(&categories).Error
+	return categories, err
+}
+
+func (s *CompanyService) GetSectors() ([]models.CompanySector, error) {
+	var sectors []models.CompanySector
+	err := s.ctx.DB.Preload("Categories").Find(&sectors).Error
+	return sectors, err
 }

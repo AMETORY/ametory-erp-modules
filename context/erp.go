@@ -21,6 +21,7 @@ type ERPContext struct {
 	CompanyService              interface{} // Contoh: CompanyService
 	ContactService              interface{} // Contoh: ContactService
 	FinanceService              interface{} // Contoh: FinanceService
+	CooperativeService          interface{} // Contoh: CooperativeService
 	OrderService                interface{} // Contoh: OrderService
 	DistributionService         interface{} // Contoh: DistributionService
 	CustomerRelationshipService interface{} // Contoh: CustomerRelationshipService

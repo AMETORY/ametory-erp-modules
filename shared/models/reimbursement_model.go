@@ -10,9 +10,9 @@ import (
 
 type ReimbursementModel struct {
 	shared.BaseModel
-	AccountPayableID *string                  `gorm:"size:30" json:"account_payable_id"`
+	AccountPayableID *string                  `gorm:"size:36" json:"account_payable_id"`
 	AccountPayable   *AccountModel            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:AccountPayableID" json:"-"`
-	AccountExpenseID *string                  `gorm:"size:30" json:"account_expense_id"`
+	AccountExpenseID *string                  `gorm:"size:36" json:"account_expense_id"`
 	AccountExpense   AccountModel             `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:AccountExpenseID" json:"-"`
 	Date             time.Time                `json:"date" binding:"required"`
 	Name             string                   `json:"name"`

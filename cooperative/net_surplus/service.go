@@ -6,7 +6,6 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/cooperative/cooperative_setting"
 	"github.com/AMETORY/ametory-erp-modules/finance"
-	"github.com/AMETORY/ametory-erp-modules/finance/report/report_object"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"gorm.io/gorm"
 )
@@ -43,9 +42,9 @@ func (n *NetSurplusService) GetTransactions(netSurplusID string) []models.Transa
 }
 
 func (n *NetSurplusService) GetNetSurplusTotal(netSurplus *models.NetSurplusModel) error {
-	profitLoss := report_object.ProfitLoss{
+	profitLoss := models.ProfitLoss{
 
-		GeneralReport: report_object.GeneralReport{
+		GeneralReport: models.GeneralReport{
 			CompanyID: *netSurplus.CompanyID,
 			Title:     "Sisa Hasil Usaha",
 			StartDate: netSurplus.StartDate,

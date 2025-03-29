@@ -34,6 +34,15 @@ type CompanyModel struct {
 	BankAccount           *string          `json:"bank_account" `
 	BankCode              *string          `json:"bank_code" `
 	BeneficiaryName       *string          `json:"beneficiary_name" `
+	IsCooperation         bool             `json:"is_cooperation" `
+	CompanyCategoryID     *string          `json:"company_category_id,omitempty"`
+	CompanyCategory       *CompanyCategory `json:"company_category,omitempty" gorm:"foreignKey:CompanyCategoryID;constraint:OnDelete:SET NULL;"`
+	CustomCategory        *string          `json:"custom_category_id,omitempty"`
+	ZipCode               *string          `json:"zip_code,omitempty"`
+	ProvinceID            *string          `json:"province_id,omitempty" gorm:"type:char(2);index;constraint:OnDelete:SET NULL;"`
+	RegencyID             *string          `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
+	DistrictID            *string          `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
+	VillageID             *string          `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
 }
 
 func (CompanyModel) TableName() string {
@@ -45,4 +54,19 @@ func (c *CompanyModel) BeforeCreate(tx *gorm.DB) error {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return nil
+}
+
+type CompanyCategory struct {
+	shared.BaseModel
+	Name          string         `json:"name" gorm:"uniqueIndex"`
+	IsCooperative bool           `json:"is_cooperative" gorm:"default:false"`
+	SectorID      *string        `json:"sector_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:SET NULL;"`
+	CompanySector *CompanySector `json:"company_sector,omitempty" gorm:"foreignKey:SectorID;constraint:OnDelete:SET NULL;"`
+}
+
+type CompanySector struct {
+	shared.BaseModel
+	Name          string            `json:"name" gorm:"uniqueIndex"`
+	IsCooperative bool              `json:"is_cooperative" gorm:"default:false"`
+	Categories    []CompanyCategory `json:"categories,omitempty" gorm:"foreignKey:SectorID;constraint:OnDelete:SET NULL;"`
 }

@@ -1,4 +1,4 @@
-package report_object
+package models
 
 import "time"
 

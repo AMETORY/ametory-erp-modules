@@ -10,8 +10,8 @@ import (
 
 type LoanApplicationModel struct {
 	shared.BaseModel
-	CompanyID           *string                        `gorm:"size:30" json:"company_id"`
-	UserID              *string                        `gorm:"size:30" json:"user_id"`
+	CompanyID           *string                        `gorm:"size:36" json:"company_id"`
+	UserID              *string                        `gorm:"size:36" json:"user_id"`
 	MemberID            *string                        `json:"member_id"` // ID of the member submitting the application
 	Member              *CooperativeMemberModel        `json:"member" gorm:"-"`
 	LoanNumber          string                         `json:"loan_number"`
@@ -29,18 +29,18 @@ type LoanApplicationModel struct {
 	Remarks             string                         `json:"remarks,omitempty"`              // Additional remarks or notes (optional)
 	ProfitType          string                         `json:"profit_type"`                    // "fixed", "declining", or "effective" - type of profit/bunga
 	AdminFee            float64                        `json:"admin_fee"`                      // Biaya administrasi
-	AccountReceivableID *string                        `gorm:"size:30" json:"account_receivable_id"`
-	AccountIncomeID     *string                        `gorm:"size:30" json:"account_income_id"`
-	AccountAdminFeeID   *string                        `gorm:"size:30" json:"account_admin_fee_id"`
-	AccountAssetID      *string                        `gorm:"size:30" json:"account_asset_id"`
+	AccountReceivableID *string                        `gorm:"size:36" json:"account_receivable_id"`
+	AccountIncomeID     *string                        `gorm:"size:36" json:"account_income_id"`
+	AccountAdminFeeID   *string                        `gorm:"size:36" json:"account_admin_fee_id"`
+	AccountAssetID      *string                        `gorm:"size:36" json:"account_asset_id"`
 	Data                string                         `json:"data" gorm:"type:JSON"`
 	Preview             map[string][]InstallmentDetail `json:"preview" gorm:"-"`
-	TermCondition       string                         `json:"term_condition" gorm:"type:LONGTEXT"` // Terms and Conditions of the loan
+	TermCondition       string                         `json:"term_condition" gorm:"type:TEXT"` // Terms and Conditions of the loan
 	Payments            []InstallmentPayment           `json:"payments,omitempty" gorm:"-"`
 	LastPayment         *InstallmentPayment            `json:"last_payment,omitempty" gorm:"-"`
-	Transactions        []TransactionModel             `json:"transactions,omitempty"`
-	Installments        []InstallmentDetail
-	NetSurplusID        *string `gorm:"size:30" json:"net_surplus_id"`
+	Transactions        []TransactionModel             `json:"transactions,omitempty" gorm:"-"`
+	Installments        []InstallmentDetail            `json:"installments,omitempty" gorm:"-"`
+	NetSurplusID        *string                        `gorm:"size:36" json:"net_surplus_id"`
 }
 
 func (LoanApplicationModel) TableName() string {
