@@ -73,10 +73,11 @@ func (AccountModel) TableName() string {
 }
 
 type AccountReport struct {
-	Account        AccountModel `json:"account"`
-	TotalBalance   float64      `json:"total_balance"`
-	BalanceBefore  float64      `json:"balance_before"`
-	CurrentBalance float64      `json:"current_balance"`
-	StartDate      *time.Time   `json:"start_date"`
-	EndDate        *time.Time   `json:"end_date"`
+	Account        AccountModel       `json:"account"`
+	TotalBalance   float64            `json:"total_balance"`
+	BalanceBefore  float64            `json:"balance_before"`
+	CurrentBalance float64            `json:"current_balance"`
+	StartDate      *time.Time         `json:"start_date"`
+	EndDate        *time.Time         `json:"end_date"`
+	Transactions   []TransactionModel `json:"transactions"`
 }

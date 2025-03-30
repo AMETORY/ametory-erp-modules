@@ -83,6 +83,11 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 				transaction.Credit = 0
 				transaction.IsTransfer = false
 			}
+			if account.Type == models.ASSET {
+				transaction.IsIncome = false
+				transaction.IsExpense = false
+			}
+
 			if err := s.db.Create(transaction).Error; err != nil {
 				return err
 			}
@@ -96,8 +101,13 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 func (s *TransactionService) UpdateTransaction(id string, transaction *models.TransactionModel) error {
 	// return s.db.Where("id = ?", id).Updates(transaction).Error
 	return s.db.Transaction(func(tx *gorm.DB) error {
-
-		err := tx.Where("id = ?", id).Updates(transaction).Error
+		if transaction.Debit > 0 {
+			transaction.Debit = transaction.Amount
+		}
+		if transaction.Credit > 0 {
+			transaction.Credit = transaction.Amount
+		}
+		err := tx.Model(&models.TransactionModel{}).Where("id = ?", id).Updates(transaction).Error
 		if err != nil {
 			return err
 		}
@@ -105,11 +115,18 @@ func (s *TransactionService) UpdateTransaction(id string, transaction *models.Tr
 		err = tx.Where("code = ? and id != ?", transaction.Code, transaction.ID).First(&trans2).Error
 		if err == nil {
 			var credit, debit float64 = transaction.Debit, transaction.Credit
-			err = tx.Where("id = ?", trans2.ID).Updates(map[string]any{
+			if credit > 0 {
+				credit = transaction.Amount
+			}
+			if debit > 0 {
+				debit = transaction.Amount
+			}
+			err = tx.Model(&models.TransactionModel{}).Where("id = ?", trans2.ID).Updates(map[string]any{
 				"credit":      credit,
 				"debit":       debit,
 				"description": transaction.Description,
 				"date":        transaction.Date,
+				"amount":      transaction.Amount,
 			}).Error
 			if err != nil {
 				return err
@@ -179,7 +196,7 @@ func (s *TransactionService) GetTransactionsByAccountID(accountID string, startD
 		stmt = stmt.Where("transactions.company_id = ?", *companyID)
 	}
 	if startDate != nil {
-		stmt = stmt.Where("transactions.date > ?", *startDate)
+		stmt = stmt.Where("transactions.date >= ?", *startDate)
 	}
 	if endDate != nil {
 		stmt = stmt.Where("transactions.date < ?", *endDate)
