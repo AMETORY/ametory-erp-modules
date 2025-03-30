@@ -285,7 +285,7 @@ func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderReq
 		Subtotal:        0,
 		Paid:            0,
 		CompanyID:       companyID,
-		ContactID:       *orderRequest.ContactID,
+		ContactID:       orderRequest.ContactID,
 		ContactData:     string(contactData),
 		Type:            models.ECOMMERCE,
 		Items:           []models.SalesItemModel{},

@@ -35,13 +35,16 @@ type SalesModel struct {
 	PaymentTerms    string           `json:"payment_terms"`
 	CompanyID       *string          `json:"company_id"`
 	Company         *CompanyModel    `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company"`
-	ContactID       string           `json:"contact_id"`
-	Contact         ContactModel     `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE" json:"contact"`
+	UserID          *string          `gorm:"size:36" json:"-"`
+	User            *UserModel       `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	ContactID       *string          `json:"contact_id"`
+	Contact         *ContactModel    `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE" json:"contact"`
 	ContactData     string           `gorm:"type:json" json:"contact_data"`
 	Type            SalesType        `json:"type"`
 	Items           []SalesItemModel `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE" json:"items"`
 	WithdrawalID    *string          `json:"withdrawal_id,omitempty" gorm:"column:withdrawal_id"`
 	Withdrawal      *WithdrawalModel `gorm:"foreignKey:WithdrawalID;constraint:OnDelete:CASCADE" json:"withdrawal,omitempty"`
+	PublishedAt     *time.Time       `json:"published_at"`
 }
 
 type SalesItemModel struct {

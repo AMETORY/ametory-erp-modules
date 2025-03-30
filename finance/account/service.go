@@ -146,6 +146,10 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 	if request.URL.Query().Get("category") != "" {
 		stmt = stmt.Where("accounts.category = ? ", request.URL.Query().Get("category"))
 	}
+	if request.URL.Query().Get("is_tax") != "" {
+		isTax := request.URL.Query().Get("is_tax") == "true" || request.URL.Query().Get("is_tax") == "1"
+		stmt = stmt.Where("accounts.is_tax = ? ", isTax)
+	}
 	stmt = stmt.Model(&models.AccountModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.AccountModel{})
