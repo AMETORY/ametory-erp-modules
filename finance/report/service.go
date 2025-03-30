@@ -45,7 +45,7 @@ func (s *FinanceReportService) GenerateAccountReport(accountID string, request h
 		return nil, fmt.Errorf("end date is required")
 	}
 
-	fmt.Println(account)
+	// fmt.Println(account)
 
 	// var companyID *string
 	// if request.Header.Get("ID-Company") != "" {
@@ -113,10 +113,19 @@ func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, curre
 	var balance, credit, debit float64
 	for _, item := range *page {
 		if item.TransactionRefID != nil {
-			var transRef models.TransactionModel
-			err := s.db.Preload("Account").Where("id = ?", item.TransactionRefID).First(&transRef).Error
-			if err == nil {
-				item.TransactionRef = &transRef
+			if item.TransactionRefType == "journal" {
+				var journalRef models.JournalModel
+				err := s.db.Where("id = ?", item.TransactionRefID).First(&journalRef).Error
+				if err == nil {
+					item.JournalRef = &journalRef
+				}
+			}
+			if item.TransactionRefType == "transaction" {
+				var transRef models.TransactionModel
+				err := s.db.Preload("Account").Where("id = ?", item.TransactionRefID).First(&transRef).Error
+				if err == nil {
+					item.TransactionRef = &transRef
+				}
 			}
 		}
 		curBalance := s.getBalanceAmount(item)

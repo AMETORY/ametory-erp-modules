@@ -50,8 +50,12 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			transaction.Code = code
 			transaction.AccountID = transaction.SourceID
 			transaction.Amount = amount
-			transaction.TransactionRefID = &transDestID
-			transaction.TransactionRefType = "transaction"
+			if transaction.TransactionRefID == nil {
+				transaction.TransactionRefID = &transDestID
+			}
+			if transaction.TransactionRefType == "" {
+				transaction.TransactionRefType = "transaction"
+			}
 			account, err := s.accountService.GetAccountByID(*transaction.SourceID)
 			if err != nil {
 				return err
@@ -61,7 +65,6 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 				transaction.Credit = amount
 				transaction.Debit = 0
 			}
-
 			if err := s.db.Create(transaction).Error; err != nil {
 				return err
 			}
@@ -71,8 +74,12 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			transaction.Code = code
 			transaction.AccountID = transaction.DestinationID
 			transaction.Amount = amount
-			transaction.TransactionRefID = &transSourceID
-			transaction.TransactionRefType = "transaction"
+			if transaction.TransactionRefID == nil {
+				transaction.TransactionRefID = &transSourceID
+			}
+			if transaction.TransactionRefType == "" {
+				transaction.TransactionRefType = "transaction"
+			}
 			account, err := s.accountService.GetAccountByID(*transaction.DestinationID)
 			if err != nil {
 				return err
@@ -87,7 +94,6 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 				transaction.IsIncome = false
 				transaction.IsExpense = false
 			}
-
 			if err := s.db.Create(transaction).Error; err != nil {
 				return err
 			}
@@ -260,10 +266,19 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 	newItems := make([]models.TransactionModel, 0)
 	for _, item := range *items {
 		if item.TransactionRefID != nil {
-			var transRef models.TransactionModel
-			err := s.db.Preload("Account").Where("id = ?", item.TransactionRefID).First(&transRef).Error
-			if err == nil {
-				item.TransactionRef = &transRef
+			if item.TransactionRefType == "journal" {
+				var journalRef models.JournalModel
+				err := s.db.Where("id = ?", item.TransactionRefID).First(&journalRef).Error
+				if err == nil {
+					item.JournalRef = &journalRef
+				}
+			}
+			if item.TransactionRefType == "transaction" {
+				var transRef models.TransactionModel
+				err := s.db.Preload("Account").Where("id = ?", item.TransactionRefID).First(&transRef).Error
+				if err == nil {
+					item.TransactionRef = &transRef
+				}
 			}
 		}
 		item.Balance = s.getBalance(item)

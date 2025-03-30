@@ -35,6 +35,7 @@ type TransactionModel struct {
 	TransactionRefType          string                  `json:"transaction_ref_type,omitempty"`
 	TransactionRefs             []TransactionModel      `json:"transaction_refs,omitempty" gorm:"-"`
 	TransactionRef              *TransactionModel       `gorm:"-" json:"transaction_ref,omitempty"`
+	JournalRef                  *JournalModel           `gorm:"-" json:"journal_ref,omitempty"`
 	CompanyID                   *string                 `json:"company_id,omitempty" gorm:"null"`
 	Company                     *CompanyModel           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:CompanyID" json:"company,omitempty"`
 	File                        *string                 `json:"file,omitempty"`

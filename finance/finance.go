@@ -7,6 +7,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/bank"
+	"github.com/AMETORY/ametory-erp-modules/finance/journal"
 	"github.com/AMETORY/ametory-erp-modules/finance/report"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"gorm.io/gorm"
@@ -17,6 +18,7 @@ type FinanceService struct {
 	AccountService     *account.AccountService
 	TransactionService *transaction.TransactionService
 	BankService        *bank.BankService
+	JournalService     *journal.JournalService
 	ReportService      *report.FinanceReportService
 }
 
@@ -28,6 +30,7 @@ func NewFinanceService(ctx *context.ERPContext) *FinanceService {
 	service.AccountService = account.NewAccountService(ctx.DB, ctx)
 	service.TransactionService = transaction.NewTransactionService(ctx.DB, ctx, service.AccountService)
 	service.BankService = bank.NewBankService(ctx.DB, ctx)
+	service.JournalService = journal.NewJournalService(ctx.DB, ctx, service.AccountService, service.TransactionService)
 	service.ReportService = report.NewFinanceReportService(ctx.DB, ctx, service.AccountService, service.TransactionService)
 	err := service.Migrate()
 	if err != nil {
@@ -46,6 +49,10 @@ func (s *FinanceService) Migrate() error {
 	}
 	if err := transaction.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR TRANSACTION MIGRATE", err)
+		return err
+	}
+	if err := journal.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR JOURNAL MIGRATE", err)
 		return err
 	}
 	// if err := transaction.Migrate(s.TransactionService.DB()); err != nil {
