@@ -28,6 +28,7 @@ type SalesModel struct {
 	Paid            float64          `json:"paid"`
 	TotalBeforeTax  float64          `json:"total_before_tax"`
 	TotalBeforeDisc float64          `json:"total_before_disc"`
+	TotalTax        float64          `json:"total_tax"`
 	Status          string           `json:"status"`
 	StockStatus     string           `json:"stock_status" gorm:"default:'pending'"`
 	SalesDate       time.Time        `json:"sales_date"`
@@ -45,6 +46,9 @@ type SalesModel struct {
 	WithdrawalID    *string          `json:"withdrawal_id,omitempty" gorm:"column:withdrawal_id"`
 	Withdrawal      *WithdrawalModel `gorm:"foreignKey:WithdrawalID;constraint:OnDelete:CASCADE" json:"withdrawal,omitempty"`
 	PublishedAt     *time.Time       `json:"published_at"`
+	Taxes           []*TaxModel      `gorm:"many2many:sales_taxes;constraint:OnDelete:CASCADE;" json:"taxes"`
+	IsCompound      bool             `json:"is_compound"`
+	TaxBreakdown    string           `gorm:"type:json" json:"tax_breakdown"`
 }
 
 type SalesItemModel struct {
@@ -55,6 +59,7 @@ type SalesItemModel struct {
 	Quantity           float64         `json:"quantity"`
 	UnitPrice          float64         `json:"unit_price"`
 	Total              float64         `json:"total"`
+	SubTotal           float64         `json:"sub_total"`
 	DiscountPercent    float64         `json:"discount_percent"`
 	DiscountAmount     float64         `json:"discount_amount"`
 	SubtotalBeforeDisc float64         `json:"subtotal_before_disc"`
@@ -68,6 +73,9 @@ type SalesItemModel struct {
 	SaleAccount        *AccountModel   `gorm:"foreignKey:SaleAccountID;constraint:OnDelete:CASCADE"`
 	AssetAccountID     *string         `json:"asset_account_id"`
 	AssetAccount       *AccountModel   `gorm:"foreignKey:AssetAccountID;constraint:OnDelete:CASCADE"`
+	TaxID              *string         `json:"tax_id"`
+	Tax                *TaxModel       `gorm:"foreignKey:TaxID;constraint:Restrict:SET NULL" json:"tax,omitempty"`
+	TotalTax           float64         `json:"total_tax"`
 }
 
 func (s *SalesModel) TableName() string {

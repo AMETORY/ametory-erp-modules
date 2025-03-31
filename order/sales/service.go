@@ -3,6 +3,7 @@ package sales
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -16,17 +17,18 @@ import (
 )
 
 type SalesService struct {
-	ctx            *context.ERPContext
-	db             *gorm.DB
-	financeService *finance.FinanceService
+	ctx              *context.ERPContext
+	db               *gorm.DB
+	financeService   *finance.FinanceService
+	inventoryService *inventory.InventoryService
 }
 
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.SalesModel{}, &models.SalesItemModel{})
 }
 
-func NewSalesService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService) *SalesService {
-	return &SalesService{db: db, ctx: ctx, financeService: financeService}
+func NewSalesService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, inventoryService *inventory.InventoryService) *SalesService {
+	return &SalesService{db: db, ctx: ctx, financeService: financeService, inventoryService: inventoryService}
 }
 
 func (s *SalesService) CreateSales(data *models.SalesModel) error {
@@ -313,4 +315,175 @@ func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderReq
 	data.TotalBeforeDisc = totalBeforeDisc
 	data.Subtotal = totalBeforeTax * (1 + taxPercent/100)
 	return s.CreateSales(data)
+}
+
+func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemModel) error {
+	item.SalesID = sales.ID
+	item.SubtotalBeforeDisc = item.Quantity * item.UnitPrice
+	err := s.db.Create(item).Error
+	if err != nil {
+		return err
+	}
+	return s.UpdateTotal(sales)
+}
+
+func (s *SalesService) GetItems(sales *models.SalesModel) ([]models.SalesItemModel, error) {
+	var items []models.SalesItemModel
+
+	err := s.db.Where("sales_id = ?", sales.ID).Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+func (s *SalesService) UpdateTotal(sales *models.SalesModel) error {
+
+	var totalBeforeTax, totalBeforeDisc, subTotal float64
+	for _, v := range sales.Items {
+		taxPercent := 0.0
+		taxAmount := 0.0
+		if v.TaxID != nil {
+			taxPercent = v.Tax.Amount
+		}
+		totalBeforeDisc += v.SubtotalBeforeDisc
+		if v.DiscountPercent > 0 {
+			taxAmount = (v.SubtotalBeforeDisc - (v.SubtotalBeforeDisc * v.DiscountPercent / 100)) * (taxPercent / 100)
+			totalBeforeTax += (v.SubtotalBeforeDisc - (v.SubtotalBeforeDisc * v.DiscountPercent / 100))
+		} else {
+			taxAmount = (v.SubtotalBeforeDisc - v.DiscountAmount) * (taxPercent / 100)
+			totalBeforeTax += (v.SubtotalBeforeDisc - v.DiscountAmount)
+		}
+		subTotal += totalBeforeTax
+		v.TotalTax = taxAmount
+		v.SubTotal = totalBeforeTax
+		v.Total = totalBeforeTax + taxAmount
+		s.db.Save(&v)
+	}
+	sales.TotalBeforeTax = totalBeforeTax
+	sales.TotalBeforeDisc = totalBeforeDisc
+	sales.Subtotal = subTotal
+
+	afterTax, taxAmount, taxBreakdown := s.CalculateTaxes(subTotal, sales.IsCompound, sales.Taxes)
+
+	sales.Subtotal = afterTax
+	sales.TotalTax = taxAmount
+	b, _ := json.Marshal(taxBreakdown)
+	sales.TaxBreakdown = string(b)
+
+	return s.db.Save(&sales).Error
+}
+
+func (s *SalesService) CalculateTaxes(baseAmount float64, isCompound bool, taxes []*models.TaxModel) (float64, float64, map[string]float64) {
+	totalAmount := baseAmount
+	taxBreakdown := make(map[string]float64)
+	totalTax := 0.0
+	for _, tax := range taxes {
+		if tax == nil {
+			continue
+		}
+		taxAmount := (totalAmount * tax.Amount) / 100
+		totalTax += taxAmount
+		taxBreakdown[tax.Name] = taxAmount
+
+		if isCompound {
+			totalAmount += taxAmount
+		}
+	}
+
+	if !isCompound {
+		totalAmount += totalTax
+	}
+
+	return totalAmount, totalAmount, taxBreakdown
+}
+
+func (s *SalesService) PublishSales(data *models.SalesModel) error {
+	if len(data.Items) == 0 {
+		return errors.New("sales has no items")
+	}
+	now := time.Now()
+	data.PublishedAt = &now
+	if s.financeService.TransactionService == nil {
+		return errors.New("transaction service is not set")
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		for _, v := range data.Items {
+			if v.SaleAccountID != nil {
+				s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:               data.SalesDate,
+					AccountID:          v.SaleAccountID,
+					Description:        "Penjualan " + data.SalesNumber,
+					Notes:              data.Description,
+					TransactionRefID:   &data.ID,
+					TransactionRefType: "sales",
+					CompanyID:          data.CompanyID,
+					Credit:             v.SubTotal,
+				}, v.Total)
+			}
+			if v.AssetAccountID != nil {
+				s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:               data.SalesDate,
+					AccountID:          v.AssetAccountID,
+					Description:        "Penjualan " + data.SalesNumber,
+					Notes:              data.Description,
+					TransactionRefID:   &data.ID,
+					TransactionRefType: "sales",
+					CompanyID:          data.CompanyID,
+					Debit:              v.SubTotal,
+				}, v.Total)
+			}
+
+			if v.TaxID != nil {
+				// HUTANG PAJAK
+				s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:               data.SalesDate,
+					AccountID:          v.SaleAccountID,
+					Description:        "Pajak Penjualan " + data.SalesNumber,
+					Notes:              data.Description,
+					TransactionRefID:   &data.ID,
+					TransactionRefType: "sales",
+					CompanyID:          data.CompanyID,
+					Credit:             v.TotalTax,
+				}, v.Total)
+
+				// ASET / PIUTANG PAJAK
+				s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:               data.SalesDate,
+					AccountID:          v.AssetAccountID,
+					Description:        "Pajak Penjualan " + data.SalesNumber,
+					Notes:              data.Description,
+					TransactionRefID:   &data.ID,
+					TransactionRefType: "sales",
+					CompanyID:          data.CompanyID,
+					Debit:              v.TotalTax,
+				}, v.Total)
+			}
+
+			if v.ProductID != nil {
+				if v.WarehouseID == nil {
+					return errors.New("warehouse ID is required")
+				}
+				// ADD MOVEMENT
+				_, err := s.inventoryService.StockMovementService.AddMovement(
+					time.Now(),
+					*v.ProductID,
+					*v.WarehouseID,
+					v.VariantID,
+					nil,
+					nil,
+					nil,
+					-v.Quantity,
+					models.MovementTypeSale,
+					data.ID,
+					fmt.Sprintf("Sales #%s", data.SalesNumber))
+				if err != nil {
+					return err
+				}
+				// ADD SUPPLY TRANSACTION
+			}
+		}
+		return nil
+	})
 }

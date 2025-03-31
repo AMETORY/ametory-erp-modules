@@ -56,6 +56,8 @@ type AccountModel struct {
 	Balance               float64       `gorm:"-" json:"balance,omitempty"`
 	BalanceBefore         float64       `gorm:"-" json:"balance_before,omitempty"`
 	HasOpeningBalance     bool          `gorm:"-" json:"has_opening_balance,omitempty"`
+	IsInventoryAccount    bool          `json:"is_inventory_account,omitempty"`
+	IsCogsAccount         bool          `json:"is_cogs_account,omitempty"`
 	// Transactions          []Transaction `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
