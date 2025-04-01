@@ -39,7 +39,7 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 
 	var service = OrderService{
 		ctx:               ctx,
-		SalesService:      sales.NewSalesService(ctx.DB, ctx, financeService),
+		SalesService:      sales.NewSalesService(ctx.DB, ctx, financeService, inventoryService),
 		PosService:        pos.NewPOSService(ctx.DB, ctx, financeService),
 		MerchantService:   merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
 		PaymentService:    payment.NewPaymentService(ctx.DB, ctx),

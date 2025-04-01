@@ -13,6 +13,8 @@ type ProductCategoryModel struct {
 	Color       string         `gorm:"type:varchar(255);default:'#94CFCD'" json:"color"`
 	IconUrl     string         `gorm:"type:varchar(255)" json:"icon_url"`
 	Products    []ProductModel `gorm:"foreignKey:CategoryID" json:"products"`
+	CompanyID   *string        `json:"company_id,omitempty"`
+	Company     *CompanyModel  `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (ProductCategoryModel) TableName() string {

@@ -14,6 +14,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type SalesService struct {
@@ -289,7 +290,7 @@ func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderReq
 		CompanyID:       companyID,
 		ContactID:       orderRequest.ContactID,
 		ContactData:     string(contactData),
-		Type:            models.ECOMMERCE,
+		Type:            models.ONLINE,
 		Items:           []models.SalesItemModel{},
 	}
 	var totalBeforeTax, totalBeforeDisc float64
@@ -318,8 +319,7 @@ func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderReq
 }
 
 func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemModel) error {
-	item.SalesID = sales.ID
-	item.SubtotalBeforeDisc = item.Quantity * item.UnitPrice
+
 	err := s.db.Create(item).Error
 	if err != nil {
 		return err
@@ -327,10 +327,17 @@ func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemM
 	return s.UpdateTotal(sales)
 }
 
-func (s *SalesService) GetItems(sales *models.SalesModel) ([]models.SalesItemModel, error) {
+func (s *SalesService) GetItems(id string) ([]models.SalesItemModel, error) {
 	var items []models.SalesItemModel
 
-	err := s.db.Where("sales_id = ?", sales.ID).Find(&items).Error
+	err := s.db.
+		Preload("Product").
+		Preload("Variant").
+		Preload("Warehouse").
+		Preload("SaleAccount").
+		Preload("AssetAccount").
+		Preload("Tax").
+		Where("sales_id = ?", id).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +379,30 @@ func (s *SalesService) UpdateTotal(sales *models.SalesModel) error {
 	b, _ := json.Marshal(taxBreakdown)
 	sales.TaxBreakdown = string(b)
 
-	return s.db.Save(&sales).Error
+	return s.db.Omit(clause.Associations).Save(&sales).Error
+}
+
+func (s *SalesService) UpdateItem(sales *models.SalesModel, itemID string, item *models.SalesItemModel) error {
+	taxPercent := 0.0
+	taxAmount := 0.0
+	if item.TaxID != nil {
+		taxPercent = item.Tax.Amount
+	}
+	item.SubtotalBeforeDisc = item.Quantity * item.UnitPrice
+	if item.DiscountPercent > 0 {
+		taxAmount = (item.SubtotalBeforeDisc - (item.SubtotalBeforeDisc * item.DiscountPercent / 100)) * (taxPercent / 100)
+		item.SubTotal = (item.SubtotalBeforeDisc - (item.SubtotalBeforeDisc * item.DiscountPercent / 100))
+	} else {
+		taxAmount = (item.SubtotalBeforeDisc - item.DiscountAmount) * (taxPercent / 100)
+		item.SubTotal = (item.SubtotalBeforeDisc - item.DiscountAmount)
+	}
+	item.TotalTax = taxAmount
+	item.Total = item.SubTotal + taxAmount
+	err := s.db.Where("sales_id = ? AND id = ?", sales.ID, itemID).Omit("sales_id").Save(item).Error
+	if err != nil {
+		return err
+	}
+	return s.UpdateTotal(sales)
 }
 
 func (s *SalesService) CalculateTaxes(baseAmount float64, isCompound bool, taxes []*models.TaxModel) (float64, float64, map[string]float64) {
@@ -407,6 +437,12 @@ func (s *SalesService) PublishSales(data *models.SalesModel) error {
 	data.PublishedAt = &now
 	if s.financeService.TransactionService == nil {
 		return errors.New("transaction service is not set")
+	}
+	if err := s.db.Save(data).Error; err != nil {
+		return err
+	}
+	if data.DocumentType != "INVOICE" {
+		return nil
 	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		for _, v := range data.Items {

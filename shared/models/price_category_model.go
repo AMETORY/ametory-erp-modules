@@ -8,8 +8,10 @@ import (
 
 type PriceCategoryModel struct {
 	shared.BaseModel
-	Name        string `gorm:"unique;not null" json:"name"`
-	Description string `json:"description,omitempty"`
+	Name        string        `gorm:"unique;not null" json:"name"`
+	Description string        `json:"description,omitempty"`
+	CompanyID   *string       `json:"company_id,omitempty"`
+	Company     *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (PriceCategoryModel) TableName() string {
