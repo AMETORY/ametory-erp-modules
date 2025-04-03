@@ -44,3 +44,15 @@ func (s *PriceCategoryService) GetPriceCategoryByID(id string) (*models.PriceCat
 	}
 	return &category, nil
 }
+
+func (s *PriceCategoryService) CreatePriceCategory(data *models.PriceCategoryModel) error {
+	return s.db.Create(data).Error
+}
+
+func (s *PriceCategoryService) UpdatePriceCategory(id string, data *models.PriceCategoryModel) error {
+	return s.db.Where("id = ?", id).Updates(data).Error
+}
+
+func (s *PriceCategoryService) DeletePriceCategory(id string) error {
+	return s.db.Where("id = ?", id).Delete(&models.PriceCategoryModel{}).Error
+}

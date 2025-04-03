@@ -12,6 +12,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/inventory/purchase"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
 	"github.com/AMETORY/ametory-erp-modules/inventory/stock_opname"
+	"github.com/AMETORY/ametory-erp-modules/inventory/unit"
 	"github.com/AMETORY/ametory-erp-modules/inventory/warehouse"
 	"gorm.io/gorm"
 )
@@ -29,6 +30,7 @@ type InventoryService struct {
 	BrandService            *brand.BrandService
 	StockOpenameService     *stock_opname.StockOpnameService
 	TagService              *product.TagService
+	UnitService             *unit.UnitService
 }
 
 func NewInventoryService(ctx *context.ERPContext) *InventoryService {
@@ -45,6 +47,7 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 	}
 	stockmovementSrv := stockmovement.NewStockMovementService(ctx.DB, ctx)
 	tagService := product.NewTagService(ctx.DB, ctx)
+	unitService := unit.NewUnitService(ctx.DB, ctx)
 	productSrv := product.NewProductService(ctx.DB, ctx, fileService, tagService)
 
 	var service = InventoryService{
@@ -60,6 +63,7 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 		BrandService:            brand.NewBrandService(ctx.DB, ctx),
 		TagService:              tagService,
 		StockOpenameService:     stock_opname.NewStockOpnameService(ctx.DB, ctx, productSrv, stockmovementSrv),
+		UnitService:             unitService,
 	}
 	err := service.Migrate()
 	if err != nil {
@@ -93,6 +97,10 @@ func (s *InventoryService) Migrate() error {
 	}
 	if err := stock_opname.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR MIGRATING STOCK OPNAME", err)
+		return err
+	}
+	if err := unit.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR MIGRATING UNIT", err)
 		return err
 	}
 

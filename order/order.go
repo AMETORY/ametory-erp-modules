@@ -10,6 +10,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/order/banner"
 	"github.com/AMETORY/ametory-erp-modules/order/merchant"
 	"github.com/AMETORY/ametory-erp-modules/order/payment"
+	"github.com/AMETORY/ametory-erp-modules/order/payment_term"
 	"github.com/AMETORY/ametory-erp-modules/order/pos"
 	"github.com/AMETORY/ametory-erp-modules/order/promotion"
 	"github.com/AMETORY/ametory-erp-modules/order/sales"
@@ -18,14 +19,15 @@ import (
 )
 
 type OrderService struct {
-	ctx               *context.ERPContext
-	SalesService      *sales.SalesService
-	PosService        *pos.POSService
-	MerchantService   *merchant.MerchantService
-	PaymentService    *payment.PaymentService
-	WithdrawalService *withdrawal.WithdrawalService
-	BannerService     *banner.BannerService
-	PromotionService  *promotion.PromotionService
+	ctx                *context.ERPContext
+	SalesService       *sales.SalesService
+	PosService         *pos.POSService
+	MerchantService    *merchant.MerchantService
+	PaymentService     *payment.PaymentService
+	WithdrawalService  *withdrawal.WithdrawalService
+	BannerService      *banner.BannerService
+	PromotionService   *promotion.PromotionService
+	PaymentTermService *payment_term.PaymentTermService
 }
 
 func NewOrderService(ctx *context.ERPContext) *OrderService {
@@ -38,14 +40,15 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 	inventoryService := inventory.NewInventoryService(ctx)
 
 	var service = OrderService{
-		ctx:               ctx,
-		SalesService:      sales.NewSalesService(ctx.DB, ctx, financeService, inventoryService),
-		PosService:        pos.NewPOSService(ctx.DB, ctx, financeService),
-		MerchantService:   merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
-		PaymentService:    payment.NewPaymentService(ctx.DB, ctx),
-		WithdrawalService: withdrawal.NewWithdrawalService(ctx.DB, ctx),
-		BannerService:     banner.NewBannerService(ctx.DB, ctx),
-		PromotionService:  promotion.NewPromotionService(ctx.DB, ctx),
+		ctx:                ctx,
+		SalesService:       sales.NewSalesService(ctx.DB, ctx, financeService, inventoryService),
+		PosService:         pos.NewPOSService(ctx.DB, ctx, financeService),
+		MerchantService:    merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
+		PaymentService:     payment.NewPaymentService(ctx.DB, ctx),
+		WithdrawalService:  withdrawal.NewWithdrawalService(ctx.DB, ctx),
+		BannerService:      banner.NewBannerService(ctx.DB, ctx),
+		PromotionService:   promotion.NewPromotionService(ctx.DB, ctx),
+		PaymentTermService: payment_term.NewPaymentTermService(ctx.DB, ctx),
 	}
 	err := service.Migrate()
 	if err != nil {
@@ -85,6 +88,10 @@ func (s *OrderService) Migrate() error {
 	}
 	if err := promotion.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR PROMOTION", err)
+		return err
+	}
+	if err := payment_term.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR PAYMENT TERM", err)
 		return err
 	}
 

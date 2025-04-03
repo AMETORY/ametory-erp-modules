@@ -443,6 +443,9 @@ func (s *ProductService) GetProductsByMerchant(merchantID string, productIDs []s
 func (s *ProductService) CreateProductVariant(data *models.VariantModel) error {
 	return s.db.Create(data).Error
 }
+func (s *ProductService) AddProductUnit(data *models.ProductUnitData) error {
+	return s.db.Create(data).Error
+}
 func (s *ProductService) GetProductVariants(productID string, request http.Request) ([]models.VariantModel, error) {
 	var variants []models.VariantModel
 	err := s.db.Preload("Attributes.Attribute").Preload("Tags").Where("product_id = ?", productID).Find(&variants).Error

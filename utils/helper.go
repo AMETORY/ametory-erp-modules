@@ -230,3 +230,12 @@ func ParsePhoneNumber(value string, country string) string {
 
 	return fmt.Sprintf("%d%d", *countryCode, *nationalNumber)
 }
+
+func PtrInt(value int) *int {
+	return &value
+}
+
+// Helper function to return pointer to a float64
+func PtrFloat64(value float64) *float64 {
+	return &value
+}

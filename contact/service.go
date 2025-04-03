@@ -150,14 +150,19 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 			"%"+search+"%",
 		)
 	}
-	if isCustomer != nil {
-		stmt = stmt.Where("is_customer = ?", isCustomer)
-	}
-	if isVendor != nil {
-		stmt = stmt.Where("is_vendor = ?", isVendor)
-	}
-	if isSupplier != nil {
-		stmt = stmt.Where("is_supplier = ?", isSupplier)
+
+	if isCustomer != nil || isVendor != nil || isSupplier != nil {
+		sbWhere := s.ctx.DB
+		if isCustomer != nil {
+			sbWhere = sbWhere.Or("is_customer = ?", *isCustomer)
+		}
+		if isVendor != nil {
+			sbWhere = sbWhere.Or("is_vendor = ?", *isVendor)
+		}
+		if isSupplier != nil {
+			sbWhere = sbWhere.Or("is_supplier = ?", *isSupplier)
+		}
+		stmt = stmt.Where(sbWhere)
 	}
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))

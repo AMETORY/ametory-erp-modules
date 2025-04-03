@@ -8,8 +8,10 @@ import (
 
 type ProductAttributeModel struct {
 	shared.BaseModel
-	Name     string `json:"name,omitempty"`
-	Priority int    `json:"priority" gorm:"default:0"`
+	Name      string        `json:"name,omitempty"`
+	Priority  int           `json:"priority" gorm:"default:0"`
+	CompanyID *string       `json:"company_id,omitempty"`
+	Company   *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (ProductAttributeModel) TableName() string {

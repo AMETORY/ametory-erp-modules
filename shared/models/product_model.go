@@ -54,16 +54,36 @@ type ProductModel struct {
 	MerchantID       *string                `json:"-" gorm:"-"`
 	ProductImageIDs  []string               `gorm:"-" json:"product_image_ids,omitempty"`
 	Feedbacks        []ProductFeedbackModel `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"feedbacks,omitempty"`
+	Units            []*UnitModel           `gorm:"many2many:product_units;constraint:OnDelete:CASCADE;" json:"units,omitempty"`
+	DefaultUnit      *UnitModel             `gorm:"-" json:"default_unit,omitempty"`
 }
 
 func (ProductModel) TableName() string {
 	return "products"
 }
 
-// func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
-// 	return p.GetPriceAndDiscount(tx)
-// }
+func (p *ProductModel) AfterFind(tx *gorm.DB) (err error) {
+	productUnits := []ProductUnitData{}
+	tx.Where("product_model_id = ?", p.ID).Find(&productUnits)
+	var units []*UnitModel
+	for _, v := range productUnits {
+		var unit UnitModel
+		tx.Where("id = ?", v.UnitModelID).Find(&unit)
+		unit.Value = v.Value
+		unit.IsDefault = v.IsDefault
+		units = append(units, &unit)
+		if v.IsDefault {
+			p.DefaultUnit = &unit
+		}
+	}
+	p.Units = units
+	return nil
+}
 
+func (p *ProductModel) GetPrices(tx *gorm.DB) (err error) {
+	err = tx.Model(&p.Prices).Preload("PriceCategory").Where("product_id = ?", p.ID).Find(&p.Prices).Error
+	return
+}
 func (p *ProductModel) GetPriceAndDiscount(tx *gorm.DB) (err error) {
 	var pp ProductModel
 	tx.Select("price").Model(&p).First(&pp, "id = ?", p.ID)

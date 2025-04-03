@@ -37,11 +37,14 @@ type SalesModel struct {
 	TotalBeforeTax     float64          `json:"total_before_tax"`
 	TotalBeforeDisc    float64          `json:"total_before_disc"`
 	TotalTax           float64          `json:"total_tax"`
+	TotalDiscount      float64          `json:"total_discount"`
 	Status             string           `json:"status"`
 	StockStatus        string           `json:"stock_status" gorm:"default:'pending'"`
 	SalesDate          time.Time        `json:"sales_date"`
 	DueDate            time.Time        `json:"due_date"`
 	PaymentTerms       string           `json:"payment_terms"`
+	PaymentTermsCode   string           `json:"payment_terms_code"`
+	TermCondition      string           `json:"term_condition"`
 	CompanyID          *string          `json:"company_id"`
 	Company            *CompanyModel    `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company"`
 	UserID             *string          `gorm:"size:36" json:"-"`
@@ -83,6 +86,13 @@ func (s *SalesModel) AfterFind(tx *gorm.DB) (err error) {
 	if err = json.Unmarshal([]byte(s.TaxBreakdown), &taxBreakdownParsed); err != nil {
 		return err
 	}
+	if s.DeliveryID != nil {
+		var delivery ContactModel
+		if err = tx.Model(&ContactModel{}).Where("id = ?", s.DeliveryID).First(&delivery).Error; err != nil {
+			return err
+		}
+		s.Delivery = &delivery
+	}
 	s.ContactDataParsed = contactData
 	s.DeliveryDataParsed = deliveryDataParsed
 	s.TaxBreakdownParsed = taxBreakdownParsed
@@ -94,6 +104,7 @@ type SalesItemModel struct {
 	SalesID            *string         `json:"sales_id,omitempty"`
 	Sales              *SalesModel     `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE" json:"sales,omitempty"`
 	Description        string          `json:"description,omitempty"`
+	Notes              string          `json:"notes,omitempty"`
 	Quantity           float64         `json:"quantity,omitempty"`
 	UnitPrice          float64         `json:"unit_price,omitempty"`
 	Total              float64         `json:"total,omitempty"`
@@ -114,6 +125,9 @@ type SalesItemModel struct {
 	TaxID              *string         `json:"tax_id,omitempty"`
 	Tax                *TaxModel       `gorm:"foreignKey:TaxID;constraint:Restrict:SET NULL" json:"tax,omitempty"`
 	TotalTax           float64         `json:"total_tax,omitempty"`
+	UnitID             *string         `json:"unit_id,omitempty"`
+	Unit               *UnitModel      `gorm:"foreignKey:UnitID;constraint:OnDelete:CASCADE" json:"unit,omitempty"`
+	UnitValue          float64         `json:"unit_value,omitempty" gorm:"default:1"`
 }
 
 func (s *SalesModel) TableName() string {

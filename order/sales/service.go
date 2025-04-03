@@ -196,7 +196,7 @@ func (s *SalesService) GetSalesBySalesNumber(salesNumber string) (*models.SalesM
 
 func (s *SalesService) GetSales(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Contact")
 	if search != "" {
 		stmt = stmt.Where("sales.description ILIKE ? OR sales.code ILIKE ? OR sales.sales_number ILIKE ?",
 			"%"+search+"%",
@@ -206,6 +206,9 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 	}
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if request.URL.Query().Get("doc_type") != "" {
+		stmt = stmt.Where("document_type = ?", request.URL.Query().Get("doc_type"))
 	}
 	stmt = stmt.Model(&models.SalesModel{})
 	utils.FixRequest(&request)
@@ -327,55 +330,62 @@ func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemM
 	return s.UpdateTotal(sales)
 }
 
+func (s *SalesService) DeleteItem(sales *models.SalesModel, itemID string) error {
+	err := s.db.Where("sales_id = ? AND id = ?", sales.ID, itemID).Delete(&models.SalesItemModel{}).Error
+	if err != nil {
+		return err
+	}
+	return s.UpdateTotal(sales)
+}
+
 func (s *SalesService) GetItems(id string) ([]models.SalesItemModel, error) {
 	var items []models.SalesItemModel
 
 	err := s.db.
-		Preload("Product").
+		Preload("Product", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("Category")
+		}).
+		Preload("Unit").
 		Preload("Variant").
 		Preload("Warehouse").
 		Preload("SaleAccount").
 		Preload("AssetAccount").
 		Preload("Tax").
-		Where("sales_id = ?", id).Find(&items).Error
+		Where("sales_id = ?", id).Order("created_at ASC").Find(&items).Error
 	if err != nil {
 		return nil, err
+	}
+
+	for i, v := range items {
+		if v.ProductID != nil {
+			v.Product.GetPrices(s.db)
+		}
+		items[i] = v
 	}
 
 	return items, nil
 }
 
 func (s *SalesService) UpdateTotal(sales *models.SalesModel) error {
-
-	var totalBeforeTax, totalBeforeDisc, subTotal float64
+	s.db.Preload("Items").Model(sales).Find(sales)
+	var totalBeforeTax, totalBeforeDisc, subTotal, itemsTax, totalDisc float64
 	for _, v := range sales.Items {
-		taxPercent := 0.0
-		taxAmount := 0.0
-		if v.TaxID != nil {
-			taxPercent = v.Tax.Amount
-		}
 		totalBeforeDisc += v.SubtotalBeforeDisc
-		if v.DiscountPercent > 0 {
-			taxAmount = (v.SubtotalBeforeDisc - (v.SubtotalBeforeDisc * v.DiscountPercent / 100)) * (taxPercent / 100)
-			totalBeforeTax += (v.SubtotalBeforeDisc - (v.SubtotalBeforeDisc * v.DiscountPercent / 100))
-		} else {
-			taxAmount = (v.SubtotalBeforeDisc - v.DiscountAmount) * (taxPercent / 100)
-			totalBeforeTax += (v.SubtotalBeforeDisc - v.DiscountAmount)
-		}
-		subTotal += totalBeforeTax
-		v.TotalTax = taxAmount
-		v.SubTotal = totalBeforeTax
-		v.Total = totalBeforeTax + taxAmount
-		s.db.Save(&v)
+		totalBeforeTax += v.SubTotal
+		subTotal += v.SubTotal
+		itemsTax += v.TotalTax
+		totalDisc += v.DiscountAmount
 	}
 	sales.TotalBeforeTax = totalBeforeTax
 	sales.TotalBeforeDisc = totalBeforeDisc
 	sales.Subtotal = subTotal
 
-	afterTax, taxAmount, taxBreakdown := s.CalculateTaxes(subTotal, sales.IsCompound, sales.Taxes)
-
+	afterTax, salesTaxAmount, taxBreakdown := s.CalculateTaxes(subTotal, sales.IsCompound, sales.Taxes)
+	// fmt.Printf("TAX_AMOUNT %f", salesTaxAmount)
 	sales.Subtotal = afterTax
-	sales.TotalTax = taxAmount
+	sales.TotalTax = itemsTax + salesTaxAmount
+	sales.Total = sales.Subtotal + sales.TotalTax
+	sales.TotalDiscount = totalDisc
 	b, _ := json.Marshal(taxBreakdown)
 	sales.TaxBreakdown = string(b)
 
@@ -385,16 +395,27 @@ func (s *SalesService) UpdateTotal(sales *models.SalesModel) error {
 func (s *SalesService) UpdateItem(sales *models.SalesModel, itemID string, item *models.SalesItemModel) error {
 	taxPercent := 0.0
 	taxAmount := 0.0
+
+	if item.UnitID != nil {
+		productUnit := models.ProductUnitData{}
+		s.db.Model(&productUnit).Where("product_model_id = ? and unit_model_id = ?", item.ProductID, item.UnitID).Find(&productUnit)
+		item.UnitValue = productUnit.Value
+	} else {
+		item.UnitValue = 1
+	}
+
 	if item.TaxID != nil {
 		taxPercent = item.Tax.Amount
 	}
-	item.SubtotalBeforeDisc = item.Quantity * item.UnitPrice
+	item.SubtotalBeforeDisc = (item.Quantity * item.UnitValue) * item.UnitPrice
 	if item.DiscountPercent > 0 {
 		taxAmount = (item.SubtotalBeforeDisc - (item.SubtotalBeforeDisc * item.DiscountPercent / 100)) * (taxPercent / 100)
 		item.SubTotal = (item.SubtotalBeforeDisc - (item.SubtotalBeforeDisc * item.DiscountPercent / 100))
+		item.DiscountAmount = item.SubtotalBeforeDisc * item.DiscountPercent / 100
 	} else {
 		taxAmount = (item.SubtotalBeforeDisc - item.DiscountAmount) * (taxPercent / 100)
 		item.SubTotal = (item.SubtotalBeforeDisc - item.DiscountAmount)
+		item.DiscountPercent = 0
 	}
 	item.TotalTax = taxAmount
 	item.Total = item.SubTotal + taxAmount
@@ -414,6 +435,7 @@ func (s *SalesService) CalculateTaxes(baseAmount float64, isCompound bool, taxes
 			continue
 		}
 		taxAmount := (totalAmount * tax.Amount) / 100
+		// fmt.Printf("TAX_AMOUNT CalculateTaxes %f\n", taxAmount)
 		totalTax += taxAmount
 		taxBreakdown[tax.Name] = taxAmount
 
@@ -425,8 +447,7 @@ func (s *SalesService) CalculateTaxes(baseAmount float64, isCompound bool, taxes
 	if !isCompound {
 		totalAmount += totalTax
 	}
-
-	return totalAmount, totalAmount, taxBreakdown
+	return totalAmount, totalTax, taxBreakdown
 }
 
 func (s *SalesService) PublishSales(data *models.SalesModel) error {

@@ -37,8 +37,9 @@ type StockMovementModel struct {
 	CompanyID         *string           `gorm:"null" json:"company_id"` // Relasi ke company
 	Company           *CompanyModel     `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company"`
 	Quantity          float64           `gorm:"not null" json:"quantity"` // Jumlah stok (positif untuk IN, negatif untuk OUT)
-	Type              MovementType      `gorm:"not null" json:"type"`     // Jenis pergerakan (IN, OUT, TRANSFER, ADJUST)
-	ReferenceID       string            `json:"reference_id"`             // ID referensi (misalnya, ID pembelian, penjualan, dll.)
+	Value             float64           `gorm:"not null;default:1" json:"value"`
+	Type              MovementType      `gorm:"not null" json:"type"` // Jenis pergerakan (IN, OUT, TRANSFER, ADJUST)
+	ReferenceID       string            `json:"reference_id"`         // ID referensi (misalnya, ID pembelian, penjualan, dll.)
 }
 
 func (StockMovementModel) TableName() string {
