@@ -36,6 +36,7 @@ type TransactionModel struct {
 	TransactionRefs             []TransactionModel      `json:"transaction_refs,omitempty" gorm:"-"`
 	TransactionRef              *TransactionModel       `gorm:"-" json:"transaction_ref,omitempty"`
 	JournalRef                  *JournalModel           `gorm:"-" json:"journal_ref,omitempty"`
+	SalesRef                    *SalesModel             `gorm:"-" json:"sales_ref,omitempty"`
 	CompanyID                   *string                 `json:"company_id,omitempty" gorm:"null"`
 	Company                     *CompanyModel           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:CompanyID" json:"company,omitempty"`
 	File                        *string                 `json:"file,omitempty"`
@@ -60,6 +61,8 @@ type TransactionModel struct {
 	SavingID                    *string                 `json:"saving_id,omitempty"`
 	Saving                      *SavingModel            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:SavingID" json:"saving,omitempty"`
 	Balance                     float64                 `json:"balance" gorm:"-"`
+	IsReturn                    bool                    `json:"is_return"`
+	IsDiscount                  bool                    `json:"is_discount"`
 	// EmployeeID             *string              `json:"employee_id"`
 	// Employee               Employee             `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:EmployeeID" json:"-"`
 	// Images                 []Image            `json:"images" gorm:"-"`

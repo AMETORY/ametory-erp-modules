@@ -39,10 +39,12 @@ func (s *StockMovementService) SetMerchantMode(isMerchantMode bool) {
 
 func (s *StockMovementService) GetStockMovements(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Merchant", func(db *gorm.DB) *gorm.DB {
+	stmt := s.db.Preload("Unit", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name", "code")
+	}).Preload("Merchant", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Product", func(db *gorm.DB) *gorm.DB {
-		return db.Select("id", "name")
+		return db.Select("id", "name", "display_name")
 	}).Preload("Warehouse", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Joins("LEFT JOIN products ON stock_movements.product_id = products.id")
@@ -92,6 +94,24 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 
 	page := pg.With(stmt).Request(request).Response(&[]models.StockMovementModel{})
 	page.Page = page.Page + 1
+
+	items := page.Items.(*[]models.StockMovementModel)
+	newItems := make([]models.StockMovementModel, 0)
+	for _, item := range *items {
+		if item.ReferenceID != "" {
+			if item.ReferenceType != nil {
+				if *item.ReferenceType == "sales" {
+					var salesRef models.SalesModel
+					err := s.db.Where("id = ?", item.ReferenceID).First(&salesRef).Error
+					if err == nil {
+						item.SalesRef = &salesRef
+					}
+				}
+			}
+		}
+		newItems = append(newItems, item)
+	}
+	page.Items = &newItems
 	return page, nil
 }
 

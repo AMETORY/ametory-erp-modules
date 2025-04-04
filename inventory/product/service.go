@@ -322,7 +322,7 @@ func (s *ProductService) GetStock(productID string, request *http.Request, wareh
 
 	if err := db.
 		Where("product_id = ?", productID).
-		Select("COALESCE(SUM(quantity), 0)").
+		Select("COALESCE(SUM(quantity * value), 0)").
 		Scan(&totalStock).Error; err != nil {
 		return 0, err
 	}
@@ -354,7 +354,7 @@ func (s *ProductService) GetSalesCount(productID string, request *http.Request, 
 
 	if err := db.
 		Where("product_id = ?", productID).
-		Select("COALESCE(SUM(quantity), 0)").
+		Select("COALESCE(SUM(quantity * value), 0)").
 		Scan(&totalStock).Error; err != nil {
 		return 0, err
 	}
@@ -386,7 +386,7 @@ func (s *ProductService) GetSalesVariantCount(productID, variantID string, reque
 
 	if err := db.
 		Where("product_id = ? and variant_id = ?", productID, variantID).
-		Select("COALESCE(SUM(quantity), 0)").
+		Select("COALESCE(SUM(quantity * value), 0)").
 		Scan(&totalStock).Error; err != nil {
 		return 0, err
 	}
@@ -418,7 +418,7 @@ func (s *ProductService) GetVariantStock(productID string, variantID string, req
 
 	if err := db.
 		Where("product_id = ? AND variant_id = ?", productID, variantID).
-		Select("COALESCE(SUM(quantity), 0)").
+		Select("COALESCE(SUM(quantity * value), 0)").
 		Scan(&totalStock).Error; err != nil {
 		return 0, err
 	}

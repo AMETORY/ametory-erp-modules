@@ -127,6 +127,13 @@ func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, curre
 					item.TransactionRef = &transRef
 				}
 			}
+			if item.TransactionRefType == "sales" {
+				var salesRef models.SalesModel
+				err := s.db.Where("id = ?", item.TransactionRefID).First(&salesRef).Error
+				if err == nil {
+					item.SalesRef = &salesRef
+				}
+			}
 		}
 		curBalance := s.getBalanceAmount(item)
 		balance += curBalance
@@ -188,7 +195,7 @@ func (s *FinanceReportService) GetAccountTransactions(accountID string, startDat
 
 func (s *FinanceReportService) getBalanceAmount(transaction models.TransactionModel) float64 {
 	switch transaction.Account.Type {
-	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE:
+	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
 		return transaction.Debit - transaction.Credit
 	case models.LIABILITY, models.EQUITY, models.REVENUE, models.INCOME, models.CONTRA_ASSET, models.CONTRA_EXPENSE:
 		return transaction.Credit - transaction.Debit

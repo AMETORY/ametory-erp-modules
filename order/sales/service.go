@@ -177,8 +177,18 @@ func (s *SalesService) DeleteSales(id string) error {
 }
 
 func (s *SalesService) GetSalesByID(id string) (*models.SalesModel, error) {
-	var sales models.SalesModel
+	var sales, refSales models.SalesModel
 	err := s.db.Where("id = ?", id).First(&sales).Error
+	if err != nil {
+		return nil, err
+	}
+	if sales.RefID != nil {
+		err = s.db.Where("id = ?", *sales.RefID).First(&refSales).Error
+		if err != nil {
+			return nil, err
+		}
+		sales.SalesRef = &refSales
+	}
 	return &sales, err
 }
 
@@ -285,7 +295,7 @@ func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderReq
 		SalesNumber:     salesNumber,
 		Code:            utils.RandString(10, true),
 		SalesDate:       orderRequest.CreatedAt,
-		DueDate:         orderRequest.ExpiresAt,
+		DueDate:         &orderRequest.ExpiresAt,
 		TotalBeforeTax:  0,
 		TotalBeforeDisc: 0,
 		Subtotal:        0,
@@ -542,5 +552,190 @@ func (s *SalesService) PublishSales(data *models.SalesModel) error {
 			}
 		}
 		return nil
+	})
+}
+
+func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID string, date time.Time) error {
+
+	if data.DocumentType != "INVOICE" {
+		return errors.New("document type is not invoice")
+	}
+
+	if len(data.Items) == 0 {
+		return errors.New("items is required")
+	}
+	now := time.Now()
+
+	if data.PaymentTermsCode != "" {
+		var paymentTerms models.PaymentTermModel
+
+		err := s.db.Find(&paymentTerms, "code = ?", data.PaymentTermsCode).Error
+		if err == nil && data.DueDate == nil && paymentTerms.DueDays != nil {
+			due := date.AddDate(0, 0, *paymentTerms.DueDays)
+			data.DueDate = &due
+		}
+		if err == nil && paymentTerms.DiscountDueDays != nil {
+			due := date.AddDate(0, 0, *paymentTerms.DiscountDueDays)
+			data.DiscountDueDate = &due
+			data.PaymentDiscountAmount = *paymentTerms.DiscountAmount
+		}
+	}
+
+	data.Status = "POSTED"
+	data.PublishedAt = &now
+	data.PublishedByID = &userID
+	refType := "sales"
+	secRefType := "sales_item"
+
+	// GET COGS ACCOUNT
+	var cogsAccount models.AccountModel
+	err := s.db.Where("is_cogs_account = ? and company_id = ?", true, *data.CompanyID).First(&cogsAccount).Error
+	if err != nil {
+		return errors.New("cogs account not found")
+	}
+	// GET INVENTORY ACCOUNT
+	var inventoryAccount models.AccountModel
+	err = s.db.Where("is_inventory_account = ? and company_id = ?", true, *data.CompanyID).First(&inventoryAccount).Error
+	if err != nil {
+		return errors.New("supply account not found")
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		s.financeService.TransactionService.SetDB(tx)
+		s.inventoryService.StockMovementService.SetDB(tx)
+		for _, v := range data.Items {
+			if v.SaleAccountID == nil {
+				return errors.New("sale account ID is required")
+			}
+			err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+				Date:                        date,
+				AccountID:                   v.SaleAccountID,
+				Description:                 "Penjualan " + data.SalesNumber,
+				Notes:                       v.Description,
+				TransactionRefID:            &data.ID,
+				TransactionRefType:          refType,
+				TransactionSecondaryRefID:   &v.ID,
+				TransactionSecondaryRefType: secRefType,
+				CompanyID:                   data.CompanyID,
+				Credit:                      v.SubTotal,
+				UserID:                      &userID,
+				IsIncome:                    true,
+			}, v.SubTotal)
+			if err != nil {
+				return err
+			}
+			if v.AssetAccountID == nil {
+				return errors.New("asset account ID is required")
+			}
+			err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+				Date:                        date,
+				AccountID:                   v.AssetAccountID,
+				Description:                 "Penjualan " + data.SalesNumber,
+				Notes:                       v.Description,
+				TransactionRefID:            &data.ID,
+				TransactionRefType:          refType,
+				TransactionSecondaryRefID:   &v.ID,
+				TransactionSecondaryRefType: secRefType,
+				CompanyID:                   data.CompanyID,
+				Debit:                       v.SubTotal + v.TotalTax,
+				UserID:                      &userID,
+			}, v.SubTotal+v.TotalTax)
+			if err != nil {
+				return err
+			}
+
+			if v.TaxID != nil {
+				if v.Tax == nil {
+					return errors.New("tax is required")
+				}
+				// HUTANG PAJAK
+				err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:                        date,
+					AccountID:                   v.Tax.AccountPayableID,
+					Description:                 "Hutang Pajak " + data.SalesNumber,
+					Notes:                       v.Description,
+					TransactionRefID:            &data.ID,
+					TransactionRefType:          refType,
+					TransactionSecondaryRefID:   &v.ID,
+					TransactionSecondaryRefType: secRefType,
+					CompanyID:                   data.CompanyID,
+					Credit:                      v.TotalTax,
+					UserID:                      &userID,
+					IsAccountPayable:            true,
+				}, v.TotalTax)
+				if err != nil {
+					return err
+				}
+
+			}
+
+			if v.ProductID != nil {
+				if v.WarehouseID == nil {
+					return errors.New("warehouse ID is required")
+				}
+				// ADD MOVEMENT
+				movement, err := s.inventoryService.StockMovementService.AddMovement(
+					time.Now(),
+					*v.ProductID,
+					*v.WarehouseID,
+					v.VariantID,
+					nil,
+					nil,
+					data.CompanyID,
+					-v.Quantity,
+					models.MovementTypeSale,
+					data.ID,
+					fmt.Sprintf("Sales %s (%s)", data.SalesNumber, v.Description))
+				if err != nil {
+					return err
+				}
+				movement.ReferenceID = data.ID
+				movement.ReferenceType = &refType
+				movement.SecondaryRefID = &v.ID
+				movement.SecondaryRefType = &secRefType
+				movement.Value = v.UnitValue
+				movement.UnitID = v.UnitID
+
+				err = tx.Save(movement).Error
+				if err != nil {
+					return err
+				}
+				// ADD SUPPLY TRANSACTION
+				err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:                        date,
+					AccountID:                   &inventoryAccount.ID,
+					Description:                 "Persediaan " + data.SalesNumber,
+					Notes:                       v.Description,
+					TransactionRefID:            &data.ID,
+					TransactionRefType:          "sales",
+					TransactionSecondaryRefID:   &v.ID,
+					TransactionSecondaryRefType: secRefType,
+					CompanyID:                   data.CompanyID,
+					Credit:                      v.Product.Price * v.Quantity * v.UnitValue,
+					UserID:                      &userID,
+				}, v.Product.Price*v.Quantity*v.UnitValue)
+				if err != nil {
+					return err
+				}
+
+				// ADD COGS TRANSACTION
+				err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:                        date,
+					AccountID:                   &cogsAccount.ID,
+					Description:                 "HPP " + data.SalesNumber,
+					Notes:                       v.Description,
+					TransactionRefID:            &data.ID,
+					TransactionRefType:          "sales",
+					TransactionSecondaryRefID:   &v.ID,
+					TransactionSecondaryRefType: secRefType,
+					CompanyID:                   data.CompanyID,
+					Debit:                       v.Product.Price * v.Quantity * v.UnitValue,
+					UserID:                      &userID,
+				}, v.Product.Price*v.Quantity*v.UnitValue)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return tx.Save(data).Error
 	})
 }

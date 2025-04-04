@@ -27,6 +27,9 @@ func NewTransactionService(db *gorm.DB, ctx *context.ERPContext, accountService 
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.TransactionModel{})
 }
+func (s *TransactionService) SetDB(db *gorm.DB) {
+	s.db = db
+}
 
 func (s *TransactionService) CreateTransaction(transaction *models.TransactionModel, amount float64) error {
 	code := utils.RandString(10, false)
@@ -244,7 +247,7 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 	}
 
 	switch request.URL.Query().Get("type") {
-	case "INCOME":
+	case "INCOME", "REVENUE":
 		stmt = stmt.Where("transactions.is_income = ?", true)
 	case "EXPENSE":
 		stmt = stmt.Where("transactions.is_expense = ?", true)
@@ -252,6 +255,10 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 		stmt = stmt.Where("transactions.is_equity = ?", true)
 	case "TRANSFER":
 		stmt = stmt.Where("transactions.is_transfer = ?", true)
+	case "LIABILITY", "PAYABLE":
+		stmt = stmt.Where("transactions.is_account_payable = ?", true)
+	case "RECEIVABLE":
+		stmt = stmt.Where("transactions.is_account_receivable = ?", true)
 	}
 
 	if request.URL.Query().Get("account_id") != "" {
@@ -280,6 +287,13 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 					item.TransactionRef = &transRef
 				}
 			}
+			if item.TransactionRefType == "sales" {
+				var salesRef models.SalesModel
+				err := s.db.Where("id = ?", item.TransactionRefID).First(&salesRef).Error
+				if err == nil {
+					item.SalesRef = &salesRef
+				}
+			}
 		}
 		item.Balance = s.getBalance(item)
 		newItems = append(newItems, item)
@@ -300,6 +314,12 @@ func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionMo
 	}
 	if accountType == models.EQUITY {
 		transaction.IsEquity = true
+	}
+	if accountType == models.LIABILITY || accountType == models.PAYABLE {
+		transaction.IsAccountPayable = true
+	}
+	if accountType == models.RECEIVABLE {
+		transaction.IsAccountReceivable = true
 	}
 	switch accountType {
 	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE:
@@ -333,7 +353,7 @@ func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionMo
 
 func (s *TransactionService) getBalance(transaction models.TransactionModel) float64 {
 	switch transaction.Account.Type {
-	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE:
+	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
 		return transaction.Debit - transaction.Credit
 	case models.LIABILITY, models.EQUITY, models.REVENUE, models.INCOME, models.CONTRA_ASSET, models.CONTRA_EXPENSE:
 		return transaction.Credit - transaction.Debit

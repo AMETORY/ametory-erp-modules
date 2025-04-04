@@ -1,6 +1,7 @@
 package account
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -120,6 +121,73 @@ func (s *AccountService) GetAccountByCode(code string) (*models.AccountModel, er
 }
 
 func (s *AccountService) GetAccounts(request http.Request, search string) (paginate.Page, error) {
+	// GET COGS ACCOUNT
+	if request.Header.Get("ID-Company") != "" {
+		companyID := request.Header.Get("ID-Company")
+		var cogsAccount models.AccountModel
+		err := s.db.Where("is_cogs_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&cogsAccount).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err := s.db.Create(&models.AccountModel{
+				Code:          "61003",
+				CompanyID:     &companyID,
+				Name:          "Beban Pokok Penjualan",
+				Type:          models.COST,
+				Category:      constants.CATEGORY_COST_OF_REVENUE,
+				IsCogsAccount: true,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+		}
+		// GET INVENTORY ACCOUNT
+		var inventoryAccount models.AccountModel
+		err = s.db.Where("is_inventory_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&inventoryAccount).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err := s.db.Create(&models.AccountModel{
+				Code:               "13001",
+				CompanyID:          &companyID,
+				Name:               "Persediaan",
+				Type:               models.ASSET,
+				Category:           constants.CATEGORY_CURRENT_ASSET,
+				CashflowGroup:      constants.CASHFLOW_GROUP_OPERATING,
+				CashflowSubGroup:   constants.CATEGORY_INVENTORY,
+				IsInventoryAccount: true,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+		}
+
+		var contraRevenueAccount models.AccountModel
+		err = s.db.Where("type = ? and company_id = ?", models.CONTRA_REVENUE, request.Header.Get("ID-Company")).First(&contraRevenueAccount).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err := s.db.Create(&models.AccountModel{
+				Code:             "42001",
+				CompanyID:        &companyID,
+				Name:             "Diskon Penjualan",
+				Type:             models.CONTRA_REVENUE,
+				CashflowSubGroup: constants.ACCEPTANCE_FROM_CUSTOMERS,
+				CashflowGroup:    constants.CASHFLOW_GROUP_OPERATING,
+				Category:         constants.CATEGORY_REVENUE,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+			err = s.db.Create(&models.AccountModel{
+				Code:             "43001",
+				CompanyID:        &companyID,
+				Name:             "Retur Penjualan",
+				Type:             models.CONTRA_REVENUE,
+				CashflowSubGroup: constants.ACCEPTANCE_FROM_CUSTOMERS,
+				CashflowGroup:    constants.CASHFLOW_GROUP_OPERATING,
+				Category:         constants.CATEGORY_REVENUE,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+		}
+	}
+
 	pg := paginate.New()
 	stmt := s.db
 	if request.Header.Get("ID-Company") != "" {
@@ -219,8 +287,8 @@ func (s *AccountService) GetTypes() map[string]any {
 				},
 			},
 		},
-		string(models.INCOME): map[string]any{
-			"name": string(models.INCOME),
+		string(models.REVENUE): map[string]any{
+			"name": string(models.REVENUE),
 			"categories": []string{
 				constants.CATEGORY_SALES,
 				constants.CATEGORY_OTHER_INCOME,
