@@ -68,6 +68,12 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 				transaction.Credit = amount
 				transaction.Debit = 0
 			}
+			if account.Type == models.EQUITY {
+				if transaction.Amount < 0 {
+					transaction.Credit = 0
+					transaction.Debit = -transaction.Amount
+				}
+			}
 			if err := s.db.Create(transaction).Error; err != nil {
 				return err
 			}
@@ -96,6 +102,10 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			if account.Type == models.ASSET {
 				transaction.IsIncome = false
 				transaction.IsExpense = false
+				if transaction.Amount < 0 {
+					transaction.Debit = 0
+					transaction.Credit = -transaction.Amount
+				}
 			}
 			if err := s.db.Create(transaction).Error; err != nil {
 				return err
@@ -294,6 +304,13 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 					item.SalesRef = &salesRef
 				}
 			}
+			if item.TransactionRefType == "purchase" {
+				var purchaseRef models.PurchaseOrderModel
+				err := s.db.Where("id = ?", item.TransactionRefID).First(&purchaseRef).Error
+				if err == nil {
+					item.PurchaseRef = &purchaseRef
+				}
+			}
 		}
 		item.Balance = s.getBalance(item)
 		newItems = append(newItems, item)
@@ -328,7 +345,9 @@ func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionMo
 	case models.LIABILITY, models.EQUITY, models.REVENUE, models.INCOME, models.CONTRA_ASSET, models.CONTRA_EXPENSE:
 		transaction.Credit = transaction.Amount
 		transaction.Debit = 0
+
 	case models.ASSET:
+
 		if transaction.IsIncome {
 			transaction.Debit = transaction.Amount
 			transaction.Credit = 0
@@ -342,6 +361,7 @@ func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionMo
 			transaction.Credit = transaction.Amount
 			transaction.Debit = 0
 		}
+
 	default:
 		return transaction, fmt.Errorf("unhandled account type: %s", accountType)
 	}

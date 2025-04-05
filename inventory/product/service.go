@@ -306,7 +306,7 @@ func (s *ProductService) DeleteImageOfProduct(productID string, imageID string) 
 func (s *ProductService) GetStock(productID string, request *http.Request, warehouseID *string) (float64, error) {
 
 	var totalStock float64
-	db := s.db.Table("stock_movements")
+	db := s.db.Model(&models.StockMovementModel{})
 	if request != nil {
 		if request.Header.Get("ID-Company") != "" {
 			db = db.Where("company_id = ?", request.Header.Get("ID-Company"))
@@ -332,7 +332,7 @@ func (s *ProductService) GetStock(productID string, request *http.Request, wareh
 func (s *ProductService) GetSalesCount(productID string, request *http.Request, warehouseID *string) (float64, error) {
 
 	var totalStock float64
-	db := s.db.Table("stock_movements")
+	db := s.db.Model(&models.StockMovementModel{})
 	if request != nil {
 		if request.Header.Get("ID-Company") != "" {
 			if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {
@@ -364,7 +364,7 @@ func (s *ProductService) GetSalesCount(productID string, request *http.Request, 
 func (s *ProductService) GetSalesVariantCount(productID, variantID string, request *http.Request, warehouseID *string) (float64, error) {
 
 	var totalStock float64
-	db := s.db.Table("stock_movements")
+	db := s.db.Model(&models.StockMovementModel{})
 	if request != nil {
 		if request.Header.Get("ID-Company") != "" {
 			if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {
@@ -397,7 +397,7 @@ func (s *ProductService) GetSalesVariantCount(productID, variantID string, reque
 func (s *ProductService) GetVariantStock(productID string, variantID string, request *http.Request, warehouseID *string) (float64, error) {
 
 	var totalStock float64
-	db := s.db.Table("stock_movements")
+	db := s.db.Model(&models.StockMovementModel{})
 	if request != nil {
 		if request.Header.Get("ID-Company") != "" {
 			if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {

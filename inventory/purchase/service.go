@@ -42,7 +42,22 @@ func (s *PurchaseService) UpdatePurchase(id string, data *models.PurchaseOrderMo
 }
 
 func (s *PurchaseService) DeletePurchase(id string) error {
-	return s.db.Where("id = ?", id).Delete(&models.PurchaseOrderModel{}).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Where("transaction_ref_id = ?", id).Delete(&models.TransactionModel{}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("purchase_id = ?", id).Delete(&models.PurchaseOrderItemModel{}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("reference_id = ? or secondary_ref_id = ?", id, id).Delete(&models.StockMovementModel{}).Error
+		if err != nil {
+			return err
+		}
+		return tx.Where("id = ?", id).Delete(&models.PurchaseOrderModel{}).Error
+	})
+
 }
 
 // CreatePurchaseOrder membuat purchase order baru
@@ -450,6 +465,7 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 					Debit:                       v.TotalTax,
 					UserID:                      &userID,
 					IsAccountReceivable:         true,
+					IsTax:                       true,
 				}, v.TotalTax)
 				if err != nil {
 					return err

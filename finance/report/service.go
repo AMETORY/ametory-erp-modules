@@ -136,6 +136,13 @@ func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, curre
 					item.SalesRef = &salesRef
 				}
 			}
+			if item.TransactionRefType == "purchase" {
+				var purchaseRef models.PurchaseOrderModel
+				err := s.db.Where("id = ?", item.TransactionRefID).First(&purchaseRef).Error
+				if err == nil {
+					item.PurchaseRef = &purchaseRef
+				}
+			}
 		}
 		curBalance := s.getBalanceAmount(item)
 		balance += curBalance
@@ -302,6 +309,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 		GoodsAvailable:         goodsAvailable,
 		EndingInventory:        endingInventory,
 		COGS:                   cogs,
+		InventoryAccount:       inventoryAccount,
 	}
 	cogsData.StartDate = report.StartDate
 	cogsData.EndDate = report.EndDate
@@ -317,7 +325,7 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 	}
 
 	revenueAccounts := []models.AccountModel{}
-	err = s.db.Where("type IN (?)", []models.AccountType{models.INCOME, models.REVENUE}).Find(&revenueAccounts).Error
+	err = s.db.Where("type IN (?)", []models.AccountType{models.INCOME, models.REVENUE, models.CONTRA_REVENUE}).Find(&revenueAccounts).Error
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +343,7 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 		if err != nil {
 			return nil, err
 		}
-		profitLoss.Profit = append(profitLoss.Profit, models.ProfilLossAccount{
+		profitLoss.Profit = append(profitLoss.Profit, models.ProfitLossAccount{
 			ID:   revenue.ID,
 			Name: revenue.Name,
 			Code: revenue.Code,
@@ -344,9 +352,10 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 		revenueSum += amount.Sum
 	}
 
-	profitLoss.Profit = append(profitLoss.Profit, models.ProfilLossAccount{
+	profitLoss.Profit = append(profitLoss.Profit, models.ProfitLossAccount{
 		Name: "Harga Pokok Penjualan",
-		Sum:  cogsReport.COGS,
+		Sum:  -cogsReport.COGS,
+		Link: "/cogs",
 	})
 
 	profitLoss.GrossProfit = revenueSum - cogsReport.COGS
@@ -370,7 +379,7 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 		if err != nil {
 			return nil, err
 		}
-		profitLoss.Loss = append(profitLoss.Loss, models.ProfilLossAccount{
+		profitLoss.Loss = append(profitLoss.Loss, models.ProfitLossAccount{
 			ID:   expense.ID,
 			Name: expense.Name,
 			Code: expense.Code,
@@ -382,4 +391,287 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 	profitLoss.TotalExpense = expenseSum
 	profitLoss.NetProfit = profitLoss.GrossProfit - profitLoss.TotalExpense
 	return &profitLoss, nil
+}
+
+func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport) (*models.BalanceSheet, error) {
+	balanceSheet := models.BalanceSheet{}
+	balanceSheet.StartDate = report.StartDate
+	balanceSheet.EndDate = report.EndDate
+
+	// ASSETS
+	// FIXED ACCOUNT
+	fixedAccounts := []models.AccountModel{}
+	err := s.db.Where("type = ? AND cashflow_group = ? AND company_id = ?", "ASSET", "fixed_asset", report.CompanyID).Find(&fixedAccounts).Error
+	if err != nil {
+		return nil, errors.New("fixedAccounts account not found")
+	}
+	fixedAmount := 0.0
+	for _, expense := range fixedAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err = s.db.Model(&models.TransactionModel{}).
+			Where("date <  ?", report.EndDate).
+			Select("sum(debit-credit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", expense.ID).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+		balanceSheet.FixedAssets = append(balanceSheet.FixedAssets, models.BalanceSheetAccount{
+			ID:   expense.ID,
+			Name: expense.Name,
+			Code: expense.Code,
+			Sum:  amount.Sum,
+		})
+		fixedAmount += amount.Sum
+	}
+	balanceSheet.TotalFixed = fixedAmount
+
+	// CURRENT ACCOUNT
+	currentAccounts := []models.AccountModel{}
+	err = s.db.Where("type = ? AND cashflow_group = ? AND company_id = ?", "ASSET", "current_asset", report.CompanyID).Find(&currentAccounts).Error
+	if err != nil {
+
+	}
+	currentAmount := 0.0
+	for _, expense := range currentAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err = s.db.Model(&models.TransactionModel{}).
+			Where("date <  ?", report.EndDate).
+			Select("sum(debit-credit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", expense.ID).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+		balanceSheet.CurrentAssets = append(balanceSheet.CurrentAssets, models.BalanceSheetAccount{
+			ID:   expense.ID,
+			Name: expense.Name,
+			Code: expense.Code,
+			Sum:  amount.Sum,
+		})
+		currentAmount += amount.Sum
+	}
+
+	// RECEIVABLE ACCOUNT
+	receivableAccounts := []models.AccountModel{}
+	err = s.db.Where("type = ?  AND company_id = ?", "RECEIVABLE", report.CompanyID).Find(&receivableAccounts).Error
+	if err != nil {
+		return nil, errors.New("receivableAccounts account not found")
+	}
+
+	for _, expense := range receivableAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err = s.db.Model(&models.TransactionModel{}).
+			Where("date <  ?", report.EndDate).
+			Select("sum(debit-credit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", expense.ID).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+		balanceSheet.CurrentAssets = append(balanceSheet.CurrentAssets, models.BalanceSheetAccount{
+			ID:   expense.ID,
+			Name: expense.Name,
+			Code: expense.Code,
+			Sum:  amount.Sum,
+		})
+		currentAmount += amount.Sum
+	}
+
+	// INVENTORY
+	report.StartDate = time.Time{}
+	cogsReport, err := s.GenerateCogsReport(report)
+	if err != nil {
+		return nil, err
+	}
+	balanceSheet.CurrentAssets = append(balanceSheet.CurrentAssets, models.BalanceSheetAccount{
+		ID:   cogsReport.InventoryAccount.ID,
+		Code: cogsReport.InventoryAccount.Code,
+		Name: cogsReport.InventoryAccount.Name,
+		Sum:  cogsReport.EndingInventory,
+	})
+
+	currentAmount += cogsReport.EndingInventory
+	balanceSheet.TotalCurrent = currentAmount
+
+	balanceSheet.TotalAssets = balanceSheet.TotalFixed + balanceSheet.TotalCurrent
+	// LIABILITY AND EQUITY
+
+	// LIABILITY ACCOUNT
+	liabilityAccounts := []models.AccountModel{}
+	err = s.db.Where("type = ?  AND company_id = ?", "LIABILITY", report.CompanyID).Find(&liabilityAccounts).Error
+	if err != nil {
+		return nil, errors.New("liabilityAccounts account not found")
+	}
+	liabilityAmount := 0.0
+	for _, expense := range liabilityAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err = s.db.Model(&models.TransactionModel{}).
+			Where("date <  ?", report.EndDate).
+			Select("sum(credit-debit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", expense.ID).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+		balanceSheet.LiableAssets = append(balanceSheet.LiableAssets, models.BalanceSheetAccount{
+			ID:   expense.ID,
+			Name: expense.Name,
+			Code: expense.Code,
+			Sum:  amount.Sum,
+		})
+		liabilityAmount += amount.Sum
+	}
+
+	balanceSheet.TotalLiability = liabilityAmount
+
+	// EQUITY ACCOUNT
+	equityAccounts := []models.AccountModel{}
+	err = s.db.Where("type = ?  AND company_id = ?", "EQUITY", report.CompanyID).Find(&equityAccounts).Error
+	if err != nil {
+		return nil, errors.New("equityAccounts account not found")
+	}
+	equityAmount := 0.0
+	for _, expense := range equityAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err = s.db.Model(&models.TransactionModel{}).
+			Where("date <  ?", report.EndDate).
+			Select("sum(credit-debit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", expense.ID).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+		balanceSheet.Equity = append(balanceSheet.Equity, models.BalanceSheetAccount{
+			ID:   expense.ID,
+			Name: expense.Name,
+			Code: expense.Code,
+			Sum:  amount.Sum,
+		})
+		equityAmount += amount.Sum
+	}
+
+	profitLoss, err := s.GenerateProfitLossReport(report)
+	if err != nil {
+		return nil, err
+	}
+
+	// PROFIT AND LOSS
+	balanceSheet.Equity = append(balanceSheet.Equity, models.BalanceSheetAccount{
+		Name: "Laba Ditahan",
+		Sum:  profitLoss.NetProfit,
+		Link: "/profit-loss-statement",
+	})
+	equityAmount += profitLoss.NetProfit
+	balanceSheet.TotalEquity = equityAmount
+	balanceSheet.TotalLiabilitiesAndEquity = balanceSheet.TotalLiability + balanceSheet.TotalEquity
+
+	return &balanceSheet, nil
+}
+
+func (s *FinanceReportService) GenerateCapitalChangeReport(report models.GeneralReport) (*models.CapitalChangeReport, error) {
+	capitalChange := models.CapitalChangeReport{}
+	equityAccounts := []models.AccountModel{}
+	err := s.db.Where("type = ?  AND company_id = ?", "EQUITY", report.CompanyID).Find(&equityAccounts).Error
+	if err != nil {
+		return nil, errors.New("equityAccounts account not found")
+	}
+	// Opening Balance
+	openingBalance := 0.0
+	for _, v := range equityAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err := s.db.Model(&models.TransactionModel{}).
+			Where("date <  ?", report.EndDate).
+			Select("sum(credit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", v.ID).
+			Where("is_opening_balance = ?", true).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+
+		openingBalance += amount.Sum
+	}
+	profitLoss, err := s.GenerateProfitLossReport(report)
+	if err != nil {
+		return nil, err
+	}
+
+	profitLossBalance := profitLoss.NetProfit
+
+	privedBalance := 0.0
+	for _, v := range equityAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err := s.db.Model(&models.TransactionModel{}).
+			Where("date <  ?", report.EndDate).
+			Select("sum(debit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", v.ID).
+			Where("is_opening_balance = ?", false).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+
+		privedBalance += amount.Sum
+	}
+
+	capitalChangeBalance := 0.0
+	for _, v := range equityAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err := s.db.Model(&models.TransactionModel{}).
+			Where("date <  ?", report.EndDate).
+			Select("sum(credit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", v.ID).
+			Where("is_opening_balance = ?", false).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+
+		capitalChangeBalance += amount.Sum
+	}
+
+	// amount := struct {
+	// 	Sum float64 `sql:"sum"`
+	// }{}
+	// err := s.db.Model(&models.TransactionModel{}).
+	// 	Where("date <  ?", report.StartDate).
+	// 	Select("sum(credit-debit) as sum").
+	// 	Joins("JOIN accounts ON accounts.id = transactions.account_id").
+	// 	Where("accounts.type IN (?)", []models.AccountType{models.EQUITY}).
+	// 	Scan(&amount).Error
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	capitalChange.OpeningBalance = openingBalance
+	capitalChange.ProfitLoss = profitLossBalance
+	capitalChange.PrivedBalance = -privedBalance
+	capitalChange.CapitalChangeBalance = capitalChangeBalance
+	capitalChange.EndingBalance = openingBalance + profitLossBalance + capitalChangeBalance - privedBalance
+	return &capitalChange, nil
 }

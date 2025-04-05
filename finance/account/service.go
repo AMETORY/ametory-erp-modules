@@ -169,6 +169,7 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 				CashflowSubGroup: constants.ACCEPTANCE_FROM_CUSTOMERS,
 				CashflowGroup:    constants.CASHFLOW_GROUP_OPERATING,
 				Category:         constants.CATEGORY_REVENUE,
+				IsDiscount:       true,
 			}).Error
 			if err != nil {
 				return paginate.Page{}, err
@@ -181,6 +182,7 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 				CashflowSubGroup: constants.ACCEPTANCE_FROM_CUSTOMERS,
 				CashflowGroup:    constants.CASHFLOW_GROUP_OPERATING,
 				Category:         constants.CATEGORY_REVENUE,
+				IsReturn:         true,
 			}).Error
 			if err != nil {
 				return paginate.Page{}, err

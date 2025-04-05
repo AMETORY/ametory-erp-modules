@@ -27,56 +27,59 @@ const (
 
 type SalesModel struct {
 	shared.BaseModel
-	SalesNumber           string           `json:"sales_number"`
-	Code                  string           `json:"code"`
-	Description           string           `json:"description"`
-	Notes                 string           `json:"notes"`
-	Total                 float64          `json:"total"`
-	Subtotal              float64          `json:"subtotal"`
-	Paid                  float64          `json:"paid"`
-	TotalBeforeTax        float64          `json:"total_before_tax"`
-	TotalBeforeDisc       float64          `json:"total_before_disc"`
-	TotalTax              float64          `json:"total_tax"`
-	TotalDiscount         float64          `json:"total_discount"`
-	Status                string           `json:"status"`
-	StockStatus           string           `json:"stock_status" gorm:"default:'pending'"`
-	SalesDate             time.Time        `json:"sales_date"`
-	DueDate               *time.Time       `json:"due_date"`
-	DiscountDueDate       *time.Time       `json:"discount_due_date"`
-	PaymentDiscountAmount float64          `json:"payment_discount_amount"`
-	PaymentTerms          string           `json:"payment_terms"`
-	PaymentTermsCode      string           `json:"payment_terms_code"`
-	TermCondition         string           `json:"term_condition"`
-	CompanyID             *string          `json:"company_id"`
-	Company               *CompanyModel    `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company"`
-	UserID                *string          `gorm:"size:36" json:"-"`
-	User                  *UserModel       `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
-	ContactID             *string          `json:"contact_id"`
-	Contact               *ContactModel    `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE" json:"contact"`
-	ContactData           string           `gorm:"type:json" json:"contact_data"`
-	DeliveryID            *string          `json:"delivery_id"`
-	Delivery              *ContactModel    `gorm:"foreignKey:DeliveryID;constraint:OnDelete:CASCADE" json:"delivery"`
-	DeliveryData          string           `gorm:"type:json" json:"delivery_data"`
-	Type                  SalesType        `json:"type"`
-	DocumentType          SalesDocType     `json:"document_type"`
-	Items                 []SalesItemModel `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE" json:"items"`
-	WithdrawalID          *string          `json:"withdrawal_id,omitempty" gorm:"column:withdrawal_id"`
-	Withdrawal            *WithdrawalModel `gorm:"foreignKey:WithdrawalID;constraint:OnDelete:CASCADE" json:"withdrawal,omitempty"`
-	PublishedAt           *time.Time       `json:"published_at"`
-	PublishedByID         *string          `json:"published_by_id,omitempty" gorm:"column:published_by_id"`
-	PublishedBy           *UserModel       `gorm:"foreignKey:PublishedByID;constraint:OnDelete:CASCADE" json:"published_by,omitempty"`
-	Taxes                 []*TaxModel      `gorm:"many2many:sales_taxes;constraint:OnDelete:CASCADE;" json:"taxes"`
-	IsCompound            bool             `json:"is_compound"`
-	TaxBreakdown          string           `gorm:"type:json" json:"tax_breakdown"`
-	RefID                 *string          `json:"ref_id,omitempty"`
-	RefType               *string          `gorm:"ref_type" json:"ref_type,omitempty"`
-	SecondaryRefID        *string          `json:"secondary_ref_id,omitempty"`
-	SecondaryRefType      *string          `gorm:"secondary_ref_type" json:"secondary_ref_type,omitempty"`
-	ContactDataParsed     map[string]any   `json:"contact_data_parsed" gorm:"-"`
-	DeliveryDataParsed    map[string]any   `json:"delivery_data_parsed" gorm:"-"`
-	TaxBreakdownParsed    map[string]any   `json:"tax_breakdown_parsed" gorm:"-"`
-	SalesRef              *SalesModel      `json:"sales_ref" gorm:"-"`
-	SecondarySalesRef     *SalesModel      `json:"secondary_sales_ref" gorm:"-"`
+	SalesNumber           string              `json:"sales_number"`
+	Code                  string              `json:"code"`
+	Description           string              `json:"description"`
+	Notes                 string              `json:"notes"`
+	Total                 float64             `json:"total"`
+	Subtotal              float64             `json:"subtotal"`
+	Paid                  float64             `json:"paid"`
+	TotalBeforeTax        float64             `json:"total_before_tax"`
+	TotalBeforeDisc       float64             `json:"total_before_disc"`
+	TotalTax              float64             `json:"total_tax"`
+	TotalDiscount         float64             `json:"total_discount"`
+	Status                string              `json:"status"`
+	StockStatus           string              `json:"stock_status" gorm:"default:'pending'"`
+	SalesDate             time.Time           `json:"sales_date"`
+	DueDate               *time.Time          `json:"due_date"`
+	DiscountDueDate       *time.Time          `json:"discount_due_date"`
+	PaymentDiscountAmount float64             `json:"payment_discount_amount"`
+	PaymentTerms          string              `json:"payment_terms"`
+	PaymentTermsCode      string              `json:"payment_terms_code"`
+	TermCondition         string              `json:"term_condition"`
+	CompanyID             *string             `json:"company_id"`
+	Company               *CompanyModel       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company"`
+	UserID                *string             `gorm:"size:36" json:"-"`
+	User                  *UserModel          `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	ContactID             *string             `json:"contact_id"`
+	Contact               *ContactModel       `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE" json:"contact"`
+	ContactData           string              `gorm:"type:json" json:"contact_data"`
+	DeliveryID            *string             `json:"delivery_id"`
+	Delivery              *ContactModel       `gorm:"foreignKey:DeliveryID;constraint:OnDelete:CASCADE" json:"delivery"`
+	DeliveryData          string              `gorm:"type:json" json:"delivery_data"`
+	Type                  SalesType           `json:"type"`
+	DocumentType          SalesDocType        `json:"document_type"`
+	Items                 []SalesItemModel    `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE" json:"items"`
+	WithdrawalID          *string             `json:"withdrawal_id,omitempty" gorm:"column:withdrawal_id"`
+	Withdrawal            *WithdrawalModel    `gorm:"foreignKey:WithdrawalID;constraint:OnDelete:CASCADE" json:"withdrawal,omitempty"`
+	PublishedAt           *time.Time          `json:"published_at"`
+	PublishedByID         *string             `json:"published_by_id,omitempty" gorm:"column:published_by_id"`
+	PublishedBy           *UserModel          `gorm:"foreignKey:PublishedByID;constraint:OnDelete:CASCADE" json:"published_by,omitempty"`
+	Taxes                 []*TaxModel         `gorm:"many2many:sales_taxes;constraint:OnDelete:CASCADE;" json:"taxes"`
+	IsCompound            bool                `json:"is_compound"`
+	TaxBreakdown          string              `gorm:"type:json" json:"tax_breakdown"`
+	RefID                 *string             `json:"ref_id,omitempty"`
+	RefType               *string             `gorm:"ref_type" json:"ref_type,omitempty"`
+	SecondaryRefID        *string             `json:"secondary_ref_id,omitempty"`
+	SecondaryRefType      *string             `gorm:"secondary_ref_type" json:"secondary_ref_type,omitempty"`
+	ContactDataParsed     map[string]any      `json:"contact_data_parsed" gorm:"-"`
+	DeliveryDataParsed    map[string]any      `json:"delivery_data_parsed" gorm:"-"`
+	TaxBreakdownParsed    map[string]any      `json:"tax_breakdown_parsed" gorm:"-"`
+	SalesRef              *SalesModel         `json:"sales_ref" gorm:"-"`
+	SecondarySalesRef     *SalesModel         `json:"secondary_sales_ref" gorm:"-"`
+	PaymentAccountID      *string             `json:"payment_account_id,omitempty"`
+	PaymentAccount        *AccountModel       `json:"payment_account,omitempty" gorm:"foreignKey:PaymentAccountID;constraint:OnDelete:CASCADE"`
+	SalesPayments         []SalesPaymentModel `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE" json:"sales_payments"`
 }
 
 func (s *SalesModel) AfterFind(tx *gorm.DB) (err error) {
@@ -153,6 +156,36 @@ func (s *SalesItemModel) TableName() string {
 }
 
 func (s *SalesItemModel) BeforeCreate(tx *gorm.DB) (err error) {
+	if s.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return
+}
+
+type SalesPaymentModel struct {
+	shared.BaseModel
+	PaymentDate        time.Time     `json:"payment_date"`
+	SalesID            *string       `json:"sales_id"`
+	Sales              *SalesModel   `gorm:"foreignKey:SalesID;constraint:OnDelete:CASCADE" json:"sales"`
+	Amount             float64       `json:"amount"`
+	PaymentDiscount    float64       `json:"payment_discount"`
+	Notes              string        `json:"notes"`
+	CompanyID          *string       `json:"company_id"`
+	Company            *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company"`
+	UserID             *string       `gorm:"size:36" json:"-"`
+	User               *UserModel    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	AssetAccountID     *string       `json:"asset_account_id"`
+	AssetAccount       *AccountModel `gorm:"foreignKey:AssetAccountID;constraint:OnDelete:CASCADE" json:"asset_account"`
+	IsRefund           bool          `json:"is_refund"`
+	PaymentMethod      string        `gorm:"default:CASH" json:"payment_method"`
+	PaymentMethodNotes string        `json:"payment_method_notes"`
+}
+
+func (s *SalesPaymentModel) TableName() string {
+	return "sales_payments"
+}
+
+func (s *SalesPaymentModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if s.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}

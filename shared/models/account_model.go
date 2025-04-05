@@ -58,6 +58,8 @@ type AccountModel struct {
 	HasOpeningBalance     bool          `gorm:"-" json:"has_opening_balance,omitempty"`
 	IsInventoryAccount    bool          `json:"is_inventory_account,omitempty"`
 	IsCogsAccount         bool          `json:"is_cogs_account,omitempty"`
+	IsDiscount            bool          `json:"is_discount,omitempty"`
+	IsReturn              bool          `json:"is_return,omitempty"`
 	// Transactions          []Transaction `gorm:"constraint:OnDelete:CASCADE;"`
 }
 

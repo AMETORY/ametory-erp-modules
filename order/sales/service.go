@@ -10,8 +10,10 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/google/uuid"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -25,7 +27,7 @@ type SalesService struct {
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&models.SalesModel{}, &models.SalesItemModel{})
+	return db.AutoMigrate(&models.SalesModel{}, &models.SalesItemModel{}, &models.SalesPaymentModel{})
 }
 
 func NewSalesService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, inventoryService *inventory.InventoryService) *SalesService {
@@ -95,11 +97,6 @@ func (s *SalesService) CreateSales(data *models.SalesModel) error {
 			}
 		}
 
-		if err := tx.Commit().Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-
 		return nil
 	})
 
@@ -159,11 +156,6 @@ func (s *SalesService) CreatePayment(salesID string, date time.Time, amount floa
 			}
 		}
 
-		if err := tx.Commit().Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-
 		return nil
 	})
 }
@@ -173,12 +165,27 @@ func (s *SalesService) UpdateSales(id string, data *models.SalesModel) error {
 }
 
 func (s *SalesService) DeleteSales(id string) error {
-	return s.db.Where("id = ?", id).Delete(&models.SalesModel{}).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Where("transaction_ref_id = ?", id).Delete(&models.TransactionModel{}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("sales_id = ?", id).Delete(&models.SalesItemModel{}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("reference_id = ? or secondary_ref_id = ?", id, id).Delete(&models.StockMovementModel{}).Error
+		if err != nil {
+			return err
+		}
+		return tx.Where("id = ?", id).Delete(&models.SalesModel{}).Error
+	})
+
 }
 
 func (s *SalesService) GetSalesByID(id string) (*models.SalesModel, error) {
 	var sales, refSales models.SalesModel
-	err := s.db.Where("id = ?", id).First(&sales).Error
+	err := s.db.Preload("SalesPayments").Preload("PaymentAccount").Where("id = ?", id).First(&sales).Error
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +249,7 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string, description stri
 	if sales.StockStatus != "pending" {
 		return errors.New("purchase order already processed")
 	}
-	err := s.ctx.DB.Transaction(func(tx *gorm.DB) error {
+	return s.ctx.DB.Transaction(func(tx *gorm.DB) error {
 		for _, v := range sales.Items {
 			if v.ProductID == nil || v.WarehouseID == nil {
 				continue
@@ -261,20 +268,10 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string, description stri
 			return err
 		}
 
-		if err := tx.Commit().Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-
 		// return nil will commit the whole transaction
 		return nil
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderRequestModel, salesNumber string, taxPercent float64, description string) error {
@@ -599,9 +596,13 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 	if err != nil {
 		return errors.New("inventory account not found")
 	}
+	if data.PaymentAccount.Type == "ASSET" {
+		data.Paid = data.Total
+	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		s.financeService.TransactionService.SetDB(tx)
 		s.inventoryService.StockMovementService.SetDB(tx)
+		totalPayment := 0.0
 		for _, v := range data.Items {
 			if v.SaleAccountID == nil {
 				return errors.New("sale account ID is required")
@@ -623,24 +624,25 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 			if err != nil {
 				return err
 			}
-			if v.AssetAccountID == nil {
-				return errors.New("asset account ID is required")
-			}
-			err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-				Date:                        date,
-				AccountID:                   v.AssetAccountID,
-				Description:                 "Penjualan " + data.SalesNumber,
-				Notes:                       v.Description,
-				TransactionRefID:            &data.ID,
-				TransactionRefType:          refType,
-				TransactionSecondaryRefID:   &v.ID,
-				TransactionSecondaryRefType: secRefType,
-				CompanyID:                   data.CompanyID,
-				Debit:                       v.SubTotal + v.TotalTax,
-				UserID:                      &userID,
-			}, v.SubTotal+v.TotalTax)
-			if err != nil {
-				return err
+			if v.AssetAccountID != nil {
+				err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+					Date:                        date,
+					AccountID:                   v.AssetAccountID,
+					Description:                 "Penjualan " + data.SalesNumber,
+					Notes:                       v.Description,
+					TransactionRefID:            &data.ID,
+					TransactionRefType:          refType,
+					TransactionSecondaryRefID:   &v.ID,
+					TransactionSecondaryRefType: secRefType,
+					CompanyID:                   data.CompanyID,
+					Debit:                       v.SubTotal + v.TotalTax,
+					UserID:                      &userID,
+				}, v.SubTotal+v.TotalTax)
+				if err != nil {
+					return err
+				}
+			} else {
+				totalPayment += v.SubTotal + v.TotalTax
 			}
 
 			if v.TaxID != nil {
@@ -661,6 +663,7 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 					Credit:                      v.TotalTax,
 					UserID:                      &userID,
 					IsAccountPayable:            true,
+					IsTax:                       true,
 				}, v.TotalTax)
 				if err != nil {
 					return err
@@ -736,6 +739,124 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 				}
 			}
 		}
+
+		err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			Date:               date,
+			AccountID:          data.PaymentAccountID,
+			Description:        "Penjualan " + data.SalesNumber,
+			TransactionRefID:   &data.ID,
+			TransactionRefType: refType,
+			CompanyID:          data.CompanyID,
+			Debit:              totalPayment,
+			UserID:             &userID,
+		}, totalPayment)
 		return tx.Save(data).Error
+	})
+}
+
+func (s *SalesService) GetBalance(sales *models.SalesModel) (float64, error) {
+	if sales.PaymentAccount.Type == "ASSET" {
+		return 0, nil
+	}
+	var amount struct {
+		Sum float64 `sql:"sum"`
+	}
+	err := s.db.Model(&models.SalesPaymentModel{}).Where("sales_id = ?", sales.ID).Select("sum(amount)").Scan(&amount).Error
+	if err != nil {
+		return 0, err
+	}
+	if sales.Total > amount.Sum {
+		return sales.Total - amount.Sum, nil
+	}
+	return 0, errors.New("payment is more than total")
+}
+func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment *models.SalesPaymentModel) error {
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		balance, err := s.GetBalance(sales)
+		if err != nil {
+			return err
+		}
+		if balance < salesPayment.Amount {
+			return errors.New("payment is more than balance")
+		}
+
+		if salesPayment.AssetAccountID == nil {
+			return errors.New("asset account is required")
+		}
+		if sales.PaymentAccountID == nil {
+			return errors.New("sales payment account not found")
+		}
+
+		if sales.PaymentAccount.Type != "RECEIVABLE" {
+			return errors.New("sales payment account type must be RECEIVABLE")
+		}
+		paymentAmount := salesPayment.Amount
+		discountAmount := 0.0
+		if salesPayment.PaymentDiscount > 0 {
+			paymentAmount = salesPayment.Amount - (salesPayment.Amount * (salesPayment.PaymentDiscount / 100))
+			discountAmount = salesPayment.Amount * (salesPayment.PaymentDiscount / 100)
+		}
+
+		paymentID := uuid.New().String()
+		receivableID := uuid.New().String()
+		assetTransID := uuid.New().String()
+
+		err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			BaseModel:          shared.BaseModel{ID: receivableID},
+			Date:               salesPayment.PaymentDate,
+			AccountID:          sales.PaymentAccountID,
+			Description:        "Pembayaran " + sales.SalesNumber,
+			Notes:              salesPayment.Notes,
+			TransactionRefID:   &assetTransID,
+			TransactionRefType: "transaction",
+			CompanyID:          sales.CompanyID,
+			Credit:             salesPayment.Amount,
+			UserID:             salesPayment.UserID,
+		}, salesPayment.Amount)
+		if err != nil {
+			return err
+		}
+		err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			BaseModel:          shared.BaseModel{ID: assetTransID},
+			Date:               salesPayment.PaymentDate,
+			AccountID:          salesPayment.AssetAccountID,
+			Description:        "Pembayaran " + sales.SalesNumber,
+			Notes:              salesPayment.Notes,
+			TransactionRefID:   &receivableID,
+			TransactionRefType: "transaction",
+			CompanyID:          sales.CompanyID,
+			Debit:              paymentAmount,
+			UserID:             salesPayment.UserID,
+		}, paymentAmount)
+		if err != nil {
+			return err
+		}
+
+		if discountAmount > 0 {
+			var contraRevenueAccount models.AccountModel
+			err := s.db.Where("type = ? and company_id = ? and is_discount = ?", models.CONTRA_REVENUE, sales.CompanyID, true).First(&contraRevenueAccount).Error
+			if err != nil {
+				return err
+			}
+			err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+				BaseModel:          shared.BaseModel{ID: assetTransID},
+				Date:               salesPayment.PaymentDate,
+				AccountID:          &contraRevenueAccount.ID,
+				Description:        "Diskon " + sales.SalesNumber,
+				TransactionRefID:   &receivableID,
+				TransactionRefType: "transaction",
+				CompanyID:          sales.CompanyID,
+				Debit:              discountAmount,
+				UserID:             salesPayment.UserID,
+			}, discountAmount)
+			if err != nil {
+				return err
+			}
+		}
+
+		salesPayment.ID = paymentID
+
+		return tx.Create(salesPayment).Error
 	})
 }

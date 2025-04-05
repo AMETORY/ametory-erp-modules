@@ -80,7 +80,6 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 	}
 	request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.StockMovementModel{})
-	utils.FixRequest(&request)
 
 	orderBy := request.URL.Query().Get("order_by")
 	order := request.URL.Query().Get("order")
@@ -91,7 +90,7 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 		order = "desc"
 	}
 	stmt = stmt.Order(orderBy + " " + order)
-
+	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.StockMovementModel{})
 	page.Page = page.Page + 1
 

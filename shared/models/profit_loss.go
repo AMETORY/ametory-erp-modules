@@ -19,17 +19,18 @@ type ProfitLossCategory struct {
 
 type ProfitLossReport struct {
 	GeneralReport
-	Profit       []ProfilLossAccount `json:"profit"`
-	Loss         []ProfilLossAccount `json:"loss"`
+	Profit       []ProfitLossAccount `json:"profit"`
+	Loss         []ProfitLossAccount `json:"loss"`
 	GrossProfit  float64             `json:"gross_profit"`
 	TotalExpense float64             `json:"total_expense"`
 	NetProfit    float64             `json:"net_profit"`
 }
 
-type ProfilLossAccount struct {
+type ProfitLossAccount struct {
 	ID   string  `json:"id"`
 	Code string  `json:"code"`
 	Name string  `json:"name"`
 	Type string  `json:"type"`
 	Sum  float64 `json:"sum"`
+	Link string  `json:"link"`
 }
