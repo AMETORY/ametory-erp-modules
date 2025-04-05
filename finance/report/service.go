@@ -1,6 +1,7 @@
 package report
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
 )
 
@@ -203,4 +205,181 @@ func (s *FinanceReportService) getBalanceAmount(transaction models.TransactionMo
 		return transaction.Debit - transaction.Credit
 	}
 	return 0
+}
+
+func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (*models.COGSReport, error) {
+	var inventoryAccount models.AccountModel
+	err := s.db.Where("is_inventory_account = ? and company_id = ?", true, report.CompanyID).First(&inventoryAccount).Error
+	if err != nil {
+		return nil, errors.New("inventory account not found")
+	}
+
+	var beginningInventory, purchases, freightInAndOtherCost, totalPurchases, purchaseReturns, purchaseDiscounts, totalPurchaseDiscounts, netPurchases, goodsAvailable, endingInventory, cogs float64
+	amount := struct {
+		Sum float64 `sql:"sum"`
+	}{}
+	err = s.db.Model(&models.TransactionModel{}).
+		Where("date < ?", report.StartDate).
+		Select("sum(debit-credit) as sum").
+		Where("account_id = ?", inventoryAccount.ID).
+		Scan(&amount).Error
+	if err != nil {
+		return nil, err
+	}
+	beginningInventory = amount.Sum
+
+	err = s.db.Model(&models.TransactionModel{}).
+		Where("is_purchase_cost = ?", false).
+		Where("debit > ?", 0).
+		Where("date between ? and ?", report.StartDate, report.EndDate).
+		Select("sum(debit-credit) as sum").
+		Where("account_id = ?", inventoryAccount.ID).
+		Scan(&amount).Error
+	if err != nil {
+		return nil, err
+	}
+	purchases = amount.Sum
+
+	err = s.db.Model(&models.TransactionModel{}).
+		Where("is_purchase_cost = ?", true).
+		Where("debit > ?", 0).
+		Where("date between ? and ?", report.StartDate, report.EndDate).
+		Select("sum(debit-credit) as sum").
+		Where("account_id = ?", inventoryAccount.ID).
+		Scan(&amount).Error
+	if err != nil {
+		return nil, err
+	}
+	freightInAndOtherCost = amount.Sum
+	totalPurchases = purchases + freightInAndOtherCost
+
+	err = s.db.Model(&models.TransactionModel{}).
+		Where("is_return = ?", true).
+		Where("date between ? and ?", report.StartDate, report.EndDate).
+		Select("sum(debit-credit) as sum").
+		Where("account_id = ?", inventoryAccount.ID).
+		Scan(&amount).Error
+	if err != nil {
+		return nil, err
+	}
+	purchaseReturns = amount.Sum
+	err = s.db.Model(&models.TransactionModel{}).
+		Where("is_discount = ?", true).
+		Where("date between ? and ?", report.StartDate, report.EndDate).
+		Select("sum(debit-credit) as sum").
+		Where("account_id = ?", inventoryAccount.ID).
+		Scan(&amount).Error
+	if err != nil {
+		return nil, err
+	}
+	purchaseDiscounts = amount.Sum
+
+	totalPurchaseDiscounts = purchaseReturns + purchaseDiscounts
+
+	err = s.db.Model(&models.TransactionModel{}).
+		Where("date < ?", report.EndDate).
+		Select("sum(debit-credit) as sum").
+		Where("account_id = ?", inventoryAccount.ID).
+		Scan(&amount).Error
+	if err != nil {
+		return nil, err
+	}
+	endingInventory = amount.Sum
+
+	netPurchases = totalPurchases + totalPurchaseDiscounts
+	goodsAvailable = beginningInventory + netPurchases
+	cogs = goodsAvailable - endingInventory
+
+	cogsData := models.COGSReport{
+		BeginningInventory:     beginningInventory,
+		Purchases:              purchases,
+		FreightInAndOtherCost:  freightInAndOtherCost,
+		TotalPurchases:         totalPurchases,
+		PurchaseReturns:        purchaseReturns,
+		PurchaseDiscounts:      purchaseDiscounts,
+		TotalPurchaseDiscounts: totalPurchaseDiscounts,
+		NetPurchases:           netPurchases,
+		GoodsAvailable:         goodsAvailable,
+		EndingInventory:        endingInventory,
+		COGS:                   cogs,
+	}
+	cogsData.StartDate = report.StartDate
+	cogsData.EndDate = report.EndDate
+	utils.LogJson(cogsData)
+	return &cogsData, nil
+}
+
+func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralReport) (*models.ProfitLossReport, error) {
+	profitLoss := models.ProfitLossReport{}
+	cogsReport, err := s.GenerateCogsReport(report)
+	if err != nil {
+		return nil, err
+	}
+
+	revenueAccounts := []models.AccountModel{}
+	err = s.db.Where("type IN (?)", []models.AccountType{models.INCOME, models.REVENUE}).Find(&revenueAccounts).Error
+	if err != nil {
+		return nil, err
+	}
+	revenueSum := 0.0
+	for _, revenue := range revenueAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err = s.db.Model(&models.TransactionModel{}).
+			Where("date between ? and ?", report.StartDate, report.EndDate).
+			Select("sum(credit-debit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", revenue.ID).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+		profitLoss.Profit = append(profitLoss.Profit, models.ProfilLossAccount{
+			ID:   revenue.ID,
+			Name: revenue.Name,
+			Code: revenue.Code,
+			Sum:  amount.Sum,
+		})
+		revenueSum += amount.Sum
+	}
+
+	profitLoss.Profit = append(profitLoss.Profit, models.ProfilLossAccount{
+		Name: "Harga Pokok Penjualan",
+		Sum:  cogsReport.COGS,
+	})
+
+	profitLoss.GrossProfit = revenueSum - cogsReport.COGS
+
+	expenseAccounts := []models.AccountModel{}
+	err = s.db.Where("type IN (?)", []models.AccountType{models.EXPENSE}).Find(&expenseAccounts).Error
+	if err != nil {
+		return nil, err
+	}
+	expenseSum := 0.0
+	for _, expense := range expenseAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err = s.db.Model(&models.TransactionModel{}).
+			Where("date between ? and ?", report.StartDate, report.EndDate).
+			Select("sum(debit-credit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", expense.ID).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+		profitLoss.Loss = append(profitLoss.Loss, models.ProfilLossAccount{
+			ID:   expense.ID,
+			Name: expense.Name,
+			Code: expense.Code,
+			Sum:  amount.Sum,
+		})
+		expenseSum += amount.Sum
+	}
+
+	profitLoss.TotalExpense = expenseSum
+	profitLoss.NetProfit = profitLoss.GrossProfit - profitLoss.TotalExpense
+	return &profitLoss, nil
 }

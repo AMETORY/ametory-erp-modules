@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -9,6 +10,12 @@ import (
 )
 
 type PurchaseType string
+type PurchaseDocType string
+
+const (
+	BILL           PurchaseDocType = "BILL"
+	PURCHASE_ORDER PurchaseDocType = "PURCHASE_ORDER"
+)
 
 const (
 	PURCHASE           PurchaseType = "PURCHASE"
@@ -18,50 +25,53 @@ const (
 
 type PurchaseOrderModel struct {
 	shared.BaseModel
-	PurchaseNumber  string                   `json:"purchase_number"`
-	Code            string                   `json:"code"`
-	Description     string                   `json:"description"`
-	Notes           string                   `json:"notes"`
-	Total           float64                  `json:"total"`
-	Paid            float64                  `json:"paid"`
-	Subtotal        float64                  `json:"subtotal"`
-	TotalBeforeTax  float64                  `json:"total_before_tax"`
-	TotalBeforeDisc float64                  `json:"total_before_disc"`
-	Status          string                   `json:"status"`
-	StockStatus     string                   `json:"stock_status" gorm:"default:'pending'"`
-	PurchaseDate    time.Time                `json:"purchase_date"`
-	DueDate         time.Time                `json:"due_date"`
-	PaymentTerms    string                   `json:"payment_terms"`
-	CompanyID       *string                  `json:"company_id"`
-	Company         *CompanyModel            `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
-	ContactID       string                   `json:"contact_id"`
-	Contact         ContactModel             `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE"`
-	ContactData     string                   `gorm:"type:json" json:"contact_data"`
-	Type            PurchaseType             `json:"type"`
-	Items           []PurchaseOrderItemModel `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE" json:"items"`
-}
-
-type PurchaseOrderItemModel struct {
-	shared.BaseModel
-	PurchaseID         string             `json:"purchase_id"`
-	Purchase           PurchaseOrderModel `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE"`
-	Description        string             `json:"description"`
-	Quantity           float64            `json:"quantity"`
-	UnitPrice          float64            `json:"unit_price"`
-	Total              float64            `json:"total"`
-	DiscountPercent    float64            `json:"discount_percent"`
-	DiscountAmount     float64            `json:"discount_amount"`
-	SubtotalBeforeDisc float64            `json:"subtotal_before_disc"`
-	ProductID          *string            `json:"product_id"`
-	Product            *ProductModel      `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
-	VariantID          *string            `json:"variant_id,omitempty"`
-	Variant            *VariantModel      `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
-	WarehouseID        *string            `json:"warehouse_id"`
-	Warehouse          *WarehouseModel    `gorm:"foreignKey:WarehouseID;constraint:OnDelete:CASCADE"`
-	PurchaseAccountID  *string            `json:"purchase_account_id"`
-	PurchaseAccount    *AccountModel      `gorm:"foreignKey:PurchaseAccountID;constraint:OnDelete:CASCADE"`
-	AssetAccountID     *string            `json:"asset_account_id"`
-	AssetAccount       *AccountModel      `gorm:"foreignKey:AssetAccountID;constraint:OnDelete:CASCADE"`
+	PurchaseNumber        string                   `json:"purchase_number,omitempty"`
+	Code                  string                   `json:"code,omitempty"`
+	Description           string                   `json:"description,omitempty"`
+	Notes                 string                   `json:"notes,omitempty"`
+	Total                 float64                  `json:"total,omitempty"`
+	Paid                  float64                  `json:"paid,omitempty"`
+	Subtotal              float64                  `json:"subtotal,omitempty"`
+	TotalBeforeTax        float64                  `json:"total_before_tax,omitempty"`
+	TotalBeforeDisc       float64                  `json:"total_before_disc,omitempty"`
+	TotalTax              float64                  `json:"total_tax,omitempty"`
+	TotalDiscount         float64                  `json:"total_discount,omitempty"`
+	Status                string                   `json:"status,omitempty"`
+	StockStatus           string                   `json:"stock_status,omitempty" gorm:"default:'pending'"`
+	PurchaseDate          time.Time                `json:"purchase_date,omitempty"`
+	DueDate               *time.Time               `json:"due_date,omitempty"`
+	DiscountDueDate       *time.Time               `json:"discount_due_date,omitempty"`
+	PaymentAccountID      *string                  `json:"payment_account_id,omitempty"`
+	PaymentAccount        *AccountModel            `json:"payment_account,omitempty" gorm:"foreignKey:PaymentAccountID;constraint:OnDelete:CASCADE"`
+	PaymentDiscountAmount float64                  `json:"payment_discount_amount,omitempty"`
+	PaymentTerms          string                   `json:"payment_terms,omitempty"`
+	PaymentTermsCode      string                   `json:"payment_terms_code,omitempty"`
+	TermCondition         string                   `json:"term_condition,omitempty"`
+	CompanyID             *string                  `json:"company_id,omitempty"`
+	Company               *CompanyModel            `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	UserID                *string                  `json:"user_id,omitempty" gorm:"size:36"`
+	User                  *UserModel               `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	ContactID             *string                  `json:"contact_id,omitempty"`
+	Contact               *ContactModel            `json:"contact,omitempty" gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE"`
+	ContactData           string                   `json:"contact_data,omitempty" gorm:"type:json"`
+	Type                  PurchaseType             `json:"type,omitempty"`
+	DocumentType          PurchaseDocType          `json:"document_type,omitempty"`
+	Items                 []PurchaseOrderItemModel `json:"items,omitempty" gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE"`
+	PublishedAt           *time.Time               `json:"published_at,omitempty"`
+	PublishedByID         *string                  `json:"published_by_id,omitempty" gorm:"column:published_by_id"`
+	PublishedBy           *UserModel               `json:"published_by,omitempty" gorm:"foreignKey:PublishedByID;constraint:OnDelete:CASCADE"`
+	RefID                 *string                  `json:"ref_id,omitempty"`
+	RefType               *string                  `json:"ref_type,omitempty" gorm:"ref_type"`
+	SecondaryRefID        *string                  `json:"secondary_ref_id,omitempty"`
+	SecondaryRefType      *string                  `json:"secondary_ref_type,omitempty" gorm:"secondary_ref_type"`
+	PurchaseRef           *PurchaseOrderModel      `json:"purchase_ref,omitempty" gorm:"-"`
+	SecondaryPurchaseRef  *PurchaseOrderModel      `json:"secondary_purchase_ref,omitempty" gorm:"-"`
+	Taxes                 []*TaxModel              `json:"taxes,omitempty" gorm:"many2many:sales_taxes;constraint:OnDelete:CASCADE;"`
+	IsCompound            bool                     `json:"is_compound,omitempty"`
+	TaxBreakdown          string                   `json:"tax_breakdown,omitempty" gorm:"type:json"`
+	ContactDataParsed     map[string]any           `json:"contact_data_parsed" gorm:"-"`
+	DeliveryDataParsed    map[string]any           `json:"delivery_data_parsed" gorm:"-"`
+	TaxBreakdownParsed    map[string]any           `json:"tax_breakdown_parsed" gorm:"-"`
 }
 
 func (s *PurchaseOrderModel) TableName() string {
@@ -73,6 +83,49 @@ func (s *PurchaseOrderModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return
+}
+
+func (s *PurchaseOrderModel) AfterFind(tx *gorm.DB) (err error) {
+	var contactData map[string]any
+	if err = json.Unmarshal([]byte(s.ContactData), &contactData); err != nil {
+		return err
+	}
+
+	var taxBreakdownParsed map[string]any
+	if err = json.Unmarshal([]byte(s.TaxBreakdown), &taxBreakdownParsed); err != nil {
+		return err
+	}
+
+	s.ContactDataParsed = contactData
+	s.TaxBreakdownParsed = taxBreakdownParsed
+	return nil
+}
+
+type PurchaseOrderItemModel struct {
+	shared.BaseModel
+	PurchaseID         *string             `json:"purchase_id,omitempty"`
+	Purchase           *PurchaseOrderModel `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE"`
+	Description        string              `json:"description,omitempty"`
+	Quantity           float64             `json:"quantity,omitempty"`
+	UnitPrice          float64             `json:"unit_price,omitempty"`
+	Total              float64             `json:"total,omitempty"`
+	SubTotal           float64             `json:"sub_total,omitempty"`
+	DiscountPercent    float64             `json:"discount_percent,omitempty"`
+	DiscountAmount     float64             `json:"discount_amount,omitempty"`
+	SubtotalBeforeDisc float64             `json:"subtotal_before_disc,omitempty"`
+	ProductID          *string             `json:"product_id,omitempty"`
+	Product            *ProductModel       `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"product,omitempty"`
+	VariantID          *string             `json:"variant_id,omitempty" `
+	Variant            *VariantModel       `gorm:"foreignKey:VariantID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"variant,omitempty"`
+	WarehouseID        *string             `json:"warehouse_id,omitempty"`
+	Warehouse          *WarehouseModel     `gorm:"foreignKey:WarehouseID;constraint:OnDelete:CASCADE" json:"warehouse,omitempty"`
+	TaxID              *string             `json:"tax_id,omitempty"`
+	Tax                *TaxModel           `gorm:"foreignKey:TaxID;constraint:Restrict:SET NULL" json:"tax,omitempty"`
+	TotalTax           float64             `json:"total_tax,omitempty"`
+	UnitID             *string             `json:"unit_id,omitempty"`
+	Unit               *UnitModel          `gorm:"foreignKey:UnitID;constraint:OnDelete:CASCADE" json:"unit,omitempty"`
+	UnitValue          float64             `json:"unit_value,omitempty" gorm:"default:1"`
+	IsCost             bool                `json:"is_cost,omitempty" gorm:"default:false"`
 }
 
 func (s *PurchaseOrderItemModel) TableName() string {

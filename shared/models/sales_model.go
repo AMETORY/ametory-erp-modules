@@ -134,6 +134,7 @@ type SalesItemModel struct {
 	UnitID             *string         `json:"unit_id,omitempty"`
 	Unit               *UnitModel      `gorm:"foreignKey:UnitID;constraint:OnDelete:CASCADE" json:"unit,omitempty"`
 	UnitValue          float64         `json:"unit_value,omitempty" gorm:"default:1"`
+	IsCost             bool            `json:"is_cost,omitempty" gorm:"default:false"`
 }
 
 func (s *SalesModel) TableName() string {

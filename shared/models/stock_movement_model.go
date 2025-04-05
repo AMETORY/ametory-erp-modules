@@ -14,6 +14,7 @@ const (
 	MovementTypeIn       MovementType = "IN"       // Stok masuk
 	MovementTypeOut      MovementType = "OUT"      // Stok keluar
 	MovementTypeSale     MovementType = "SALE"     // Stok keluar
+	MovementTypePurchase MovementType = "PURCHASE" // Stok keluar
 	MovementTypeReturn   MovementType = "RETURN"   // Stok keluar
 	MovementTypeTransfer MovementType = "TRANSFER" // Transfer stok
 	MovementTypeAdjust   MovementType = "ADJUST"   // Penyesuaian stok

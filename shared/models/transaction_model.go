@@ -28,6 +28,7 @@ type TransactionModel struct {
 	IsSaving                    bool                    `json:"is_saving"`
 	IsAccountReceivable         bool                    `json:"is_account_receivable"`
 	IsAccountPayable            bool                    `json:"is_account_payable"`
+	IsPurchaseCost              bool                    `json:"is_purchase_cost"`
 	AccountID                   *string                 `json:"account_id"`
 	Account                     AccountModel            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:AccountID" json:"account"`
 	TaxPaymentID                string                  `json:"tax_payment_id,omitempty"`

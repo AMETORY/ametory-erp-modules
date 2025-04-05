@@ -340,14 +340,6 @@ func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemM
 	return s.UpdateTotal(sales)
 }
 
-func (s *SalesService) DeleteItem(sales *models.SalesModel, itemID string) error {
-	err := s.db.Where("sales_id = ? AND id = ?", sales.ID, itemID).Delete(&models.SalesItemModel{}).Error
-	if err != nil {
-		return err
-	}
-	return s.UpdateTotal(sales)
-}
-
 func (s *SalesService) GetItems(id string) ([]models.SalesItemModel, error) {
 	var items []models.SalesItemModel
 
@@ -400,6 +392,14 @@ func (s *SalesService) UpdateTotal(sales *models.SalesModel) error {
 	sales.TaxBreakdown = string(b)
 
 	return s.db.Omit(clause.Associations).Save(&sales).Error
+}
+
+func (s *SalesService) DeleteItem(sales *models.SalesModel, itemID string) error {
+	err := s.db.Where("sales_id = ? AND id = ?", sales.ID, itemID).Delete(&models.SalesItemModel{}).Error
+	if err != nil {
+		return err
+	}
+	return s.UpdateTotal(sales)
 }
 
 func (s *SalesService) UpdateItem(sales *models.SalesModel, itemID string, item *models.SalesItemModel) error {
@@ -597,7 +597,7 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 	var inventoryAccount models.AccountModel
 	err = s.db.Where("is_inventory_account = ? and company_id = ?", true, *data.CompanyID).First(&inventoryAccount).Error
 	if err != nil {
-		return errors.New("supply account not found")
+		return errors.New("inventory account not found")
 	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		s.financeService.TransactionService.SetDB(tx)
