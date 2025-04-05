@@ -34,7 +34,9 @@ func (s *TransactionService) SetDB(db *gorm.DB) {
 func (s *TransactionService) CreateTransaction(transaction *models.TransactionModel, amount float64) error {
 	code := utils.RandString(10, false)
 	if transaction.AccountID != nil {
-		transaction.ID = uuid.New().String()
+		if transaction.ID == "" {
+			transaction.ID = uuid.New().String()
+		}
 		transaction.Code = code
 		transaction.Amount = amount
 		account, err := s.accountService.GetAccountByID(*transaction.AccountID)
@@ -83,9 +85,7 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 			transaction.Code = code
 			transaction.AccountID = transaction.DestinationID
 			transaction.Amount = amount
-			if transaction.TransactionRefID == nil {
-				transaction.TransactionRefID = &transSourceID
-			}
+			transaction.TransactionRefID = &transSourceID
 			if transaction.TransactionRefType == "" {
 				transaction.TransactionRefType = "transaction"
 			}

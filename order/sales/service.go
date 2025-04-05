@@ -802,7 +802,7 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 		receivableID := uuid.New().String()
 		assetTransID := uuid.New().String()
 
-		err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+		receivableData := models.TransactionModel{
 			BaseModel:          shared.BaseModel{ID: receivableID},
 			Date:               salesPayment.PaymentDate,
 			AccountID:          sales.PaymentAccountID,
@@ -813,22 +813,28 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 			CompanyID:          sales.CompanyID,
 			Credit:             salesPayment.Amount,
 			UserID:             salesPayment.UserID,
-		}, salesPayment.Amount)
+		}
+		receivableData.ID = receivableID
+		err = s.financeService.TransactionService.CreateTransaction(&receivableData, salesPayment.Amount)
 		if err != nil {
 			return err
 		}
-		err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+
+		assetData := models.TransactionModel{
 			BaseModel:          shared.BaseModel{ID: assetTransID},
 			Date:               salesPayment.PaymentDate,
 			AccountID:          salesPayment.AssetAccountID,
 			Description:        "Pembayaran " + sales.SalesNumber,
 			Notes:              salesPayment.Notes,
-			TransactionRefID:   &receivableID,
+			TransactionRefID:   &receivableData.ID,
 			TransactionRefType: "transaction",
 			CompanyID:          sales.CompanyID,
 			Debit:              paymentAmount,
 			UserID:             salesPayment.UserID,
-		}, paymentAmount)
+		}
+
+		assetData.ID = assetTransID
+		err = s.financeService.TransactionService.CreateTransaction(&assetData, paymentAmount)
 		if err != nil {
 			return err
 		}
@@ -840,11 +846,10 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 				return err
 			}
 			err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-				BaseModel:          shared.BaseModel{ID: assetTransID},
 				Date:               salesPayment.PaymentDate,
 				AccountID:          &contraRevenueAccount.ID,
 				Description:        "Diskon " + sales.SalesNumber,
-				TransactionRefID:   &receivableID,
+				TransactionRefID:   &receivableData.ID,
 				TransactionRefType: "transaction",
 				CompanyID:          sales.CompanyID,
 				Debit:              discountAmount,

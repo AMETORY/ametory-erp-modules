@@ -9,6 +9,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
+	"github.com/AMETORY/ametory-erp-modules/shared/constants"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
@@ -674,4 +675,67 @@ func (s *FinanceReportService) GenerateCapitalChangeReport(report models.General
 	capitalChange.CapitalChangeBalance = capitalChangeBalance
 	capitalChange.EndingBalance = openingBalance + profitLossBalance + capitalChangeBalance - privedBalance
 	return &capitalChange, nil
+}
+
+func (s *FinanceReportService) GenerateCashFlowReport(report models.GeneralReport) (*models.CashFlowReport, error) {
+	cashFlow := models.CashFlowReport{}
+	cashFlow.StartDate = report.StartDate
+	cashFlow.EndDate = report.EndDate
+	cashFlow.Operating = []models.CashflowSubGroup{
+		{Name: constants.ACCEPTANCE_FROM_CUSTOMERS, Description: constants.ACCEPTANCE_FROM_CUSTOMERS_VALUE, Amount: 0},
+		{Name: constants.OTHER_CURRENT_ASSETS, Description: constants.OTHER_CURRENT_ASSETS_VALUE, Amount: 0},
+		{Name: constants.PAYMENT_TO_VENDORS, Description: constants.PAYMENT_TO_VENDORS_VALUE, Amount: 0},
+		{Name: constants.CREDIT_CARDS_AND_OTHER_SHORT_TERM_LIABILITIES, Description: constants.CREDIT_CARDS_AND_OTHER_SHORT_TERM_LIABILITIES_VALUE, Amount: 0},
+		{Name: constants.OTHER_INCOME, Description: constants.OTHER_INCOME_VALUE, Amount: 0},
+		{Name: constants.OPERATIONAL_EXPENSES, Description: constants.OPERATIONAL_EXPENSES_VALUE, Amount: 0},
+		{Name: constants.RETURNS_PAYMENT_OF_TAXES, Description: constants.RETURNS_PAYMENT_OF_TAXES_VALUE, Amount: 0},
+	}
+	cashFlow.Investing = []models.CashflowSubGroup{
+		{Name: constants.ACQUISITION_SALE_OF_ASSETS, Description: constants.ACQUISITION_SALE_OF_ASSETS_VALUE, Amount: 0},
+		{Name: constants.OTHER_INVESTMENT_ACTIVITIES, Description: constants.OTHER_INVESTMENT_ACTIVITIES_VALUE, Amount: 0},
+		{Name: constants.INVESTMENT_PARTNERSHIP, Description: constants.INVESTMENT_PARTNERSHIP_VALUE, Amount: 0},
+	}
+	cashFlow.Financing = []models.CashflowSubGroup{
+		{Name: constants.LOAN_PAYMENTS_RECEIPTS, Description: constants.LOAN_PAYMENTS_RECEIPTS_VALUE, Amount: 0},
+		{Name: constants.EQUITY_CAPITAL, Description: constants.EQUITY_CAPITAL_VALUE, Amount: 0},
+	}
+
+	operating, totalOperating := s.getCashFlowAmount(cashFlow.Operating)
+	cashFlow.Operating = operating
+	cashFlow.TotalOperating = totalOperating
+
+	investing, totalInvesting := s.getCashFlowAmount(cashFlow.Investing)
+	cashFlow.Investing = investing
+	cashFlow.TotalInvesting = totalInvesting
+
+	financing, totalInvesting := s.getCashFlowAmount(cashFlow.Financing)
+	cashFlow.Financing = financing
+	cashFlow.TotalFinancing = totalInvesting
+
+	return &cashFlow, nil
+}
+
+func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGroup) ([]models.CashflowSubGroup, float64) {
+	total := 0.0
+	for i, v := range groups {
+		var transactions []models.TransactionModel
+		s.db.Model(&transactions).Debug().
+			Select("transactions.id", "transactions.description", "transRef.amount", "accounts.name as account_name").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Joins("JOIN transactions transRef ON transRef.id = transactions.transaction_ref_id").
+			Joins("JOIN accounts accountRef ON accountRef.id = transRef.account_id").
+			Where("accounts.cashflow_sub_group = ?", v.Name).
+			Where("accountRef.cashflow_sub_group = ?", "cash_bank").
+			Find(&transactions)
+
+		amount := 0.0
+		for _, t := range transactions {
+			// fmt.Printf("[%s] %s %f\n", v.Name, t.Description, t.Amount)
+			amount += t.Amount
+		}
+		v.Amount = amount
+		groups[i] = v
+		total += amount
+	}
+	return groups, total
 }
