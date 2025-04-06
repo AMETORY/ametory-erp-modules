@@ -598,7 +598,9 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 	}
 	if data.PaymentAccount.Type == "ASSET" {
 		data.Paid = data.Total
+
 	}
+	assetID := utils.Uuid()
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		s.financeService.TransactionService.SetDB(tx)
 		s.inventoryService.StockMovementService.SetDB(tx)
@@ -612,10 +614,10 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 				AccountID:                   v.SaleAccountID,
 				Description:                 "Penjualan " + data.SalesNumber,
 				Notes:                       v.Description,
-				TransactionRefID:            &data.ID,
-				TransactionRefType:          refType,
-				TransactionSecondaryRefID:   &v.ID,
-				TransactionSecondaryRefType: secRefType,
+				TransactionRefID:            &assetID,
+				TransactionRefType:          "transaction",
+				TransactionSecondaryRefID:   &data.ID,
+				TransactionSecondaryRefType: refType,
 				CompanyID:                   data.CompanyID,
 				Credit:                      v.SubTotal,
 				UserID:                      &userID,
@@ -624,26 +626,26 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 			if err != nil {
 				return err
 			}
-			if v.AssetAccountID != nil {
-				err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-					Date:                        date,
-					AccountID:                   v.AssetAccountID,
-					Description:                 "Penjualan " + data.SalesNumber,
-					Notes:                       v.Description,
-					TransactionRefID:            &data.ID,
-					TransactionRefType:          refType,
-					TransactionSecondaryRefID:   &v.ID,
-					TransactionSecondaryRefType: secRefType,
-					CompanyID:                   data.CompanyID,
-					Debit:                       v.SubTotal + v.TotalTax,
-					UserID:                      &userID,
-				}, v.SubTotal+v.TotalTax)
-				if err != nil {
-					return err
-				}
-			} else {
-				totalPayment += v.SubTotal + v.TotalTax
-			}
+			// if v.AssetAccountID != nil {
+			// 	err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			// 		Date:                        date,
+			// 		AccountID:                   v.AssetAccountID,
+			// 		Description:                 "Penjualan " + data.SalesNumber,
+			// 		Notes:                       v.Description,
+			// 		TransactionRefID:            &data.ID,
+			// 		TransactionRefType:          refType,
+			// 		TransactionSecondaryRefID:   &v.ID,
+			// 		TransactionSecondaryRefType: secRefType,
+			// 		CompanyID:                   data.CompanyID,
+			// 		Debit:                       v.SubTotal + v.TotalTax,
+			// 		UserID:                      &userID,
+			// 	}, v.SubTotal+v.TotalTax)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// } else {
+			totalPayment += v.SubTotal + v.TotalTax
+			// }
 
 			if v.TaxID != nil {
 				if v.Tax == nil {
@@ -708,10 +710,10 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 					AccountID:                   &inventoryAccount.ID,
 					Description:                 "Persediaan " + data.SalesNumber,
 					Notes:                       v.Description,
-					TransactionRefID:            &data.ID,
-					TransactionRefType:          "sales",
-					TransactionSecondaryRefID:   &v.ID,
-					TransactionSecondaryRefType: secRefType,
+					TransactionRefID:            &movement.ID,
+					TransactionRefType:          "stock_movement",
+					TransactionSecondaryRefID:   &data.ID,
+					TransactionSecondaryRefType: refType,
 					CompanyID:                   data.CompanyID,
 					Credit:                      v.Product.Price * v.Quantity * v.UnitValue,
 					UserID:                      &userID,
@@ -726,10 +728,10 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 					AccountID:                   &cogsAccount.ID,
 					Description:                 "HPP " + data.SalesNumber,
 					Notes:                       v.Description,
-					TransactionRefID:            &data.ID,
-					TransactionRefType:          "sales",
-					TransactionSecondaryRefID:   &v.ID,
-					TransactionSecondaryRefType: secRefType,
+					TransactionRefID:            &movement.ID,
+					TransactionRefType:          "stock_movement",
+					TransactionSecondaryRefID:   &data.ID,
+					TransactionSecondaryRefType: refType,
 					CompanyID:                   data.CompanyID,
 					Debit:                       v.Product.Price * v.Quantity * v.UnitValue,
 					UserID:                      &userID,
@@ -741,6 +743,7 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 		}
 
 		err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			BaseModel:          shared.BaseModel{ID: assetID},
 			Date:               date,
 			AccountID:          data.PaymentAccountID,
 			Description:        "Penjualan " + data.SalesNumber,

@@ -700,14 +700,23 @@ func (s *FinanceReportService) GenerateCashFlowReport(report models.GeneralRepor
 		{Name: constants.EQUITY_CAPITAL, Description: constants.EQUITY_CAPITAL_VALUE, Amount: 0},
 	}
 
+	fmt.Println("======================================")
+	fmt.Println("OPERATING")
+	fmt.Println("======================================")
 	operating, totalOperating := s.getCashFlowAmount(cashFlow.Operating)
 	cashFlow.Operating = operating
 	cashFlow.TotalOperating = totalOperating
 
+	fmt.Println("======================================")
+	fmt.Println("INVESTING")
+	fmt.Println("======================================")
 	investing, totalInvesting := s.getCashFlowAmount(cashFlow.Investing)
 	cashFlow.Investing = investing
 	cashFlow.TotalInvesting = totalInvesting
 
+	fmt.Println("======================================")
+	fmt.Println("FINANCING")
+	fmt.Println("======================================")
 	financing, totalInvesting := s.getCashFlowAmount(cashFlow.Financing)
 	cashFlow.Financing = financing
 	cashFlow.TotalFinancing = totalInvesting
@@ -716,21 +725,23 @@ func (s *FinanceReportService) GenerateCashFlowReport(report models.GeneralRepor
 }
 
 func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGroup) ([]models.CashflowSubGroup, float64) {
+
 	total := 0.0
 	for i, v := range groups {
 		var transactions []models.TransactionModel
 		s.db.Model(&transactions).Debug().
-			Select("transactions.id", "transactions.description", "transRef.amount", "accounts.name as account_name").
+			Distinct("transRef.id refid, (transRef.debit - transRef.credit) amount, accountRef.name description").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Joins("JOIN transactions transRef ON transRef.id = transactions.transaction_ref_id").
 			Joins("JOIN accounts accountRef ON accountRef.id = transRef.account_id").
 			Where("accounts.cashflow_sub_group = ?", v.Name).
 			Where("accountRef.cashflow_sub_group = ?", "cash_bank").
+			Group("refid, transactions.id, accountRef.name").
 			Find(&transactions)
 
 		amount := 0.0
 		for _, t := range transactions {
-			// fmt.Printf("[%s] %s %f\n", v.Name, t.Description, t.Amount)
+			fmt.Printf("[%s] %s %f\n", v.Name, t.Description, t.Amount)
 			amount += t.Amount
 		}
 		v.Amount = amount

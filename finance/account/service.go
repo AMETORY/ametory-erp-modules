@@ -150,7 +150,7 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 				Type:               models.ASSET,
 				Category:           constants.CATEGORY_CURRENT_ASSET,
 				CashflowGroup:      constants.CASHFLOW_GROUP_OPERATING,
-				CashflowSubGroup:   constants.CATEGORY_INVENTORY,
+				CashflowSubGroup:   constants.PAYMENT_TO_VENDORS,
 				IsInventoryAccount: true,
 			}).Error
 			if err != nil {

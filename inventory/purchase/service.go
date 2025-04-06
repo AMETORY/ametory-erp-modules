@@ -10,6 +10,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -415,9 +416,10 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 	if data.PaymentAccountID == nil {
 		return errors.New("payment account is required")
 	}
+	assetID := utils.Uuid()
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		s.financeService.TransactionService.SetDB(tx)
-		s.stockMovementService.SetDB(tx)
+		// s.financeService.TransactionService.SetDB(tx)
+		// s.stockMovementService.SetDB(tx)
 		totalPayment := 0.0
 		for _, v := range data.Items {
 			var label = "Pembelian "
@@ -429,10 +431,10 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 				AccountID:                   &inventoryAccount.ID,
 				Description:                 label + data.PurchaseNumber,
 				Notes:                       v.Description,
-				TransactionRefID:            &data.ID,
-				TransactionRefType:          refType,
-				TransactionSecondaryRefID:   &v.ID,
-				TransactionSecondaryRefType: secRefType,
+				TransactionRefID:            &assetID,
+				TransactionRefType:          "transaction",
+				TransactionSecondaryRefID:   &data.ID,
+				TransactionSecondaryRefType: refType,
 				CompanyID:                   data.CompanyID,
 				Debit:                       v.SubTotal,
 				UserID:                      &userID,
@@ -513,6 +515,7 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 		}
 
 		err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			BaseModel:          shared.BaseModel{ID: assetID},
 			Date:               date,
 			AccountID:          data.PaymentAccountID,
 			Description:        "Pembelian " + data.PurchaseNumber,
