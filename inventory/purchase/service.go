@@ -36,7 +36,7 @@ func NewPurchaseService(db *gorm.DB, ctx *context.ERPContext, financeService *fi
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&models.PurchaseOrderModel{}, &models.PurchaseOrderItemModel{})
+	return db.AutoMigrate(&models.PurchaseOrderModel{}, &models.PurchaseOrderItemModel{}, &models.PurchasePaymentModel{})
 }
 
 func (s *PurchaseService) UpdatePurchase(id string, data *models.PurchaseOrderModel) error {
@@ -234,6 +234,9 @@ func (s *PurchaseService) GetPurchases(request http.Request, search string) (pag
 	if request.URL.Query().Get("doc_type") != "" {
 		stmt = stmt.Where("document_type = ?", request.URL.Query().Get("doc_type"))
 	}
+	if request.URL.Query().Get("is_published") != "" {
+		stmt = stmt.Where("published_at IS NOT NULL")
+	}
 	stmt = stmt.Model(&models.PurchaseOrderModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.PurchaseOrderModel{})
@@ -243,7 +246,7 @@ func (s *PurchaseService) GetPurchases(request http.Request, search string) (pag
 
 func (s *PurchaseService) GetPurchaseByID(id string) (*models.PurchaseOrderModel, error) {
 	var data models.PurchaseOrderModel
-	if err := s.db.Preload("PaymentAccount").Preload("Company").First(&data, "id = ?", id).Error; err != nil {
+	if err := s.db.Preload("PaymentAccount").Preload("PurchasePayments").First(&data, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 
@@ -607,6 +610,7 @@ func (s *PurchaseService) CreatePurchasePayment(purchase *models.PurchaseOrderMo
 		assetTransID := uuid.New().String()
 
 		receivableData := models.TransactionModel{
+			Code:                        utils.RandString(10, false),
 			BaseModel:                   shared.BaseModel{ID: receivableID},
 			Date:                        purchasePayment.PaymentDate,
 			AccountID:                   purchase.PaymentAccountID,
@@ -616,17 +620,19 @@ func (s *PurchaseService) CreatePurchasePayment(purchase *models.PurchaseOrderMo
 			TransactionRefType:          "transaction",
 			CompanyID:                   purchase.CompanyID,
 			Debit:                       purchasePayment.Amount,
+			Amount:                      purchasePayment.Amount,
 			UserID:                      purchasePayment.UserID,
 			TransactionSecondaryRefID:   &purchase.ID,
 			TransactionSecondaryRefType: "purchase",
 		}
 		receivableData.ID = receivableID
-		err = s.financeService.TransactionService.CreateTransaction(&receivableData, purchasePayment.Amount)
+		err = s.db.Create(&receivableData).Error
 		if err != nil {
 			return err
 		}
 
 		assetData := models.TransactionModel{
+			Code:                        utils.RandString(10, false),
 			BaseModel:                   shared.BaseModel{ID: assetTransID},
 			Date:                        purchasePayment.PaymentDate,
 			AccountID:                   purchasePayment.AssetAccountID,
@@ -636,13 +642,14 @@ func (s *PurchaseService) CreatePurchasePayment(purchase *models.PurchaseOrderMo
 			TransactionRefType:          "transaction",
 			CompanyID:                   purchase.CompanyID,
 			Credit:                      paymentAmount,
+			Amount:                      paymentAmount,
 			UserID:                      purchasePayment.UserID,
 			TransactionSecondaryRefID:   &purchase.ID,
 			TransactionSecondaryRefType: "purchase",
 		}
 
 		assetData.ID = assetTransID
-		err = s.financeService.TransactionService.CreateTransaction(&assetData, paymentAmount)
+		err = s.db.Create(&assetData).Error
 		if err != nil {
 			return err
 		}
@@ -653,7 +660,8 @@ func (s *PurchaseService) CreatePurchasePayment(purchase *models.PurchaseOrderMo
 			if err != nil {
 				return errors.New("inventory account not found")
 			}
-			err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+			err = s.db.Create(&models.TransactionModel{
+				Code:                        utils.RandString(10, false),
 				Date:                        purchasePayment.PaymentDate,
 				AccountID:                   &inventoryAccount.ID,
 				Description:                 "Diskon " + purchase.PurchaseNumber,
@@ -661,10 +669,13 @@ func (s *PurchaseService) CreatePurchasePayment(purchase *models.PurchaseOrderMo
 				TransactionRefType:          "transaction",
 				CompanyID:                   purchase.CompanyID,
 				Credit:                      discountAmount,
+				Amount:                      discountAmount,
 				UserID:                      purchasePayment.UserID,
 				TransactionSecondaryRefID:   &purchase.ID,
 				TransactionSecondaryRefType: "purchase",
-			}, discountAmount)
+				IsDiscount:                  true,
+				Notes:                       purchasePayment.Notes,
+			}).Error
 			if err != nil {
 				return err
 			}
