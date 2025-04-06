@@ -166,11 +166,15 @@ func (s *SalesService) UpdateSales(id string, data *models.SalesModel) error {
 
 func (s *SalesService) DeleteSales(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		err := tx.Where("transaction_ref_id = ?", id).Delete(&models.TransactionModel{}).Error
+		err := tx.Where("transaction_ref_id = ? and transaction_secondary_ref_id = ?", id, id).Delete(&models.TransactionModel{}).Error
 		if err != nil {
 			return err
 		}
 		err = tx.Where("sales_id = ?", id).Delete(&models.SalesItemModel{}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("sales_id = ?", id).Delete(&models.SalesPaymentModel{}).Error
 		if err != nil {
 			return err
 		}
@@ -196,6 +200,19 @@ func (s *SalesService) GetSalesByID(id string) (*models.SalesModel, error) {
 		}
 		sales.SalesRef = &refSales
 	}
+	paid := 0.0
+	for _, v := range sales.SalesPayments {
+		paid += v.Amount
+	}
+
+	// utils.LogJson(sales.PaymentAccount)
+	if sales.PaymentAccount != nil {
+		if sales.PaymentAccount.Type == "ASSET" {
+			paid = sales.Total
+		}
+	}
+	sales.Paid = paid
+	s.db.Model(&sales).Where("id = ?", id).Update("paid", paid)
 	return &sales, err
 }
 
@@ -601,7 +618,7 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 
 	}
 	assetID := utils.Uuid()
-	return s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		s.financeService.TransactionService.SetDB(tx)
 		s.inventoryService.StockMovementService.SetDB(tx)
 		totalPayment := 0.0
@@ -755,6 +772,9 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 		}, totalPayment)
 		return tx.Save(data).Error
 	})
+	s.financeService.TransactionService.SetDB(s.db)
+	s.inventoryService.StockMovementService.SetDB(s.db)
+	return err
 }
 
 func (s *SalesService) GetBalance(sales *models.SalesModel) (float64, error) {
@@ -775,7 +795,8 @@ func (s *SalesService) GetBalance(sales *models.SalesModel) (float64, error) {
 }
 func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment *models.SalesPaymentModel) error {
 
-	return s.db.Transaction(func(tx *gorm.DB) error {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		s.financeService.TransactionService.SetDB(tx)
 		balance, err := s.GetBalance(sales)
 		if err != nil {
 			return err
@@ -806,16 +827,18 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 		assetTransID := uuid.New().String()
 
 		receivableData := models.TransactionModel{
-			BaseModel:          shared.BaseModel{ID: receivableID},
-			Date:               salesPayment.PaymentDate,
-			AccountID:          sales.PaymentAccountID,
-			Description:        "Pembayaran " + sales.SalesNumber,
-			Notes:              salesPayment.Notes,
-			TransactionRefID:   &assetTransID,
-			TransactionRefType: "transaction",
-			CompanyID:          sales.CompanyID,
-			Credit:             salesPayment.Amount,
-			UserID:             salesPayment.UserID,
+			BaseModel:                   shared.BaseModel{ID: receivableID},
+			Date:                        salesPayment.PaymentDate,
+			AccountID:                   sales.PaymentAccountID,
+			Description:                 "Pembayaran " + sales.SalesNumber,
+			Notes:                       salesPayment.Notes,
+			TransactionRefID:            &assetTransID,
+			TransactionRefType:          "transaction",
+			CompanyID:                   sales.CompanyID,
+			Credit:                      salesPayment.Amount,
+			UserID:                      salesPayment.UserID,
+			TransactionSecondaryRefID:   &sales.ID,
+			TransactionSecondaryRefType: "sales",
 		}
 		receivableData.ID = receivableID
 		err = s.financeService.TransactionService.CreateTransaction(&receivableData, salesPayment.Amount)
@@ -824,16 +847,18 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 		}
 
 		assetData := models.TransactionModel{
-			BaseModel:          shared.BaseModel{ID: assetTransID},
-			Date:               salesPayment.PaymentDate,
-			AccountID:          salesPayment.AssetAccountID,
-			Description:        "Pembayaran " + sales.SalesNumber,
-			Notes:              salesPayment.Notes,
-			TransactionRefID:   &receivableData.ID,
-			TransactionRefType: "transaction",
-			CompanyID:          sales.CompanyID,
-			Debit:              paymentAmount,
-			UserID:             salesPayment.UserID,
+			BaseModel:                   shared.BaseModel{ID: assetTransID},
+			Date:                        salesPayment.PaymentDate,
+			AccountID:                   salesPayment.AssetAccountID,
+			Description:                 "Pembayaran " + sales.SalesNumber,
+			Notes:                       salesPayment.Notes,
+			TransactionRefID:            &receivableData.ID,
+			TransactionRefType:          "transaction",
+			CompanyID:                   sales.CompanyID,
+			Debit:                       paymentAmount,
+			UserID:                      salesPayment.UserID,
+			TransactionSecondaryRefID:   &sales.ID,
+			TransactionSecondaryRefType: "sales",
 		}
 
 		assetData.ID = assetTransID
@@ -849,14 +874,16 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 				return err
 			}
 			err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-				Date:               salesPayment.PaymentDate,
-				AccountID:          &contraRevenueAccount.ID,
-				Description:        "Diskon " + sales.SalesNumber,
-				TransactionRefID:   &receivableData.ID,
-				TransactionRefType: "transaction",
-				CompanyID:          sales.CompanyID,
-				Debit:              discountAmount,
-				UserID:             salesPayment.UserID,
+				Date:                        salesPayment.PaymentDate,
+				AccountID:                   &contraRevenueAccount.ID,
+				Description:                 "Diskon " + sales.SalesNumber,
+				TransactionRefID:            &receivableData.ID,
+				TransactionRefType:          "transaction",
+				CompanyID:                   sales.CompanyID,
+				Debit:                       discountAmount,
+				UserID:                      salesPayment.UserID,
+				TransactionSecondaryRefID:   &sales.ID,
+				TransactionSecondaryRefType: "sales",
 			}, discountAmount)
 			if err != nil {
 				return err
@@ -867,4 +894,6 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 
 		return tx.Create(salesPayment).Error
 	})
+	s.financeService.TransactionService.SetDB(s.db)
+	return err
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/google/uuid"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -73,7 +74,7 @@ func (s *PurchaseService) CreatePurchaseOrder(data *models.PurchaseOrderModel) e
 	var inventoryAccount models.AccountModel
 	err := s.db.Where("is_inventory_account = ? and company_id = ?", true, *companyID).First(&inventoryAccount).Error
 	if err != nil {
-		return errors.New("supply account not found")
+		return errors.New("inventory account not found")
 	}
 
 	return s.db.Create(data).Error
@@ -242,9 +243,30 @@ func (s *PurchaseService) GetPurchases(request http.Request, search string) (pag
 
 func (s *PurchaseService) GetPurchaseByID(id string) (*models.PurchaseOrderModel, error) {
 	var data models.PurchaseOrderModel
-	if err := s.db.Preload("Company").First(&data, "id = ?", id).Error; err != nil {
+	if err := s.db.Preload("PaymentAccount").Preload("Company").First(&data, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
+
+	if data.RefID != nil {
+		var refData models.PurchaseOrderModel
+		if err := s.db.First(&refData, "id = ?", *data.RefID).Error; err != nil {
+			return nil, err
+		}
+		data.PurchaseRef = &refData
+	}
+
+	paid := 0.0
+	for _, v := range data.PurchasePayments {
+		paid += v.Amount
+	}
+	// utils.LogJson(data.PaymentAccount)
+	if data.PaymentAccount != nil {
+		if data.PaymentAccount.Type == "ASSET" {
+			paid = data.Total
+		}
+	}
+	data.Paid = paid
+	s.db.Model(&data).Where("id = ?", id).Update("paid", paid)
 
 	return &data, nil
 }
@@ -417,9 +439,9 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 		return errors.New("payment account is required")
 	}
 	assetID := utils.Uuid()
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		// s.financeService.TransactionService.SetDB(tx)
-		// s.stockMovementService.SetDB(tx)
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		s.financeService.TransactionService.SetDB(tx)
+		s.stockMovementService.SetDB(tx)
 		totalPayment := 0.0
 		for _, v := range data.Items {
 			var label = "Pembelian "
@@ -528,4 +550,130 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 
 		return tx.Save(data).Error
 	})
+	s.financeService.TransactionService.SetDB(s.db)
+	s.stockMovementService.SetDB(s.db)
+	return err
+}
+
+func (s *PurchaseService) GetBalance(purchase *models.PurchaseOrderModel) (float64, error) {
+	if purchase.PaymentAccount.Type == "ASSET" {
+		return 0, nil
+	}
+	var amount struct {
+		Sum float64 `sql:"sum"`
+	}
+	err := s.db.Model(&models.PurchasePaymentModel{}).Where("purchase_id = ?", purchase.ID).Select("sum(amount)").Scan(&amount).Error
+	if err != nil {
+		return 0, err
+	}
+	if purchase.Total > amount.Sum {
+		return purchase.Total - amount.Sum, nil
+	}
+	return 0, errors.New("payment is more than total")
+}
+func (s *PurchaseService) CreatePurchasePayment(purchase *models.PurchaseOrderModel, purchasePayment *models.PurchasePaymentModel) error {
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		s.financeService.TransactionService.SetDB(tx)
+		balance, err := s.GetBalance(purchase)
+		if err != nil {
+			return err
+		}
+		fmt.Println("balance", balance)
+		fmt.Println("purchasePayment.Amount", purchasePayment.Amount)
+		if balance < purchasePayment.Amount {
+			return errors.New("payment is more than balance")
+		}
+
+		if purchasePayment.AssetAccountID == nil {
+			return errors.New("asset account is required")
+		}
+		if purchase.PaymentAccountID == nil {
+			return errors.New("purchase payment account not found")
+		}
+
+		if purchase.PaymentAccount.Type != "LIABILITY" {
+			return errors.New("purchase payment account type must be LIABILITY")
+		}
+		paymentAmount := purchasePayment.Amount
+		discountAmount := 0.0
+		if purchasePayment.PaymentDiscount > 0 {
+			paymentAmount = purchasePayment.Amount - (purchasePayment.Amount * (purchasePayment.PaymentDiscount / 100))
+			discountAmount = purchasePayment.Amount * (purchasePayment.PaymentDiscount / 100)
+		}
+
+		paymentID := uuid.New().String()
+		receivableID := uuid.New().String()
+		assetTransID := uuid.New().String()
+
+		receivableData := models.TransactionModel{
+			BaseModel:                   shared.BaseModel{ID: receivableID},
+			Date:                        purchasePayment.PaymentDate,
+			AccountID:                   purchase.PaymentAccountID,
+			Description:                 "Pembayaran " + purchase.PurchaseNumber,
+			Notes:                       purchasePayment.Notes,
+			TransactionRefID:            &assetTransID,
+			TransactionRefType:          "transaction",
+			CompanyID:                   purchase.CompanyID,
+			Debit:                       purchasePayment.Amount,
+			UserID:                      purchasePayment.UserID,
+			TransactionSecondaryRefID:   &purchase.ID,
+			TransactionSecondaryRefType: "purchase",
+		}
+		receivableData.ID = receivableID
+		err = s.financeService.TransactionService.CreateTransaction(&receivableData, purchasePayment.Amount)
+		if err != nil {
+			return err
+		}
+
+		assetData := models.TransactionModel{
+			BaseModel:                   shared.BaseModel{ID: assetTransID},
+			Date:                        purchasePayment.PaymentDate,
+			AccountID:                   purchasePayment.AssetAccountID,
+			Description:                 "Pembayaran " + purchase.PurchaseNumber,
+			Notes:                       purchasePayment.Notes,
+			TransactionRefID:            &receivableData.ID,
+			TransactionRefType:          "transaction",
+			CompanyID:                   purchase.CompanyID,
+			Credit:                      paymentAmount,
+			UserID:                      purchasePayment.UserID,
+			TransactionSecondaryRefID:   &purchase.ID,
+			TransactionSecondaryRefType: "purchase",
+		}
+
+		assetData.ID = assetTransID
+		err = s.financeService.TransactionService.CreateTransaction(&assetData, paymentAmount)
+		if err != nil {
+			return err
+		}
+
+		if discountAmount > 0 {
+			var inventoryAccount models.AccountModel
+			err := s.db.Where("is_inventory_account = ? and company_id = ?", true, *purchase.CompanyID).First(&inventoryAccount).Error
+			if err != nil {
+				return errors.New("inventory account not found")
+			}
+			err = s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
+				Date:                        purchasePayment.PaymentDate,
+				AccountID:                   &inventoryAccount.ID,
+				Description:                 "Diskon " + purchase.PurchaseNumber,
+				TransactionRefID:            &receivableData.ID,
+				TransactionRefType:          "transaction",
+				CompanyID:                   purchase.CompanyID,
+				Credit:                      discountAmount,
+				UserID:                      purchasePayment.UserID,
+				TransactionSecondaryRefID:   &purchase.ID,
+				TransactionSecondaryRefType: "purchase",
+			}, discountAmount)
+			if err != nil {
+				return err
+			}
+		}
+
+		purchasePayment.ID = paymentID
+
+		return tx.Create(purchasePayment).Error
+	})
+	s.financeService.TransactionService.SetDB(s.db)
+	return err
 }

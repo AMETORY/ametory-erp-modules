@@ -72,6 +72,7 @@ type PurchaseOrderModel struct {
 	ContactDataParsed     map[string]any           `json:"contact_data_parsed" gorm:"-"`
 	DeliveryDataParsed    map[string]any           `json:"delivery_data_parsed" gorm:"-"`
 	TaxBreakdownParsed    map[string]any           `json:"tax_breakdown_parsed" gorm:"-"`
+	PurchasePayments      []PurchasePaymentModel   `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE" json:"purchase_payments"`
 }
 
 func (s *PurchaseOrderModel) TableName() string {
@@ -138,4 +139,34 @@ func (s *PurchaseOrderItemModel) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 
+}
+
+type PurchasePaymentModel struct {
+	shared.BaseModel
+	PaymentDate        time.Time           `json:"payment_date"`
+	PurchaseID         *string             `json:"purchase_id"`
+	Purchase           *PurchaseOrderModel `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE" json:"sales"`
+	Amount             float64             `json:"amount"`
+	PaymentDiscount    float64             `json:"payment_discount"`
+	Notes              string              `json:"notes"`
+	CompanyID          *string             `json:"company_id"`
+	Company            *CompanyModel       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company"`
+	UserID             *string             `gorm:"size:36" json:"-"`
+	User               *UserModel          `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	AssetAccountID     *string             `json:"asset_account_id"`
+	AssetAccount       *AccountModel       `gorm:"foreignKey:AssetAccountID;constraint:OnDelete:CASCADE" json:"asset_account"`
+	IsRefund           bool                `json:"is_refund"`
+	PaymentMethod      string              `gorm:"default:CASH" json:"payment_method"`
+	PaymentMethodNotes string              `json:"payment_method_notes"`
+}
+
+func (s *PurchasePaymentModel) TableName() string {
+	return "purchase_payments"
+}
+
+func (s *PurchasePaymentModel) BeforeCreate(tx *gorm.DB) (err error) {
+	if s.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return
 }
