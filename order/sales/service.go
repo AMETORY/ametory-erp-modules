@@ -346,6 +346,13 @@ func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderReq
 }
 
 func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemModel) error {
+	if item.ProductID != nil {
+		var product models.ProductModel
+		if err := s.db.Select("id, price").First(&product, "id = ?", *item.ProductID).Error; err != nil {
+			return err
+		}
+		item.BasePrice = product.Price
+	}
 
 	err := s.db.Create(item).Error
 	if err != nil {
@@ -417,6 +424,13 @@ func (s *SalesService) DeleteItem(sales *models.SalesModel, itemID string) error
 }
 
 func (s *SalesService) UpdateItem(sales *models.SalesModel, itemID string, item *models.SalesItemModel) error {
+	if item.ProductID != nil {
+		var product models.ProductModel
+		if err := s.db.Select("id, price").First(&product, "id = ?", *item.ProductID).Error; err != nil {
+			return err
+		}
+		item.BasePrice = product.Price
+	}
 	taxPercent := 0.0
 	taxAmount := 0.0
 
@@ -732,9 +746,9 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 					TransactionSecondaryRefID:   &data.ID,
 					TransactionSecondaryRefType: refType,
 					CompanyID:                   data.CompanyID,
-					Credit:                      v.Product.Price * v.Quantity * v.UnitValue,
+					Credit:                      v.BasePrice * v.Quantity * v.UnitValue,
 					UserID:                      &userID,
-				}, v.Product.Price*v.Quantity*v.UnitValue)
+				}, v.BasePrice*v.Quantity*v.UnitValue)
 				if err != nil {
 					return err
 				}
@@ -750,9 +764,9 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 					TransactionSecondaryRefID:   &data.ID,
 					TransactionSecondaryRefType: refType,
 					CompanyID:                   data.CompanyID,
-					Debit:                       v.Product.Price * v.Quantity * v.UnitValue,
+					Debit:                       v.BasePrice * v.Quantity * v.UnitValue,
 					UserID:                      &userID,
-				}, v.Product.Price*v.Quantity*v.UnitValue)
+				}, v.BasePrice*v.Quantity*v.UnitValue)
 				if err != nil {
 					return err
 				}

@@ -64,6 +64,7 @@ type TransactionModel struct {
 	Saving                      *SavingModel            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:SavingID" json:"saving,omitempty"`
 	Balance                     float64                 `json:"balance" gorm:"-"`
 	IsReturn                    bool                    `json:"is_return"`
+	IsPurchase                  bool                    `json:"is_purchase"`
 	IsDiscount                  bool                    `json:"is_discount"`
 	IsTax                       bool                    `json:"is_tax"`
 	// EmployeeID             *string              `json:"employee_id"`

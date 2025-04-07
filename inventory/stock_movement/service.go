@@ -106,6 +106,20 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 						item.SalesRef = &salesRef
 					}
 				}
+				if *item.ReferenceType == "purchase" {
+					var purchaseRef models.PurchaseOrderModel
+					err := s.db.Where("id = ?", item.ReferenceID).First(&purchaseRef).Error
+					if err == nil {
+						item.PurchaseRef = &purchaseRef
+					}
+				}
+				if *item.ReferenceType == "return_purchase" {
+					var returnRef models.ReturnModel
+					err := s.db.Where("id = ?", item.ReferenceID).First(&returnRef).Error
+					if err == nil {
+						item.ReturnRef = &returnRef
+					}
+				}
 			}
 		}
 		newItems = append(newItems, item)

@@ -53,6 +53,7 @@ type ReturnItemModel struct {
 	Variant            *VariantModel   `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE" json:"variant"`
 	Quantity           float64         `gorm:"type:decimal(13,2)" json:"quantity"`
 	OriginalQuantity   float64         `gorm:"type:decimal(13,2)" json:"original_quantity"`
+	BasePrice          float64         `gorm:"type:decimal(13,2)" json:"base_price"`
 	UnitPrice          float64         `gorm:"type:decimal(13,2)" json:"unit_price"`
 	DiscountPercent    float64         `json:"discount_percent,omitempty"`
 	DiscountAmount     float64         `json:"discount_amount,omitempty"`

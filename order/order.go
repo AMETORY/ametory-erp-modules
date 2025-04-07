@@ -14,6 +14,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/order/pos"
 	"github.com/AMETORY/ametory-erp-modules/order/promotion"
 	"github.com/AMETORY/ametory-erp-modules/order/sales"
+	"github.com/AMETORY/ametory-erp-modules/order/sales_return"
 	"github.com/AMETORY/ametory-erp-modules/order/withdrawal"
 	"gorm.io/gorm"
 )
@@ -28,6 +29,7 @@ type OrderService struct {
 	BannerService      *banner.BannerService
 	PromotionService   *promotion.PromotionService
 	PaymentTermService *payment_term.PaymentTermService
+	SalesReturnService *sales_return.SalesReturnService
 }
 
 func NewOrderService(ctx *context.ERPContext) *OrderService {
@@ -38,10 +40,10 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 		financeService = financeSrv
 	}
 	inventoryService := inventory.NewInventoryService(ctx)
-
+	salesService := sales.NewSalesService(ctx.DB, ctx, financeService, inventoryService)
 	var service = OrderService{
 		ctx:                ctx,
-		SalesService:       sales.NewSalesService(ctx.DB, ctx, financeService, inventoryService),
+		SalesService:       salesService,
 		PosService:         pos.NewPOSService(ctx.DB, ctx, financeService),
 		MerchantService:    merchant.NewMerchantService(ctx.DB, ctx, financeService, inventoryService),
 		PaymentService:     payment.NewPaymentService(ctx.DB, ctx),
@@ -49,6 +51,7 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 		BannerService:      banner.NewBannerService(ctx.DB, ctx),
 		PromotionService:   promotion.NewPromotionService(ctx.DB, ctx),
 		PaymentTermService: payment_term.NewPaymentTermService(ctx.DB, ctx),
+		SalesReturnService: sales_return.NewSalesReturnService(ctx.DB, ctx, financeService, inventoryService.StockMovementService, salesService),
 	}
 	err := service.Migrate()
 	if err != nil {

@@ -472,6 +472,7 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 				Debit:                       v.SubTotal,
 				UserID:                      &userID,
 				IsPurchaseCost:              v.IsCost,
+				IsPurchase:                  true,
 			}, v.SubTotal)
 			if err != nil {
 				return err

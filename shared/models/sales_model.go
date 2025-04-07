@@ -115,6 +115,7 @@ type SalesItemModel struct {
 	Description        string          `json:"description,omitempty"`
 	Notes              string          `json:"notes,omitempty"`
 	Quantity           float64         `json:"quantity,omitempty"`
+	BasePrice          float64         `json:"base_price,omitempty"`
 	UnitPrice          float64         `json:"unit_price,omitempty"`
 	Total              float64         `json:"total,omitempty"`
 	SubTotal           float64         `json:"sub_total,omitempty"`

@@ -137,9 +137,23 @@ func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, curre
 					item.SalesRef = &salesRef
 				}
 			}
+			if item.TransactionSecondaryRefType == "sales" {
+				var salesRef models.SalesModel
+				err := s.db.Where("id = ?", item.TransactionSecondaryRefID).First(&salesRef).Error
+				if err == nil {
+					item.SalesRef = &salesRef
+				}
+			}
 			if item.TransactionRefType == "purchase" {
 				var purchaseRef models.PurchaseOrderModel
 				err := s.db.Where("id = ?", item.TransactionRefID).First(&purchaseRef).Error
+				if err == nil {
+					item.PurchaseRef = &purchaseRef
+				}
+			}
+			if item.TransactionSecondaryRefType == "purchase" {
+				var purchaseRef models.PurchaseOrderModel
+				err := s.db.Where("id = ?", item.TransactionSecondaryRefID).First(&purchaseRef).Error
 				if err == nil {
 					item.PurchaseRef = &purchaseRef
 				}
@@ -238,6 +252,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 
 	err = s.db.Model(&models.TransactionModel{}).
 		Where("is_purchase_cost = ?", false).
+		Where("is_purchase = ?", true).
 		Where("debit > ?", 0).
 		Where("date between ? and ?", report.StartDate, report.EndDate).
 		Select("sum(debit-credit) as sum").
@@ -264,7 +279,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 	err = s.db.Model(&models.TransactionModel{}).
 		Where("is_return = ?", true).
 		Where("date between ? and ?", report.StartDate, report.EndDate).
-		Select("sum(debit-credit) as sum").
+		Select("sum(credit-debit) as sum").
 		Where("account_id = ?", inventoryAccount.ID).
 		Scan(&amount).Error
 	if err != nil {
@@ -274,7 +289,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 	err = s.db.Model(&models.TransactionModel{}).
 		Where("is_discount = ?", true).
 		Where("date between ? and ?", report.StartDate, report.EndDate).
-		Select("sum(debit-credit) as sum").
+		Select("sum(credit-debit) as sum").
 		Where("account_id = ?", inventoryAccount.ID).
 		Scan(&amount).Error
 	if err != nil {
@@ -294,7 +309,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 	}
 	endingInventory = amount.Sum
 
-	netPurchases = totalPurchases + totalPurchaseDiscounts
+	netPurchases = totalPurchases - totalPurchaseDiscounts
 	goodsAvailable = beginningInventory + netPurchases
 	cogs = goodsAvailable - endingInventory
 

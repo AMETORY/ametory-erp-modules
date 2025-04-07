@@ -48,6 +48,7 @@ type StockMovementModel struct {
 	Unit              *UnitModel          `gorm:"foreignKey:UnitID;constraint:OnDelete:CASCADE" json:"unit,omitempty"`
 	SalesRef          *SalesModel         `gorm:"-" json:"sales_ref,omitempty"`
 	PurchaseRef       *PurchaseOrderModel `gorm:"-" json:"purchase_ref,omitempty"`
+	ReturnRef         *ReturnModel        `gorm:"-" json:"return_ref,omitempty"`
 }
 
 func (StockMovementModel) TableName() string {

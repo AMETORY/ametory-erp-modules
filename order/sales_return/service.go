@@ -1,4 +1,4 @@
-package purchase_return
+package sales_return
 
 import (
 	"errors"
@@ -8,8 +8,8 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance"
-	"github.com/AMETORY/ametory-erp-modules/inventory/purchase"
 	stockmovement "github.com/AMETORY/ametory-erp-modules/inventory/stock_movement"
+	"github.com/AMETORY/ametory-erp-modules/order/sales"
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
@@ -18,21 +18,21 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type PurchaseReturnService struct {
+type SalesReturnService struct {
 	db                   *gorm.DB
 	ctx                  *context.ERPContext
 	financeService       *finance.FinanceService
 	stockMovementService *stockmovement.StockMovementService
-	purchaseService      *purchase.PurchaseService
+	salesService         *sales.SalesService
 }
 
-func NewPurchaseReturnService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, stockMovementService *stockmovement.StockMovementService, purchaseService *purchase.PurchaseService) *PurchaseReturnService {
-	return &PurchaseReturnService{
+func NewSalesReturnService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, stockMovementService *stockmovement.StockMovementService, salesService *sales.SalesService) *SalesReturnService {
+	return &SalesReturnService{
 		db:                   db,
 		ctx:                  ctx,
-		financeService:       financeService,
 		stockMovementService: stockMovementService,
-		purchaseService:      purchaseService,
+		salesService:         salesService,
+		financeService:       financeService,
 	}
 }
 
@@ -40,7 +40,7 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.ReturnModel{}, &models.ReturnItemModel{})
 }
 
-func (s *PurchaseReturnService) GetReturns(request http.Request, search string) (paginate.Page, error) {
+func (s *SalesReturnService) GetReturns(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Items")
 	if search != "" {
@@ -52,7 +52,7 @@ func (s *PurchaseReturnService) GetReturns(request http.Request, search string) 
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
-	stmt = stmt.Where("return_type = ?", "PURCHASE_RETURN")
+	stmt = stmt.Where("return_type = ?", "SALES_RETURN")
 	stmt = stmt.Model(&models.ReturnModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ReturnModel{})
@@ -61,18 +61,18 @@ func (s *PurchaseReturnService) GetReturns(request http.Request, search string) 
 	items := page.Items.(*[]models.ReturnModel)
 	newItems := make([]models.ReturnModel, 0) // TODO: optimize
 	for _, item := range *items {
-		var purchase models.PurchaseOrderModel
-		if err := s.db.Model(&models.PurchaseOrderModel{}).Where("id = ?", item.RefID).First(&purchase).Error; err != nil {
+		var sales models.SalesModel
+		if err := s.db.Model(&models.SalesModel{}).Where("id = ?", item.RefID).First(&sales).Error; err != nil {
 			return page, err
 		}
-		item.PurchaseRef = &purchase
+		item.SalesRef = &sales
 		newItems = append(newItems, item)
 	}
 	page.Items = &newItems
 	return page, nil
 }
 
-func (s *PurchaseReturnService) GetReturnByID(id string) (*models.ReturnModel, error) {
+func (s *SalesReturnService) GetReturnByID(id string) (*models.ReturnModel, error) {
 	var returnPurchase models.ReturnModel
 	err := s.db.Preload("ReleasedBy", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "full_name")
@@ -82,14 +82,14 @@ func (s *PurchaseReturnService) GetReturnByID(id string) (*models.ReturnModel, e
 	if err != nil {
 		return nil, err
 	}
-	var purchase models.PurchaseOrderModel
-	if err := s.db.Model(&models.PurchaseOrderModel{}).Preload("PaymentAccount").Where("id = ?", returnPurchase.RefID).First(&purchase).Error; err != nil {
+	var sales models.SalesModel
+	if err := s.db.Model(&models.SalesModel{}).Preload("PaymentAccount").Where("id = ?", returnPurchase.RefID).First(&sales).Error; err != nil {
 		return nil, err
 	}
-	returnPurchase.PurchaseRef = &purchase
+	returnPurchase.SalesRef = &sales
 	return &returnPurchase, nil
 }
-func (s *PurchaseReturnService) AddItem(returnPurchase *models.ReturnModel, item *models.ReturnItemModel) error {
+func (s *SalesReturnService) AddItem(returnPurchase *models.ReturnModel, item *models.ReturnItemModel) error {
 	item.ReturnID = returnPurchase.ID
 	if err := s.db.Create(item).Error; err != nil {
 		return err
@@ -97,14 +97,14 @@ func (s *PurchaseReturnService) AddItem(returnPurchase *models.ReturnModel, item
 	return nil
 }
 
-func (s *PurchaseReturnService) DeleteItem(returnID string, itemID string) error {
+func (s *SalesReturnService) DeleteItem(returnID string, itemID string) error {
 	if err := s.db.Where("id = ? AND return_id = ?", itemID, returnID).Delete(&models.ReturnItemModel{}).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *PurchaseReturnService) DeleteReturn(id string) error {
+func (s *SalesReturnService) DeleteReturn(id string) error {
 	// Delete all items first
 	if err := s.db.Where("return_id = ?", id).Delete(&models.ReturnItemModel{}).Error; err != nil {
 		return err
@@ -115,17 +115,17 @@ func (s *PurchaseReturnService) DeleteReturn(id string) error {
 	return nil
 }
 
-func (s *PurchaseReturnService) UpdateReturn(id string, returnPurchase *models.ReturnModel) error {
+func (s *SalesReturnService) UpdateReturn(id string, returnPurchase *models.ReturnModel) error {
 	return s.db.Omit(clause.Associations).Where("id = ?", id).Save(returnPurchase).Error
 }
-func (s *PurchaseReturnService) CreateReturn(returnPurchase *models.ReturnModel) error {
-	returnPurchase.ReturnType = "PURCHASE_RETURN"
+func (s *SalesReturnService) CreateReturn(returnPurchase *models.ReturnModel) error {
+	returnPurchase.ReturnType = "SALES_RETURN"
 	// Commit the transaction
 
-	var purchaseItems []models.PurchaseOrderItemModel
-	s.db.Where("purchase_id = ?", returnPurchase.RefID).Find(&purchaseItems)
+	var salesItems []models.SalesItemModel
+	s.db.Where("sales_id = ?", returnPurchase.RefID).Find(&salesItems)
 	var items []models.ReturnItemModel
-	for _, v := range purchaseItems {
+	for _, v := range salesItems {
 		if v.ProductID == nil {
 			continue
 		}
@@ -136,6 +136,7 @@ func (s *PurchaseReturnService) CreateReturn(returnPurchase *models.ReturnModel)
 			VariantID:          v.VariantID,
 			Quantity:           v.Quantity,
 			OriginalQuantity:   v.Quantity,
+			BasePrice:          v.BasePrice,
 			UnitPrice:          v.UnitPrice,
 			UnitID:             v.UnitID,
 			Value:              v.UnitValue,
@@ -153,14 +154,14 @@ func (s *PurchaseReturnService) CreateReturn(returnPurchase *models.ReturnModel)
 	return s.db.Create(returnPurchase).Error
 }
 
-func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, date time.Time, notes string, accountID *string) error {
+func (s *SalesReturnService) ReleaseReturn(returnID string, userID string, date time.Time, notes string, accountID *string) error {
 	returnPurchase, err := s.GetReturnByID(returnID)
 	if err != nil {
 		return err
 	}
 	now := time.Now()
 
-	purchase, err := s.purchaseService.GetPurchaseByID(returnPurchase.RefID)
+	sales, err := s.salesService.GetSalesByID(returnPurchase.RefID)
 	if err != nil {
 		return err
 	}
@@ -169,13 +170,24 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 		return errors.New("return items is empty")
 	}
 	var inventoryAccount models.AccountModel
-	err = s.db.Where("is_inventory_account = ? and company_id = ?", true, *purchase.CompanyID).First(&inventoryAccount).Error
+	err = s.db.Where("is_inventory_account = ? and company_id = ?", true, *sales.CompanyID).First(&inventoryAccount).Error
 	if err != nil {
 		return errors.New("inventory account not found")
 	}
+	var cogsAccount models.AccountModel
+	err = s.db.Where("is_cogs_account = ? and company_id = ?", true, *sales.CompanyID).First(&cogsAccount).Error
+	if err != nil {
+		return errors.New("cogs account not found")
+	}
 
-	returnRefType := "return_purchase"
-	returnSecRefType := "purchase"
+	var returnAccount models.AccountModel
+	err = s.db.Where("type = ? and company_id = ? and is_return = ?", models.CONTRA_REVENUE, sales.CompanyID, true).First(&returnAccount).Error
+	if err != nil {
+		return errors.New("return account not found")
+	}
+
+	returnRefType := "return_sales"
+	returnSecRefType := "sales"
 
 	returnTotal := 0.0
 
@@ -186,7 +198,82 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 			returnTotal += v.Total
 			assetID := utils.Uuid()
 			inventoryID := utils.Uuid()
+			returnTransID := utils.Uuid()
+			hppID := utils.Uuid()
 			// fmt.Println(v)
+
+			// RETUR AKUN
+			err = tx.Create(&models.TransactionModel{
+				BaseModel:                   shared.BaseModel{ID: returnTransID},
+				Code:                        utils.RandString(10, false),
+				Date:                        date,
+				AccountID:                   &returnAccount.ID,
+				Description:                 fmt.Sprintf("[Retur %s] %s", returnPurchase.ReturnNumber, v.Description),
+				TransactionRefID:            &assetID,
+				TransactionRefType:          "transaction",
+				CompanyID:                   sales.CompanyID,
+				Debit:                       v.SubTotal,
+				Amount:                      v.SubTotal,
+				UserID:                      &userID,
+				TransactionSecondaryRefID:   &returnID,
+				TransactionSecondaryRefType: "return_sales",
+				Notes:                       returnPurchase.Notes,
+			}).Error
+			if err != nil {
+				return err
+			}
+
+			// UPDATE TAX
+			if v.TaxID != nil {
+				if v.Tax == nil {
+					return errors.New("tax is required")
+				}
+				if v.Tax.AccountReceivableID == nil {
+					return errors.New("tax account receivable ID is required")
+				}
+				// PIUTANG PAJAK
+				err := tx.Create(&models.TransactionModel{
+					Date:                        date,
+					AccountID:                   v.Tax.AccountPayableID,
+					Description:                 "Retur Piutang Pajak " + returnPurchase.ReturnNumber,
+					Notes:                       v.Description,
+					TransactionRefID:            &returnPurchase.ID,
+					TransactionRefType:          returnRefType,
+					TransactionSecondaryRefID:   &sales.ID,
+					TransactionSecondaryRefType: returnSecRefType,
+					CompanyID:                   returnPurchase.CompanyID,
+					Debit:                       v.TotalTax,
+					Amount:                      v.TotalTax,
+					UserID:                      &userID,
+					IsAccountPayable:            true,
+					IsTax:                       true,
+				}).Error
+				if err != nil {
+					return err
+				}
+
+			}
+
+			// CASH / PIUTANG
+			err = tx.Create(&models.TransactionModel{
+				BaseModel:                   shared.BaseModel{ID: assetID},
+				Code:                        utils.RandString(10, false),
+				Date:                        date,
+				AccountID:                   sales.PaymentAccountID,
+				Description:                 fmt.Sprintf("[Retur %s] %s", returnPurchase.ReturnNumber, v.Description),
+				TransactionRefID:            &inventoryID,
+				TransactionRefType:          "transaction",
+				CompanyID:                   sales.CompanyID,
+				Credit:                      v.Total,
+				Amount:                      v.Total,
+				UserID:                      &userID,
+				TransactionSecondaryRefID:   &returnID,
+				TransactionSecondaryRefType: "return_sales",
+				Notes:                       returnPurchase.Notes,
+			}).Error
+			if err != nil {
+				return err
+			}
 
 			// PERSEDIAAN
 			err = tx.Create(&models.TransactionModel{
@@ -195,37 +282,35 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 				Date:                        date,
 				AccountID:                   &inventoryAccount.ID,
 				Description:                 fmt.Sprintf("[Retur %s] %s", returnPurchase.ReturnNumber, v.Description),
-				TransactionRefID:            &assetID,
+				TransactionRefID:            &hppID,
 				TransactionRefType:          "transaction",
-				CompanyID:                   purchase.CompanyID,
-				Credit:                      v.SubTotal,
-				Amount:                      v.SubTotal,
+				CompanyID:                   sales.CompanyID,
+				Debit:                       v.BasePrice * v.Quantity * v.Value,
+				Amount:                      v.BasePrice * v.Quantity * v.Value,
 				UserID:                      &userID,
 				TransactionSecondaryRefID:   &returnID,
-				TransactionSecondaryRefType: "return_purchase",
-				IsReturn:                    true,
+				TransactionSecondaryRefType: "return_sales",
 				Notes:                       returnPurchase.Notes,
 			}).Error
 			if err != nil {
 				return err
 			}
 
-			// CASH / HUTANG
+			// HPP
 			err = tx.Create(&models.TransactionModel{
-				BaseModel:                   shared.BaseModel{ID: assetID},
+				BaseModel:                   shared.BaseModel{ID: hppID},
 				Code:                        utils.RandString(10, false),
 				Date:                        date,
-				AccountID:                   purchase.PaymentAccountID,
+				AccountID:                   &cogsAccount.ID,
 				Description:                 fmt.Sprintf("[Retur %s] %s", returnPurchase.ReturnNumber, v.Description),
 				TransactionRefID:            &inventoryID,
 				TransactionRefType:          "transaction",
-				CompanyID:                   purchase.CompanyID,
-				Debit:                       v.Total,
-				Amount:                      v.Total,
+				CompanyID:                   sales.CompanyID,
+				Credit:                      v.BasePrice * v.Quantity * v.Value,
+				Amount:                      v.BasePrice * v.Quantity * v.Value,
 				UserID:                      &userID,
 				TransactionSecondaryRefID:   &returnID,
-				TransactionSecondaryRefType: "return_purchase",
-				IsReturn:                    true,
+				TransactionSecondaryRefType: "return_sales",
 				Notes:                       returnPurchase.Notes,
 			}).Error
 			if err != nil {
@@ -242,7 +327,7 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 				nil,
 				nil,
 				returnPurchase.CompanyID,
-				-v.Quantity,
+				v.Quantity,
 				models.MovementTypeReturn,
 				returnID,
 				fmt.Sprintf("Return %s (%s)", returnPurchase.ReturnNumber, v.Description))
@@ -251,7 +336,7 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 			}
 			movement.ReferenceID = returnID
 			movement.ReferenceType = &returnRefType
-			movement.SecondaryRefID = &purchase.ID
+			movement.SecondaryRefID = &sales.ID
 			movement.SecondaryRefType = &returnSecRefType
 			movement.Value = v.Value
 			movement.UnitID = v.UnitID
@@ -274,13 +359,12 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 					Description:                 fmt.Sprintf("[Retur %s] %s", returnPurchase.ReturnNumber, v.Description),
 					TransactionRefID:            &returnCreditID,
 					TransactionRefType:          "transaction",
-					CompanyID:                   purchase.CompanyID,
-					Debit:                       v.Total,
+					CompanyID:                   sales.CompanyID,
+					Credit:                      v.Total,
 					Amount:                      v.Total,
 					UserID:                      &userID,
 					TransactionSecondaryRefID:   &returnID,
-					TransactionSecondaryRefType: "return_purchase",
-					IsReturn:                    true,
+					TransactionSecondaryRefType: "return_sales",
 					Notes:                       returnPurchase.Notes,
 				}).Error
 				if err != nil {
@@ -292,17 +376,16 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 					BaseModel:                   shared.BaseModel{ID: returnCreditID},
 					Code:                        utils.RandString(10, false),
 					Date:                        date,
-					AccountID:                   purchase.PaymentAccountID,
+					AccountID:                   sales.PaymentAccountID,
 					Description:                 fmt.Sprintf("[Retur %s] %s", returnPurchase.ReturnNumber, v.Description),
 					TransactionRefID:            &returnAssetID,
 					TransactionRefType:          "transaction",
-					CompanyID:                   purchase.CompanyID,
-					Credit:                      v.Total,
+					CompanyID:                   sales.CompanyID,
+					Debit:                       v.Total,
 					Amount:                      v.Total,
 					UserID:                      &userID,
 					TransactionSecondaryRefID:   &returnID,
-					TransactionSecondaryRefType: "return_purchase",
-					IsReturn:                    true,
+					TransactionSecondaryRefType: "return_sales",
 					Notes:                       returnPurchase.Notes,
 				}).Error
 				if err != nil {
@@ -311,7 +394,7 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 			}
 
 			// UPDATE INVOICE
-			purchaseItem := models.PurchaseOrderItemModel{
+			salesItem := models.SalesItemModel{
 				Description:     fmt.Sprintf("[Retur %s] %s", returnPurchase.ReturnNumber, v.Description),
 				Notes:           v.Notes,
 				ProductID:       v.ProductID,
@@ -327,55 +410,25 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 				TaxID:           v.TaxID,
 				Tax:             v.Tax,
 				WarehouseID:     v.WarehouseID,
-				PurchaseID:      &purchase.ID,
+				SalesID:         &sales.ID,
 			}
-			err = s.purchaseService.AddItem(purchase, &purchaseItem)
+			err = s.salesService.AddItem(sales, &salesItem)
 			if err != nil {
 				return err
 			}
 
-			err = s.purchaseService.UpdateItem(purchase, purchaseItem.ID, &purchaseItem)
+			err = s.salesService.UpdateItem(sales, salesItem.ID, &salesItem)
 			if err != nil {
 				return err
 			}
 
-			// UPDATE TAX
-
-			if v.TaxID != nil {
-				if v.Tax == nil {
-					return errors.New("tax is required")
-				}
-				if v.Tax.AccountReceivableID == nil {
-					return errors.New("tax account receivable ID is required")
-				}
-				// PIUTANG PAJAK
-				err := s.financeService.TransactionService.CreateTransaction(&models.TransactionModel{
-					Date:                        date,
-					AccountID:                   v.Tax.AccountReceivableID,
-					Description:                 "Retur Piutang Pajak " + returnPurchase.ReturnNumber,
-					Notes:                       v.Description,
-					TransactionRefID:            &returnPurchase.ID,
-					TransactionRefType:          returnRefType,
-					TransactionSecondaryRefID:   &purchase.ID,
-					TransactionSecondaryRefType: returnSecRefType,
-					CompanyID:                   returnPurchase.CompanyID,
-					Credit:                      v.TotalTax,
-					UserID:                      &userID,
-					IsAccountReceivable:         true,
-					IsTax:                       true,
-				}, v.TotalTax)
-				if err != nil {
-					return err
-				}
-
-			}
 		}
 		// Commit the transaction
 		returnPurchase.Status = "RELEASED"
 		returnPurchase.ReleasedAt = &now
 		returnPurchase.ReleasedByID = &userID
 		// CLEAR TRANSACTION
-		s.purchaseService.UpdateTotal(purchase)
+		s.salesService.UpdateTotal(sales)
 
 		if accountID != nil {
 			// if accountID is ASSET, CREATE purcahase payment return
@@ -386,11 +439,11 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 			}
 
 			if account.Type == models.ASSET {
-				if purchase.Paid < returnTotal {
+				if sales.Paid < returnTotal {
 					return errors.New("paid is less than return total")
 				}
-				tx.Create(&models.PurchasePaymentModel{
-					PurchaseID:  &purchase.ID,
+				tx.Create(&models.SalesPaymentModel{
+					SalesID:     &sales.ID,
 					PaymentDate: date,
 					Amount:      -returnTotal,
 					Notes:       fmt.Sprintf("Retur Pembayaran %s", returnPurchase.ReturnNumber),
@@ -409,7 +462,7 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 	return err
 }
 
-func (s *PurchaseReturnService) UpdateItem(item *models.ReturnItemModel) error {
+func (s *SalesReturnService) UpdateItem(item *models.ReturnItemModel) error {
 	taxPercent := 0.0
 	taxAmount := 0.0
 
