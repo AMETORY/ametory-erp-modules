@@ -756,6 +756,12 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 				if err != nil {
 					return err
 				}
+
+			}
+
+			err = tx.Save(v).Error
+			if err != nil {
+				return err
 			}
 		}
 

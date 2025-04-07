@@ -533,6 +533,10 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 				}
 
 			}
+			err = tx.Save(v).Error
+			if err != nil {
+				return err
+			}
 		}
 
 		if err != nil {

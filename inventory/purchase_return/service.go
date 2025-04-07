@@ -72,13 +72,13 @@ func (s *PurchaseReturnService) GetReturns(request http.Request, search string) 
 func (s *PurchaseReturnService) GetReturnByID(id string) (*models.ReturnModel, error) {
 	var returnPurchase models.ReturnModel
 	err := s.db.Where("id = ?", id).Preload("Items", func(tx *gorm.DB) *gorm.DB {
-		return tx.Preload("Product").Preload("Variant").Preload("Unit")
+		return tx.Preload("Product").Preload("Variant").Preload("Unit").Preload("Tax").Preload("Warehouse")
 	}).First(&returnPurchase).Error
 	if err != nil {
 		return nil, err
 	}
 	var purchase models.PurchaseOrderModel
-	if err := s.db.Model(&models.PurchaseOrderModel{}).Where("id = ?", returnPurchase.RefID).First(&purchase).Error; err != nil {
+	if err := s.db.Model(&models.PurchaseOrderModel{}).Preload("PaymentAccount").Where("id = ?", returnPurchase.RefID).First(&purchase).Error; err != nil {
 		return nil, err
 	}
 	returnPurchase.PurchaseRef = &purchase
@@ -110,6 +110,9 @@ func (s *PurchaseReturnService) DeleteReturn(id string) error {
 	return nil
 }
 
+func (s *PurchaseReturnService) UpdateReturn(id string, returnPurchase *models.ReturnModel) error {
+	return s.db.Omit(clause.Associations).Where("id = ?", id).Save(returnPurchase).Error
+}
 func (s *PurchaseReturnService) CreateReturn(returnPurchase *models.ReturnModel) error {
 	returnPurchase.ReturnType = "PURCHASE_RETURN"
 	// Commit the transaction
@@ -136,16 +139,19 @@ func (s *PurchaseReturnService) CreateReturn(returnPurchase *models.ReturnModel)
 			DiscountPercent:  v.DiscountPercent,
 			DiscountAmount:   v.DiscountAmount,
 			TaxID:            v.TaxID,
+			WarehouseID:      v.WarehouseID,
 		})
 	}
 	returnPurchase.Items = items
 	return s.db.Create(returnPurchase).Error
 }
 
-func (s *PurchaseReturnService) ReleaseReturn(returnPurchase *models.ReturnModel, userID string) error {
+func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, date time.Time, notes string, accountID *string) error {
+	returnPurchase, err := s.GetReturnByID(returnID)
+	if err != nil {
+		return err
+	}
 	now := time.Now()
-	returnPurchase.ReleasedByID = &userID
-	returnPurchase.ReleasedAt = &now
 
 	var purchase models.PurchaseOrderModel
 	if err := s.db.Where("id = ?", returnPurchase.RefID).First(&purchase).Error; err != nil {
@@ -156,24 +162,25 @@ func (s *PurchaseReturnService) ReleaseReturn(returnPurchase *models.ReturnModel
 		return errors.New("return items is empty")
 	}
 	var inventoryAccount models.AccountModel
-	err := s.db.Where("is_inventory_account = ? and company_id = ?", true, *purchase.CompanyID).First(&inventoryAccount).Error
+	err = s.db.Where("is_inventory_account = ? and company_id = ?", true, *purchase.CompanyID).First(&inventoryAccount).Error
 	if err != nil {
 		return errors.New("inventory account not found")
 	}
 
-	returnPurchaseID := utils.Uuid()
-	returnPurchase.ID = returnPurchaseID
+	returnRefType := "return_purchase"
+	returnSecRefType := "purchase"
 
 	for _, v := range returnPurchase.Items {
+
 		assetID := utils.Uuid()
 		inventoryID := utils.Uuid()
-		fmt.Println(v)
+		// fmt.Println(v)
 
 		// PERSEDIAAN
 		err = s.db.Create(&models.TransactionModel{
 			BaseModel:                   shared.BaseModel{ID: inventoryID},
 			Code:                        utils.RandString(10, false),
-			Date:                        returnPurchase.Date,
+			Date:                        date,
 			AccountID:                   &inventoryAccount.ID,
 			Description:                 "Retur " + purchase.PurchaseNumber,
 			TransactionRefID:            &assetID,
@@ -182,7 +189,7 @@ func (s *PurchaseReturnService) ReleaseReturn(returnPurchase *models.ReturnModel
 			Credit:                      v.Total,
 			Amount:                      v.Total,
 			UserID:                      &userID,
-			TransactionSecondaryRefID:   &returnPurchaseID,
+			TransactionSecondaryRefID:   &returnID,
 			TransactionSecondaryRefType: "return_purchase",
 			IsReturn:                    true,
 			Notes:                       returnPurchase.Notes,
@@ -195,7 +202,7 @@ func (s *PurchaseReturnService) ReleaseReturn(returnPurchase *models.ReturnModel
 		err = s.db.Create(&models.TransactionModel{
 			BaseModel:                   shared.BaseModel{ID: assetID},
 			Code:                        utils.RandString(10, false),
-			Date:                        returnPurchase.Date,
+			Date:                        date,
 			AccountID:                   purchase.PaymentAccountID,
 			Description:                 "Retur " + purchase.PurchaseNumber,
 			TransactionRefID:            &inventoryID,
@@ -204,7 +211,7 @@ func (s *PurchaseReturnService) ReleaseReturn(returnPurchase *models.ReturnModel
 			Debit:                       v.Total,
 			Amount:                      v.Total,
 			UserID:                      &userID,
-			TransactionSecondaryRefID:   &returnPurchaseID,
+			TransactionSecondaryRefID:   &returnID,
 			TransactionSecondaryRefType: "return_purchase",
 			IsReturn:                    true,
 			Notes:                       returnPurchase.Notes,
@@ -212,9 +219,91 @@ func (s *PurchaseReturnService) ReleaseReturn(returnPurchase *models.ReturnModel
 		if err != nil {
 			return err
 		}
+
+		// STOCK MOVEMENT
+
+		movement, err := s.stockMovementService.AddMovement(
+			time.Now(),
+			*v.ProductID,
+			*v.WarehouseID,
+			v.VariantID,
+			nil,
+			nil,
+			returnPurchase.CompanyID,
+			-v.Quantity,
+			models.MovementTypeReturn,
+			returnID,
+			fmt.Sprintf("Return %s (%s)", returnPurchase.ReturnNumber, v.Description))
+		if err != nil {
+			return err
+		}
+		movement.ReferenceID = returnID
+		movement.ReferenceType = &returnRefType
+		movement.SecondaryRefID = &purchase.ID
+		movement.SecondaryRefType = &returnSecRefType
+		movement.Value = v.Value
+		movement.UnitID = v.UnitID
+
+		err = s.db.Save(movement).Error
+		if err != nil {
+			return err
+		}
+
+		if accountID != nil {
+			returnAssetID := utils.Uuid()
+			returnCreditID := utils.Uuid()
+
+			// RETURN ASSET
+			err = s.db.Create(&models.TransactionModel{
+				BaseModel:                   shared.BaseModel{ID: returnAssetID},
+				Code:                        utils.RandString(10, false),
+				Date:                        date,
+				AccountID:                   accountID,
+				Description:                 "Retur " + purchase.PurchaseNumber,
+				TransactionRefID:            &returnCreditID,
+				TransactionRefType:          "transaction",
+				CompanyID:                   purchase.CompanyID,
+				Debit:                       v.Total,
+				Amount:                      v.Total,
+				UserID:                      &userID,
+				TransactionSecondaryRefID:   &returnID,
+				TransactionSecondaryRefType: "return_purchase",
+				IsReturn:                    true,
+				Notes:                       returnPurchase.Notes,
+			}).Error
+			if err != nil {
+				return err
+			}
+
+			// SOURCE ACCOUNT
+			err = s.db.Create(&models.TransactionModel{
+				BaseModel:                   shared.BaseModel{ID: returnCreditID},
+				Code:                        utils.RandString(10, false),
+				Date:                        date,
+				AccountID:                   purchase.PaymentAccountID,
+				Description:                 "Retur " + purchase.PurchaseNumber,
+				TransactionRefID:            &returnAssetID,
+				TransactionRefType:          "transaction",
+				CompanyID:                   purchase.CompanyID,
+				Credit:                      v.Total,
+				Amount:                      v.Total,
+				UserID:                      &userID,
+				TransactionSecondaryRefID:   &returnID,
+				TransactionSecondaryRefType: "return_purchase",
+				IsReturn:                    true,
+				Notes:                       returnPurchase.Notes,
+			}).Error
+			if err != nil {
+				return err
+			}
+		}
 	}
 	// Commit the transaction
-	return s.db.Omit(clause.Associations).Save(returnPurchase).Error
+	returnPurchase.Status = "RELEASED"
+	returnPurchase.ReleasedAt = &now
+	returnPurchase.ReleasedByID = &userID
+
+	return s.UpdateReturn(returnID, returnPurchase)
 }
 
 func (s *PurchaseReturnService) UpdateItem(item *models.ReturnItemModel) error {

@@ -43,25 +43,28 @@ func (r *ReturnModel) TableName() string {
 
 type ReturnItemModel struct {
 	shared.BaseModel
-	Description      string        `json:"description,omitempty"`
-	ReturnID         string        `gorm:"type:char(36);index" json:"return_id"`
-	Return           *ReturnModel  `gorm:"foreignKey:ReturnID;constraint:OnDelete:CASCADE" json:"return"`
-	ProductID        *string       `json:"product_id"`
-	Product          *ProductModel `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"product"`
-	VariantID        *string       `json:"variant_id"`
-	Variant          *VariantModel `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE" json:"variant"`
-	Quantity         float64       `gorm:"type:decimal(13,2)" json:"quantity"`
-	OriginalQuantity float64       `gorm:"type:decimal(13,2)" json:"original_quantity"`
-	UnitPrice        float64       `gorm:"type:decimal(13,2)" json:"unit_price"`
-	DiscountPercent  float64       `json:"discount_percent,omitempty"`
-	DiscountAmount   float64       `json:"discount_amount,omitempty"`
-	UnitID           *string       `json:"unit_id,omitempty"` // Relasi ke unit
-	Unit             *UnitModel    `gorm:"foreignKey:UnitID;constraint:OnDelete:CASCADE" json:"unit,omitempty"`
-	TaxID            *string       `json:"tax_id,omitempty"`
-	Tax              *TaxModel     `gorm:"foreignKey:TaxID;constraint:Restrict:SET NULL" json:"tax,omitempty"`
-	Value            float64       `gorm:"not null;default:1" json:"value"`
-	Total            float64       `json:"total,omitempty"`
-	SubTotal         float64       `json:"sub_total,omitempty"`
+	Description      string          `json:"description,omitempty"`
+	Notes            string          `gorm:"type:text" json:"notes"`
+	ReturnID         string          `gorm:"type:char(36);index" json:"return_id"`
+	Return           *ReturnModel    `gorm:"foreignKey:ReturnID;constraint:OnDelete:CASCADE" json:"return"`
+	ProductID        *string         `json:"product_id"`
+	Product          *ProductModel   `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"product"`
+	VariantID        *string         `json:"variant_id"`
+	Variant          *VariantModel   `gorm:"foreignKey:VariantID;constraint:OnDelete:CASCADE" json:"variant"`
+	Quantity         float64         `gorm:"type:decimal(13,2)" json:"quantity"`
+	OriginalQuantity float64         `gorm:"type:decimal(13,2)" json:"original_quantity"`
+	UnitPrice        float64         `gorm:"type:decimal(13,2)" json:"unit_price"`
+	DiscountPercent  float64         `json:"discount_percent,omitempty"`
+	DiscountAmount   float64         `json:"discount_amount,omitempty"`
+	UnitID           *string         `json:"unit_id,omitempty"` // Relasi ke unit
+	Unit             *UnitModel      `gorm:"foreignKey:UnitID;constraint:OnDelete:CASCADE" json:"unit,omitempty"`
+	TaxID            *string         `json:"tax_id,omitempty"`
+	Tax              *TaxModel       `gorm:"foreignKey:TaxID;constraint:Restrict:SET NULL" json:"tax,omitempty"`
+	WarehouseID      *string         `json:"warehouse_id,omitempty"`
+	Warehouse        *WarehouseModel `gorm:"foreignKey:WarehouseID;constraint:OnDelete:CASCADE" json:"warehouse,omitempty"`
+	Value            float64         `gorm:"not null;default:1" json:"value"`
+	Total            float64         `json:"total,omitempty"`
+	SubTotal         float64         `json:"sub_total,omitempty"`
 }
 
 func (ri *ReturnItemModel) BeforeCreate(tx *gorm.DB) (err error) {
