@@ -51,6 +51,7 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 	tagService := product.NewTagService(ctx.DB, ctx)
 	unitService := unit.NewUnitService(ctx.DB, ctx)
 	productSrv := product.NewProductService(ctx.DB, ctx, fileService, tagService)
+	purchaseSrv := purchase.NewPurchaseService(ctx.DB, ctx, financeService, stockmovementSrv)
 
 	var service = InventoryService{
 		ctx:                     ctx,
@@ -61,8 +62,8 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 		PriceCategoryService:    product.NewPriceCategoryService(ctx.DB, ctx),
 		WarehouseService:        warehouse.NewWarehouseService(ctx.DB, ctx),
 		StockMovementService:    stockmovementSrv,
-		PurchaseService:         purchase.NewPurchaseService(ctx.DB, ctx, financeService, stockmovementSrv),
-		PurchaseReturnService:   purchase_return.NewPurchaseReturnService(ctx.DB, ctx, financeService, stockmovementSrv),
+		PurchaseService:         purchaseSrv,
+		PurchaseReturnService:   purchase_return.NewPurchaseReturnService(ctx.DB, ctx, financeService, stockmovementSrv, purchaseSrv),
 		BrandService:            brand.NewBrandService(ctx.DB, ctx),
 		TagService:              tagService,
 		StockOpenameService:     stock_opname.NewStockOpnameService(ctx.DB, ctx, productSrv, stockmovementSrv),

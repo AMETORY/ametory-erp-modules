@@ -107,6 +107,7 @@ type PurchaseOrderItemModel struct {
 	PurchaseID         *string             `json:"purchase_id,omitempty"`
 	Purchase           *PurchaseOrderModel `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE"`
 	Description        string              `json:"description,omitempty"`
+	Notes              string              `gorm:"type:text" json:"notes"`
 	Quantity           float64             `json:"quantity,omitempty"`
 	UnitPrice          float64             `json:"unit_price,omitempty"`
 	Total              float64             `json:"total,omitempty"`

@@ -61,6 +61,12 @@ func (s *PurchaseService) DeletePurchase(id string) error {
 	})
 
 }
+func (s *PurchaseService) ClearTransaction(id string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		return tx.Where("transaction_ref_id = ?", id).Delete(&models.TransactionModel{}).Error
+	})
+
+}
 
 // CreatePurchaseOrder membuat purchase order baru
 func (s *PurchaseService) CreatePurchaseOrder(data *models.PurchaseOrderModel) error {
@@ -246,7 +252,9 @@ func (s *PurchaseService) GetPurchases(request http.Request, search string) (pag
 
 func (s *PurchaseService) GetPurchaseByID(id string) (*models.PurchaseOrderModel, error) {
 	var data models.PurchaseOrderModel
-	if err := s.db.Preload("PaymentAccount").Preload("PurchasePayments").First(&data, "id = ?", id).Error; err != nil {
+	if err := s.db.Preload("PublishedBy", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id, full_name")
+	}).Preload("PaymentAccount").Preload("PurchasePayments").First(&data, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 
