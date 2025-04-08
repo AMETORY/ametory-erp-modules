@@ -574,10 +574,9 @@ func (c *LoanApplicationService) GetTransactions(loan *models.LoanApplicationMod
 
 	var lastPayment models.InstallmentPayment
 	err = c.db.Where("loan_application_id = ?", loan.ID).Order("installment_no DESC").First(&lastPayment).Error
-	if err != nil {
-		return err
+	if err == nil {
+		loan.LastPayment = &lastPayment
 	}
 
-	loan.LastPayment = &lastPayment
-	return err
+	return nil
 }
