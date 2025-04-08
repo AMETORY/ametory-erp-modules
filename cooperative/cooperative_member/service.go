@@ -106,6 +106,8 @@ func (s *CooperativeMemberService) AcceptMemberInvitation(token string, userID s
 		ConnectedTo: &userID,
 		CompanyID:   invitation.CompanyID,
 		RoleID:      invitation.RoleID,
+		Status:      "ACTIVE",
+		Active:      true,
 	}
 	err := s.db.Create(&data).Error
 	if err != nil {

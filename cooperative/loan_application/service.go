@@ -3,6 +3,7 @@ package loan_application
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -10,6 +11,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/cooperative/saving"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -273,4 +275,50 @@ func (l *LoanApplicationService) DisburseLoan(loan models.LoanApplicationModel, 
 	}
 
 	return l.db.Save(&loan).Error
+}
+
+func (s *LoanApplicationService) GetLoans(request http.Request, search string, memberID *string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("description ILIKE ? OR brands.name ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	if memberID != nil {
+		stmt = stmt.Where("member_id = ?", memberID)
+	}
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.LoanApplicationModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.LoanApplicationModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *LoanApplicationService) GetLoanByID(id string, memberID *string) (*models.LoanApplicationModel, error) {
+	var loan models.LoanApplicationModel
+	db := s.db
+	if memberID != nil {
+		db = db.Where("member_id = ?", memberID)
+	}
+	if err := db.Where("id = ?", id).First(&loan).Error; err != nil {
+		return nil, err
+	}
+	return &loan, nil
+}
+func (c *LoanApplicationService) CreateLoan(loan *models.LoanApplicationModel) error {
+	return c.ctx.DB.Create(loan).Error
+}
+
+func (c *LoanApplicationService) UpdateLoan(id string, loan *models.LoanApplicationModel) error {
+	return c.ctx.DB.Where("id = ?", id).Save(loan).Error
+}
+
+func (c *LoanApplicationService) DeleteLoan(id string) error {
+	return c.ctx.DB.Delete(&models.LoanApplicationModel{}, "id = ?", id).Error
 }

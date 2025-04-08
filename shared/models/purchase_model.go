@@ -73,6 +73,9 @@ type PurchaseOrderModel struct {
 	DeliveryDataParsed    map[string]any           `json:"delivery_data_parsed" gorm:"-"`
 	TaxBreakdownParsed    map[string]any           `json:"tax_breakdown_parsed" gorm:"-"`
 	PurchasePayments      []PurchasePaymentModel   `gorm:"foreignKey:PurchaseID;constraint:OnDelete:CASCADE" json:"purchase_payments"`
+	MemberID              *string                  `json:"member_id,omitempty" gorm:"size:36"`
+	CooperativeMember     *CooperativeMemberModel  `json:"cooperative_member,omitempty" gorm:"-"`
+	Member                *MemberModel             `json:"member,omitempty" gorm:"-"`
 }
 
 func (s *PurchaseOrderModel) TableName() string {
