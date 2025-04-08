@@ -40,7 +40,7 @@ func (n *NotificationModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (n *NotificationModel) AfterFind(tx *gorm.DB) (err error) {
 	if n.Date == nil {
-		n.Date = &n.CreatedAt
+		n.Date = n.CreatedAt
 		tx.Save(n)
 	}
 	return

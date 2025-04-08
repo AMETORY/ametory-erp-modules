@@ -55,6 +55,7 @@ func (s *CooperativeService) Migrate() error {
 		&models.SavingModel{},
 		&models.InstallmentPayment{},
 		&models.NetSurplusModel{},
+		&models.MemberInvitationModel{},
 	)
 }
 

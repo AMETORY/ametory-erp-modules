@@ -8,7 +8,7 @@ import (
 
 type BaseModel struct {
 	ID        string         `gorm:"type:char(36);primary_key" json:"id,omitempty"`
-	CreatedAt time.Time      `json:"-"`
-	UpdatedAt time.Time      `json:"-"`
+	CreatedAt *time.Time     `json:"-"`
+	UpdatedAt *time.Time     `json:"-"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }

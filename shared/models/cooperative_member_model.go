@@ -25,12 +25,18 @@ type CooperativeMemberModel struct {
 	Country                string             `json:"country"`
 	ConnectedTo            *string            `gorm:"size:36" json:"connected_to" `
 	User                   *UserModel         `gorm:"foreignKey:ConnectedTo;constraint:OnDelete:CASCADE;" json:"user,omitempty"`
+	RoleID                 *string            `gorm:"type:char(36)" json:"role_id,omitempty"`
+	Role                   *RoleModel         `json:"role,omitempty" gorm:"foreignKey:RoleID;constraint:OnDelete:CASCADE;"`
 	TotalSavings           float64            `json:"total_savings" gorm:"-"`
 	TotalLoans             float64            `json:"total_loans" gorm:"-"`
 	TotalRemainLoans       float64            `json:"total_remain_loans" gorm:"-"`
 	TotalTransactions      float64            `json:"total_transactions" gorm:"-"`
 	TotalDisbursement      float64            `json:"total_disbursement" gorm:"-"`
 	NetSurplusTransactions []TransactionModel `gorm:"-" bson:"net_surplus_transactions,omitempty" json:"net_surplus_transactions,omitempty"`
+	ApprovedBy             *string            `gorm:"size:36" json:"approved_by" `
+	ApprovedByUser         *UserModel         `gorm:"foreignKey:ApprovedBy;constraint:OnDelete:SET NULL;" json:"approved_by_user,omitempty"`
+	ApprovedAt             *time.Time         `json:"approved_at"`
+	Status                 string             `json:"status" gorm:"default:'PENDING'"`
 }
 
 func (CooperativeMemberModel) TableName() string {

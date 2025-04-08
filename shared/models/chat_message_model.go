@@ -89,7 +89,7 @@ func (message *ChatMessageModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (message *ChatMessageModel) AfterFind(tx *gorm.DB) (err error) {
 	if message.Date == nil {
-		message.Date = &message.CreatedAt
+		message.Date = message.CreatedAt
 		tx.Save(message)
 	}
 	tx.Model(&ChatMessageModel{}).Where("parent_id = ?", message.ID).Count(&message.RepliesCount)

@@ -71,7 +71,7 @@ func (m *InboxMessageModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (m *InboxMessageModel) AfterFind(tx *gorm.DB) error {
 	if m.Date == nil {
-		m.Date = &m.CreatedAt
+		m.Date = m.CreatedAt
 	}
 	var files []FileModel
 	if err := tx.Where("ref_id = ? AND ref_type = ?", m.ID, "inbox").Find(&files).Error; err == nil {

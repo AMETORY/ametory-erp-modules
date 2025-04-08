@@ -308,7 +308,7 @@ func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderReq
 	data := &models.SalesModel{
 		SalesNumber:     salesNumber,
 		Code:            utils.RandString(10, true),
-		SalesDate:       orderRequest.CreatedAt,
+		SalesDate:       *orderRequest.CreatedAt,
 		DueDate:         &orderRequest.ExpiresAt,
 		TotalBeforeTax:  0,
 		TotalBeforeDisc: 0,

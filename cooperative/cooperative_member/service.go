@@ -2,6 +2,7 @@ package cooperative_member
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
@@ -104,6 +105,7 @@ func (s *CooperativeMemberService) AcceptMemberInvitation(token string, userID s
 	data := models.CooperativeMemberModel{
 		ConnectedTo: &userID,
 		CompanyID:   invitation.CompanyID,
+		RoleID:      invitation.RoleID,
 	}
 	err := s.db.Create(&data).Error
 	if err != nil {
@@ -131,5 +133,22 @@ func (s *CooperativeMemberService) DeleteInvitation(id string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (s *CooperativeMemberService) ApproveMemberByID(id string, userID string) error {
+	var member models.CooperativeMemberModel
+	if err := s.db.Where("id = ?", id).First(&member).Error; err != nil {
+		return err
+	}
+	now := time.Now()
+	member.Status = "APPROVED"
+	member.ApprovedBy = &userID
+	member.ApprovedAt = &now
+
+	err := s.db.Save(&member).Error
+	if err != nil {
+		return err
+	}
 	return nil
 }
