@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/rand"
+	mathRand "math/rand"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -21,6 +23,25 @@ import (
 func init() {
 
 }
+
+func GenerateRandomString(length int) string {
+	return stringWithCharset(length, charset)
+}
+
+func stringWithCharset(length int, charset string) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+const charset = "abcdefghijklmnopqrstuvwxyz" +
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const charsetNumber = "0123456789"
+
+var seededRand *mathRand.Rand = mathRand.New(
+	mathRand.NewSource(time.Now().UnixNano()))
 
 // RandString generates a random string of length n
 func RandString(n int, uppercase bool) string {
@@ -238,4 +259,53 @@ func PtrInt(value int) *int {
 // Helper function to return pointer to a float64
 func PtrFloat64(value float64) *float64 {
 	return &value
+}
+
+func AmountRound(x float64, decimalPlace int) float64 {
+	multiplier := math.Pow(10, float64(decimalPlace))
+	return math.Round(x*multiplier) / multiplier
+}
+
+func IntegerToRoman(number int) string {
+	maxRomanNumber := 3999
+	if number > maxRomanNumber {
+		return strconv.Itoa(number)
+	}
+
+	conversions := []struct {
+		value int
+		digit string
+	}{
+		{1000, "M"},
+		{900, "CM"},
+		{500, "D"},
+		{400, "CD"},
+		{100, "C"},
+		{90, "XC"},
+		{50, "L"},
+		{40, "XL"},
+		{10, "X"},
+		{9, "IX"},
+		{5, "V"},
+		{4, "IV"},
+		{1, "I"},
+	}
+
+	var roman strings.Builder
+	for _, conversion := range conversions {
+		for number >= conversion.value {
+			roman.WriteString(conversion.digit)
+			number -= conversion.value
+		}
+	}
+
+	return roman.String()
+}
+
+func GenerateRandomNumber(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charsetNumber[seededRand.Intn(len(charsetNumber))]
+	}
+	return string(b)
 }

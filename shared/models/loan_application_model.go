@@ -29,10 +29,14 @@ type LoanApplicationModel struct {
 	Remarks             string                         `json:"remarks,omitempty"`              // Additional remarks or notes (optional)
 	ProfitType          string                         `json:"profit_type"`                    // "fixed", "declining", or "effective" - type of profit/bunga
 	AdminFee            float64                        `json:"admin_fee"`                      // Biaya administrasi
-	AccountReceivableID *string                        `gorm:"size:36" json:"account_receivable_id"`
-	AccountIncomeID     *string                        `gorm:"size:36" json:"account_income_id"`
-	AccountAdminFeeID   *string                        `gorm:"size:36" json:"account_admin_fee_id"`
-	AccountAssetID      *string                        `gorm:"size:36" json:"account_asset_id"`
+	AccountReceivableID *string                        `gorm:"size:36" json:"account_receivable_id,omitempty"`
+	AccountReceivable   *AccountModel                  `gorm:"foreignKey:AccountReceivableID;constraint:OnDelete:CASCADE"`
+	AccountIncomeID     *string                        `gorm:"size:36" json:"account_income_id,omitempty"`
+	AccountIncome       *AccountModel                  `gorm:"foreignKey:AccountIncomeID;constraint:OnDelete:CASCADE"`
+	AccountAdminFeeID   *string                        `gorm:"size:36" json:"account_admin_fee_id,omitempty"`
+	AccountAdminFee     *AccountModel                  `gorm:"foreignKey:AccountAdminFeeID;constraint:OnDelete:CASCADE"`
+	AccountAssetID      *string                        `gorm:"size:36" json:"account_asset_id,omitempty"`
+	AccountAsset        *AccountModel                  `gorm:"foreignKey:AccountAssetID;constraint:OnDelete:CASCADE"`
 	Data                string                         `json:"data" gorm:"type:JSON"`
 	Preview             map[string][]InstallmentDetail `json:"preview" gorm:"-"`
 	TermCondition       string                         `json:"term_condition" gorm:"type:TEXT"` // Terms and Conditions of the loan
