@@ -13,7 +13,7 @@ type LoanApplicationModel struct {
 	CompanyID           *string                        `gorm:"size:36" json:"company_id"`
 	UserID              *string                        `gorm:"size:36" json:"user_id"`
 	MemberID            *string                        `json:"member_id"` // ID of the member submitting the application
-	Member              *CooperativeMemberModel        `json:"member" gorm:"-"`
+	Member              *CooperativeMemberModel        `json:"member,omitempty" gorm:"foreignKey:MemberID;references:ID"`
 	LoanNumber          string                         `json:"loan_number"`
 	LoanAmount          float64                        `json:"loan_amount"`                    // Amount of money requested
 	LoanPurpose         string                         `json:"loan_purpose"`                   // Purpose of the loan (e.g., "modal usaha")
@@ -23,20 +23,20 @@ type LoanApplicationModel struct {
 	ProjectedProfit     float64                        `json:"projected_profit,omitempty"`     // Expected profit rate for Mudharabah, optional
 	SubmissionDate      time.Time                      `json:"submission_date"`                // Date of loan application submission
 	RepaymentTerm       int                            `json:"repayment_term"`                 // Loan repayment term in months
-	Status              string                         `json:"status"`                         // Status of the application ("Pending", "Approved", "Rejected")
+	Status              string                         `json:"status"`                         // Status of the application DRAFT, APPROVED, REJECTED, DISBURSED, SETTLEMENT, DISBURSED,
 	ApprovedBy          *string                        `json:"approved_by,omitempty"`          // Name of the approver (optional)
 	DisbursementDate    *time.Time                     `json:"disbursement_date,omitempty"`    // Date when the loan is disbursed (optional)
 	Remarks             string                         `json:"remarks,omitempty"`              // Additional remarks or notes (optional)
 	ProfitType          string                         `json:"profit_type"`                    // "fixed", "declining", or "effective" - type of profit/bunga
 	AdminFee            float64                        `json:"admin_fee"`                      // Biaya administrasi
 	AccountReceivableID *string                        `gorm:"size:36" json:"account_receivable_id,omitempty"`
-	AccountReceivable   *AccountModel                  `gorm:"foreignKey:AccountReceivableID;constraint:OnDelete:CASCADE"`
+	AccountReceivable   *AccountModel                  `gorm:"foreignKey:AccountReceivableID;constraint:OnDelete:CASCADE" json:"account_receivable"`
 	AccountIncomeID     *string                        `gorm:"size:36" json:"account_income_id,omitempty"`
-	AccountIncome       *AccountModel                  `gorm:"foreignKey:AccountIncomeID;constraint:OnDelete:CASCADE"`
+	AccountIncome       *AccountModel                  `gorm:"foreignKey:AccountIncomeID;constraint:OnDelete:CASCADE" json:"account_income"`
 	AccountAdminFeeID   *string                        `gorm:"size:36" json:"account_admin_fee_id,omitempty"`
-	AccountAdminFee     *AccountModel                  `gorm:"foreignKey:AccountAdminFeeID;constraint:OnDelete:CASCADE"`
+	AccountAdminFee     *AccountModel                  `gorm:"foreignKey:AccountAdminFeeID;constraint:OnDelete:CASCADE" json:"account_admin_fee"`
 	AccountAssetID      *string                        `gorm:"size:36" json:"account_asset_id,omitempty"`
-	AccountAsset        *AccountModel                  `gorm:"foreignKey:AccountAssetID;constraint:OnDelete:CASCADE"`
+	AccountAsset        *AccountModel                  `gorm:"foreignKey:AccountAssetID;constraint:OnDelete:CASCADE" json:"account_asset"`
 	Data                string                         `json:"data" gorm:"type:JSON"`
 	Preview             map[string][]InstallmentDetail `json:"preview" gorm:"-"`
 	TermCondition       string                         `json:"term_condition" gorm:"type:TEXT"` // Terms and Conditions of the loan

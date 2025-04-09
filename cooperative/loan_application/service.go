@@ -11,11 +11,13 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/cooperative/cooperative_setting"
 	"github.com/AMETORY/ametory-erp-modules/cooperative/saving"
+	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type LoanApplicationService struct {
@@ -23,25 +25,28 @@ type LoanApplicationService struct {
 	ctx                       *context.ERPContext
 	cooperativeSettingService *cooperative_setting.CooperativeSettingService
 	savingService             *saving.SavingService
+	financeService            *finance.FinanceService
 }
 
 func NewLoanApplicationService(db *gorm.DB,
 	ctx *context.ERPContext,
 	cooperativeSettingService *cooperative_setting.CooperativeSettingService,
 	savingService *saving.SavingService,
+	financeService *finance.FinanceService,
 ) *LoanApplicationService {
 	return &LoanApplicationService{
 		db:                        db,
 		ctx:                       ctx,
 		cooperativeSettingService: cooperativeSettingService,
 		savingService:             savingService,
+		financeService:            financeService,
 	}
 }
 
 func (l *LoanApplicationService) CreatePayment(input *models.InstallmentPayment, loan *models.LoanApplicationModel, userID *string) error {
 
 	// Cek apakah status pinjaman sudah approved
-	if loan.Status != "Disbursed" {
+	if loan.Status != "DISBURSED" {
 		return fmt.Errorf("loan must be disbursed before payment")
 	}
 
@@ -54,199 +59,232 @@ func (l *LoanApplicationService) CreatePayment(input *models.InstallmentPayment,
 		balance = 0
 	}
 
-	input.MemberID = loan.MemberID
-	input.LoanApplicationID = &loan.ID
-	err := l.db.Create(&input).Error
+	err := l.db.Transaction(func(tx *gorm.DB) error {
+		l.financeService.TransactionService.SetDB(tx)
+		l.savingService.SetDB(tx)
+
+		input.MemberID = loan.MemberID
+		input.LoanApplicationID = &loan.ID
+		err := tx.Create(&input).Error
+		if err != nil {
+
+			return err
+		}
+
+		// refID := utils.Uuid()
+		principalID := utils.Uuid()
+		principalAssetID := utils.Uuid()
+		// POKOK
+		trans := &models.TransactionModel{
+			Code:                        utils.RandString(10, false),
+			BaseModel:                   shared.BaseModel{ID: principalID},
+			CompanyID:                   loan.CompanyID,
+			UserID:                      loan.UserID,
+			Date:                        input.PaymentDate,
+			LoanApplicationID:           &loan.ID,
+			InstallmentPaymentID:        &input.ID,
+			CooperativeMemberID:         loan.MemberID,
+			Credit:                      input.PrincipalPaid,
+			Description:                 fmt.Sprintf("Pembayaran Pokok Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
+			IsAccountReceivable:         true,
+			IsLending:                   true,
+			AccountID:                   loan.AccountReceivableID,
+			TransactionRefID:            &principalAssetID,
+			TransactionRefType:          "transaction",
+			TransactionSecondaryRefID:   &loan.ID,
+			TransactionSecondaryRefType: "loan",
+		}
+		if err := tx.Create(&trans).Error; err != nil {
+			return err
+		}
+
+		accountAssetID := input.AccountAssetID
+		if accountAssetID == nil {
+			accountAssetID = loan.AccountAssetID
+		}
+
+		trans = &models.TransactionModel{
+			Code:                        utils.RandString(10, false),
+			BaseModel:                   shared.BaseModel{ID: principalAssetID},
+			CompanyID:                   loan.CompanyID,
+			UserID:                      loan.UserID,
+			Date:                        input.PaymentDate,
+			LoanApplicationID:           &loan.ID,
+			InstallmentPaymentID:        &input.ID,
+			CooperativeMemberID:         loan.MemberID,
+			Debit:                       input.PrincipalPaid,
+			Description:                 fmt.Sprintf("Pembayaran Pokok Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
+			IsAccountReceivable:         false,
+			IsLending:                   true,
+			AccountID:                   accountAssetID,
+			TransactionRefID:            &principalID,
+			TransactionRefType:          "transaction",
+			TransactionSecondaryRefID:   &loan.ID,
+			TransactionSecondaryRefType: "loan",
+		}
+		if err := tx.Create(&trans).Error; err != nil {
+			return err
+		}
+
+		// PROFIT
+		if input.ProfitPaid > 0 {
+			profitID := utils.Uuid()
+			profitAssetID := utils.Uuid()
+			trans = &models.TransactionModel{
+				Code:                        utils.RandString(10, false),
+				BaseModel:                   shared.BaseModel{ID: profitID},
+				CompanyID:                   loan.CompanyID,
+				UserID:                      loan.UserID,
+				Date:                        input.PaymentDate,
+				LoanApplicationID:           &loan.ID,
+				InstallmentPaymentID:        &input.ID,
+				CooperativeMemberID:         loan.MemberID,
+				Credit:                      input.ProfitPaid,
+				Description:                 fmt.Sprintf("Pembayaran Profit / Bunga Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
+				IsAccountReceivable:         false,
+				IsLending:                   true,
+				AccountID:                   loan.AccountIncomeID,
+				TransactionRefID:            &profitAssetID,
+				TransactionRefType:          "transaction",
+				TransactionSecondaryRefID:   &loan.ID,
+				TransactionSecondaryRefType: "loan",
+			}
+			if err := tx.Create(&trans).Error; err != nil {
+				return err
+			}
+
+			trans = &models.TransactionModel{
+				Code:                        utils.RandString(10, false),
+				BaseModel:                   shared.BaseModel{ID: profitAssetID},
+				CompanyID:                   loan.CompanyID,
+				UserID:                      loan.UserID,
+				Date:                        input.PaymentDate,
+				LoanApplicationID:           &loan.ID,
+				InstallmentPaymentID:        &input.ID,
+				CooperativeMemberID:         loan.MemberID,
+				Debit:                       input.ProfitPaid,
+				Description:                 fmt.Sprintf("Pembayaran Profit / Bunga Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
+				IsAccountReceivable:         false,
+				IsLending:                   true,
+				AccountID:                   accountAssetID,
+				TransactionRefID:            &profitID,
+				TransactionRefType:          "transaction",
+				TransactionSecondaryRefID:   &loan.ID,
+				TransactionSecondaryRefType: "loan",
+			}
+			if err := tx.Create(&trans).Error; err != nil {
+				return err
+			}
+		}
+		// ADMIN
+		if input.AdminFeePaid > 0 {
+			adminID := utils.Uuid()
+			adminCashID := utils.Uuid()
+			trans = &models.TransactionModel{
+				Code:                        utils.RandString(10, false),
+				BaseModel:                   shared.BaseModel{ID: adminID},
+				CompanyID:                   loan.CompanyID,
+				UserID:                      loan.UserID,
+				Date:                        input.PaymentDate,
+				LoanApplicationID:           &loan.ID,
+				InstallmentPaymentID:        &input.ID,
+				CooperativeMemberID:         loan.MemberID,
+				Credit:                      input.AdminFeePaid,
+				Description:                 fmt.Sprintf("Pembayaran Biaya Admin Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
+				IsAccountReceivable:         false,
+				IsLending:                   true,
+				AccountID:                   loan.AccountAdminFeeID,
+				TransactionRefID:            &adminCashID,
+				TransactionRefType:          "transaction",
+				TransactionSecondaryRefID:   &loan.ID,
+				TransactionSecondaryRefType: "loan",
+			}
+			if err := tx.Create(&trans).Error; err != nil {
+				return err
+			}
+
+			trans = &models.TransactionModel{
+				Code:                        utils.RandString(10, false),
+				BaseModel:                   shared.BaseModel{ID: adminCashID},
+				CompanyID:                   loan.CompanyID,
+				UserID:                      loan.UserID,
+				Date:                        input.PaymentDate,
+				LoanApplicationID:           &loan.ID,
+				InstallmentPaymentID:        &input.ID,
+				CooperativeMemberID:         loan.MemberID,
+				Debit:                       input.AdminFeePaid,
+				Description:                 fmt.Sprintf("Pembayaran Biaya Admin Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
+				IsAccountReceivable:         false,
+				IsLending:                   true,
+				AccountID:                   accountAssetID,
+				TransactionRefID:            &adminID,
+				TransactionRefType:          "transaction",
+				TransactionSecondaryRefID:   &loan.ID,
+				TransactionSecondaryRefType: "loan",
+			}
+			if err := tx.Create(&trans).Error; err != nil {
+				return err
+			}
+		}
+
+		if balance > 0 {
+
+			// CREATE Voluntry saving
+			saving := models.SavingModel{
+				CompanyID:            loan.CompanyID,
+				UserID:               userID,
+				CooperativeMemberID:  loan.MemberID,
+				AccountDestinationID: accountAssetID,
+				SavingType:           "VOLUNTARY",
+				Amount:               balance,
+				Notes:                fmt.Sprintf("Sisa Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
+				Date:                 &input.PaymentDate,
+			}
+
+			if err := tx.Create(&saving).Error; err != nil {
+				return err
+			}
+			var company models.CompanyModel
+			err := tx.Where("id = ?", loan.CompanyID).First(&company).Error
+			if err != nil {
+				return err
+			}
+			saving.Company = &company
+
+			err = l.savingService.CreateTransaction(saving, true)
+			if err != nil {
+				return err
+			}
+		}
+
+		if input.RemainingLoan == 0 {
+			loan.Status = "SETTLEMENT"
+			if err := tx.Save(&loan).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	l.financeService.TransactionService.SetDB(l.db)
+	l.savingService.SetDB(l.db)
 	if err != nil {
 		return err
 	}
 
-	// refID := utils.Uuid()
-	principalID := utils.Uuid()
-	principalAssetID := utils.Uuid()
-	// POKOK
-	trans := &models.TransactionModel{
-		BaseModel:                   shared.BaseModel{ID: principalID},
-		CompanyID:                   loan.CompanyID,
-		UserID:                      loan.UserID,
-		Date:                        input.PaymentDate,
-		LoanApplicationID:           &loan.ID,
-		InstallmentPaymentID:        &input.ID,
-		CooperativeMemberID:         loan.MemberID,
-		Credit:                      input.PrincipalPaid,
-		Description:                 fmt.Sprintf("Pembayaran Pokok Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
-		IsAccountReceivable:         true,
-		IsLending:                   true,
-		AccountID:                   loan.AccountReceivableID,
-		TransactionRefID:            &principalAssetID,
-		TransactionRefType:          "transaction",
-		TransactionSecondaryRefID:   &loan.ID,
-		TransactionSecondaryRefType: "loan",
-	}
-	if err := l.db.Create(&trans).Error; err != nil {
-		return err
-	}
-
-	trans = &models.TransactionModel{
-		BaseModel:                   shared.BaseModel{ID: principalAssetID},
-		CompanyID:                   loan.CompanyID,
-		UserID:                      loan.UserID,
-		Date:                        input.PaymentDate,
-		LoanApplicationID:           &loan.ID,
-		InstallmentPaymentID:        &input.ID,
-		CooperativeMemberID:         loan.MemberID,
-		Debit:                       input.PrincipalPaid,
-		Description:                 fmt.Sprintf("Pembayaran Pokok Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
-		IsAccountReceivable:         false,
-		IsLending:                   true,
-		AccountID:                   loan.AccountAssetID,
-		TransactionRefID:            &principalID,
-		TransactionRefType:          "transaction",
-		TransactionSecondaryRefID:   &loan.ID,
-		TransactionSecondaryRefType: "loan",
-	}
-	if err := l.db.Create(&trans).Error; err != nil {
-		return err
-	}
-
-	// PROFIT
-	if input.ProfitPaid > 0 {
-		profitID := utils.Uuid()
-		profitAssetID := utils.Uuid()
-		trans = &models.TransactionModel{
-			BaseModel:                   shared.BaseModel{ID: profitID},
-			CompanyID:                   loan.CompanyID,
-			UserID:                      loan.UserID,
-			Date:                        input.PaymentDate,
-			LoanApplicationID:           &loan.ID,
-			InstallmentPaymentID:        &input.ID,
-			CooperativeMemberID:         loan.MemberID,
-			Credit:                      input.ProfitPaid,
-			Description:                 fmt.Sprintf("Pembayaran Profit / Bunga Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
-			IsAccountReceivable:         false,
-			IsLending:                   true,
-			AccountID:                   loan.AccountIncomeID,
-			TransactionRefID:            &profitAssetID,
-			TransactionRefType:          "transaction",
-			TransactionSecondaryRefID:   &loan.ID,
-			TransactionSecondaryRefType: "loan",
-		}
-		if err := l.db.Create(&trans).Error; err != nil {
-			return err
-		}
-
-		trans = &models.TransactionModel{
-			BaseModel:                   shared.BaseModel{ID: profitAssetID},
-			CompanyID:                   loan.CompanyID,
-			UserID:                      loan.UserID,
-			Date:                        input.PaymentDate,
-			LoanApplicationID:           &loan.ID,
-			InstallmentPaymentID:        &input.ID,
-			CooperativeMemberID:         loan.MemberID,
-			Debit:                       input.ProfitPaid,
-			Description:                 fmt.Sprintf("Pembayaran Profit / Bunga Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
-			IsAccountReceivable:         false,
-			IsLending:                   true,
-			AccountID:                   loan.AccountAssetID,
-			TransactionRefID:            &profitID,
-			TransactionRefType:          "transaction",
-			TransactionSecondaryRefID:   &loan.ID,
-			TransactionSecondaryRefType: "loan",
-		}
-		if err := l.db.Create(&trans).Error; err != nil {
-			return err
-		}
-	}
-	// ADMIN
-	if input.AdminFeePaid > 0 {
-		adminID := utils.Uuid()
-		adminCashID := utils.Uuid()
-		trans = &models.TransactionModel{
-			BaseModel:                   shared.BaseModel{ID: adminID},
-			CompanyID:                   loan.CompanyID,
-			UserID:                      loan.UserID,
-			Date:                        input.PaymentDate,
-			LoanApplicationID:           &loan.ID,
-			InstallmentPaymentID:        &input.ID,
-			CooperativeMemberID:         loan.MemberID,
-			Credit:                      input.AdminFeePaid,
-			Description:                 fmt.Sprintf("Pembayaran Biaya Admin Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
-			IsAccountReceivable:         false,
-			IsLending:                   true,
-			AccountID:                   loan.AccountAdminFeeID,
-			TransactionRefID:            &adminCashID,
-			TransactionRefType:          "transaction",
-			TransactionSecondaryRefID:   &loan.ID,
-			TransactionSecondaryRefType: "loan",
-		}
-		if err := l.db.Create(&trans).Error; err != nil {
-			return err
-		}
-
-		trans = &models.TransactionModel{
-			BaseModel:                   shared.BaseModel{ID: adminCashID},
-			CompanyID:                   loan.CompanyID,
-			UserID:                      loan.UserID,
-			Date:                        input.PaymentDate,
-			LoanApplicationID:           &loan.ID,
-			InstallmentPaymentID:        &input.ID,
-			CooperativeMemberID:         loan.MemberID,
-			Debit:                       input.AdminFeePaid,
-			Description:                 fmt.Sprintf("Pembayaran Biaya Admin Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
-			IsAccountReceivable:         false,
-			IsLending:                   true,
-			AccountID:                   loan.AccountAssetID,
-			TransactionRefID:            &adminID,
-			TransactionRefType:          "transaction",
-			TransactionSecondaryRefID:   &loan.ID,
-			TransactionSecondaryRefType: "loan",
-		}
-		if err := l.db.Create(&trans).Error; err != nil {
-			return err
-		}
-	}
-
-	if balance > 0 {
-		// CREATE Voluntry saving
-		saving := models.SavingModel{
-			CompanyID:            loan.CompanyID,
-			UserID:               userID,
-			MemberID:             loan.MemberID,
-			AccountDestinationID: loan.AccountAssetID,
-			SavingType:           "VOLUNTARY",
-			Amount:               balance,
-			Notes:                fmt.Sprintf("Sisa Cicilan #%d [%s]", input.InstallmentNo, loan.LoanNumber),
-			Date:                 &input.PaymentDate,
-		}
-
-		if err := l.db.Create(&saving).Error; err != nil {
-			return err
-		}
-
-		err := l.savingService.CreateTransaction(saving, true)
-		if err != nil {
-			return err
-		}
-	}
-
-	if input.RemainingLoan == 0 {
-		loan.Status = "Settlement"
-		if err := l.db.Save(&loan).Error; err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func (l *LoanApplicationService) DisburseLoan(loan *models.LoanApplicationModel, AccountAssetID *string, user *models.UserModel) error {
-
+func (l *LoanApplicationService) DisburseLoan(loan *models.LoanApplicationModel, accountAssetID *string, user *models.UserModel, remarks string) error {
+	if accountAssetID == nil {
+		return errors.New("account asset id is required")
+	}
 	// Cek apakah status pinjaman sudah approved
-	if loan.Status != "Approved" {
+	if loan.Status != "APPROVED" {
 		return fmt.Errorf("loan must be approved before disbursement")
 	}
-	if AccountAssetID == nil {
-		return fmt.Errorf("account asset id is required")
-	}
+
 	if user == nil {
 		return fmt.Errorf("user is required")
 	}
@@ -255,57 +293,62 @@ func (l *LoanApplicationService) DisburseLoan(loan *models.LoanApplicationModel,
 
 	// Set tanggal pencairan
 	loan.DisbursementDate = &now
-	loan.AccountAssetID = AccountAssetID
+	loan.AccountAssetID = accountAssetID
 	loan.ApprovedBy = &user.FullName
 
 	// Ubah status pinjaman menjadi "Disbursed"
-	loan.Status = "Disbursed"
-	loan.Remarks = loan.Remarks + "\n- [" + time.Now().Format("2006-01-02 15:04:05") + "] " + user.FullName + ": " + "Pencairan Pinjaman " + loan.LoanNumber
+	loan.Status = "DISBURSED"
+	loan.Remarks = loan.Remarks + "[" + time.Now().Format("2006-01-02 15:04:05") + "] " + user.FullName + ": " + "Pencairan Pinjaman " + loan.LoanNumber + "\n" + remarks + "\n"
 	transID := utils.Uuid()
 	secTransID := utils.Uuid()
+	return l.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&models.TransactionModel{
+			Code:                        utils.RandString(10, false),
+			BaseModel:                   shared.BaseModel{ID: transID},
+			CompanyID:                   loan.CompanyID,
+			UserID:                      loan.UserID,
+			Debit:                       loan.LoanAmount,
+			AccountID:                   loan.AccountReceivableID,
+			Description:                 "Pencairan Pinjaman [" + loan.LoanNumber + "]",
+			Date:                        now,
+			IsAccountReceivable:         true,
+			IsLending:                   true,
+			LoanApplicationID:           &loan.ID,
+			TransactionRefID:            &secTransID,
+			TransactionRefType:          "transaction",
+			TransactionSecondaryRefID:   &loan.ID,
+			TransactionSecondaryRefType: "loan",
+			CooperativeMemberID:         loan.MemberID,
+		}).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.TransactionModel{
+			Code:                        utils.RandString(10, false),
+			BaseModel:                   shared.BaseModel{ID: secTransID},
+			CompanyID:                   loan.CompanyID,
+			UserID:                      loan.UserID,
+			Credit:                      loan.LoanAmount,
+			AccountID:                   loan.AccountAssetID,
+			Description:                 "Pencairan Pinjaman [" + loan.LoanNumber + "]",
+			Date:                        now,
+			IsLending:                   true,
+			LoanApplicationID:           &loan.ID,
+			TransactionRefID:            &transID,
+			TransactionRefType:          "transaction",
+			TransactionSecondaryRefID:   &loan.ID,
+			TransactionSecondaryRefType: "loan",
+			CooperativeMemberID:         loan.MemberID,
+		}).Error; err != nil {
+			return err
+		}
+		return tx.Where("id = ?", loan.ID).Updates(&loan).Error
+	})
 
-	if err := l.db.Create(&models.TransactionModel{
-		BaseModel:                   shared.BaseModel{ID: transID},
-		CompanyID:                   loan.CompanyID,
-		UserID:                      loan.UserID,
-		Debit:                       loan.LoanAmount,
-		AccountID:                   loan.AccountReceivableID,
-		Description:                 "Pencairan Pinjaman [" + loan.LoanNumber + "]",
-		Date:                        now,
-		IsAccountReceivable:         true,
-		IsLending:                   true,
-		LoanApplicationID:           &loan.ID,
-		TransactionRefID:            &secTransID,
-		TransactionRefType:          "transaction",
-		TransactionSecondaryRefID:   &loan.ID,
-		TransactionSecondaryRefType: "loan",
-	}).Error; err != nil {
-		return err
-	}
-	if err := l.db.Create(&models.TransactionModel{
-		BaseModel:                   shared.BaseModel{ID: secTransID},
-		CompanyID:                   loan.CompanyID,
-		UserID:                      loan.UserID,
-		Credit:                      loan.LoanAmount,
-		AccountID:                   loan.AccountAssetID,
-		Description:                 "Pencairan Pinjaman [" + loan.LoanNumber + "]",
-		Date:                        now,
-		IsLending:                   true,
-		LoanApplicationID:           &loan.ID,
-		TransactionRefID:            &transID,
-		TransactionRefType:          "transaction",
-		TransactionSecondaryRefID:   &loan.ID,
-		TransactionSecondaryRefType: "loan",
-	}).Error; err != nil {
-		return err
-	}
-
-	return l.db.Save(&loan).Error
 }
 
 func (s *LoanApplicationService) GetLoans(request http.Request, search string, memberID *string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Member")
 	if search != "" {
 		stmt = stmt.Where("description ILIKE ?",
 			"%"+search+"%",
@@ -327,7 +370,7 @@ func (s *LoanApplicationService) GetLoans(request http.Request, search string, m
 
 func (s *LoanApplicationService) GetLoanByID(id string, memberID *string) (*models.LoanApplicationModel, error) {
 	var loan models.LoanApplicationModel
-	db := s.db
+	db := s.db.Preload(clause.Associations)
 	if memberID != nil {
 		db = db.Where("member_id = ?", memberID)
 	}
@@ -337,9 +380,42 @@ func (s *LoanApplicationService) GetLoanByID(id string, memberID *string) (*mode
 	preview := s.GetPreview(&loan)
 	loan.Preview = preview
 	err := s.GetTransactions(&loan)
+	if err != nil {
+		return nil, err
+	}
+	if loan.Data != "" {
+		err := json.Unmarshal([]byte(loan.Data), &loan.Installments)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &loan, err
 }
 func (c *LoanApplicationService) CreateLoan(loan *models.LoanApplicationModel) error {
+	loan.Data = "[]"
+	loan.Status = "DRAFT"
+	setting, err := c.cooperativeSettingService.GetSetting(loan.CompanyID)
+	if err != nil {
+		return err
+	}
+	if setting.IsIslamic {
+		loan.LoanType = "MUDHARABAH"
+		loan.ExpectedProfitRate = float64(loan.RepaymentTerm) * setting.ExpectedProfitRatePerMonth
+	} else {
+		loan.LoanType = "CONVENTIONAL"
+		loan.ProfitType = "ANUITY"
+		loan.InterestRate = float64(loan.RepaymentTerm) * setting.InterestRatePerMonth
+	}
+
+	loan.AccountAdminFeeID = setting.LoanAccountAdminFeeID
+	loan.AccountIncomeID = setting.LoanAccountIncomeID
+	loan.AccountReceivableID = setting.LoanAccountID
+	loan.TermCondition = setting.TermCondition
+	err = c.GenNumber(loan, loan.CompanyID)
+	if err != nil {
+		return err
+	}
+
 	return c.db.Create(loan).Error
 }
 
@@ -404,14 +480,15 @@ func (c *LoanApplicationService) ApprovalLoan(id, userID, status, remarks string
 		if err != nil {
 			return err
 		}
-		loan.Remarks = loan.Remarks + "\n- [" + time.Now().Format("2006-01-02 15:04:05") + "] " + user.FullName + ": " + "Persetujuan " + loan.LoanNumber
+		loan.Remarks = loan.Remarks + "[" + time.Now().Format("2006-01-02 15:04:05") + "] " + user.FullName + ": " + "Persetujuan " + loan.LoanNumber + "\n" + remarks + "\n"
 		loan.Data = string(b)
 	}
 
 	if status == "REJECTED" {
-		loan.Remarks = loan.Remarks + "\n- [" + time.Now().Format("2006-01-02 15:04:05") + "] " + user.FullName + ": " + "Penolakan " + loan.LoanNumber + "\n" + remarks
+		loan.Remarks = loan.Remarks + "[" + time.Now().Format("2006-01-02 15:04:05") + "] " + user.FullName + ": " + "Penolakan " + loan.LoanNumber + "\n" + remarks + "\n"
 	}
 
+	loan.Status = status
 	return c.db.Where("id =?", id).Save(loan).Error
 }
 func (c *LoanApplicationService) GenerateInstallmentTable(loan *models.LoanApplicationModel) ([]models.InstallmentDetail, error) {
@@ -434,7 +511,7 @@ func (c *LoanApplicationService) GenerateInstallmentTable(loan *models.LoanAppli
 		var interestAmount, totalPaid, principalAmount float64
 
 		switch loan.LoanType {
-		case "Mudharabah":
+		case "MUDHARABAH":
 			// interestAmount = remainingLoan * loan.ExpectedProfitRate / 100 / float64(loan.RepaymentTerm)
 			// principalAmount = loan.LoanAmount / float64(loan.RepaymentTerm)
 			// totalPaid = principalAmount + interestAmount + fixedAdminFee
@@ -442,12 +519,12 @@ func (c *LoanApplicationService) GenerateInstallmentTable(loan *models.LoanAppli
 			principalAmount = loan.LoanAmount / float64(loan.RepaymentTerm)
 			totalPaid = principalAmount + interestAmount + fixedAdminFee
 
-		case "Qardh Hasan":
+		case "QARDH_HASAN":
 			principalAmount = loan.LoanAmount / float64(loan.RepaymentTerm)
 			totalPaid = principalAmount + fixedAdminFee
 		default:
 			switch loan.ProfitType {
-			case "anuity":
+			case "ANUITY":
 				if loan.InterestRate > 0 {
 					interestAmount = remainingLoan * interestRateMonthly
 					principalAmount = annuity - interestAmount
@@ -457,11 +534,11 @@ func (c *LoanApplicationService) GenerateInstallmentTable(loan *models.LoanAppli
 					totalPaid = principalAmount + fixedAdminFee
 				}
 
-			case "fixed":
+			case "FIXED":
 				interestAmount = loan.LoanAmount * loan.InterestRate / 100 / float64(loan.RepaymentTerm)
 				principalAmount = loan.LoanAmount / float64(loan.RepaymentTerm)
 				totalPaid = principalAmount + interestAmount + fixedAdminFee
-			case "declining":
+			case "DECLINING":
 				interestAmount = remainingLoan * loan.InterestRate / 100 / float64(loan.RepaymentTerm)
 				principalAmount = loan.LoanAmount / float64(loan.RepaymentTerm)
 				totalPaid = principalAmount + interestAmount + fixedAdminFee
@@ -492,18 +569,18 @@ func (c *LoanApplicationService) GenerateInstallmentTable(loan *models.LoanAppli
 
 func (c *LoanApplicationService) GetPreview(loan *models.LoanApplicationModel) map[string][]models.InstallmentDetail {
 
-	if loan.LoanType == "Conventional" {
-		loan.ProfitType = "anuity"
+	if loan.LoanType == "CONVENTIONAL" {
+		loan.ProfitType = "ANUITY"
 		anuityTable, err := c.GenerateInstallmentTable(loan)
 		if err != nil {
 			fmt.Println(err)
 		}
-		loan.ProfitType = "declining"
+		loan.ProfitType = "DECLINING"
 		decliningTable, err := c.GenerateInstallmentTable(loan)
 		if err != nil {
 			fmt.Println(err)
 		}
-		loan.ProfitType = "fixed"
+		loan.ProfitType = "FIXED"
 		fixedTable, err := c.GenerateInstallmentTable(loan)
 		if err != nil {
 			fmt.Println(err)
@@ -513,20 +590,20 @@ func (c *LoanApplicationService) GetPreview(loan *models.LoanApplicationModel) m
 		// 	"declining": decliningTable,
 		// })
 		return map[string][]models.InstallmentDetail{
-			"anuity":    anuityTable,
-			"declining": decliningTable,
-			"fixed":     fixedTable,
+			"ANUITY":    anuityTable,
+			"DECLINING": decliningTable,
+			"FIXED":     fixedTable,
 		}
 	}
 
-	loan.LoanType = "Qardh Hasan"
+	loan.LoanType = "QARDH_HASAN"
 	qardhHasanTable, _ := c.GenerateInstallmentTable(loan)
-	loan.LoanType = "Mudharabah"
+	loan.LoanType = "MUDHARABAH"
 	mudharabahTable, _ := c.GenerateInstallmentTable(loan)
 
 	return map[string][]models.InstallmentDetail{
-		"Qardh Hasan": qardhHasanTable,
-		"Mudharabah":  mudharabahTable,
+		"QARDH_HASAN": qardhHasanTable,
+		"MUDHARABAH":  mudharabahTable,
 	}
 }
 

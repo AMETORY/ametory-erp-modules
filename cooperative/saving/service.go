@@ -27,6 +27,10 @@ func NewSavingService(db *gorm.DB, ctx *context.ERPContext, cooperativeSettingSe
 	}
 }
 
+func (s *SavingService) SetDB(db *gorm.DB) {
+	s.db = db
+}
+
 func (s *SavingService) CreateTransaction(saving models.SavingModel, forceVoluntry bool) error {
 
 	if saving.Company == nil {

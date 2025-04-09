@@ -34,7 +34,7 @@ func NewCooperativeService(ctx *context.ERPContext, companySrv *company.CompanyS
 		CooperativeSettingService: cooperativeSettingService,
 		CooperativeMemberService:  cooperative_member.NewCooperativeMemberService(ctx.DB, ctx),
 		SavingService:             savingService,
-		LoanApplicationService:    loan_application.NewLoanApplicationService(ctx.DB, ctx, cooperativeSettingService, savingService),
+		LoanApplicationService:    loan_application.NewLoanApplicationService(ctx.DB, ctx, cooperativeSettingService, savingService, financeService),
 		NetSurplusService:         net_surplus.NewNetSurplusService(ctx.DB, ctx, cooperativeSettingService, financeService),
 		FinanceService:            financeService,
 	}

@@ -22,6 +22,8 @@ type InstallmentPayment struct {
 	RemainingLoan     float64               `json:"remaining_loan"`                                                                   // Remaining loan balance after the payment
 	PaymentAmount     float64               `json:"payment_amount"`
 	Remarks           string                `json:"remarks,omitempty"` // Additional remarks or notes (optional)
+	AccountAssetID    *string               `json:"account_asset_id"`
+	AccountAsset      *AccountModel         `gorm:"foreignKey:AccountAssetID;constraint:OnDelete:CASCADE" json:"account_asset"`
 }
 
 func (ip *InstallmentPayment) BeforeCreate(tx *gorm.DB) (err error) {
