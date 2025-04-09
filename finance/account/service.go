@@ -52,6 +52,14 @@ var defaultAccountGroups = []map[string]any{
 				"label": constants.RETURNS_PAYMENT_OF_TAXES_VALUE,
 				"value": constants.RETURNS_PAYMENT_OF_TAXES,
 			},
+			{
+				"label": constants.COOPERATIVE_ACCEPTANCE_FROM_MEMBER_LABEL,
+				"value": constants.COOPERATIVE_ACCEPTANCE_FROM_MEMBER,
+			},
+			{
+				"label": constants.COOPERATIVE_ACCEPTANCE_FROM_NON_MEMBER_LABEL,
+				"value": constants.COOPERATIVE_ACCEPTANCE_FROM_NON_MEMBER,
+			},
 		},
 	},
 	{
@@ -83,6 +91,18 @@ var defaultAccountGroups = []map[string]any{
 			{
 				"label": constants.EQUITY_CAPITAL_VALUE,
 				"value": constants.EQUITY_CAPITAL,
+			},
+			{
+				"label": constants.COOPERATIVE_PRINCIPAL_SAVING_LABEL,
+				"value": constants.COOPERATIVE_PRINCIPAL_SAVING,
+			},
+			{
+				"label": constants.COOPERATIVE_MANDATORY_SAVING_LABEL,
+				"value": constants.COOPERATIVE_MANDATORY_SAVING,
+			},
+			{
+				"label": constants.COOPERATIVE_VOLUNTARY_SAVING_LABEL,
+				"value": constants.COOPERATIVE_VOLUNTARY_SAVING,
 			},
 		},
 	},
@@ -251,6 +271,16 @@ func (s *AccountService) GetTypes() map[string]any {
 						},
 					},
 				},
+				{
+					"label": constants.CASHFLOW_GROUP_CURRENT_ASSET_VALUE,
+					"value": constants.CASHFLOW_GROUP_CURRENT_ASSET,
+					"subgroups": []map[string]any{
+						{
+							"label": constants.CASHFLOW_GROUP_CURRENT_ASSET_VALUE,
+							"value": constants.CASHFLOW_GROUP_CURRENT_ASSET,
+						},
+					},
+				},
 			},
 		},
 		string(models.RECEIVABLE): map[string]any{
@@ -284,6 +314,18 @@ func (s *AccountService) GetTypes() map[string]any {
 						{
 							"label": constants.EQUITY_CAPITAL_VALUE,
 							"value": constants.EQUITY_CAPITAL,
+						},
+						{
+							"label": constants.COOPERATIVE_PRINCIPAL_SAVING_LABEL,
+							"value": constants.COOPERATIVE_PRINCIPAL_SAVING,
+						},
+						{
+							"label": constants.COOPERATIVE_MANDATORY_SAVING_LABEL,
+							"value": constants.COOPERATIVE_MANDATORY_SAVING,
+						},
+						{
+							"label": constants.COOPERATIVE_VOLUNTARY_SAVING_LABEL,
+							"value": constants.COOPERATIVE_VOLUNTARY_SAVING,
 						},
 					},
 				},

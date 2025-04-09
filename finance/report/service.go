@@ -704,6 +704,8 @@ func (s *FinanceReportService) GenerateCashFlowReport(report models.GeneralRepor
 		{Name: constants.OTHER_INCOME, Description: constants.OTHER_INCOME_VALUE, Amount: 0},
 		{Name: constants.OPERATIONAL_EXPENSES, Description: constants.OPERATIONAL_EXPENSES_VALUE, Amount: 0},
 		{Name: constants.RETURNS_PAYMENT_OF_TAXES, Description: constants.RETURNS_PAYMENT_OF_TAXES_VALUE, Amount: 0},
+		{Name: constants.COOPERATIVE_ACCEPTANCE_FROM_MEMBER, Description: constants.COOPERATIVE_ACCEPTANCE_FROM_MEMBER_LABEL, Amount: 0},
+		{Name: constants.COOPERATIVE_ACCEPTANCE_FROM_NON_MEMBER, Description: constants.COOPERATIVE_ACCEPTANCE_FROM_NON_MEMBER_LABEL, Amount: 0},
 	}
 	cashFlow.Investing = []models.CashflowSubGroup{
 		{Name: constants.ACQUISITION_SALE_OF_ASSETS, Description: constants.ACQUISITION_SALE_OF_ASSETS_VALUE, Amount: 0},
@@ -713,6 +715,9 @@ func (s *FinanceReportService) GenerateCashFlowReport(report models.GeneralRepor
 	cashFlow.Financing = []models.CashflowSubGroup{
 		{Name: constants.LOAN_PAYMENTS_RECEIPTS, Description: constants.LOAN_PAYMENTS_RECEIPTS_VALUE, Amount: 0},
 		{Name: constants.EQUITY_CAPITAL, Description: constants.EQUITY_CAPITAL_VALUE, Amount: 0},
+		{Name: constants.COOPERATIVE_PRINCIPAL_SAVING, Description: constants.COOPERATIVE_PRINCIPAL_SAVING_LABEL, Amount: 0},
+		{Name: constants.COOPERATIVE_MANDATORY_SAVING, Description: constants.COOPERATIVE_MANDATORY_SAVING_LABEL, Amount: 0},
+		{Name: constants.COOPERATIVE_VOLUNTARY_SAVING, Description: constants.COOPERATIVE_VOLUNTARY_SAVING_LABEL, Amount: 0},
 	}
 
 	fmt.Println("======================================")
@@ -744,7 +749,7 @@ func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGrou
 	total := 0.0
 	for i, v := range groups {
 		var transactions []models.TransactionModel
-		s.db.Model(&transactions).Debug().
+		s.db.Model(&transactions).
 			Distinct("transRef.id refid, (transRef.debit - transRef.credit) amount, accountRef.name description").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Joins("JOIN transactions transRef ON transRef.id = transactions.transaction_ref_id").

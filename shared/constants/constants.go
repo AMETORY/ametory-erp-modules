@@ -88,6 +88,16 @@ const (
 	RETURNS_PAYMENT_OF_TAXES_VALUE                      = "Pengembalian / Pembayaran pajak"
 	PURCHASE_RETURN                                     = "PURCHASE_RETURN"
 	SALES_RETURN                                        = "SALES_RETURN"
+	COOPERATIVE_PRINCIPAL_SAVING                        = "cooperation_principal_saving"
+	COOPERATIVE_MANDATORY_SAVING                        = "cooperation_mandatory_saving"
+	COOPERATIVE_VOLUNTARY_SAVING                        = "cooperation_voluntary_saving"
+	COOPERATIVE_PRINCIPAL_SAVING_LABEL                  = "Simpanan Pokok"
+	COOPERATIVE_MANDATORY_SAVING_LABEL                  = "Simpanan Wajib"
+	COOPERATIVE_VOLUNTARY_SAVING_LABEL                  = "Simpanan Sukarela"
+	COOPERATIVE_ACCEPTANCE_FROM_MEMBER                  = "cooperative_acceptance_from_member"
+	COOPERATIVE_ACCEPTANCE_FROM_MEMBER_LABEL            = "Penerimaan dari anggota"
+	COOPERATIVE_ACCEPTANCE_FROM_NON_MEMBER              = "cooperative_acceptance_from_non_member"
+	COOPERATIVE_ACCEPTANCE_FROM_NON_MEMBER_LABEL        = "Penerimaan dari non anggota"
 )
 
 // AccountName AccountName
