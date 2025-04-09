@@ -9,7 +9,6 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
-	"github.com/AMETORY/ametory-erp-modules/shared/constants"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
@@ -692,33 +691,9 @@ func (s *FinanceReportService) GenerateCapitalChangeReport(report models.General
 	return &capitalChange, nil
 }
 
-func (s *FinanceReportService) GenerateCashFlowReport(report models.GeneralReport) (*models.CashFlowReport, error) {
-	cashFlow := models.CashFlowReport{}
-	cashFlow.StartDate = report.StartDate
-	cashFlow.EndDate = report.EndDate
-	cashFlow.Operating = []models.CashflowSubGroup{
-		{Name: constants.ACCEPTANCE_FROM_CUSTOMERS, Description: constants.ACCEPTANCE_FROM_CUSTOMERS_VALUE, Amount: 0},
-		{Name: constants.OTHER_CURRENT_ASSETS, Description: constants.OTHER_CURRENT_ASSETS_VALUE, Amount: 0},
-		{Name: constants.PAYMENT_TO_VENDORS, Description: constants.PAYMENT_TO_VENDORS_VALUE, Amount: 0},
-		{Name: constants.CREDIT_CARDS_AND_OTHER_SHORT_TERM_LIABILITIES, Description: constants.CREDIT_CARDS_AND_OTHER_SHORT_TERM_LIABILITIES_VALUE, Amount: 0},
-		{Name: constants.OTHER_INCOME, Description: constants.OTHER_INCOME_VALUE, Amount: 0},
-		{Name: constants.OPERATIONAL_EXPENSES, Description: constants.OPERATIONAL_EXPENSES_VALUE, Amount: 0},
-		{Name: constants.RETURNS_PAYMENT_OF_TAXES, Description: constants.RETURNS_PAYMENT_OF_TAXES_VALUE, Amount: 0},
-		{Name: constants.COOPERATIVE_ACCEPTANCE_FROM_MEMBER, Description: constants.COOPERATIVE_ACCEPTANCE_FROM_MEMBER_LABEL, Amount: 0},
-		{Name: constants.COOPERATIVE_ACCEPTANCE_FROM_NON_MEMBER, Description: constants.COOPERATIVE_ACCEPTANCE_FROM_NON_MEMBER_LABEL, Amount: 0},
-	}
-	cashFlow.Investing = []models.CashflowSubGroup{
-		{Name: constants.ACQUISITION_SALE_OF_ASSETS, Description: constants.ACQUISITION_SALE_OF_ASSETS_VALUE, Amount: 0},
-		{Name: constants.OTHER_INVESTMENT_ACTIVITIES, Description: constants.OTHER_INVESTMENT_ACTIVITIES_VALUE, Amount: 0},
-		{Name: constants.INVESTMENT_PARTNERSHIP, Description: constants.INVESTMENT_PARTNERSHIP_VALUE, Amount: 0},
-	}
-	cashFlow.Financing = []models.CashflowSubGroup{
-		{Name: constants.LOAN_PAYMENTS_RECEIPTS, Description: constants.LOAN_PAYMENTS_RECEIPTS_VALUE, Amount: 0},
-		{Name: constants.EQUITY_CAPITAL, Description: constants.EQUITY_CAPITAL_VALUE, Amount: 0},
-		{Name: constants.COOPERATIVE_PRINCIPAL_SAVING, Description: constants.COOPERATIVE_PRINCIPAL_SAVING_LABEL, Amount: 0},
-		{Name: constants.COOPERATIVE_MANDATORY_SAVING, Description: constants.COOPERATIVE_MANDATORY_SAVING_LABEL, Amount: 0},
-		{Name: constants.COOPERATIVE_VOLUNTARY_SAVING, Description: constants.COOPERATIVE_VOLUNTARY_SAVING_LABEL, Amount: 0},
-	}
+func (s *FinanceReportService) GenerateCashFlowReport(cashFlow models.CashFlowReport) (*models.CashFlowReport, error) {
+
+	// utils.LogJson(cashFlow)
 
 	fmt.Println("======================================")
 	fmt.Println("OPERATING")
