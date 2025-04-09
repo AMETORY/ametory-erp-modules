@@ -45,6 +45,7 @@ type LoanApplicationModel struct {
 	Transactions        []TransactionModel             `json:"transactions,omitempty" gorm:"-"`
 	Installments        []InstallmentDetail            `json:"installments,omitempty" gorm:"-"`
 	NetSurplusID        *string                        `gorm:"size:36" json:"net_surplus_id"`
+	NetSurplus          *NetSurplusModel               `gorm:"foreignKey:NetSurplusID;constraint:OnDelete:SET NULL" json:"net_surplus"`
 }
 
 func (LoanApplicationModel) TableName() string {

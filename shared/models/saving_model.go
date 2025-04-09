@@ -20,6 +20,7 @@ type SavingModel struct {
 	AccountDestinationID *string                `gorm:"size:36" json:"account_destination_id"`
 	AccountDestination   AccountModel           `gorm:"foreignKey:AccountDestinationID;references:ID" json:"account_destination"`
 	NetSurplusID         *string                `gorm:"size:36" json:"net_surplus_id"`
+	NetSurplus           *NetSurplusModel       `gorm:"foreignKey:NetSurplusID;constraint:OnDelete:SET NULL" json:"net_surplus"`
 	SavingType           string                 `gorm:"type:varchar(20)" json:"saving_type"` //'Principal', 'Mandatory', 'Voluntary'
 	Amount               float64                `json:"amount"`
 	Notes                string                 `json:"notes" example:"notes"`

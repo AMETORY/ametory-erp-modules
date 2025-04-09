@@ -80,7 +80,8 @@ type TransactionModel struct {
 	// EmployeeLoan           EmployeeLoan       `gorm:"foreignKey:EmployeeLoanID"`
 	// PayRollInstallmentID   *string            `json:"pay_roll_installment_id"`
 	// PayRollInstallment     PayRollInstallment `gorm:"foreignKey:PayRollInstallmentID"`
-
+	NetSurplusID *string          `json:"net_surplus_id,omitempty"`
+	NetSurplus   *NetSurplusModel `gorm:"foreignKey:NetSurplusID;constraint:OnDelete:SET NULL" json:"net_surplus"`
 }
 
 func (TransactionModel) TableName() string {

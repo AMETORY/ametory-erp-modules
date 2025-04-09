@@ -22,7 +22,7 @@ type NetSurplusModel struct {
 	DistributionData string                 `gorm:"type:JSON"`
 	MemberData       string                 `gorm:"type:JSON"`
 	ProfitLossData   string                 `gorm:"type:JSON"`
-	ProfitLoss       ProfitLoss             `gorm:"-"`
+	ProfitLoss       ProfitLossReport       `gorm:"-"`
 	Transactions     []TransactionModel     `json:"transactions" gorm:"-"`
 	Status           string                 `json:"status"`
 	SavingsTotal     float64
@@ -37,7 +37,12 @@ func (NetSurplusModel) TableName() string {
 func (n *NetSurplusModel) BeforeCreate(tx *gorm.DB) error {
 	if n.ID == "" {
 		n.ID = uuid.New().String()
+
 	}
+	n.DistributionData = "[]"
+	n.MemberData = "[]"
+	n.ProfitLossData = "{}"
+	n.Status = "DRAFT"
 	return nil
 }
 
@@ -46,9 +51,9 @@ type NetSurplusAllocation struct {
 	Name             string  `json:"name"`       // Nama alokasi (misalnya, "Simpanan Anggota", "Dana Sosial")
 	Percentage       float64 `json:"percentage"` // Persentase alokasi
 	Amount           float64 `json:"amount"`     // Jumlah alokasi (dihitung berdasarkan persentase)
-	AccountID        string  `json:"account_id"`
-	AccountCashID    string  `json:"account_cash_id"`
-	AccountExpenseID string  `json:"account_expense_id"`
+	AccountID        *string `json:"account_id"`
+	AccountCashID    *string `json:"account_cash_id"`
+	AccountExpenseID *string `json:"account_expense_id"`
 	Balance          float64 `json:"balance"`
 }
 
