@@ -11,9 +11,9 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
-	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -346,8 +346,30 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 	return &cogsData, nil
 }
 
-func (s *FinanceReportService) CooperativeClosingBook(
-	report models.GeneralReport,
+func (s *FinanceReportService) CreateClosingBook(closingBook *models.ClosingBook) error {
+	return s.db.Create(closingBook).Error
+}
+
+func (s *FinanceReportService) GetClosingBook(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("notes ILIKE ?",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.ClosingBook{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.ClosingBook{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+func (s *FinanceReportService) GenerateClosingBook(
+	closingBook *models.ClosingBook,
 	cashflowGroupSetting *models.CashflowGroupSetting,
 	userID string,
 	description string,
@@ -360,16 +382,21 @@ func (s *FinanceReportService) CooperativeClosingBook(
 	}
 	// CLOSING BOOK RETAIN EARNING
 	var profitLossAccount models.AccountModel
-	err := s.db.Where("is_profit_loss_account = ? and company_id = ?", true, report.CompanyID).First(&profitLossAccount).Error
+	err := s.db.Where("is_profit_loss_account = ? and company_id = ?", true, closingBook.CompanyID).First(&profitLossAccount).Error
 	if err != nil {
 		return err
+	}
+	report := models.GeneralReport{
+		CompanyID: *closingBook.CompanyID,
+		StartDate: closingBook.StartDate,
+		EndDate:   closingBook.EndDate,
 	}
 	profitLoss, err := s.GenerateProfitLossReport(report)
 	if err != nil {
 		return err
 	}
 	now := time.Now()
-	closingBookID := utils.Uuid()
+	closingBookID := closingBook.ID
 	return s.db.Transaction(func(tx *gorm.DB) error {
 
 		// 🧾 Langkah 1: Menutup Akun Pendapatan
@@ -387,7 +414,7 @@ func (s *FinanceReportService) CooperativeClosingBook(
 					Code:               utils.RandString(10, false),
 					Date:               now,
 					UserID:             &userID,
-					CompanyID:          &report.CompanyID,
+					CompanyID:          closingBook.CompanyID,
 					Credit:             utils.AmountRound(credit, 2),
 					Debit:              utils.AmountRound(debit, 2),
 					Amount:             utils.AmountRound(v.Sum, 2),
@@ -417,7 +444,7 @@ func (s *FinanceReportService) CooperativeClosingBook(
 					Code:               utils.RandString(10, false),
 					Date:               now,
 					UserID:             &userID,
-					CompanyID:          &report.CompanyID,
+					CompanyID:          closingBook.CompanyID,
 					Credit:             utils.AmountRound(credit, 2),
 					Debit:              utils.AmountRound(debit, 2),
 					Amount:             utils.AmountRound(v.Sum, 2),
@@ -438,7 +465,7 @@ func (s *FinanceReportService) CooperativeClosingBook(
 			Code:               utils.RandString(10, false),
 			Date:               now,
 			UserID:             &userID,
-			CompanyID:          &report.CompanyID,
+			CompanyID:          closingBook.CompanyID,
 			Debit:              utils.AmountRound(profitLoss.NetProfit, 2),
 			Amount:             utils.AmountRound(profitLoss.NetProfit, 2),
 			Description:        "Ikhtisar Laba Rugi",
@@ -454,7 +481,7 @@ func (s *FinanceReportService) CooperativeClosingBook(
 			Code:               utils.RandString(10, false),
 			Date:               now,
 			UserID:             &userID,
-			CompanyID:          &report.CompanyID,
+			CompanyID:          closingBook.CompanyID,
 			Credit:             utils.AmountRound(profitLoss.NetProfit, 2),
 			Amount:             utils.AmountRound(profitLoss.NetProfit, 2),
 			Description:        description,
@@ -472,7 +499,7 @@ func (s *FinanceReportService) CooperativeClosingBook(
 				Code:               utils.RandString(10, false),
 				Date:               now,
 				UserID:             &userID,
-				CompanyID:          &report.CompanyID,
+				CompanyID:          closingBook.CompanyID,
 				Credit:             utils.AmountRound(profitLoss.NetProfit*taxPercentage/100, 2),
 				Amount:             utils.AmountRound(profitLoss.NetProfit*taxPercentage/100, 2),
 				Description:        "Pajak Penghasilan",
@@ -516,16 +543,12 @@ func (s *FinanceReportService) CooperativeClosingBook(
 
 		trialBalanceByte, _ := json.Marshal(trialBalance)
 		trialBalanceStr := string(trialBalanceByte)
+		closingBook.ProfitLossData = &profitLossStr
+		closingBook.CashFlowData = &cashflowStr
+		closingBook.BalanceSheetData = &balanceSheetStr
+		closingBook.TrialBalanceData = &trialBalanceStr
 
-		err = tx.Create(&models.ClosingBook{
-			BaseModel:        shared.BaseModel{ID: closingBookID},
-			StartDate:        report.StartDate,
-			EndDate:          report.EndDate,
-			ProfitLossData:   &profitLossStr,
-			CashFlowData:     &cashflowStr,
-			BalanceSheetData: &balanceSheetStr,
-			TrialBalanceData: &trialBalanceStr,
-		}).Error
+		err = tx.Create(closingBook).Error
 		if err != nil {
 			return err
 		}

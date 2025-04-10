@@ -12,6 +12,8 @@ type ClosingBook struct {
 	Company          CompanyModel        `gorm:"foreignkey:CompanyID" json:"company,omitempty"`
 	StartDate        time.Time           `json:"start_date"`
 	EndDate          time.Time           `json:"end_date"`
+	Notes            string              `json:"notes"`
+	Status           string              `json:"status"`
 	ProfitLossData   *string             `gorm:"type:JSON" json:"profit_loss_data,omitempty"`
 	ProfitLoss       *ProfitLossReport   `gorm:"-" json:"profit_loss"`
 	BalanceSheetData *string             `gorm:"type:JSON" json:"balance_sheet_data,omitempty"`
