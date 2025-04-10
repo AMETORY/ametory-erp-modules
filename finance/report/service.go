@@ -1,14 +1,17 @@
 package report
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
+	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
@@ -28,6 +31,10 @@ func NewFinanceReportService(db *gorm.DB, ctx *context.ERPContext, accountServic
 		accountService:     accountService,
 		transactionService: transactionService,
 	}
+}
+
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.ClosingBook{})
 }
 
 func (s *FinanceReportService) GenerateProfitLoss(report *models.ProfitLoss) error {
@@ -339,6 +346,263 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 	return &cogsData, nil
 }
 
+func (s *FinanceReportService) CooperativeClosingBook(
+	report models.GeneralReport,
+	cashflowGroupSetting *models.CashflowGroupSetting,
+	userID string,
+	description string,
+	retainEarningID string,
+	taxPayableID *string,
+	taxPercentage float64,
+) error {
+	if cashflowGroupSetting == nil {
+		return errors.New("cashflow group setting is required")
+	}
+	// CLOSING BOOK RETAIN EARNING
+	var profitLossAccount models.AccountModel
+	err := s.db.Where("is_profit_loss_account = ? and company_id = ?", true, report.CompanyID).First(&profitLossAccount).Error
+	if err != nil {
+		return err
+	}
+	profitLoss, err := s.GenerateProfitLossReport(report)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	closingBookID := utils.Uuid()
+	return s.db.Transaction(func(tx *gorm.DB) error {
+
+		// 🧾 Langkah 1: Menutup Akun Pendapatan
+		for _, v := range profitLoss.Profit {
+			if v.Sum != 0 {
+				var debit, credit float64
+				if v.Sum > 0 {
+					credit = v.Sum
+					debit = 0
+				} else {
+					debit = math.Abs(v.Sum)
+					credit = 0
+				}
+				err = tx.Create(&models.TransactionModel{
+					Code:               utils.RandString(10, false),
+					Date:               now,
+					UserID:             &userID,
+					CompanyID:          &report.CompanyID,
+					Credit:             utils.AmountRound(credit, 2),
+					Debit:              utils.AmountRound(debit, 2),
+					Amount:             utils.AmountRound(v.Sum, 2),
+					Description:        v.Name,
+					AccountID:          &profitLossAccount.ID,
+					TransactionRefID:   &closingBookID,
+					TransactionRefType: "closing-book",
+					// IsNetSurplus:       true,
+				}).Error
+				if err != nil {
+					return err
+				}
+			}
+		}
+		// 🧾 Langkah 2: Menutup Akun Beban
+		for _, v := range profitLoss.Loss {
+			if v.Sum != 0 {
+				var debit, credit float64
+				if v.Sum > 0 {
+					debit = v.Sum
+					credit = 0
+				} else {
+					credit = math.Abs(v.Sum)
+					debit = 0
+				}
+				err = tx.Create(&models.TransactionModel{
+					Code:               utils.RandString(10, false),
+					Date:               now,
+					UserID:             &userID,
+					CompanyID:          &report.CompanyID,
+					Credit:             utils.AmountRound(credit, 2),
+					Debit:              utils.AmountRound(debit, 2),
+					Amount:             utils.AmountRound(v.Sum, 2),
+					Description:        v.Name,
+					AccountID:          &profitLossAccount.ID,
+					TransactionRefID:   &closingBookID,
+					TransactionRefType: "closing-book",
+					// IsNetSurplus:       true,
+				}).Error
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// 🧾 Langkah 3: Pindahkan Ikhtisar ke SHU Tahun Berjalan
+		err = tx.Create(&models.TransactionModel{
+			Code:               utils.RandString(10, false),
+			Date:               now,
+			UserID:             &userID,
+			CompanyID:          &report.CompanyID,
+			Debit:              utils.AmountRound(profitLoss.NetProfit, 2),
+			Amount:             utils.AmountRound(profitLoss.NetProfit, 2),
+			Description:        "Ikhtisar Laba Rugi",
+			AccountID:          &profitLossAccount.ID,
+			TransactionRefID:   &closingBookID,
+			TransactionRefType: "closing-book",
+			// IsNetSurplus:       true,
+		}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Create(&models.TransactionModel{
+			Code:               utils.RandString(10, false),
+			Date:               now,
+			UserID:             &userID,
+			CompanyID:          &report.CompanyID,
+			Credit:             utils.AmountRound(profitLoss.NetProfit, 2),
+			Amount:             utils.AmountRound(profitLoss.NetProfit, 2),
+			Description:        description,
+			AccountID:          &retainEarningID,
+			TransactionRefID:   &closingBookID,
+			TransactionRefType: "closing-book",
+			// IsNetSurplus:       true,
+		}).Error
+		if err != nil {
+			return err
+		}
+
+		if taxPayableID != nil && taxPercentage > 0 {
+			err = tx.Create(&models.TransactionModel{
+				Code:               utils.RandString(10, false),
+				Date:               now,
+				UserID:             &userID,
+				CompanyID:          &report.CompanyID,
+				Credit:             utils.AmountRound(profitLoss.NetProfit*taxPercentage/100, 2),
+				Amount:             utils.AmountRound(profitLoss.NetProfit*taxPercentage/100, 2),
+				Description:        "Pajak Penghasilan",
+				AccountID:          taxPayableID,
+				TransactionRefID:   &closingBookID,
+				TransactionRefType: "closing-book",
+				// IsNetSurplus:       true,
+			}).Error
+			if err != nil {
+				return err
+			}
+		}
+
+		cashflow, err := s.GenerateCashFlowReport(models.CashFlowReport{
+			GeneralReport: report,
+			Operating:     cashflowGroupSetting.Operating,
+			Financing:     cashflowGroupSetting.Financing,
+			Investing:     cashflowGroupSetting.Investing,
+		})
+		if err != nil {
+			return err
+		}
+		cashflowByte, _ := json.Marshal(cashflow)
+		cashflowStr := string(cashflowByte)
+
+		plbyte, _ := json.Marshal(profitLoss)
+		profitLossStr := string(plbyte)
+
+		balanceSheet, err := s.GenerateBalanceSheet(report)
+		if err != nil {
+			return err
+		}
+
+		balanceSheetByte, _ := json.Marshal(balanceSheet)
+		balanceSheetStr := string(balanceSheetByte)
+
+		trialBalance, err := s.TrialBalanceReport(report)
+		if err != nil {
+			return err
+		}
+
+		trialBalanceByte, _ := json.Marshal(trialBalance)
+		trialBalanceStr := string(trialBalanceByte)
+
+		err = tx.Create(&models.ClosingBook{
+			BaseModel:        shared.BaseModel{ID: closingBookID},
+			StartDate:        report.StartDate,
+			EndDate:          report.EndDate,
+			ProfitLossData:   &profitLossStr,
+			CashFlowData:     &cashflowStr,
+			BalanceSheetData: &balanceSheetStr,
+			TrialBalanceData: &trialBalanceStr,
+		}).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+}
+func (s *FinanceReportService) TrialBalanceReport(report models.GeneralReport) (*models.TrialBalanceReport, error) {
+	var trialBalanceReport models.TrialBalanceReport = models.TrialBalanceReport{
+		CompanyID: &report.CompanyID,
+		StartDate: report.StartDate,
+		EndDate:   report.EndDate,
+	}
+	types := []models.AccountType{
+		models.ASSET,
+		models.LIABILITY,
+		models.EQUITY,
+		models.REVENUE,
+		models.EXPENSE,
+		models.COST,
+		models.RECEIVABLE,
+		models.CONTRA_REVENUE,
+	}
+
+	for _, v := range types {
+		var accounts []models.AccountModel
+		s.db.Model(&models.AccountModel{}).Where("type = ? AND company_id = ?", v, report.CompanyID).Find(&accounts)
+		for _, account := range accounts {
+			// TRIAL BALANCE
+			trialBalanceDebit, trialBalanceCredit, err := s.GetAccountBalance(account.ID, &report.EndDate, nil)
+			if err != nil {
+				return nil, err
+			}
+			trialBalanceReport.TrialBalance = append(trialBalanceReport.TrialBalance, models.TrialBalanceRow{
+				ID:      account.ID,
+				Debit:   trialBalanceDebit,
+				Credit:  trialBalanceCredit,
+				Name:    account.Name,
+				Code:    account.Code,
+				Balance: s.getTransBalance(&account, trialBalanceDebit, trialBalanceCredit),
+			})
+
+			// ADJUSTMENT
+			adjustmentDebit, adjustmentCredit, err := s.GetAccountBalance(account.ID, &report.StartDate, &report.EndDate)
+			if err != nil {
+				return nil, err
+			}
+
+			trialBalanceReport.Adjustment = append(trialBalanceReport.Adjustment, models.TrialBalanceRow{
+				ID:      account.ID,
+				Debit:   adjustmentDebit,
+				Credit:  adjustmentCredit,
+				Name:    account.Name,
+				Code:    account.Code,
+				Balance: s.getTransBalance(&account, adjustmentDebit, adjustmentCredit),
+			})
+
+			// BALANCE SHEET
+			balanceSheetDebit, balanceSheetCredit, err := s.GetAccountBalance(account.ID, nil, &report.EndDate)
+			if err != nil {
+				return nil, err
+			}
+
+			trialBalanceReport.BalanceSheet = append(trialBalanceReport.BalanceSheet, models.TrialBalanceRow{
+				ID:      account.ID,
+				Debit:   balanceSheetDebit,
+				Credit:  balanceSheetCredit,
+				Name:    account.Name,
+				Code:    account.Code,
+				Balance: s.getTransBalance(&account, balanceSheetDebit, balanceSheetCredit),
+			})
+
+		}
+
+	}
+	return &trialBalanceReport, nil
+}
 func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralReport) (*models.ProfitLossReport, error) {
 	profitLoss := models.ProfitLossReport{}
 	cogsReport, err := s.GenerateCogsReport(report)
@@ -410,15 +674,16 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 		expenseSum += amount.Sum
 	}
 
-	// NET SURPLUS
+	profitLoss.TotalExpense += expenseSum
 
+	// NET SURPLUS
 	equityAccounts := []models.AccountModel{}
-	err = s.db.Where("type IN (?)", []models.AccountType{models.EQUITY}).Find(&equityAccounts).Error
+	err = s.db.Where("type IN (?) AND is_profit_loss_account = ?", []models.AccountType{models.EQUITY}, true).Find(&equityAccounts).Error
 	if err != nil {
 		return nil, err
 	}
-	equitySum := 0.0
-	for _, expense := range equityAccounts {
+	netSurplus := 0.0
+	for _, equity := range equityAccounts {
 		amount := struct {
 			Sum float64 `sql:"sum"`
 		}{}
@@ -426,24 +691,23 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 			Where("date between ? and ?", report.StartDate, report.EndDate).
 			Select("sum(debit-credit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
-			Where("transactions.account_id = ?", expense.ID).
-			Where("transactions.is_net_surplus = ?", true).
+			Where("transactions.account_id = ?", equity.ID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
 		}
-		profitLoss.Profit = append(profitLoss.Profit, models.ProfitLossAccount{
-			ID:   expense.ID,
-			Name: expense.Name,
-			Code: expense.Code,
-			Sum:  -amount.Sum,
+		profitLoss.NetSurplus = append(profitLoss.NetSurplus, models.ProfitLossAccount{
+			ID:   equity.ID,
+			Name: equity.Name,
+			Code: equity.Code,
+			Sum:  amount.Sum,
 		})
-		equitySum += amount.Sum
-		fmt.Printf("%s => %f", expense.Name, amount.Sum)
+		netSurplus += amount.Sum
+		fmt.Printf("%s => %f", equity.Name, amount.Sum)
 	}
-	profitLoss.GrossProfit -= equitySum
 
-	profitLoss.TotalExpense = expenseSum
+	profitLoss.TotalNetSurplus = netSurplus
+
 	profitLoss.NetProfit = profitLoss.GrossProfit - profitLoss.TotalExpense
 	return &profitLoss, nil
 }
@@ -608,7 +872,6 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 			Select("sum(credit-debit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", expense.ID).
-			Where("(transactions.is_net_surplus = ? OR transactions.is_net_surplus IS NULL)", false).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -633,7 +896,14 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 		Sum:  profitLoss.NetProfit,
 		Link: "/profit-loss-statement",
 	})
-	equityAmount += profitLoss.NetProfit
+	if len(profitLoss.NetSurplus) > 0 {
+		balanceSheet.Equity = append(balanceSheet.Equity, models.BalanceSheetAccount{
+			Name: "SHU Dibagikan",
+			Sum:  -profitLoss.TotalNetSurplus,
+			ID:   profitLoss.NetSurplus[len(profitLoss.NetSurplus)-1].ID,
+		})
+	}
+	equityAmount += profitLoss.NetProfit - profitLoss.TotalNetSurplus
 	balanceSheet.TotalEquity = equityAmount
 	balanceSheet.TotalLiabilitiesAndEquity = balanceSheet.TotalLiability + balanceSheet.TotalEquity
 
@@ -785,4 +1055,16 @@ func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGrou
 		total += amount
 	}
 	return groups, total
+}
+
+func (s *FinanceReportService) getTransBalance(account *models.AccountModel, debit, credit float64) float64 {
+	switch account.Type {
+	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
+		return debit - credit
+	case models.LIABILITY, models.EQUITY, models.REVENUE, models.INCOME, models.CONTRA_ASSET, models.CONTRA_EXPENSE:
+		return credit - debit
+	case models.ASSET:
+		return debit - credit
+	}
+	return 0
 }

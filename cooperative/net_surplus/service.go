@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/cooperative/cooperative_setting"
+	"github.com/AMETORY/ametory-erp-modules/cooperative/saving"
 	"github.com/AMETORY/ametory-erp-modules/finance"
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
@@ -23,6 +25,7 @@ type NetSurplusService struct {
 	ctx                       *context.ERPContext
 	cooperativeSettingService *cooperative_setting.CooperativeSettingService
 	financeService            *finance.FinanceService
+	savingService             *saving.SavingService
 }
 
 func NewNetSurplusService(
@@ -30,12 +33,14 @@ func NewNetSurplusService(
 	ctx *context.ERPContext,
 	cooperativeSettingService *cooperative_setting.CooperativeSettingService,
 	financeService *finance.FinanceService,
+	savingService *saving.SavingService,
 ) *NetSurplusService {
 	return &NetSurplusService{
 		db:                        db,
 		ctx:                       ctx,
 		cooperativeSettingService: cooperativeSettingService,
 		financeService:            financeService,
+		savingService:             savingService,
 	}
 }
 
@@ -374,6 +379,149 @@ func (c *NetSurplusService) GenNumber(netSurplus *models.NetSurplusModel, compan
 	return nil
 }
 
+func (n *NetSurplusService) Disbursement(date time.Time, members []models.NetSurplusMember, netSurplus *models.NetSurplusModel, destinationID, userID string, voluntaryAssetID *string) error {
+	return n.db.Transaction(func(tx *gorm.DB) error {
+
+		var accountMandatoryID, accountBusinessProfitID string
+		for _, v := range netSurplus.Distribution {
+			if v.Key == "net_surplus_mandatory_savings" {
+				if v.AccountID == nil {
+					return errors.New("account equity id is required")
+				}
+				accountMandatoryID = *v.AccountID
+			}
+
+			if v.Key == "net_surplus_business_profit" {
+				if v.AccountID == nil {
+					return errors.New("account equity id is required")
+				}
+				accountBusinessProfitID = *v.AccountID
+			}
+
+		}
+		for i, v := range members {
+			if v.Status == "DISBURSED" {
+				continue
+			}
+			mandatoryID := utils.Uuid()
+			businessProfitID := utils.Uuid()
+			assetID := utils.Uuid()
+
+			// MANDATORY SAVINGS
+			if v.NetSurplusMandatorySavingsAllocation > 0 {
+				err := tx.Create(&models.TransactionModel{
+					Code:                        utils.RandString(10, false),
+					BaseModel:                   shared.BaseModel{ID: mandatoryID},
+					Date:                        date,
+					UserID:                      &userID,
+					CompanyID:                   netSurplus.CompanyID,
+					Debit:                       utils.AmountRound(v.NetSurplusMandatorySavingsAllocation, 2),
+					Amount:                      utils.AmountRound(v.NetSurplusMandatorySavingsAllocation, 2),
+					Description:                 fmt.Sprintf("Pencairan SHU Jasa Modal [%s]: %s", netSurplus.NetSurplusNumber, v.FullName),
+					NetSurplusID:                &netSurplus.ID,
+					AccountID:                   &accountMandatoryID,
+					TransactionRefID:            &assetID,
+					TransactionRefType:          "transaction",
+					TransactionSecondaryRefID:   &netSurplus.ID,
+					TransactionSecondaryRefType: "net_surplus_mandatory_savings",
+				}).Error
+				if err != nil {
+					return err
+				}
+			}
+			// BUSINESS PROFIT
+			if v.NetSurplusBusinessProfitAllocation > 0 {
+				err := tx.Create(&models.TransactionModel{
+					Code:                        utils.RandString(10, false),
+					BaseModel:                   shared.BaseModel{ID: businessProfitID},
+					Date:                        date,
+					UserID:                      &userID,
+					CompanyID:                   netSurplus.CompanyID,
+					Debit:                       utils.AmountRound(v.NetSurplusBusinessProfitAllocation, 2),
+					Amount:                      utils.AmountRound(v.NetSurplusBusinessProfitAllocation, 2),
+					Description:                 fmt.Sprintf("Pencairan SHU Jasa Usaha [%s]: %s", netSurplus.NetSurplusNumber, v.FullName),
+					NetSurplusID:                &netSurplus.ID,
+					AccountID:                   &accountBusinessProfitID,
+					TransactionRefID:            &assetID,
+					TransactionRefType:          "transaction",
+					TransactionSecondaryRefID:   &netSurplus.ID,
+					TransactionSecondaryRefType: "net_surplus_business_profit",
+				}).Error
+				if err != nil {
+					return err
+				}
+			}
+
+			// DISBURSEMENT
+			if v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation > 0 {
+				err := tx.Create(&models.TransactionModel{
+					Code:                        utils.RandString(10, false),
+					BaseModel:                   shared.BaseModel{ID: businessProfitID},
+					Date:                        date,
+					UserID:                      &userID,
+					CompanyID:                   netSurplus.CompanyID,
+					Credit:                      utils.AmountRound(v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation, 2),
+					Amount:                      utils.AmountRound(v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation, 2),
+					Description:                 fmt.Sprintf("Pencairan SHU [%s]: %s", netSurplus.NetSurplusNumber, v.FullName),
+					NetSurplusID:                &netSurplus.ID,
+					AccountID:                   &destinationID,
+					TransactionRefID:            &assetID,
+					TransactionRefType:          "transaction",
+					TransactionSecondaryRefID:   &netSurplus.ID,
+					TransactionSecondaryRefType: "net-surplus",
+				}).Error
+				if err != nil {
+					return err
+				}
+
+				if voluntaryAssetID != nil {
+					saving := models.SavingModel{
+						CompanyID:            netSurplus.CompanyID,
+						UserID:               &userID,
+						CooperativeMemberID:  &v.ID,
+						AccountDestinationID: voluntaryAssetID,
+						SavingType:           "VOLUNTARY",
+						Amount:               utils.AmountRound(v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation, 2),
+						Notes:                fmt.Sprintf("Konversi SHU [%s]: %s", netSurplus.NetSurplusNumber, v.FullName),
+						Date:                 &date,
+					}
+
+					if err := tx.Create(&saving).Error; err != nil {
+						return err
+					}
+					var company models.CompanyModel
+					err := tx.Where("id = ?", netSurplus.CompanyID).First(&company).Error
+					if err != nil {
+						return err
+					}
+					saving.Company = &company
+
+					err = n.savingService.CreateTransaction(saving, true)
+					if err != nil {
+						return err
+					}
+				}
+			}
+
+			v.Status = "DISBURSED"
+			members[i] = v
+		}
+
+		netSurplus.Members = members
+		b, err := json.Marshal(members)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Model(&netSurplus).Where("id = ?", netSurplus.ID).Updates(map[string]any{
+			"member_data": string(b),
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
 func (n *NetSurplusService) Distribute(netSurplus *models.NetSurplusModel, sourceID string, allocations []models.NetSurplusAllocation, userID string) error {
 
 	if netSurplus.Status == "DISTRIBUTED" {
@@ -398,11 +546,117 @@ func (n *NetSurplusService) Distribute(netSurplus *models.NetSurplusModel, sourc
 		}
 		assetID := utils.Uuid()
 		totalNetSurplus := 0.0
+		// CLOSING BOOK RETAIN EARNING
+		var profitLossAccount models.AccountModel
+		err = n.db.Where("is_profit_loss_account = ? and company_id = ?", true, netSurplus.CompanyID).First(&profitLossAccount).Error
+		if err != nil {
+			return err
+		}
+
+		// 🧾 Langkah 1: Menutup Akun Pendapatan
+		for _, v := range netSurplus.ProfitLoss.Profit {
+			if v.Sum != 0 {
+				var debit, credit float64
+				if v.Sum > 0 {
+					credit = v.Sum
+					debit = 0
+				} else {
+					debit = math.Abs(v.Sum)
+					credit = 0
+				}
+				err = tx.Create(&models.TransactionModel{
+					Code:               utils.RandString(10, false),
+					Date:               now,
+					UserID:             &userID,
+					CompanyID:          netSurplus.CompanyID,
+					Credit:             utils.AmountRound(credit, 2),
+					Debit:              utils.AmountRound(debit, 2),
+					Amount:             utils.AmountRound(v.Sum, 2),
+					Description:        fmt.Sprintf("Ikhtisar Laba Rugi SHU [%s] %s", netSurplus.NetSurplusNumber, v.Name),
+					NetSurplusID:       &netSurplus.ID,
+					AccountID:          &profitLossAccount.ID,
+					TransactionRefID:   &netSurplus.ID,
+					TransactionRefType: "net-surplus",
+					// IsNetSurplus:       true,
+				}).Error
+				if err != nil {
+					return err
+				}
+			}
+		}
+		// 🧾 Langkah 2: Menutup Akun Beban
+		for _, v := range netSurplus.ProfitLoss.Loss {
+			if v.Sum != 0 {
+				var debit, credit float64
+				if v.Sum > 0 {
+					debit = v.Sum
+					credit = 0
+				} else {
+					credit = math.Abs(v.Sum)
+					debit = 0
+				}
+				err = tx.Create(&models.TransactionModel{
+					Code:               utils.RandString(10, false),
+					Date:               now,
+					UserID:             &userID,
+					CompanyID:          netSurplus.CompanyID,
+					Credit:             utils.AmountRound(credit, 2),
+					Debit:              utils.AmountRound(debit, 2),
+					Amount:             utils.AmountRound(v.Sum, 2),
+					Description:        fmt.Sprintf("Ikhtisar Laba Rugi SHU [%s] %s", netSurplus.NetSurplusNumber, v.Name),
+					NetSurplusID:       &netSurplus.ID,
+					AccountID:          &profitLossAccount.ID,
+					TransactionRefID:   &netSurplus.ID,
+					TransactionRefType: "net-surplus",
+					// IsNetSurplus:       true,
+				}).Error
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		//🧾 Langkah 3: Pindahkan Ikhtisar ke SHU Tahun Berjalan
+		err = tx.Create(&models.TransactionModel{
+			Code:               utils.RandString(10, false),
+			Date:               now,
+			UserID:             &userID,
+			CompanyID:          netSurplus.CompanyID,
+			Debit:              utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
+			Amount:             utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
+			Description:        fmt.Sprintf("Ikhtisar Laba Rugi SHU : %s", netSurplus.NetSurplusNumber),
+			NetSurplusID:       &netSurplus.ID,
+			AccountID:          &profitLossAccount.ID,
+			TransactionRefID:   &netSurplus.ID,
+			TransactionRefType: "net-surplus",
+			// IsNetSurplus:       true,
+		}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Create(&models.TransactionModel{
+			Code:               utils.RandString(10, false),
+			Date:               now,
+			UserID:             &userID,
+			CompanyID:          netSurplus.CompanyID,
+			Credit:             utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
+			Amount:             utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
+			Description:        fmt.Sprintf("SHU Tahun Berjalan : %s", netSurplus.NetSurplusNumber),
+			NetSurplusID:       &netSurplus.ID,
+			AccountID:          &sourceID,
+			TransactionRefID:   &netSurplus.ID,
+			TransactionRefType: "net-surplus",
+			// IsNetSurplus:       true,
+		}).Error
+		if err != nil {
+			return err
+		}
 		// CREATE TRANSACTION NET SURPLUS DISTRIBUTION
 		for _, v := range allocations {
-			if v.AccountCashID == nil {
-				return errors.New("account cash id is required")
-			}
+			// if v.AccountCashID == nil {
+			// 	return errors.New("account cash id is required")
+			// }
+
 			equityID := utils.Uuid()
 
 			err := tx.Create(&models.TransactionModel{
@@ -434,9 +688,9 @@ func (n *NetSurplusService) Distribute(netSurplus *models.NetSurplusModel, sourc
 			Date:               now,
 			UserID:             &userID,
 			CompanyID:          netSurplus.CompanyID,
-			Debit:              utils.AmountRound(totalNetSurplus, 2),
-			Amount:             utils.AmountRound(totalNetSurplus, 2),
-			Description:        fmt.Sprintf("Pembagian SHU tahun berjalan : %s", netSurplus.NetSurplusNumber),
+			Debit:              utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
+			Amount:             utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
+			Description:        fmt.Sprintf("SHU Tahun Berjalan : %s", netSurplus.NetSurplusNumber),
 			NetSurplusID:       &netSurplus.ID,
 			AccountID:          &sourceID,
 			TransactionRefID:   &netSurplus.ID,

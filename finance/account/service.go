@@ -144,13 +144,28 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 	// GET COGS ACCOUNT
 	if request.Header.Get("ID-Company") != "" {
 		companyID := request.Header.Get("ID-Company")
+		var profitLossAccount models.AccountModel
+		err := s.db.Where("is_profit_loss_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&profitLossAccount).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err := s.db.Create(&models.AccountModel{
+				Code:                "32001",
+				CompanyID:           &companyID,
+				Name:                "Ikhtisar Laba Rugi",
+				Type:                models.EQUITY,
+				Category:            constants.ACCOUNT_PROFIT_LOSS,
+				IsProfitLossAccount: true,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+		}
 		var cogsAccount models.AccountModel
-		err := s.db.Where("is_cogs_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&cogsAccount).Error
+		err = s.db.Where("is_cogs_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&cogsAccount).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			err := s.db.Create(&models.AccountModel{
 				Code:          "61003",
 				CompanyID:     &companyID,
-				Name:          "Beban Pokok Penjualan",
+				Name:          "Biaya Pokok Penjualan",
 				Type:          models.COST,
 				Category:      constants.CATEGORY_COST_OF_REVENUE,
 				IsCogsAccount: true,

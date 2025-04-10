@@ -350,7 +350,7 @@ func (s *LoanApplicationService) GetLoans(request http.Request, search string, m
 	pg := paginate.New()
 	stmt := s.db.Preload("Member")
 	if search != "" {
-		stmt = stmt.Where("description ILIKE ?",
+		stmt = stmt.Where("remarks ILIKE ?",
 			"%"+search+"%",
 		)
 	}

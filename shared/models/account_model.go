@@ -60,6 +60,7 @@ type AccountModel struct {
 	IsCogsAccount         bool          `json:"is_cogs_account,omitempty"`
 	IsDiscount            bool          `json:"is_discount,omitempty"`
 	IsReturn              bool          `json:"is_return,omitempty"`
+	IsProfitLossAccount   bool          `json:"is_profit_loss_account,omitempty"`
 	// Transactions          []Transaction `gorm:"constraint:OnDelete:CASCADE;"`
 }
 

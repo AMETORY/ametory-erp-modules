@@ -62,6 +62,10 @@ func (s *FinanceService) Migrate() error {
 		log.Println("ERROR TAX MIGRATE", err)
 		return err
 	}
+	if err := report.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR REPORT MIGRATE", err)
+		return err
+	}
 	// if err := transaction.Migrate(s.TransactionService.DB()); err != nil {
 	// 	return err
 	// }

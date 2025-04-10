@@ -323,7 +323,7 @@ func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionMo
 	// transaction.IsExpense = false
 	// transaction.IsIncome = false
 
-	if accountType == models.EXPENSE || accountType == models.COST {
+	if accountType == models.EXPENSE {
 		transaction.IsExpense = true
 	}
 	if accountType == models.REVENUE || accountType == models.INCOME {
