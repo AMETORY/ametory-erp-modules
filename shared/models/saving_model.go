@@ -26,6 +26,7 @@ type SavingModel struct {
 	Notes                string                 `json:"notes" example:"notes"`
 	Date                 *time.Time             `json:"date" bson:"date"`
 	Transactions         []TransactionModel     `gorm:"foreignKey:SavingID;references:ID" json:"transactions"`
+	SavingNumber         string                 `gorm:"type:varchar(50)" json:"saving_number"` //'001/2023/01'
 }
 
 func (s *SavingModel) BeforeCreate(tx *gorm.DB) error {

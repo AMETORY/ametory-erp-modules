@@ -156,8 +156,9 @@ func (s *SavingService) GetSavingByID(id string, memberID *string) (*models.Savi
 	}
 	return &loan, nil
 }
-func (c *SavingService) CreateSaving(loan *models.SavingModel) error {
-	return c.ctx.DB.Create(loan).Error
+func (c *SavingService) CreateSaving(saving *models.SavingModel) error {
+	c.GenNumber(saving, saving.CompanyID)
+	return c.ctx.DB.Create(saving).Error
 }
 
 func (c *SavingService) UpdateSaving(id string, loan *models.SavingModel) error {
@@ -170,4 +171,28 @@ func (c *SavingService) DeleteSaving(id string) error {
 		return err
 	}
 	return c.ctx.DB.Delete(&models.SavingModel{}, "id = ?", id).Error
+}
+
+func (c *SavingService) GenNumber(saving *models.SavingModel, companyID *string) error {
+	setting, err := c.cooperativeSettingService.GetSetting(companyID)
+	if err != nil {
+		return err
+	}
+	lastLoan := models.SavingModel{}
+	nextNumber := ""
+	data := shared.InvoiceBillSettingModel{
+		StaticCharacter:       setting.SavingStaticCharacter,
+		NumberFormat:          setting.NumberFormat,
+		AutoNumericLength:     setting.AutoNumericLength,
+		RandomNumericLength:   setting.RandomNumericLength,
+		RandomCharacterLength: setting.RandomCharacterLength,
+	}
+	if err := c.db.Where("company_id = ?", companyID).Limit(1).Order("created_at desc").Find(&lastLoan).Error; err != nil {
+		nextNumber = shared.GenerateInvoiceBillNumber(data, "00")
+	} else {
+		nextNumber = shared.ExtractNumber(data, lastLoan.SavingNumber)
+	}
+
+	saving.SavingNumber = nextNumber
+	return nil
 }

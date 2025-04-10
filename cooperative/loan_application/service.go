@@ -443,8 +443,14 @@ func (c *LoanApplicationService) UpdateLoan(id string, loan *models.LoanApplicat
 	return nil
 }
 
-func (c *LoanApplicationService) DeleteLoan(id string) error {
-	return c.db.Delete(&models.LoanApplicationModel{}, "id = ?", id).Error
+func (s *LoanApplicationService) DeleteLoan(id string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Where("loan_application_id = ?", id).Delete(&models.TransactionModel{}).Error
+		if err != nil {
+			return err
+		}
+		return tx.Where("id = ?", id).Delete(&models.LoanApplicationModel{}).Error
+	})
 }
 
 func (c *LoanApplicationService) ApprovalLoan(id, userID, status, remarks string) error {

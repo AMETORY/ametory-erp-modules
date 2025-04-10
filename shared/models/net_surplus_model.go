@@ -1,33 +1,37 @@
 package models
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type NetSurplusModel struct {
 	shared.BaseModel
-	CompanyID        *string                `gorm:"size:36" json:"company_id"`
-	UserID           *string                `gorm:"size:36" json:"user_id"`
-	StartDate        time.Time              `json:"start_date"`
-	EndDate          time.Time              `json:"end_date"`
-	Date             time.Time              `json:"date"`
+	CompanyID        *string                `gorm:"size:36" json:"company_id,omitempty"`
+	UserID           *string                `gorm:"size:36" json:"user_id,omitempty"`
+	StartDate        time.Time              `json:"start_date,omitempty"`
+	EndDate          time.Time              `json:"end_date,omitempty"`
+	Date             time.Time              `json:"date,omitempty"`
 	Description      string                 `json:"description"`
 	NetSurplusTotal  float64                `json:"net_surplus_total"`
-	Distribution     []NetSurplusAllocation `json:"distribution" gorm:"-"` // Alokasi distribusi
-	Members          []NetSurplusMember     `json:"members" gorm:"-"`      // Alokasi distribusi
-	DistributionData string                 `gorm:"type:JSON"`
-	MemberData       string                 `gorm:"type:JSON"`
-	ProfitLossData   string                 `gorm:"type:JSON"`
-	ProfitLoss       ProfitLossReport       `gorm:"-"`
-	Transactions     []TransactionModel     `json:"transactions" gorm:"-"`
+	Distribution     []NetSurplusAllocation `json:"distribution,omitempty" gorm:"-"` // Alokasi distribusi
+	Members          []NetSurplusMember     `json:"members,omitempty" gorm:"-"`      // Alokasi distribusi
+	DistributionData string                 `gorm:"type:JSON" json:"distribution_data,omitempty"`
+	MemberData       string                 `gorm:"type:JSON" json:"member_data,omitempty"`
+	ProfitLossData   *string                `gorm:"type:JSON" json:"profit_loss_data,omitempty"`
+	ProfitLoss       *ProfitLossReport      `gorm:"-" json:"profit_loss"`
+	Transactions     []TransactionModel     `json:"transactions,omitempty" gorm:"-"`
 	Status           string                 `json:"status"`
-	SavingsTotal     float64
-	LoanTotal        float64
-	TransactionTotal float64
+	SavingsTotal     float64                `json:"savings_total"`
+	LoanTotal        float64                `json:"loan_total"`
+	TransactionTotal float64                `json:"transaction_total"`
+	NetSurplusNumber string                 `json:"net_surplus_number"`
 }
 
 func (NetSurplusModel) TableName() string {
@@ -41,20 +45,78 @@ func (n *NetSurplusModel) BeforeCreate(tx *gorm.DB) error {
 	}
 	n.DistributionData = "[]"
 	n.MemberData = "[]"
-	n.ProfitLossData = "{}"
+	profitLossData := "{}"
+	n.ProfitLossData = &profitLossData
 	n.Status = "DRAFT"
 	return nil
 }
 
+func (n *NetSurplusModel) AfterFind(tx *gorm.DB) error {
+	var distributions []NetSurplusAllocation
+	if err := json.Unmarshal([]byte(n.DistributionData), &distributions); err != nil {
+		return err
+	}
+	for i, v := range distributions {
+		if v.AccountID != nil {
+			var account AccountModel
+			if err := tx.Model(&AccountModel{}).Where("id = ?", *v.AccountID).Find(&account).Error; err != nil {
+				return err
+			}
+			v.Account = &account
+		}
+		if v.AccountCashID != nil {
+			var account AccountModel
+			if err := tx.Model(&AccountModel{}).Where("id = ?", *v.AccountCashID).Find(&account).Error; err != nil {
+				return err
+			}
+			v.AccountCash = &account
+		}
+		if v.AccountExpenseID != nil {
+			var account AccountModel
+			if err := tx.Model(&AccountModel{}).Where("id = ?", *v.AccountExpenseID).Find(&account).Error; err != nil {
+				return err
+			}
+			v.AccountExpense = &account
+		}
+		distributions[i] = v
+	}
+	fmt.Println("DISTRIBUTIONS")
+	utils.LogJson(distributions)
+	n.Distribution = distributions
+
+	var members []NetSurplusMember
+	if err := json.Unmarshal([]byte(n.MemberData), &members); err != nil {
+		return err
+	}
+	n.Members = members
+
+	if n.ProfitLossData != nil {
+		var profitLoss ProfitLossReport
+		if err := json.Unmarshal([]byte(*n.ProfitLossData), &profitLoss); err != nil {
+			return err
+		}
+		n.ProfitLoss = &profitLoss
+	}
+
+	n.ProfitLossData = nil
+	n.MemberData = ""
+	n.DistributionData = ""
+
+	return nil
+}
+
 type NetSurplusAllocation struct {
-	Key              string  `json:"key"`
-	Name             string  `json:"name"`       // Nama alokasi (misalnya, "Simpanan Anggota", "Dana Sosial")
-	Percentage       float64 `json:"percentage"` // Persentase alokasi
-	Amount           float64 `json:"amount"`     // Jumlah alokasi (dihitung berdasarkan persentase)
-	AccountID        *string `json:"account_id"`
-	AccountCashID    *string `json:"account_cash_id"`
-	AccountExpenseID *string `json:"account_expense_id"`
-	Balance          float64 `json:"balance"`
+	Key              string        `json:"key"`
+	Name             string        `json:"name"`       // Nama alokasi (misalnya, "Simpanan Anggota", "Dana Sosial")
+	Percentage       float64       `json:"percentage"` // Persentase alokasi
+	Amount           float64       `json:"amount"`     // Jumlah alokasi (dihitung berdasarkan persentase)
+	AccountID        *string       `json:"account_id"`
+	Account          *AccountModel `json:"account"`
+	AccountCashID    *string       `json:"account_cash_id"`
+	AccountCash      *AccountModel `json:"account_cash"`
+	AccountExpenseID *string       `json:"account_expense_id"`
+	AccountExpense   *AccountModel `json:"account_expense"`
+	Balance          float64       `json:"balance"`
 }
 
 type NetSurplusMember struct {

@@ -55,6 +55,8 @@ type CooperativeSettingModel struct {
 	InterestRatePerMonth                float64       `json:"interest_rate_per_month"`
 	ExpectedProfitRatePerMonth          float64       `json:"expected_profit_rate_per_month"`
 	IsIslamic                           bool          `json:"is_islamic"`
+	SavingStaticCharacter               string        `json:"saving_static_character"`
+	NetSurplusStaticCharacter           string        `json:"net_surplus_static_character"`
 }
 
 func (c *CooperativeSettingModel) BeforeCreate(tx *gorm.DB) error {
