@@ -157,6 +157,13 @@ func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, curre
 					item.PurchaseRef = &purchaseRef
 				}
 			}
+			if item.TransactionRefType == "net-surplus" {
+				var netSurplusRef models.NetSurplusModel
+				err := s.db.Where("id = ?", item.TransactionRefID).First(&netSurplusRef).Error
+				if err == nil {
+					item.NetSurplusRef = &netSurplusRef
+				}
+			}
 		}
 		curBalance := s.getBalanceAmount(item)
 		balance += curBalance
@@ -403,6 +410,39 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 		expenseSum += amount.Sum
 	}
 
+	// NET SURPLUS
+
+	equityAccounts := []models.AccountModel{}
+	err = s.db.Where("type IN (?)", []models.AccountType{models.EQUITY}).Find(&equityAccounts).Error
+	if err != nil {
+		return nil, err
+	}
+	equitySum := 0.0
+	for _, expense := range equityAccounts {
+		amount := struct {
+			Sum float64 `sql:"sum"`
+		}{}
+		err = s.db.Model(&models.TransactionModel{}).
+			Where("date between ? and ?", report.StartDate, report.EndDate).
+			Select("sum(debit-credit) as sum").
+			Joins("JOIN accounts ON accounts.id = transactions.account_id").
+			Where("transactions.account_id = ?", expense.ID).
+			Where("transactions.is_net_surplus = ?", true).
+			Scan(&amount).Error
+		if err != nil {
+			return nil, err
+		}
+		profitLoss.Profit = append(profitLoss.Profit, models.ProfitLossAccount{
+			ID:   expense.ID,
+			Name: expense.Name,
+			Code: expense.Code,
+			Sum:  -amount.Sum,
+		})
+		equitySum += amount.Sum
+		fmt.Printf("%s => %f", expense.Name, amount.Sum)
+	}
+	profitLoss.GrossProfit -= equitySum
+
 	profitLoss.TotalExpense = expenseSum
 	profitLoss.NetProfit = profitLoss.GrossProfit - profitLoss.TotalExpense
 	return &profitLoss, nil
@@ -568,6 +608,7 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 			Select("sum(credit-debit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", expense.ID).
+			Where("(transactions.is_net_surplus = ? OR transactions.is_net_surplus IS NULL)", false).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err

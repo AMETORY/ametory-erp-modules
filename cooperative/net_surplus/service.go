@@ -376,30 +376,43 @@ func (c *NetSurplusService) GenNumber(netSurplus *models.NetSurplusModel, compan
 
 func (n *NetSurplusService) Distribute(netSurplus *models.NetSurplusModel, sourceID string, allocations []models.NetSurplusAllocation, userID string) error {
 
+	if netSurplus.Status == "DISTRIBUTED" {
+		return errors.New("net surplus already distributed")
+	}
+
 	now := time.Now()
 	b, err := json.Marshal(allocations)
 	if err != nil {
 		return err
 	}
 	return n.db.Transaction(func(tx *gorm.DB) error {
-		netSurplus.DistributionData = string(b)
-		netSurplus.Status = "DISTRIBUTED"
-		if err := tx.Save(&n).Error; err != nil {
+		err := tx.Where("net_surplus_id = ?", netSurplus.ID).Unscoped().Delete(&models.TransactionModel{}).Error
+		if err != nil {
 			return err
 		}
+		if err := tx.Model(&netSurplus).Where("id = ?", netSurplus.ID).Updates(map[string]any{
+			"status":            "DISTRIBUTED",
+			"distribution_data": string(b),
+		}).Error; err != nil {
+			return err
+		}
+		assetID := utils.Uuid()
+		totalNetSurplus := 0.0
 		// CREATE TRANSACTION NET SURPLUS DISTRIBUTION
 		for _, v := range allocations {
 			if v.AccountCashID == nil {
 				return errors.New("account cash id is required")
 			}
 			equityID := utils.Uuid()
-			assetID := utils.Uuid()
+
 			err := tx.Create(&models.TransactionModel{
+				Code:                        utils.RandString(10, false),
 				BaseModel:                   shared.BaseModel{ID: equityID},
 				Date:                        now,
 				UserID:                      &userID,
 				CompanyID:                   netSurplus.CompanyID,
 				Credit:                      utils.AmountRound(v.Amount, 2),
+				Amount:                      utils.AmountRound(v.Amount, 2),
 				Description:                 fmt.Sprintf("Distribusi Alokasi SHU : %s", v.Name),
 				NetSurplusID:                &netSurplus.ID,
 				AccountID:                   v.AccountID,
@@ -411,24 +424,27 @@ func (n *NetSurplusService) Distribute(netSurplus *models.NetSurplusModel, sourc
 			if err != nil {
 				return err
 			}
-			err = tx.Create(&models.TransactionModel{
-				BaseModel:                   shared.BaseModel{ID: assetID},
-				Date:                        now,
-				UserID:                      &userID,
-				CompanyID:                   netSurplus.CompanyID,
-				Credit:                      utils.AmountRound(v.Amount, 2),
-				Description:                 fmt.Sprintf("Distribusi Alokasi SHU : %s", v.Name),
-				NetSurplusID:                &netSurplus.ID,
-				AccountID:                   v.AccountCashID,
-				TransactionRefID:            &equityID,
-				TransactionRefType:          "transaction",
-				TransactionSecondaryRefID:   &netSurplus.ID,
-				TransactionSecondaryRefType: v.Key,
-			}).Error
-			if err != nil {
-				return err
-			}
+			totalNetSurplus += utils.AmountRound(v.Amount, 2)
 
+		}
+
+		err = tx.Create(&models.TransactionModel{
+			Code:               utils.RandString(10, false),
+			BaseModel:          shared.BaseModel{ID: assetID},
+			Date:               now,
+			UserID:             &userID,
+			CompanyID:          netSurplus.CompanyID,
+			Debit:              utils.AmountRound(totalNetSurplus, 2),
+			Amount:             utils.AmountRound(totalNetSurplus, 2),
+			Description:        fmt.Sprintf("Pembagian SHU tahun berjalan : %s", netSurplus.NetSurplusNumber),
+			NetSurplusID:       &netSurplus.ID,
+			AccountID:          &sourceID,
+			TransactionRefID:   &netSurplus.ID,
+			TransactionRefType: "net-surplus",
+			IsNetSurplus:       true,
+		}).Error
+		if err != nil {
+			return err
 		}
 		return nil
 	})
