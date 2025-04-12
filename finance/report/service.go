@@ -350,6 +350,14 @@ func (s *FinanceReportService) CreateClosingBook(closingBook *models.ClosingBook
 	return s.db.Create(closingBook).Error
 }
 
+func (s *FinanceReportService) GetClosingBookByID(closingBookID string) (*models.ClosingBook, error) {
+	var closingBook models.ClosingBook
+	err := s.db.Where("id = ?", closingBookID).First(&closingBook).Error
+	if err != nil {
+		return nil, err
+	}
+	return &closingBook, nil
+}
 func (s *FinanceReportService) GetClosingBook(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
