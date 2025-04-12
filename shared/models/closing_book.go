@@ -19,11 +19,13 @@ type ClosingBook struct {
 	ProfitLossData    *string              `gorm:"type:JSON" json:"profit_loss_data,omitempty"`
 	ProfitLoss        *ProfitLossReport    `gorm:"-" json:"profit_loss"`
 	BalanceSheetData  *string              `gorm:"type:JSON" json:"balance_sheet_data,omitempty"`
-	BalanceSheet      *BalanceSheet        `gorm:"type:JSON" json:"balance_sheet"`
+	BalanceSheet      *BalanceSheet        `gorm:"-" json:"balance_sheet"`
 	CashFlowData      *string              `gorm:"type:JSON" json:"cash_flow_data,omitempty"`
-	CashFlow          *CashFlowReport      `gorm:"type:JSON" json:"cash_flow"`
+	CashFlow          *CashFlowReport      `gorm:"-" json:"cash_flow"`
 	TrialBalanceData  *string              `gorm:"type:JSON" json:"trial_balance_data,omitempty"`
-	TrialBalance      *TrialBalanceReport  `gorm:"type:JSON" json:"trial_balance"`
+	TrialBalance      *TrialBalanceReport  `gorm:"-" json:"trial_balance"`
 	CapitalChangeData *string              `gorm:"type:JSON" json:"capital_change_data,omitempty"`
-	CapitalChange     *CapitalChangeReport `gorm:"type:JSON" json:"capital_change"`
+	CapitalChange     *CapitalChangeReport `gorm:"-" json:"capital_change"`
+	Transactions      []TransactionModel   `json:"transactions,omitempty" gorm:"-"`
+	TransactionData   *string              `gorm:"type:JSON" json:"transaction_data,omitempty"`
 }

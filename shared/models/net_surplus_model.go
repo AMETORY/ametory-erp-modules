@@ -32,6 +32,8 @@ type NetSurplusModel struct {
 	LoanTotal        float64                `json:"loan_total"`
 	TransactionTotal float64                `json:"transaction_total"`
 	NetSurplusNumber string                 `json:"net_surplus_number"`
+	ClosingBookID    *string                `gorm:"size:36" json:"closing_book_id,omitempty"`
+	ClosingBook      *ClosingBook           `gorm:"foreignKey:ClosingBookID;constraint:OnDelete:SET NULL" json:"closing_book,omitempty"`
 }
 
 func (NetSurplusModel) TableName() string {

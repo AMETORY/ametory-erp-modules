@@ -383,14 +383,30 @@ func (s *FinanceReportService) GenerateClosingBook(
 	description string,
 	retainEarningID string,
 	taxPayableID *string,
+	taxExpenseID *string,
 	taxPercentage float64,
 ) error {
 	if cashflowGroupSetting == nil {
 		return errors.New("cashflow group setting is required")
 	}
+
+	var transactions []models.TransactionModel
+	// 🧾 Langkah 1: Menutup Akun Pendapatan
+	err := s.db.Where("transaction_ref_id = ?", closingBook.ID).Unscoped().Delete(&models.TransactionModel{}).Error
+	if err != nil {
+		return err
+	}
+
+	closingBook.ProfitLossData = nil
+	closingBook.CashFlowData = nil
+	closingBook.BalanceSheetData = nil
+	closingBook.TrialBalanceData = nil
+	closingBook.CapitalChangeData = nil
+	closingBook.TransactionData = nil
+
 	// CLOSING BOOK RETAIN EARNING
 	var profitLossAccount models.AccountModel
-	err := s.db.Where("is_profit_loss_account = ? and company_id = ?", true, closingBook.CompanyID).First(&profitLossAccount).Error
+	err = s.db.Where("is_profit_loss_account = ? and company_id = ?", true, closingBook.CompanyID).First(&profitLossAccount).Error
 	if err != nil {
 		return err
 	}
@@ -399,6 +415,12 @@ func (s *FinanceReportService) GenerateClosingBook(
 		StartDate: closingBook.StartDate,
 		EndDate:   closingBook.EndDate,
 	}
+	var cogsClosingAccount models.AccountModel
+	err = s.db.Where("is_cogs_closing_account = ? and company_id = ? AND name = ?", true, closingBook.CompanyID, "HARGA POKOK PENJUALAN").First(&cogsClosingAccount).Error
+	if err != nil {
+		return errors.New("cogs account not found")
+	}
+
 	profitLoss, err := s.GenerateProfitLossReport(report)
 	if err != nil {
 		return err
@@ -407,118 +429,310 @@ func (s *FinanceReportService) GenerateClosingBook(
 	closingBookID := closingBook.ID
 	return s.db.Transaction(func(tx *gorm.DB) error {
 
-		// 🧾 Langkah 1: Menutup Akun Pendapatan
+		// Pengakuan Beban Pajak dan Kewajiban Pajak:
+		taxTotal := 0.0
+		netProfit := profitLoss.NetProfit
+		if taxPayableID != nil && taxExpenseID != nil && taxPercentage > 0 {
+			taxTotal = profitLoss.NetProfit * taxPercentage / 100
+			netProfit -= taxTotal
+		}
+
+		fmt.Println("profitLoss.NetProfit", profitLoss.NetProfit)
+		fmt.Println("taxTotal", taxTotal)
+		fmt.Println("taxPercentage", taxPercentage)
+		fmt.Println("taxPayableID", *taxPayableID)
+		fmt.Println("taxExpenseID", *taxExpenseID)
+
+		// saleAmount := 0.0
+		// 1. Tutup akun Pendapatan
 		for _, v := range profitLoss.Profit {
-			if v.Sum != 0 {
-				var debit, credit float64
-				if v.Sum > 0 {
-					credit = v.Sum
-					debit = 0
-				} else {
-					debit = math.Abs(v.Sum)
-					credit = 0
-				}
-				err = tx.Create(&models.TransactionModel{
-					Code:               utils.RandString(10, false),
-					Date:               now,
-					UserID:             &userID,
-					CompanyID:          closingBook.CompanyID,
-					Credit:             utils.AmountRound(credit, 2),
-					Debit:              utils.AmountRound(debit, 2),
-					Amount:             utils.AmountRound(v.Sum, 2),
-					Description:        v.Name,
-					AccountID:          &profitLossAccount.ID,
-					TransactionRefID:   &closingBookID,
-					TransactionRefType: "closing-book",
-					// IsNetSurplus:       true,
-				}).Error
-				if err != nil {
-					return err
+			if !v.IsCogs {
+				if v.Sum != 0 {
+					var debit, credit float64
+					if v.Sum > 0 {
+						debit = math.Abs(v.Sum)
+						credit = 0
+					} else {
+						credit = math.Abs(v.Sum)
+						debit = 0
+					}
+					accountID := v.ID
+					incomeTrans := models.TransactionModel{
+						Code:               utils.RandString(10, false),
+						Date:               now,
+						UserID:             &userID,
+						CompanyID:          closingBook.CompanyID,
+						Credit:             utils.AmountRound(credit, 2),
+						Debit:              utils.AmountRound(debit, 2),
+						Amount:             utils.AmountRound(math.Abs(v.Sum), 2),
+						Description:        v.Name,
+						AccountID:          &accountID,
+						TransactionRefID:   &closingBookID,
+						TransactionRefType: "closing-book",
+						Notes:              "1. Tutup akun Pendapatan & 2. Tutup akun Retur Penjualan",
+						// IsNetSurplus:       true,
+					}
+					transactions = append(transactions, incomeTrans)
+					err = tx.Create(&incomeTrans).Error
+					if err != nil {
+						return err
+					}
+					incomeTrans2 := models.TransactionModel{
+						Code:               utils.RandString(10, false),
+						Date:               now,
+						UserID:             &userID,
+						CompanyID:          closingBook.CompanyID,
+						Credit:             utils.AmountRound(incomeTrans.Debit, 2),
+						Debit:              utils.AmountRound(incomeTrans.Credit, 2),
+						Amount:             utils.AmountRound(math.Abs(math.Abs(v.Sum)), 2),
+						Description:        "Ikhtisar Laba Rugi",
+						AccountID:          &retainEarningID,
+						TransactionRefID:   &closingBookID,
+						TransactionRefType: "closing-book",
+						Notes:              "1. Tutup akun Pendapatan & 2. Tutup akun Retur Penjualan",
+						// IsNetSurplus:       true,
+					}
+					transactions = append(transactions, incomeTrans2)
+					err = tx.Create(&incomeTrans2).Error
+					if err != nil {
+						return err
+					}
+
+					// saleAmount += v.Sum
 				}
 			}
 		}
-		// 🧾 Langkah 2: Menutup Akun Beban
+
+		// 2. Tutup akun Retur Penjualan
+		for _, v := range profitLoss.Profit {
+			if v.IsCogs {
+				if v.Sum != 0 {
+					var debit, credit float64
+					if v.Sum > 0 {
+						debit = math.Abs(v.Sum)
+						credit = 0
+					} else {
+						credit = math.Abs(v.Sum)
+						debit = 0
+					}
+					cogs := models.TransactionModel{
+						Code:               utils.RandString(10, false),
+						Date:               now,
+						UserID:             &userID,
+						CompanyID:          closingBook.CompanyID,
+						Credit:             utils.AmountRound(credit, 2),
+						Debit:              utils.AmountRound(debit, 2),
+						Amount:             utils.AmountRound(math.Abs(v.Sum), 2),
+						Description:        v.Name,
+						AccountID:          &cogsClosingAccount.ID,
+						TransactionRefID:   &closingBookID,
+						TransactionRefType: "closing-book",
+						Notes:              "3. Tutup akun Harga Pokok Penjualan",
+						// IsNetSurplus:       true,
+					}
+					transactions = append(transactions, cogs)
+					err = tx.Create(&cogs).Error
+					if err != nil {
+						return err
+					}
+					cogs2 := models.TransactionModel{
+						Code:               utils.RandString(10, false),
+						Date:               now,
+						UserID:             &userID,
+						CompanyID:          closingBook.CompanyID,
+						Credit:             utils.AmountRound(cogs.Debit, 2),
+						Debit:              utils.AmountRound(cogs.Credit, 2),
+						Amount:             utils.AmountRound(math.Abs(v.Sum), 2),
+						Description:        "Ikhtisar Laba Rugi",
+						AccountID:          &retainEarningID,
+						TransactionRefID:   &closingBookID,
+						TransactionRefType: "closing-book",
+						Notes:              "3. Tutup akun Harga Pokok Penjualan",
+						// IsNetSurplus:       true,
+					}
+					transactions = append(transactions, cogs2)
+					err = tx.Create(&cogs2).Error
+					if err != nil {
+						return err
+					}
+				}
+			}
+
+		}
+
 		for _, v := range profitLoss.Loss {
 			if v.Sum != 0 {
 				var debit, credit float64
 				if v.Sum > 0 {
-					debit = v.Sum
+					debit = math.Abs(v.Sum)
 					credit = 0
 				} else {
 					credit = math.Abs(v.Sum)
 					debit = 0
 				}
-				err = tx.Create(&models.TransactionModel{
+				loss2 := models.TransactionModel{
 					Code:               utils.RandString(10, false),
 					Date:               now,
 					UserID:             &userID,
 					CompanyID:          closingBook.CompanyID,
 					Credit:             utils.AmountRound(credit, 2),
 					Debit:              utils.AmountRound(debit, 2),
-					Amount:             utils.AmountRound(v.Sum, 2),
-					Description:        v.Name,
-					AccountID:          &profitLossAccount.ID,
+					Amount:             utils.AmountRound(math.Abs(v.Sum), 2),
+					Description:        "Ikhtisar Laba Rugi",
+					AccountID:          &retainEarningID,
 					TransactionRefID:   &closingBookID,
 					TransactionRefType: "closing-book",
+					Notes:              "4. Tutup akun Beban Operasional",
 					// IsNetSurplus:       true,
-				}).Error
+				}
+				transactions = append(transactions, loss2)
+				err = tx.Create(&loss2).Error
 				if err != nil {
 					return err
 				}
+				loss := models.TransactionModel{
+					Code:               utils.RandString(10, false),
+					Date:               now,
+					UserID:             &userID,
+					CompanyID:          closingBook.CompanyID,
+					Credit:             utils.AmountRound(loss2.Debit, 2),
+					Debit:              utils.AmountRound(loss2.Credit, 2),
+					Amount:             utils.AmountRound(math.Abs(v.Sum), 2),
+					Description:        v.Name,
+					AccountID:          &v.ID,
+					TransactionRefID:   &closingBookID,
+					TransactionRefType: "closing-book",
+					Notes:              "4. Tutup akun Beban Operasional",
+					// IsNetSurplus:       true,
+				}
+				transactions = append(transactions, loss)
+				err = tx.Create(&loss).Error
+				if err != nil {
+					return err
+				}
+
 			}
-		}
 
-		// 🧾 Langkah 3: Pindahkan Ikhtisar ke SHU Tahun Berjalan
-		err = tx.Create(&models.TransactionModel{
-			Code:               utils.RandString(10, false),
-			Date:               now,
-			UserID:             &userID,
-			CompanyID:          closingBook.CompanyID,
-			Debit:              utils.AmountRound(profitLoss.NetProfit, 2),
-			Amount:             utils.AmountRound(profitLoss.NetProfit, 2),
-			Description:        "Ikhtisar Laba Rugi",
-			AccountID:          &profitLossAccount.ID,
-			TransactionRefID:   &closingBookID,
-			TransactionRefType: "closing-book",
-			// IsNetSurplus:       true,
-		}).Error
-		if err != nil {
-			return err
 		}
-		err = tx.Create(&models.TransactionModel{
-			Code:               utils.RandString(10, false),
-			Date:               now,
-			UserID:             &userID,
-			CompanyID:          closingBook.CompanyID,
-			Credit:             utils.AmountRound(profitLoss.NetProfit, 2),
-			Amount:             utils.AmountRound(profitLoss.NetProfit, 2),
-			Description:        description,
-			AccountID:          &retainEarningID,
-			TransactionRefID:   &closingBookID,
-			TransactionRefType: "closing-book",
-			// IsNetSurplus:       true,
-		}).Error
-		if err != nil {
-			return err
-		}
-
-		if taxPayableID != nil && taxPercentage > 0 {
-			err = tx.Create(&models.TransactionModel{
+		if taxPayableID != nil && taxExpenseID != nil && taxPercentage > 0 {
+			tax := models.TransactionModel{
 				Code:               utils.RandString(10, false),
 				Date:               now,
 				UserID:             &userID,
 				CompanyID:          closingBook.CompanyID,
-				Credit:             utils.AmountRound(profitLoss.NetProfit*taxPercentage/100, 2),
-				Amount:             utils.AmountRound(profitLoss.NetProfit*taxPercentage/100, 2),
-				Description:        "Pajak Penghasilan",
-				AccountID:          taxPayableID,
+				Debit:              utils.AmountRound(taxTotal, 2),
+				Amount:             utils.AmountRound(math.Abs(taxTotal), 2),
+				Description:        "Beban Pajak Penghasilan",
+				AccountID:          taxExpenseID,
 				TransactionRefID:   &closingBookID,
 				TransactionRefType: "closing-book",
+				Notes:              "5. Pengakuan Beban Pajak Penghasilan Badan",
 				// IsNetSurplus:       true,
-			}).Error
+			}
+			transactions = append(transactions, tax)
+			err = tx.Create(&tax).Error
 			if err != nil {
 				return err
 			}
+
+			tax2 := models.TransactionModel{
+				Code:               utils.RandString(10, false),
+				Date:               now,
+				UserID:             &userID,
+				CompanyID:          closingBook.CompanyID,
+				Credit:             utils.AmountRound(taxTotal, 2),
+				Amount:             utils.AmountRound(math.Abs(taxTotal), 2),
+				Description:        "Utang Pajak Penghasilan",
+				AccountID:          taxPayableID,
+				TransactionRefID:   &closingBookID,
+				TransactionRefType: "closing-book",
+				Notes:              "5. Pengakuan Beban Pajak Penghasilan Badan",
+				// IsNetSurplus:       true,
+			}
+			transactions = append(transactions, tax2)
+			err = tx.Create(&tax2).Error
+			if err != nil {
+				return err
+			}
+
+			tax3 := models.TransactionModel{
+				Code:               utils.RandString(10, false),
+				Date:               now,
+				UserID:             &userID,
+				CompanyID:          closingBook.CompanyID,
+				Debit:              utils.AmountRound(taxTotal, 2),
+				Amount:             utils.AmountRound(math.Abs(taxTotal), 2),
+				Description:        "Ikhtisar Laba Rugi",
+				AccountID:          &retainEarningID,
+				TransactionRefID:   &closingBookID,
+				TransactionRefType: "closing-book",
+				Notes:              "6. Tutup akun Beban Pajak",
+				// IsNetSurplus:       true,
+			}
+			transactions = append(transactions, tax3)
+			err = tx.Create(&tax3).Error
+			if err != nil {
+				return err
+			}
+			tax4 := models.TransactionModel{
+				Code:               utils.RandString(10, false),
+				Date:               now,
+				UserID:             &userID,
+				CompanyID:          closingBook.CompanyID,
+				Credit:             utils.AmountRound(taxTotal, 2),
+				Amount:             utils.AmountRound(math.Abs(taxTotal), 2),
+				Description:        "Beban Pajak Penghasilan",
+				AccountID:          taxExpenseID,
+				TransactionRefID:   &closingBookID,
+				TransactionRefType: "closing-book",
+				Notes:              "6. Tutup akun Beban Pajak",
+				// IsNetSurplus:       true,
+			}
+			transactions = append(transactions, tax4)
+			err = tx.Create(&tax4).Error
+			if err != nil {
+				return err
+			}
+		}
+
+		closingTrans2 := models.TransactionModel{
+			Code:               utils.RandString(10, false),
+			Date:               now,
+			UserID:             &userID,
+			CompanyID:          closingBook.CompanyID,
+			Debit:              utils.AmountRound(profitLoss.NetProfit-taxTotal, 2),
+			Amount:             utils.AmountRound(math.Abs(profitLoss.NetProfit-taxTotal), 2),
+			Description:        "Ikhtisar Laba Rugi",
+			AccountID:          &retainEarningID,
+			TransactionRefID:   &closingBookID,
+			TransactionRefType: "closing-book",
+			Notes:              "7. Tutup saldo akhir Ikhtisar Laba Rugi ke Laba Ditahan",
+			// IsNetSurplus:       true,
+		}
+		transactions = append(transactions, closingTrans2)
+		err = tx.Create(&closingTrans2).Error
+		if err != nil {
+			return err
+		}
+
+		closingTrans := models.TransactionModel{
+			Code:               utils.RandString(10, false),
+			Date:               now,
+			UserID:             &userID,
+			CompanyID:          closingBook.CompanyID,
+			Credit:             utils.AmountRound(profitLoss.NetProfit-taxTotal, 2),
+			Amount:             utils.AmountRound(math.Abs(profitLoss.NetProfit-taxTotal), 2),
+			Description:        "Laba Ditahan / SHU Tahun Berjalan",
+			AccountID:          &profitLossAccount.ID,
+			TransactionRefID:   &closingBookID,
+			TransactionRefType: "closing-book",
+			Notes:              "7. Tutup saldo akhir Ikhtisar Laba Rugi ke Laba Ditahan",
+			// IsNetSurplus:       true,
+		}
+		transactions = append(transactions, closingTrans)
+		err = tx.Create(&closingTrans).Error
+		if err != nil {
+			return err
 		}
 
 		cashflow, err := s.GenerateCashFlowReport(models.CashFlowReport{
@@ -548,15 +762,32 @@ func (s *FinanceReportService) GenerateClosingBook(
 		if err != nil {
 			return err
 		}
+		capitalChange, err := s.GenerateCapitalChangeReport(report)
+		if err != nil {
+			return err
+		}
+
+		profitLoss, err = s.GenerateProfitLossReport(report)
+		if err != nil {
+			return err
+		}
+		capitalChangeByte, _ := json.Marshal(capitalChange)
+		capitalChangeStr := string(capitalChangeByte)
 
 		trialBalanceByte, _ := json.Marshal(trialBalance)
 		trialBalanceStr := string(trialBalanceByte)
+
+		transactionByte, _ := json.Marshal(transactions)
+		transactionStr := string(transactionByte)
 		closingBook.ProfitLossData = &profitLossStr
 		closingBook.CashFlowData = &cashflowStr
 		closingBook.BalanceSheetData = &balanceSheetStr
 		closingBook.TrialBalanceData = &trialBalanceStr
+		closingBook.CapitalChangeData = &capitalChangeStr
+		closingBook.TransactionData = &transactionStr
+		closingBook.Status = "RELEASED"
 
-		err = tx.Create(closingBook).Error
+		err = tx.Where("id = ?", closingBook.ID).Updates(closingBook).Error
 		if err != nil {
 			return err
 		}
@@ -670,9 +901,10 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 	}
 
 	profitLoss.Profit = append(profitLoss.Profit, models.ProfitLossAccount{
-		Name: "Harga Pokok Penjualan",
-		Sum:  -cogsReport.COGS,
-		Link: "/cogs",
+		Name:   "Harga Pokok Penjualan",
+		Sum:    -cogsReport.COGS,
+		Link:   "/cogs",
+		IsCogs: true,
 	})
 
 	profitLoss.GrossProfit = revenueSum - cogsReport.COGS
@@ -708,36 +940,36 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 	profitLoss.TotalExpense += expenseSum
 
 	// NET SURPLUS
-	equityAccounts := []models.AccountModel{}
-	err = s.db.Where("type IN (?) AND is_profit_loss_account = ?", []models.AccountType{models.EQUITY}, true).Find(&equityAccounts).Error
-	if err != nil {
-		return nil, err
-	}
-	netSurplus := 0.0
-	for _, equity := range equityAccounts {
-		amount := struct {
-			Sum float64 `sql:"sum"`
-		}{}
-		err = s.db.Model(&models.TransactionModel{}).
-			Where("date between ? and ?", report.StartDate, report.EndDate).
-			Select("sum(debit-credit) as sum").
-			Joins("JOIN accounts ON accounts.id = transactions.account_id").
-			Where("transactions.account_id = ?", equity.ID).
-			Scan(&amount).Error
-		if err != nil {
-			return nil, err
-		}
-		profitLoss.NetSurplus = append(profitLoss.NetSurplus, models.ProfitLossAccount{
-			ID:   equity.ID,
-			Name: equity.Name,
-			Code: equity.Code,
-			Sum:  amount.Sum,
-		})
-		netSurplus += amount.Sum
-		fmt.Printf("%s => %f", equity.Name, amount.Sum)
-	}
+	// equityAccounts := []models.AccountModel{}
+	// err = s.db.Where("type IN (?) AND is_profit_loss_account = ?", []models.AccountType{models.EQUITY}, true).Find(&equityAccounts).Error
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// netSurplus := 0.0
+	// for _, equity := range equityAccounts {
+	// 	amount := struct {
+	// 		Sum float64 `sql:"sum"`
+	// 	}{}
+	// 	err = s.db.Model(&models.TransactionModel{}).
+	// 		Where("date between ? and ?", report.StartDate, report.EndDate).
+	// 		Select("sum(debit-credit) as sum").
+	// 		Joins("JOIN accounts ON accounts.id = transactions.account_id").
+	// 		Where("transactions.account_id = ?", equity.ID).
+	// 		Scan(&amount).Error
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	profitLoss.NetSurplus = append(profitLoss.NetSurplus, models.ProfitLossAccount{
+	// 		ID:   equity.ID,
+	// 		Name: equity.Name,
+	// 		Code: equity.Code,
+	// 		Sum:  amount.Sum,
+	// 	})
+	// 	netSurplus += amount.Sum
+	// 	fmt.Printf("%s => %f", equity.Name, amount.Sum)
+	// }
 
-	profitLoss.TotalNetSurplus = netSurplus
+	// profitLoss.TotalNetSurplus = netSurplus
 
 	profitLoss.NetProfit = profitLoss.GrossProfit - profitLoss.TotalExpense
 	return &profitLoss, nil

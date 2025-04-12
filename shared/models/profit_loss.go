@@ -29,10 +29,11 @@ type ProfitLossReport struct {
 }
 
 type ProfitLossAccount struct {
-	ID   string  `json:"id"`
-	Code string  `json:"code"`
-	Name string  `json:"name"`
-	Type string  `json:"type"`
-	Sum  float64 `json:"sum"`
-	Link string  `json:"link"`
+	ID     string  `json:"id"`
+	Code   string  `json:"code"`
+	Name   string  `json:"name"`
+	Type   string  `json:"type"`
+	Sum    float64 `json:"sum"`
+	Link   string  `json:"link"`
+	IsCogs bool    `json:"is_cogs"`
 }

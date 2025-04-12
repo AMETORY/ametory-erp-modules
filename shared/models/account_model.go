@@ -58,6 +58,7 @@ type AccountModel struct {
 	HasOpeningBalance     bool          `gorm:"-" json:"has_opening_balance,omitempty"`
 	IsInventoryAccount    bool          `json:"is_inventory_account,omitempty"`
 	IsCogsAccount         bool          `json:"is_cogs_account,omitempty"`
+	IsCogsClosingAccount  bool          `json:"is_cogs_closing_account,omitempty"`
 	IsDiscount            bool          `json:"is_discount,omitempty"`
 	IsReturn              bool          `json:"is_return,omitempty"`
 	IsProfitLossAccount   bool          `json:"is_profit_loss_account,omitempty"`

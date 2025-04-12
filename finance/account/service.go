@@ -174,6 +174,20 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 				return paginate.Page{}, err
 			}
 		}
+		var cogsClosingAccount models.AccountModel
+		err = s.db.Where("is_cogs_closing_account = ? and company_id = ? AND name = ?", true, request.Header.Get("ID-Company"), "HARGA POKOK PENJUALAN").First(&cogsClosingAccount).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err := s.db.Create(&models.AccountModel{
+				CompanyID:            &companyID,
+				Name:                 "HARGA POKOK PENJUALAN",
+				Type:                 models.EXPENSE,
+				Category:             constants.COGS,
+				IsCogsClosingAccount: true,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+		}
 		// GET INVENTORY ACCOUNT
 		var inventoryAccount models.AccountModel
 		err = s.db.Where("is_inventory_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&inventoryAccount).Error
@@ -251,10 +265,14 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 	if request.URL.Query().Get("category") != "" {
 		stmt = stmt.Where("accounts.category = ? ", request.URL.Query().Get("category"))
 	}
+	if request.URL.Query().Get("is_profit_loss_account") != "" {
+		stmt = stmt.Where("accounts.is_profit_loss_account = ? ", true)
+	}
 	if request.URL.Query().Get("is_tax") != "" {
 		isTax := request.URL.Query().Get("is_tax") == "true" || request.URL.Query().Get("is_tax") == "1"
 		stmt = stmt.Where("accounts.is_tax = ? ", isTax)
 	}
+
 	stmt = stmt.Model(&models.AccountModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.AccountModel{})
