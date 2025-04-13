@@ -275,6 +275,14 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 		stmt = stmt.Where("transactions.account_id = ?", request.URL.Query().Get("account_id"))
 	}
 
+	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("transactions.date between ? and ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+	} else if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("transactions.date >= ?", request.URL.Query().Get("start_date"))
+	} else if request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("transactions.date <= ?", request.URL.Query().Get("end_date"))
+	}
+
 	stmt = stmt.Model(&models.TransactionModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.TransactionModel{})

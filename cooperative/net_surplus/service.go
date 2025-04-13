@@ -388,7 +388,7 @@ func (c *NetSurplusService) GenNumber(netSurplus *models.NetSurplusModel, compan
 	return nil
 }
 
-func (n *NetSurplusService) Disbursement(date time.Time, members []models.NetSurplusMember, netSurplus *models.NetSurplusModel, destinationID, userID string, voluntaryAssetID *string) error {
+func (n *NetSurplusService) Disbursement(date time.Time, members []models.NetSurplusMember, netSurplus *models.NetSurplusModel, destinationID, userID, notes string, voluntaryAssetID *string) error {
 	return n.db.Transaction(func(tx *gorm.DB) error {
 
 		var accountMandatoryID, accountBusinessProfitID string
@@ -427,6 +427,7 @@ func (n *NetSurplusService) Disbursement(date time.Time, members []models.NetSur
 					Debit:                       utils.AmountRound(v.NetSurplusMandatorySavingsAllocation, 2),
 					Amount:                      utils.AmountRound(v.NetSurplusMandatorySavingsAllocation, 2),
 					Description:                 fmt.Sprintf("Pencairan SHU Jasa Modal [%s]: %s", netSurplus.NetSurplusNumber, v.FullName),
+					Notes:                       notes,
 					NetSurplusID:                &netSurplus.ID,
 					AccountID:                   &accountMandatoryID,
 					TransactionRefID:            &assetID,
@@ -449,6 +450,7 @@ func (n *NetSurplusService) Disbursement(date time.Time, members []models.NetSur
 					Debit:                       utils.AmountRound(v.NetSurplusBusinessProfitAllocation, 2),
 					Amount:                      utils.AmountRound(v.NetSurplusBusinessProfitAllocation, 2),
 					Description:                 fmt.Sprintf("Pencairan SHU Jasa Usaha [%s]: %s", netSurplus.NetSurplusNumber, v.FullName),
+					Notes:                       notes,
 					NetSurplusID:                &netSurplus.ID,
 					AccountID:                   &accountBusinessProfitID,
 					TransactionRefID:            &assetID,
@@ -464,20 +466,18 @@ func (n *NetSurplusService) Disbursement(date time.Time, members []models.NetSur
 			// DISBURSEMENT
 			if v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation > 0 {
 				err := tx.Create(&models.TransactionModel{
-					Code:                        utils.RandString(10, false),
-					BaseModel:                   shared.BaseModel{ID: businessProfitID},
-					Date:                        date,
-					UserID:                      &userID,
-					CompanyID:                   netSurplus.CompanyID,
-					Credit:                      utils.AmountRound(v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation, 2),
-					Amount:                      utils.AmountRound(v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation, 2),
-					Description:                 fmt.Sprintf("Pencairan SHU [%s]: %s", netSurplus.NetSurplusNumber, v.FullName),
-					NetSurplusID:                &netSurplus.ID,
-					AccountID:                   &destinationID,
-					TransactionRefID:            &assetID,
-					TransactionRefType:          "transaction",
-					TransactionSecondaryRefID:   &netSurplus.ID,
-					TransactionSecondaryRefType: "net-surplus",
+					BaseModel:          shared.BaseModel{ID: assetID},
+					Code:               utils.RandString(10, false),
+					Date:               date,
+					UserID:             &userID,
+					CompanyID:          netSurplus.CompanyID,
+					Credit:             utils.AmountRound(v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation, 2),
+					Amount:             utils.AmountRound(v.NetSurplusBusinessProfitAllocation+v.NetSurplusMandatorySavingsAllocation, 2),
+					Description:        fmt.Sprintf("Pencairan SHU [%s]: %s", netSurplus.NetSurplusNumber, v.FullName),
+					NetSurplusID:       &netSurplus.ID,
+					AccountID:          &destinationID,
+					TransactionRefID:   &netSurplus.ID,
+					TransactionRefType: "net-surplus",
 				}).Error
 				if err != nil {
 					return err
