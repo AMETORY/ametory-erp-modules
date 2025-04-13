@@ -144,8 +144,8 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 	// GET COGS ACCOUNT
 	if request.Header.Get("ID-Company") != "" {
 		companyID := request.Header.Get("ID-Company")
-		var profitLossAccount models.AccountModel
-		err := s.db.Where("is_profit_loss_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&profitLossAccount).Error
+		var profitLossSumAccount models.AccountModel
+		err := s.db.Where("is_profit_loss_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&profitLossSumAccount).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			err := s.db.Create(&models.AccountModel{
 				Code:                "32001",
@@ -154,6 +154,21 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 				Type:                models.EQUITY,
 				Category:            constants.ACCOUNT_PROFIT_LOSS,
 				IsProfitLossAccount: true,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+		}
+		var profitLossClosingAccount models.AccountModel
+		err = s.db.Where("is_profit_loss_closing_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&profitLossClosingAccount).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = s.db.Create(&models.AccountModel{
+				Code:                       "32002",
+				CompanyID:                  &companyID,
+				Name:                       "Laba Ditahan / SHU Tahun Berjalan",
+				Type:                       models.EQUITY,
+				Category:                   constants.ACCOUNT_PROFIT_LOSS,
+				IsProfitLossClosingAccount: true,
 			}).Error
 			if err != nil {
 				return paginate.Page{}, err
@@ -267,6 +282,12 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 	}
 	if request.URL.Query().Get("is_profit_loss_account") != "" {
 		stmt = stmt.Where("accounts.is_profit_loss_account = ? ", true)
+	}
+	if request.URL.Query().Get("is_profit_loss_closing_account") != "" {
+		stmt = stmt.Where("accounts.is_profit_loss_closing_account = ? ", true)
+	}
+	if request.URL.Query().Get("is_cogs_closing_account") != "" {
+		stmt = stmt.Where("accounts.is_cogs_closing_account = ? ", true)
 	}
 	if request.URL.Query().Get("is_tax") != "" {
 		isTax := request.URL.Query().Get("is_tax") == "true" || request.URL.Query().Get("is_tax") == "1"

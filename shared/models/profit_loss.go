@@ -19,13 +19,16 @@ type ProfitLossCategory struct {
 
 type ProfitLossReport struct {
 	GeneralReport
-	Profit          []ProfitLossAccount `json:"profit"`
-	Loss            []ProfitLossAccount `json:"loss"`
-	NetSurplus      []ProfitLossAccount `json:"net_surplus"`
-	GrossProfit     float64             `json:"gross_profit"`
-	TotalNetSurplus float64             `json:"total_net_surplus"`
-	TotalExpense    float64             `json:"total_expense"`
-	NetProfit       float64             `json:"net_profit"`
+	Profit            []ProfitLossAccount `json:"profit"`
+	Loss              []ProfitLossAccount `json:"loss"`
+	NetSurplus        []ProfitLossAccount `json:"net_surplus"`
+	Tax               []ProfitLossAccount `json:"tax"`
+	GrossProfit       float64             `json:"gross_profit"`
+	TotalNetSurplus   float64             `json:"total_net_surplus"`
+	TotalExpense      float64             `json:"total_expense"`
+	NetProfit         float64             `json:"net_profit"`
+	IncomeTax         float64             `json:"income_tax"`
+	NetProfitAfterTax float64             `json:"net_profit_after_tax"`
 }
 
 type ProfitLossAccount struct {

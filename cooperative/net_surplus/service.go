@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"time"
 
@@ -53,26 +52,24 @@ func (n *NetSurplusService) GetTransactions(netSurplusID string) []models.Transa
 
 	n.db.Model(&models.TransactionModel{}).Preload("Account").
 		Where("net_surplus_id = ?", netSurplusID).
+		Order("date ASC").
 		Find(&transactions)
 
 	return transactions
 }
 
 func (n *NetSurplusService) GetNetSurplusTotal(netSurplus *models.NetSurplusModel) error {
-	profitLoss := models.ProfitLoss{
-
-		GeneralReport: models.GeneralReport{
-			CompanyID: *netSurplus.CompanyID,
-			Title:     "Sisa Hasil Usaha",
-			StartDate: netSurplus.StartDate,
-			EndDate:   netSurplus.EndDate,
-		},
+	if netSurplus.ClosingBookID == nil {
+		return errors.New("closing book id is required")
 	}
-
-	profitLossData, err := n.financeService.ReportService.GenerateProfitLossReport(profitLoss.GeneralReport)
+	var closingBook models.ClosingBook
+	err := n.db.Model(&models.ClosingBook{}).Where("id = ?", netSurplus.ClosingBookID).First(&closingBook).Error
 	if err != nil {
 		return err
 	}
+
+	profitLossData := closingBook.ProfitLoss
+
 	// c, err := json.Marshal(profitLoss)
 	// if err != nil {
 	// 	return err
@@ -83,7 +80,7 @@ func (n *NetSurplusService) GetNetSurplusTotal(netSurplus *models.NetSurplusMode
 	// 	return err
 	// }
 
-	netSurplus.NetSurplusTotal = profitLossData.NetProfit
+	netSurplus.NetSurplusTotal = closingBook.ClosingSummary.NetIncome
 	totalTransactions := float64(0)
 	totalSaving := float64(0)
 	totalLoan := float64(0)
@@ -280,7 +277,10 @@ func (n *NetSurplusService) GetMembers(netSurplus *models.NetSurplusModel) error
 	// company.GetCooperativeSetting()
 	// setting := company.CooperativeSetting
 	var memberData []models.CooperativeMemberModel
-	n.db.Find(&memberData, "company_id = ?", netSurplus.CompanyID)
+	err := n.db.Find(&memberData, "company_id = ?", netSurplus.CompanyID).Error
+	if err != nil {
+		return err
+	}
 
 	var members []models.NetSurplusMember
 
@@ -289,18 +289,24 @@ func (n *NetSurplusService) GetMembers(netSurplus *models.NetSurplusModel) error
 		totalSaving := float64(0)
 		totalLoan := float64(0)
 		var savings []models.SavingModel
-		n.db.Where("company_id = ? and member_id = ? and (date between ? and ?) and net_surplus_id is null", netSurplus.CompanyID, member.ID, netSurplus.StartDate, netSurplus.EndDate).Find(&savings)
+		n.db.Where("company_id = ? and cooperative_member_id = ? and (date between ? and ?) and net_surplus_id is null", netSurplus.CompanyID, member.ID, netSurplus.StartDate, netSurplus.EndDate).Find(&savings)
 		for _, s := range savings {
 			totalSaving += s.Amount
 			s.NetSurplusID = &netSurplus.ID
-			n.db.Save(&s)
+			err := n.db.Save(&s).Error
+			if err != nil {
+				return err
+			}
 		}
 		var loans []models.LoanApplicationModel
 		n.db.Where("company_id = ? and member_id = ? and (submission_date between ? and ?) and net_surplus_id is null and (status = ? OR status = ?)", netSurplus.CompanyID, member.ID, netSurplus.StartDate, netSurplus.EndDate, "SETTLEMENT", "DISBURSED").Find(&loans)
 		for _, s := range loans {
 			totalLoan += s.LoanAmount
 			s.NetSurplusID = &netSurplus.ID
-			n.db.Save(&s)
+			err := n.db.Save(&s).Error
+			if err != nil {
+				return err
+			}
 		}
 
 		// fmt.Println("totalSaving", totalSaving)
@@ -314,7 +320,10 @@ func (n *NetSurplusService) GetMembers(netSurplus *models.NetSurplusModel) error
 		for _, s := range invoices {
 			totalTransactions += s.Total
 			s.NetSurplusID = &netSurplus.ID
-			n.db.Save(&s)
+			err := n.db.Save(&s).Error
+			if err != nil {
+				return err
+			}
 		}
 		// fmt.Println("totalTransactions", totalTransactions)
 
@@ -546,111 +555,7 @@ func (n *NetSurplusService) Distribute(netSurplus *models.NetSurplusModel, sourc
 		}
 		assetID := utils.Uuid()
 		totalNetSurplus := 0.0
-		// CLOSING BOOK RETAIN EARNING
-		var profitLossAccount models.AccountModel
-		err = n.db.Where("is_profit_loss_account = ? and company_id = ?", true, netSurplus.CompanyID).First(&profitLossAccount).Error
-		if err != nil {
-			return err
-		}
 
-		// 🧾 Langkah 1: Menutup Akun Pendapatan
-		for _, v := range netSurplus.ProfitLoss.Profit {
-			if v.Sum != 0 {
-				var debit, credit float64
-				if v.Sum > 0 {
-					credit = v.Sum
-					debit = 0
-				} else {
-					debit = math.Abs(v.Sum)
-					credit = 0
-				}
-				err = tx.Create(&models.TransactionModel{
-					Code:               utils.RandString(10, false),
-					Date:               now,
-					UserID:             &userID,
-					CompanyID:          netSurplus.CompanyID,
-					Credit:             utils.AmountRound(credit, 2),
-					Debit:              utils.AmountRound(debit, 2),
-					Amount:             utils.AmountRound(v.Sum, 2),
-					Description:        fmt.Sprintf("Ikhtisar Laba Rugi SHU [%s] %s", netSurplus.NetSurplusNumber, v.Name),
-					NetSurplusID:       &netSurplus.ID,
-					AccountID:          &profitLossAccount.ID,
-					TransactionRefID:   &netSurplus.ID,
-					TransactionRefType: "net-surplus",
-					// IsNetSurplus:       true,
-				}).Error
-				if err != nil {
-					return err
-				}
-			}
-		}
-		// 🧾 Langkah 2: Menutup Akun Beban
-		for _, v := range netSurplus.ProfitLoss.Loss {
-			if v.Sum != 0 {
-				var debit, credit float64
-				if v.Sum > 0 {
-					debit = v.Sum
-					credit = 0
-				} else {
-					credit = math.Abs(v.Sum)
-					debit = 0
-				}
-				err = tx.Create(&models.TransactionModel{
-					Code:               utils.RandString(10, false),
-					Date:               now,
-					UserID:             &userID,
-					CompanyID:          netSurplus.CompanyID,
-					Credit:             utils.AmountRound(credit, 2),
-					Debit:              utils.AmountRound(debit, 2),
-					Amount:             utils.AmountRound(v.Sum, 2),
-					Description:        fmt.Sprintf("Ikhtisar Laba Rugi SHU [%s] %s", netSurplus.NetSurplusNumber, v.Name),
-					NetSurplusID:       &netSurplus.ID,
-					AccountID:          &profitLossAccount.ID,
-					TransactionRefID:   &netSurplus.ID,
-					TransactionRefType: "net-surplus",
-					// IsNetSurplus:       true,
-				}).Error
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		//🧾 Langkah 3: Pindahkan Ikhtisar ke SHU Tahun Berjalan
-		err = tx.Create(&models.TransactionModel{
-			Code:               utils.RandString(10, false),
-			Date:               now,
-			UserID:             &userID,
-			CompanyID:          netSurplus.CompanyID,
-			Debit:              utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
-			Amount:             utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
-			Description:        fmt.Sprintf("Ikhtisar Laba Rugi SHU : %s", netSurplus.NetSurplusNumber),
-			NetSurplusID:       &netSurplus.ID,
-			AccountID:          &profitLossAccount.ID,
-			TransactionRefID:   &netSurplus.ID,
-			TransactionRefType: "net-surplus",
-			// IsNetSurplus:       true,
-		}).Error
-		if err != nil {
-			return err
-		}
-		err = tx.Create(&models.TransactionModel{
-			Code:               utils.RandString(10, false),
-			Date:               now,
-			UserID:             &userID,
-			CompanyID:          netSurplus.CompanyID,
-			Credit:             utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
-			Amount:             utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
-			Description:        fmt.Sprintf("SHU Tahun Berjalan : %s", netSurplus.NetSurplusNumber),
-			NetSurplusID:       &netSurplus.ID,
-			AccountID:          &sourceID,
-			TransactionRefID:   &netSurplus.ID,
-			TransactionRefType: "net-surplus",
-			// IsNetSurplus:       true,
-		}).Error
-		if err != nil {
-			return err
-		}
 		// CREATE TRANSACTION NET SURPLUS DISTRIBUTION
 		for _, v := range allocations {
 			// if v.AccountCashID == nil {
@@ -688,8 +593,8 @@ func (n *NetSurplusService) Distribute(netSurplus *models.NetSurplusModel, sourc
 			Date:               now,
 			UserID:             &userID,
 			CompanyID:          netSurplus.CompanyID,
-			Debit:              utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
-			Amount:             utils.AmountRound(netSurplus.ProfitLoss.NetProfit, 2),
+			Debit:              utils.AmountRound(netSurplus.NetSurplusTotal, 2),
+			Amount:             utils.AmountRound(netSurplus.NetSurplusTotal, 2),
 			Description:        fmt.Sprintf("SHU Tahun Berjalan : %s", netSurplus.NetSurplusNumber),
 			NetSurplusID:       &netSurplus.ID,
 			AccountID:          &sourceID,

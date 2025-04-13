@@ -31,37 +31,38 @@ const (
 // AccountModel adalah model database untuk account
 type AccountModel struct {
 	shared.BaseModel
-	Name                  string        `json:"name"`
-	Code                  string        `json:"code"`
-	Color                 string        `json:"color"`
-	Description           string        `json:"description"`
-	IsDeletable           bool          `json:"is_deletable"`
-	IsReport              bool          `json:"is_report" gorm:"-"`
-	IsAccountReport       bool          `json:"is_account_report" gorm:"-"`
-	IsCashflowReport      bool          `json:"is_cashflow_report" gorm:"-"`
-	IsPDF                 bool          `json:"is_pdf" gorm:"-"`
-	Type                  AccountType   `json:"type"`
-	Category              string        `json:"category"`
-	CashflowGroup         string        `json:"cashflow_group"`
-	CashflowSubGroup      string        `json:"cashflow_subgroup"`
-	IsTax                 bool          `json:"is_tax" gorm:"default:false"`
-	TypeLabel             string        `gorm:"-" json:"type_label,omitempty"`
-	CashflowGroupLabel    string        `gorm:"-" json:"cashflow_group_label,omitempty"`
-	CashflowSubGroupLabel string        `gorm:"-" json:"cashflow_subgroup_label,omitempty"`
-	CompanyID             *string       `json:"company_id,omitempty"`
-	Company               *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
-	UserID                *string       `json:"user_id,omitempty"`
-	User                  *UserModel    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"user,omitempty"`
-	TransactionCount      int64         `gorm:"-" json:"transaction_count,omitempty"`
-	Balance               float64       `gorm:"-" json:"balance,omitempty"`
-	BalanceBefore         float64       `gorm:"-" json:"balance_before,omitempty"`
-	HasOpeningBalance     bool          `gorm:"-" json:"has_opening_balance,omitempty"`
-	IsInventoryAccount    bool          `json:"is_inventory_account,omitempty"`
-	IsCogsAccount         bool          `json:"is_cogs_account,omitempty"`
-	IsCogsClosingAccount  bool          `json:"is_cogs_closing_account,omitempty"`
-	IsDiscount            bool          `json:"is_discount,omitempty"`
-	IsReturn              bool          `json:"is_return,omitempty"`
-	IsProfitLossAccount   bool          `json:"is_profit_loss_account,omitempty"`
+	Name                       string        `json:"name"`
+	Code                       string        `json:"code"`
+	Color                      string        `json:"color"`
+	Description                string        `json:"description"`
+	IsDeletable                bool          `json:"is_deletable"`
+	IsReport                   bool          `json:"is_report" gorm:"-"`
+	IsAccountReport            bool          `json:"is_account_report" gorm:"-"`
+	IsCashflowReport           bool          `json:"is_cashflow_report" gorm:"-"`
+	IsPDF                      bool          `json:"is_pdf" gorm:"-"`
+	Type                       AccountType   `json:"type"`
+	Category                   string        `json:"category"`
+	CashflowGroup              string        `json:"cashflow_group"`
+	CashflowSubGroup           string        `json:"cashflow_subgroup"`
+	IsTax                      bool          `json:"is_tax" gorm:"default:false"`
+	TypeLabel                  string        `gorm:"-" json:"type_label,omitempty"`
+	CashflowGroupLabel         string        `gorm:"-" json:"cashflow_group_label,omitempty"`
+	CashflowSubGroupLabel      string        `gorm:"-" json:"cashflow_subgroup_label,omitempty"`
+	CompanyID                  *string       `json:"company_id,omitempty"`
+	Company                    *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
+	UserID                     *string       `json:"user_id,omitempty"`
+	User                       *UserModel    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"user,omitempty"`
+	TransactionCount           int64         `gorm:"-" json:"transaction_count,omitempty"`
+	Balance                    float64       `gorm:"-" json:"balance,omitempty"`
+	BalanceBefore              float64       `gorm:"-" json:"balance_before,omitempty"`
+	HasOpeningBalance          bool          `gorm:"-" json:"has_opening_balance,omitempty"`
+	IsInventoryAccount         bool          `json:"is_inventory_account,omitempty" gorm:"default:false;not null"`
+	IsCogsAccount              bool          `json:"is_cogs_account,omitempty" gorm:"default:false;not null"`
+	IsCogsClosingAccount       bool          `json:"is_cogs_closing_account,omitempty" gorm:"default:false;not null"`
+	IsDiscount                 bool          `json:"is_discount,omitempty" gorm:"default:false;not null"`
+	IsReturn                   bool          `json:"is_return,omitempty" gorm:"default:false;not null"`
+	IsProfitLossAccount        bool          `json:"is_profit_loss_account,omitempty" gorm:"default:false;not null"`
+	IsProfitLossClosingAccount bool          `json:"is_profit_loss_closing_account,omitempty" gorm:"default:false;not null"`
 	// Transactions          []Transaction `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
