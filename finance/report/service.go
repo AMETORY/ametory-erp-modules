@@ -12,6 +12,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/AMETORY/ametory-erp-modules/shared/constants"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -978,6 +979,8 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 		return nil, err
 	}
 
+	fmt.Println("GENERATE PROFIT LOSS", report.StartDate, report.EndDate)
+
 	revenueAccounts := []models.AccountModel{}
 	err = s.db.Where("type IN (?)", []models.AccountType{models.INCOME, models.REVENUE, models.CONTRA_REVENUE}).Find(&revenueAccounts).Error
 	if err != nil {
@@ -1762,6 +1765,24 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 	default:
 		err = errors.New("invalid time range")
 	}
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (s *FinanceReportService) GetSumCashBank(companyID string) (float64, error) {
+	var total float64
+	err := s.db.Raw(`
+		SELECT
+			COALESCE(SUM(transactions.debit - transactions.credit), 0) AS total
+		FROM
+			transactions
+		JOIN accounts ON transactions.account_id = accounts.id
+		WHERE
+			accounts.type = ? AND cashflow_sub_group = ?
+			AND accounts.company_id = ? 
+	`, models.ASSET, constants.CASH_BANK, companyID).Scan(&total).Error
 	if err != nil {
 		return 0, err
 	}
