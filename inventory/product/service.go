@@ -653,3 +653,38 @@ func (s *ProductService) CreateProductFeedback(data *models.ProductFeedbackModel
 func (s *ProductService) DeleteProductFeedback(id string) error {
 	return s.db.Delete(&models.ProductFeedbackModel{}, "id = ?", id).Error
 }
+
+func (s *ProductService) GetBestSellingProduct(request *http.Request, limit int, warehouseID *string) ([]models.PopularProduct, error) {
+	var results []models.PopularProduct
+	db := s.db.Model(&models.StockMovementModel{})
+	if request != nil {
+		if request.Header.Get("ID-Company") != "" {
+			if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {
+				db = db.Where("products.company_id is null")
+			} else {
+				db = db.Where("products.company_id = ?", request.Header.Get("ID-Company"))
+
+			}
+		}
+		// if request.Header.Get("ID-Distributor") != "" {
+		// 	db = db.Where("products.company_id = ?", request.Header.Get("ID-Distributor"))
+		// }
+	}
+
+	if warehouseID != nil {
+		db = db.Where("warehouse_id = ?", *warehouseID)
+	}
+	db = db.Where("type in (?)", []models.MovementType{models.MovementTypeReturn, models.MovementTypeSale})
+
+	if err := db.
+		Joins("JOIN products on stock_movements.product_id = products.id").
+		Select("products.id", "products.display_name", "COALESCE(SUM(quantity * value), 0) * -1 as total_sale").
+		Group("products.id").
+		Order("COALESCE(SUM(quantity * value), 0) DESC").
+		Limit(limit).
+		Scan(&results).Error; err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}

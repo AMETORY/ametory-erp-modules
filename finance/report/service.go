@@ -1437,3 +1437,333 @@ func (s *FinanceReportService) getTransBalance(account *models.AccountModel, deb
 	}
 	return 0
 }
+
+func (s *FinanceReportService) GetMonthlySalesReport(companyID string, year int) ([]models.MonthlySalesReport, error) {
+	var reports []models.MonthlySalesReport
+	for month := 1; month <= 12; month++ {
+		report := models.MonthlySalesReport{
+			Year:    year,
+			Month:   month,
+			Total:   0,
+			Company: companyID,
+		}
+
+		err := s.db.Raw(`
+			SELECT
+				COALESCE(SUM(total), 0) AS total_sales
+			FROM
+				sales
+			WHERE
+				sales.document_type = 'INVOICE'
+				AND EXTRACT(YEAR FROM sales_date) = ?
+				AND EXTRACT(MONTH FROM sales_date) = ?
+				AND sales.company_id = ?
+		`, year, month, companyID).Scan(&report.Total).Error
+		if err != nil {
+			return nil, err
+		}
+		report.MonthName = time.Month(month).String()[:3]
+		reports = append(reports, report)
+	}
+	return reports, nil
+}
+func (s *FinanceReportService) GetWeeklySalesReport(companyID string, year, month int) ([]models.MonthlySalesReport, error) {
+	var reports []models.MonthlySalesReport
+	firstDay := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+
+	for day := firstDay; day.Month() == firstDay.Month(); day = day.AddDate(0, 0, 1) {
+		if day.Weekday() == time.Monday {
+			_, week := day.ISOWeek()
+			report := models.MonthlySalesReport{
+				Year:    year,
+				Month:   month,
+				Total:   0,
+				Company: companyID,
+			}
+
+			err := s.db.Raw(`
+				SELECT
+					COALESCE(SUM(total), 0) AS total_sales
+				FROM
+					sales
+				WHERE
+					sales.document_type = 'INVOICE'
+					AND EXTRACT(YEAR FROM sales_date) = ?
+					AND EXTRACT(MONTH FROM sales_date) = ?
+					AND EXTRACT(WEEK FROM sales_date) = ?
+					AND sales.company_id = ?
+			`, year, month, week, companyID).Scan(&report.Total).Error
+			if err != nil {
+				return nil, err
+			}
+			report.WeekName = fmt.Sprintf("Week %d", week)
+			reports = append(reports, report)
+		}
+	}
+
+	return reports, nil
+}
+
+func (s *FinanceReportService) GetWeeklyPurchaseReport(companyID string, year, month int) ([]models.MonthlySalesReport, error) {
+	var reports []models.MonthlySalesReport
+	firstDay := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+
+	for day := firstDay; day.Month() == firstDay.Month(); day = day.AddDate(0, 0, 1) {
+		if day.Weekday() == time.Monday {
+			_, week := day.ISOWeek()
+			report := models.MonthlySalesReport{
+				Year:    year,
+				Month:   month,
+				Total:   0,
+				Company: companyID,
+			}
+
+			err := s.db.Raw(`
+				SELECT
+					COALESCE(SUM(total), 0) AS total_sales
+				FROM
+					purchase_orders
+				WHERE
+					purchase_orders.document_type = 'PURCHASE_INVOICE'
+					AND EXTRACT(YEAR FROM purchase_date) = ?
+					AND EXTRACT(MONTH FROM purchase_date) = ?
+					AND EXTRACT(WEEK FROM purchase_date) = ?
+					AND purchase_orders.company_id = ?
+			`, year, month, week, companyID).Scan(&report.Total).Error
+			if err != nil {
+				return nil, err
+			}
+			report.WeekName = fmt.Sprintf("Week %d", week)
+			reports = append(reports, report)
+		}
+	}
+
+	return reports, nil
+}
+func (s *FinanceReportService) GetMonthlyPurchaseReport(companyID string, year int) ([]models.MonthlySalesReport, error) {
+	var reports []models.MonthlySalesReport
+	for month := 1; month <= 12; month++ {
+		report := models.MonthlySalesReport{
+			Year:    year,
+			Month:   month,
+			Total:   0,
+			Company: companyID,
+		}
+
+		err := s.db.Raw(`
+			SELECT
+				COALESCE(SUM(total), 0) AS total_sales
+			FROM
+				purchase_orders
+			WHERE
+				purchase_orders.document_type = 'BILL'
+				AND EXTRACT(YEAR FROM purchase_date) = ?
+				AND EXTRACT(MONTH FROM purchase_date) = ?
+				AND purchase_orders.company_id = ?
+		`, year, month, companyID).Scan(&report.Total).Error
+		if err != nil {
+			return nil, err
+		}
+		report.MonthName = time.Month(month).String()[:3]
+		reports = append(reports, report)
+	}
+	return reports, nil
+}
+
+func (s *FinanceReportService) CalculateSalesByTimeRange(
+	companyID string,
+	documentType string,
+	timeRange string,
+) (float64, error) {
+	var total float64
+	var err error
+
+	switch timeRange {
+	case "Q1":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(sales.total), 0) AS total
+			FROM
+				sales
+			WHERE
+				sales.company_id = ?
+				AND sales.document_type = ?
+				AND EXTRACT(QUARTER FROM sales_date) = 1
+				AND EXTRACT(YEAR FROM sales_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`, companyID, documentType).Scan(&total).Error
+	case "Q2":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(sales.total), 0) AS total
+			FROM
+				sales
+			WHERE
+				sales.company_id = ?
+				AND sales.document_type = ?
+				AND EXTRACT(QUARTER FROM sales_date) = 2
+				AND EXTRACT(YEAR FROM sales_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`, companyID, documentType).Scan(&total).Error
+	case "Q3":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(sales.total), 0) AS total
+			FROM
+				sales
+			WHERE
+				sales.company_id = ?
+				AND sales.document_type = ?
+				AND EXTRACT(QUARTER FROM sales_date) = 3
+				AND EXTRACT(YEAR FROM sales_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`, companyID, documentType).Scan(&total).Error
+	case "Q4":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(sales.total), 0) AS total
+			FROM
+				sales
+			WHERE
+				sales.company_id = ?
+				AND sales.document_type = ?
+				AND EXTRACT(QUARTER FROM sales_date) = 4
+				AND EXTRACT(YEAR FROM sales_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`, companyID, documentType).Scan(&total).Error
+	case "THIS_MONTH":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(sales.total), 0) AS total
+			FROM
+				sales
+			WHERE
+				sales.company_id = ?
+				AND sales.document_type = ?
+				AND sales_date BETWEEN date_trunc('month', CURRENT_DATE) AND date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+		`, companyID, documentType).Scan(&total).Error
+	case "THIS_WEEK":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(sales.total), 0) AS total
+			FROM
+				sales
+			WHERE
+				sales.company_id = ?
+				AND sales.document_type = ?
+				AND sales_date BETWEEN date_trunc('week', CURRENT_DATE) AND date_trunc('week', CURRENT_DATE) + INTERVAL '1 week'
+		`, companyID, documentType).Scan(&total).Error
+	case "THIS_YEAR":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(sales.total), 0) AS total
+			FROM
+				sales
+			WHERE
+				sales.company_id = ?
+				AND sales.document_type = ?
+				AND sales_date BETWEEN date_trunc('year', CURRENT_DATE) AND date_trunc('year', CURRENT_DATE) + INTERVAL '1 year'
+		`, companyID, documentType).Scan(&total).Error
+	default:
+		err = errors.New("invalid time range")
+	}
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (s *FinanceReportService) CalculatePurchaseByTimeRange(
+	companyID string,
+	documentType string,
+	timeRange string,
+) (float64, error) {
+	var total float64
+	var err error
+
+	switch timeRange {
+	case "Q1":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(purchase_orders.total), 0) AS total
+			FROM
+				purchase_orders
+			WHERE
+				purchase_orders.company_id = ?
+				AND purchase_orders.document_type = ?
+				AND EXTRACT(QUARTER FROM purchase_date) = 1
+				AND EXTRACT(YEAR FROM purchase_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`, companyID, documentType).Scan(&total).Error
+	case "Q2":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(purchase_orders.total), 0) AS total
+			FROM
+				purchase_orders
+			WHERE
+				purchase_orders.company_id = ?
+				AND purchase_orders.document_type = ?
+				AND EXTRACT(QUARTER FROM purchase_date) = 2
+				AND EXTRACT(YEAR FROM purchase_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`, companyID, documentType).Scan(&total).Error
+	case "Q3":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(purchase_orders.total), 0) AS total
+			FROM
+				purchase_orders
+			WHERE
+				purchase_orders.company_id = ?
+				AND purchase_orders.document_type = ?
+				AND EXTRACT(QUARTER FROM purchase_date) = 3
+				AND EXTRACT(YEAR FROM purchase_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`, companyID, documentType).Scan(&total).Error
+	case "Q4":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(purchase_orders.total), 0) AS total
+			FROM
+				purchase_orders
+			WHERE
+				purchase_orders.company_id = ?
+				AND purchase_orders.document_type = ?
+				AND EXTRACT(QUARTER FROM purchase_date) = 4
+				AND EXTRACT(YEAR FROM purchase_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`, companyID, documentType).Scan(&total).Error
+	case "THIS_MONTH":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(purchase_orders.total), 0) AS total
+			FROM
+				purchase_orders
+			WHERE
+				purchase_orders.company_id = ?
+				AND purchase_orders.document_type = ?
+				AND purchase_date BETWEEN date_trunc('month', CURRENT_DATE) AND date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+		`, companyID, documentType).Scan(&total).Error
+	case "THIS_WEEK":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(purchase_orders.total), 0) AS total
+			FROM
+				purchase_orders
+			WHERE
+				purchase_orders.company_id = ?
+				AND purchase_orders.document_type = ?
+				AND purchase_date BETWEEN date_trunc('week', CURRENT_DATE) AND date_trunc('week', CURRENT_DATE) + INTERVAL '1 week'
+		`, companyID, documentType).Scan(&total).Error
+	case "THIS_YEAR":
+		err = s.db.Raw(`
+			SELECT
+				COALESCE(SUM(purchase_orders.total), 0) AS total
+			FROM
+				purchase_orders
+			WHERE
+				purchase_orders.company_id = ?
+				AND purchase_orders.document_type = ?
+				AND purchase_date BETWEEN date_trunc('year', CURRENT_DATE) AND date_trunc('year', CURRENT_DATE) + INTERVAL '1 year'
+		`, companyID, documentType).Scan(&total).Error
+	default:
+		err = errors.New("invalid time range")
+	}
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}

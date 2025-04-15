@@ -178,3 +178,11 @@ func (v *ProductModel) GenerateDisplayName(tx *gorm.DB) {
 	// Generate display name
 	v.DisplayName = strings.Join(displayNames, " ")
 }
+
+type PopularProduct struct {
+	ID          string  `json:"id"`
+	DisplayName string  `json:"display_name"`
+	TotalStock  float64 `json:"total_stock"`
+	TotalSale   float64 `json:"total_sale"`
+	TotalView   float64 `json:"total_view"`
+}
