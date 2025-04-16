@@ -52,6 +52,19 @@ func (s *ProductService) CreateProduct(data *models.ProductModel) error {
 	return s.db.Create(data).Error
 }
 
+func (s *ProductService) CreateOrUpdateProduct(data *models.ProductModel) error {
+	var product models.ProductModel
+	err := s.db.Where("id = ?", data.ID).First(&product).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return s.db.Create(data).Error
+		}
+		return err
+	}
+	data.ID = product.ID
+	return s.db.Save(data).Error
+}
+
 func (s *ProductService) UpdateProduct(data *models.ProductModel) error {
 	return s.db.Omit(clause.Associations).Save(data).Error
 }
@@ -149,6 +162,22 @@ func (s *ProductService) GetProductByCode(code string) (*models.ProductModel, er
 	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
 	product.GetPriceAndDiscount(s.db)
 	return &product, err
+}
+
+func (s *ProductService) GetProductBySku(sku string) (*models.ProductModel, error) {
+	var product models.ProductModel
+	err := s.db.Preload("Category", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).Where("sku = ?", sku).First(&product).Error
+	if err != nil {
+		return nil, err
+	}
+	product.Prices, _ = s.ListPricesOfProduct(product.ID)
+	product.ProductImages, _ = s.ListImagesOfProduct(product.ID)
+	product.GetPriceAndDiscount(s.db)
+	return &product, nil
 }
 
 func (s *ProductService) GetProducts(request http.Request, search string) (paginate.Page, error) {

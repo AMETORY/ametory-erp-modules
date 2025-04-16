@@ -197,3 +197,12 @@ func (s *SalesPaymentModel) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type SalesList struct {
+	ID          string     `json:"id" sql:"id"`
+	Number      string     `json:"number" sql:"number"`
+	ContactName string     `json:"contact_name" sql:"contact_name"`
+	Total       float64    `json:"total" sql:"total"`
+	Balance     float64    `json:"balance" sql:"balance"`
+	DueDate     *time.Time `json:"due_date" sql:"due_date"`
+}

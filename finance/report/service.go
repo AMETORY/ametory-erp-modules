@@ -1527,7 +1527,7 @@ func (s *FinanceReportService) GetWeeklyPurchaseReport(companyID string, year, m
 				FROM
 					purchase_orders
 				WHERE
-					purchase_orders.document_type = 'PURCHASE_INVOICE'
+					purchase_orders.document_type = 'BILL'
 					AND EXTRACT(YEAR FROM purchase_date) = ?
 					AND EXTRACT(MONTH FROM purchase_date) = ?
 					AND EXTRACT(WEEK FROM purchase_date) = ?
@@ -1787,4 +1787,57 @@ func (s *FinanceReportService) GetSumCashBank(companyID string) (float64, error)
 		return 0, err
 	}
 	return total, nil
+}
+
+func (s *FinanceReportService) GetAlmostDueSales(companyID string, interval int) ([]models.SalesList, error) {
+	reports := []models.SalesList{}
+	err := s.db.Raw(fmt.Sprintf(`
+		SELECT
+			sales.id,
+			sales_number as number,
+			contacts.name as contact_name,
+			sales.total AS total,
+			(sales.total - sales.paid) AS balance,
+			sales.due_date as due_date
+		FROM
+			sales
+		LEFT JOIN contacts ON sales.contact_id = contacts.id
+		WHERE
+			sales.company_id = ?
+			AND sales.document_type = ?
+			AND (sales.due_date <= CURRENT_DATE + INTERVAL '%v'  DAY OR sales.due_date IS NULL)
+			AND sales.paid <> sales.total
+		ORDER BY
+			sales.due_date ASC
+	`, interval), companyID, models.INVOICE).Scan(&reports).Error
+	if err != nil {
+		return nil, err
+	}
+	return reports, nil
+}
+func (s *FinanceReportService) GetAlmostDuePurchase(companyID string, interval int) ([]models.SalesList, error) {
+	reports := []models.SalesList{}
+	err := s.db.Raw(fmt.Sprintf(`
+		SELECT
+			purchase_orders.id,
+			purchase_number as number,
+			contacts.name as contact_name,
+			purchase_orders.total AS total,
+			(purchase_orders.total - purchase_orders.paid) AS balance,
+			purchase_orders.due_date as due_date
+		FROM
+			purchase_orders
+		LEFT JOIN contacts ON purchase_orders.contact_id = contacts.id
+		WHERE
+			purchase_orders.company_id = ?
+			AND purchase_orders.document_type = ?
+			AND (purchase_orders.due_date <= CURRENT_DATE + INTERVAL '%v' DAY OR purchase_orders.due_date IS NULL)
+			AND purchase_orders.paid <> purchase_orders.total
+		ORDER BY
+			purchase_orders.due_date ASC
+	`, interval), companyID, models.BILL).Scan(&reports).Error
+	if err != nil {
+		return nil, err
+	}
+	return reports, nil
 }
