@@ -56,6 +56,7 @@ type AccountModel struct {
 	Balance                    float64       `gorm:"-" json:"balance,omitempty"`
 	BalanceBefore              float64       `gorm:"-" json:"balance_before,omitempty"`
 	HasOpeningBalance          bool          `gorm:"-" json:"has_opening_balance,omitempty"`
+	IsFixedAssetAccount        bool          `json:"is_fixed_asset_account,omitempty" gorm:"default:false;not null"`
 	IsInventoryAccount         bool          `json:"is_inventory_account,omitempty" gorm:"default:false;not null"`
 	IsCogsAccount              bool          `json:"is_cogs_account,omitempty" gorm:"default:false;not null"`
 	IsCogsClosingAccount       bool          `json:"is_cogs_closing_account,omitempty" gorm:"default:false;not null"`
@@ -63,6 +64,9 @@ type AccountModel struct {
 	IsReturn                   bool          `json:"is_return,omitempty" gorm:"default:false;not null"`
 	IsProfitLossAccount        bool          `json:"is_profit_loss_account,omitempty" gorm:"default:false;not null"`
 	IsProfitLossClosingAccount bool          `json:"is_profit_loss_closing_account,omitempty" gorm:"default:false;not null"`
+	IsDepreciation             bool          `json:"is_depreciation,omitempty" gorm:"default:false;not null"`
+	IsAmortization             bool          `json:"is_amortization,omitempty" gorm:"default:false;not null"`
+
 	// Transactions          []Transaction `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
