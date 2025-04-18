@@ -51,6 +51,7 @@ func (AssetModel) TableName() string {
 
 type DepreciationCostModel struct {
 	shared.BaseModel
+	SeqNumber     int           `json:"seq_number,omitempty"`
 	CompanyID     *string       `json:"company_id,omitempty"`
 	Company       *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
 	UserID        *string       `json:"user_id,omitempty"`
@@ -63,6 +64,7 @@ type DepreciationCostModel struct {
 	ExecutedAt    *time.Time    `json:"executed_at,omitempty"`
 	TransactionID *string       `json:"transaction_id,omitempty"`
 	Status        string        `json:"status,omitempty" gorm:"default:'PENDING'"` // 'PENDING', 'ACTIVE', 'DONE'
+	IsChecked     bool          `json:"is_checked,omitempty" gorm:"-"`
 }
 
 func (d *DepreciationCostModel) BeforeCreate(tx *gorm.DB) (err error) {

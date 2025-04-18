@@ -1092,7 +1092,7 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 	// ASSETS
 	// FIXED ACCOUNT
 	fixedAccounts := []models.AccountModel{}
-	err := s.db.Where("type = ? AND cashflow_group = ? AND company_id = ?", "ASSET", "fixed_asset", report.CompanyID).Find(&fixedAccounts).Error
+	err := s.db.Where("type IN (?) AND cashflow_group = ? AND company_id = ?", []string{string(models.ASSET), string(models.CONTRA_ASSET)}, "fixed_asset", report.CompanyID).Find(&fixedAccounts).Error
 	if err != nil {
 		return nil, errors.New("fixedAccounts account not found")
 	}

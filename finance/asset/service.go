@@ -40,12 +40,25 @@ func (s *AssetService) UpdateAsset(id string, data *models.AssetModel) error {
 }
 
 func (s *AssetService) DeleteAsset(id string) error {
+	err := s.db.Where("transaction_secondary_ref_id = ?", id).Unscoped().Delete(&models.TransactionModel{}).Error
+	if err != nil {
+		return err
+	}
+	err = s.db.Where("asset_id = ?", id).Unscoped().Delete(&models.DepreciationCostModel{}).Error
+	if err != nil {
+		return err
+	}
 	return s.db.Where("id = ?", id).Delete(&models.AssetModel{}).Error
 }
 
 func (s *AssetService) GetAssetByID(id string) (*models.AssetModel, error) {
 	var invoice models.AssetModel
-	err := s.db.Where("id = ?", id).First(&invoice).Error
+	err := s.db.
+		Preload("AccountFixedAsset").
+		Preload("AccountCurrentAsset").
+		Preload("AccountDepreciation").
+		Preload("AccountAccumulatedDepreciation").
+		Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
 
@@ -110,21 +123,26 @@ func (s *AssetService) PreviewCosts(asset *models.AssetModel) ([]models.Deprecia
 	}
 
 	depreciationCosts := []models.DepreciationCostModel{}
+	seqNo := 1
 	for i, v := range costs {
 		if asset.IsMonthly {
 			for j := 1; j <= 12; j++ {
 				depreciationCosts = append(depreciationCosts, models.DepreciationCostModel{
-					Month:  j,
-					Amount: v / 12,
-					Period: i + 1,
+					SeqNumber: seqNo,
+					Month:     j,
+					Amount:    v / 12,
+					Period:    i + 1,
 				})
+				seqNo++
 			}
 
 		} else {
 			depreciationCosts = append(depreciationCosts, models.DepreciationCostModel{
-				Amount: v,
-				Period: i + 1,
+				SeqNumber: seqNo,
+				Amount:    v,
+				Period:    i + 1,
 			})
+			seqNo++
 		}
 
 	}
@@ -137,59 +155,130 @@ func (s *AssetService) ActivateAsset(asset *models.AssetModel, date time.Time, u
 			return errors.New("asset is not in draft status")
 		}
 
-		now := time.Now()
+		// now := time.Now()
 
-		depreciationCosts, err := s.PreviewCosts(asset)
-		if err != nil {
+		// CREATE COST TRANSACTION
+		code := utils.RandString(10, false)
+		fixedTransID := uuid.New().String()
+		currentTransID := uuid.New().String()
+
+		costTrans := models.TransactionModel{
+			BaseModel:                   shared.BaseModel{ID: fixedTransID},
+			Code:                        code,
+			CompanyID:                   asset.CompanyID,
+			UserID:                      &userID,
+			Debit:                       utils.AmountRound(asset.AcquisitionCost, 2), // asset.AcquisitionCost,
+			Amount:                      utils.AmountRound(asset.AcquisitionCost, 2),
+			AccountID:                   asset.AccountFixedAssetID,
+			Description:                 asset.Name + " - " + asset.AssetNumber,
+			Date:                        date,
+			TransactionRefID:            &currentTransID,
+			TransactionRefType:          "transaction",
+			TransactionSecondaryRefID:   &asset.ID,
+			TransactionSecondaryRefType: "asset",
+		}
+		if err := tx.Create(&costTrans).Error; err != nil {
 			return err
 		}
 
-		for _, v := range depreciationCosts {
-			if asset.IsMonthly {
-				diff := math.Ceil(now.Sub(asset.Date).Hours() / 24 / 30)
-				if diff > float64(((v.Period-1)*12)+v.Month) {
-					v.Status = "ACTIVE"
-				}
-			} else {
-				diff := math.Ceil(now.Sub(asset.Date).Hours() / 24 / 365)
-				if diff > float64((v.Period - 1)) {
-					if v.Status == "PENDING" {
-						v.Status = "ACTIVE"
-					}
-				}
-			}
+		totalAccumulation := 0.0
+		for _, v := range asset.Depreciations {
+
 			v.UserID = &userID
 			v.AssetID = &asset.ID
 			v.CompanyID = asset.CompanyID
-			tx.Create(&v)
+
+			if v.IsChecked {
+				totalAccumulation += v.Amount
+				v.Status = "DONE"
+			}
+			err := tx.Create(&v).Error
+			if err != nil {
+				return err
+			}
 		}
 
-		return nil
+		// CREATE ASSET / EQUITY TRANSACTION
+
+		depreciationTrans := models.TransactionModel{
+			BaseModel:                   shared.BaseModel{ID: currentTransID},
+			Code:                        code,
+			CompanyID:                   asset.CompanyID,
+			UserID:                      &userID,
+			Credit:                      utils.AmountRound(asset.AcquisitionCost-totalAccumulation, 2),
+			Amount:                      utils.AmountRound(asset.AcquisitionCost-totalAccumulation, 2),
+			AccountID:                   asset.AccountCurrentAssetID,
+			Description:                 asset.Name + " - " + asset.AssetNumber,
+			Date:                        date,
+			TransactionRefID:            &fixedTransID,
+			TransactionRefType:          "transaction",
+			TransactionSecondaryRefID:   &asset.ID,
+			TransactionSecondaryRefType: "asset",
+		}
+		if err := tx.Create(&depreciationTrans).Error; err != nil {
+			return err
+		}
+
+		if totalAccumulation > 0 {
+			// CREATE ASSET / EQUITY TRANSACTION
+
+			depreciationTrans := models.TransactionModel{
+				Code:                        code,
+				CompanyID:                   asset.CompanyID,
+				UserID:                      &userID,
+				Credit:                      utils.AmountRound(totalAccumulation, 2),
+				Amount:                      utils.AmountRound(totalAccumulation, 2),
+				AccountID:                   asset.AccountAccumulatedDepreciationID,
+				Description:                 "Akumulasi " + asset.Name + " - " + asset.AssetNumber,
+				Date:                        date,
+				TransactionRefID:            &fixedTransID,
+				TransactionRefType:          "transaction",
+				TransactionSecondaryRefID:   &asset.ID,
+				TransactionSecondaryRefType: "asset",
+			}
+			if err := tx.Create(&depreciationTrans).Error; err != nil {
+				return err
+			}
+		}
+
+		asset.Status = "ACTIVE"
+		asset.BookValue = utils.AmountRound(asset.AcquisitionCost-totalAccumulation, 2)
+
+		return tx.Save(asset).Error
 	})
 }
 
 func (s *AssetService) DepreciationApply(asset *models.AssetModel, itemID string, date time.Time, userID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		depreciation := models.DepreciationCostModel{}
-		if err := tx.Find(&depreciation, "asset_id = ? and uu_id = ? AND status = ?", asset.ID, itemID, "ACTIVE").Error; err != nil {
+		if err := tx.Find(&depreciation, "asset_id = ? and id = ? AND status = ?", asset.ID, itemID, "ACTIVE").Error; err != nil {
 			return err
 		}
-		asset.BookValue -= depreciation.Amount
+		asset.BookValue -= utils.AmountRound(depreciation.Amount, 2) //depreciation.Amount
 
 		// CREATE COST TRANSACTION
 		code := utils.RandString(10, false)
 		costTransID := uuid.New().String()
 		depreciationTransID := uuid.New().String()
+		var depPeriod time.Time
+		var label string
+		if asset.IsMonthly {
+			depPeriod = asset.Date.AddDate(depreciation.Period-1, depreciation.Month-1, 0)
+			label = depPeriod.Format("Jan-2006")
+		} else {
+			depPeriod = asset.Date.AddDate(depreciation.Period-1, 0, 0)
+			label = depPeriod.Format("2006")
+		}
 
 		costTrans := models.TransactionModel{
 			BaseModel:                   shared.BaseModel{ID: costTransID},
 			Code:                        code,
 			CompanyID:                   asset.CompanyID,
 			UserID:                      &userID,
-			Debit:                       depreciation.Amount,
-			Amount:                      depreciation.Amount,
+			Debit:                       utils.AmountRound(depreciation.Amount, 2),
+			Amount:                      utils.AmountRound(depreciation.Amount, 2),
 			AccountID:                   asset.AccountDepreciationID,
-			Description:                 "Biaya Penyusutan " + asset.AssetNumber,
+			Description:                 fmt.Sprintf("Biaya Penyusutan %s %s - %s", asset.Name, label, asset.AssetNumber),
 			Date:                        date,
 			TransactionRefID:            &depreciationTransID,
 			TransactionRefType:          "transaction",
@@ -207,10 +296,10 @@ func (s *AssetService) DepreciationApply(asset *models.AssetModel, itemID string
 			Code:                        code,
 			CompanyID:                   asset.CompanyID,
 			UserID:                      &userID,
-			Credit:                      depreciation.Amount,
-			Amount:                      depreciation.Amount,
+			Credit:                      utils.AmountRound(depreciation.Amount, 2),
+			Amount:                      utils.AmountRound(depreciation.Amount, 2),
 			AccountID:                   asset.AccountAccumulatedDepreciationID,
-			Description:                 "Akumulasi Penyusutan " + asset.AssetNumber,
+			Description:                 fmt.Sprintf("Akumulasi Penyusutan %s %s - %s", asset.Name, label, asset.AssetNumber),
 			Date:                        date,
 			TransactionRefID:            &costTransID,
 			TransactionRefType:          "transaction",
@@ -224,7 +313,7 @@ func (s *AssetService) DepreciationApply(asset *models.AssetModel, itemID string
 		if err := tx.Save(asset).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&depreciation).Where("uu_id = ?", depreciation.ID).Updates(map[string]any{
+		if err := tx.Model(&depreciation).Where("id = ?", depreciation.ID).Updates(map[string]any{
 			"status":      "DONE",
 			"executed_at": date,
 		}).Error; err != nil {
@@ -239,12 +328,12 @@ func (s *AssetService) DepreciationApply(asset *models.AssetModel, itemID string
 func (s *AssetService) DepreciationCancel(asset *models.AssetModel, itemID string, date time.Time, userID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		depreciation := models.DepreciationCostModel{}
-		if err := tx.Find(&depreciation, "asset_id = ? and uu_id = ? AND status = ?", asset.ID, itemID, "ACTIVE").Error; err != nil {
+		if err := tx.Find(&depreciation, "asset_id = ? and id = ? AND status = ?", asset.ID, itemID, "ACTIVE").Error; err != nil {
 			return err
 		}
 		asset.BookValue += depreciation.Amount
 
-		if err := tx.Model(&depreciation).Where("uu_id = ?", depreciation.ID).Updates(map[string]any{
+		if err := tx.Model(&depreciation).Where("id = ?", depreciation.ID).Updates(map[string]any{
 			"status":      "PENDING",
 			"executed_at": nil,
 		}).Error; err != nil {
@@ -258,12 +347,12 @@ func (s *AssetService) DepreciationCancel(asset *models.AssetModel, itemID strin
 func (s *AssetService) DepreciationDone(asset *models.AssetModel, itemID string, date time.Time, userID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		depreciation := models.DepreciationCostModel{}
-		if err := tx.Find(&depreciation, "asset_id = ? and uu_id = ? AND status = ?", asset.ID, itemID, "ACTIVE").Error; err != nil {
+		if err := tx.Find(&depreciation, "asset_id = ? and id = ? AND status = ?", asset.ID, itemID, "ACTIVE").Error; err != nil {
 			return err
 		}
 		asset.BookValue -= depreciation.Amount
 
-		if err := tx.Model(&depreciation).Where("uu_id = ?", depreciation.ID).Updates(map[string]any{
+		if err := tx.Model(&depreciation).Where("id = ?", depreciation.ID).Updates(map[string]any{
 			"status":      "DONE",
 			"executed_at": date,
 		}).Error; err != nil {
@@ -278,7 +367,7 @@ func (s *AssetService) DepreciationPending(asset *models.AssetModel, itemID stri
 	return s.db.Transaction(func(tx *gorm.DB) error {
 
 		depreciation := models.DepreciationCostModel{}
-		if err := tx.Find(&depreciation, "asset_id = ? and uu_id = ? AND status = ?", asset.ID, itemID, "ACTIVE").Error; err != nil {
+		if err := tx.Find(&depreciation, "asset_id = ? and id = ? AND status = ?", asset.ID, itemID, "ACTIVE").Error; err != nil {
 			return err
 		}
 		if depreciation.Status != "ACTIVE" {
@@ -286,7 +375,7 @@ func (s *AssetService) DepreciationPending(asset *models.AssetModel, itemID stri
 		}
 		asset.BookValue += depreciation.Amount
 
-		if err := tx.Model(&depreciation).Where("uu_id = ?", depreciation.ID).Updates(map[string]any{
+		if err := tx.Model(&depreciation).Where("id = ?", depreciation.ID).Updates(map[string]any{
 			"status":      "PENDING",
 			"executed_at": nil,
 		}).Error; err != nil {
@@ -300,12 +389,12 @@ func (s *AssetService) DepreciationPending(asset *models.AssetModel, itemID stri
 func (s *AssetService) DepreciationActive(asset *models.AssetModel, itemID string, date time.Time, userID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		depreciation := models.DepreciationCostModel{}
-		if err := tx.Find(&depreciation, "asset_id = ? and uu_id = ? AND status = ?", asset.ID, itemID, "PENDING").Error; err != nil {
+		if err := tx.Find(&depreciation, "asset_id = ? and id = ? AND status = ?", asset.ID, itemID, "PENDING").Error; err != nil {
 			return err
 		}
 		asset.BookValue -= depreciation.Amount
 
-		if err := tx.Model(&depreciation).Where("uu_id = ?", depreciation.ID).Updates(map[string]any{
+		if err := tx.Model(&depreciation).Where("id = ?", depreciation.ID).Updates(map[string]any{
 			"status":      "ACTIVE",
 			"executed_at": date,
 		}).Error; err != nil {
@@ -319,28 +408,35 @@ func (s *AssetService) DepreciationActive(asset *models.AssetModel, itemID strin
 func (s *AssetService) GetDepreciation(asset *models.AssetModel) {
 	now := time.Now()
 	depreciations := []models.DepreciationCostModel{}
-	s.db.Find(&depreciations, "asset_id = ?", asset.ID)
+	s.db.Order("seq_number").Find(&depreciations, "asset_id = ?", asset.ID)
 	asset.Depreciations = depreciations
 	if asset.IsMonthly {
 		diff := math.Ceil(now.Sub(asset.Date).Hours() / 24 / 30)
 		for _, v := range depreciations {
-			if diff > float64(((v.Period-1)*12)+v.Month) {
+			if v.Status == "ACTIVE" {
+				continue
+			}
+
+			if diff >= float64(((v.Period-1)*12)+v.Month) {
 				if v.Status == "PENDING" {
-					s.db.Model(v).Where("uu_id = ?", v.ID).Update("status", "ACTIVE")
+					s.db.Model(v).Where("id = ?", v.ID).Update("status", "ACTIVE")
 				}
 			}
 		}
 	} else {
 		diff := math.Ceil(now.Sub(asset.Date).Hours() / 24 / 365)
 		for _, v := range depreciations {
-			if diff > float64((v.Period - 1)) {
+			if v.Status == "ACTIVE" {
+				continue
+			}
+			if diff >= float64((v.Period - 1)) {
 				if v.Status == "PENDING" {
-					s.db.Model(v).Where("uu_id = ?", v.ID).Update("status", "ACTIVE")
+					s.db.Model(v).Where("id = ?", v.ID).Update("status", "ACTIVE")
 				}
 			}
 		}
 	}
 
-	s.db.Find(&depreciations, "asset_id = ?", asset.ID)
+	s.db.Order("seq_number").Find(&depreciations, "asset_id = ?", asset.ID)
 	asset.Depreciations = depreciations
 }

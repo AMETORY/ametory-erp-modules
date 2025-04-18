@@ -304,6 +304,25 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 func (s *AccountService) GetTypes() map[string]any {
 
 	return map[string]any{
+		string(models.CONTRA_ASSET): map[string]any{
+			"name": string(models.CONTRA_ASSET),
+			"categories": []string{
+				constants.CATEGORY_FIXED_ASSET,
+			},
+			"groups": []map[string]any{
+				{
+					"label": constants.CASHFLOW_GROUP_FIXED_ASSET_VALUE,
+					"value": constants.CASHFLOW_GROUP_FIXED_ASSET,
+					"subgroups": []map[string]any{
+
+						{
+							"label": constants.CASHFLOW_GROUP_DEPRECIATION_AMORTIZATION_VALUE,
+							"value": constants.CASHFLOW_GROUP_DEPRECIATION_AMORTIZATION,
+						},
+					},
+				},
+			},
+		},
 		string(models.ASSET): map[string]any{
 			"name": string(models.ASSET),
 			"categories": []string{

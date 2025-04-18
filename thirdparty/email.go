@@ -78,10 +78,12 @@ func (s *SMTPSender) SendEmailWithTemplate(subject, message string, attachment [
 func (s *SMTPSender) send(subject string, attachment []string) error {
 
 	e := email.NewEmail()
-	e.From = s.from.String()
+	e.From = s.from.Address
+	fmt.Println("FROM", e.From)
 	for _, v := range s.to {
 		e.To = append(e.To, v.String())
 	}
+	fmt.Println("TO", e.To)
 	e.Subject = subject
 	e.HTML = []byte(s.body)
 	for _, v := range attachment {

@@ -275,7 +275,7 @@ var CooperationAccountsTemplate = []models.AccountModel{
 		CashflowGroup:    constants.CASHFLOW_GROUP_FIXED_ASSET,
 		Category:         constants.CATEGORY_FIXED_ASSET,
 		Name:             "Akumulasi Penyusutan",
-		Type:             models.ASSET,
+		Type:             models.CONTRA_ASSET,
 		Code:             "11008",
 	},
 	{
