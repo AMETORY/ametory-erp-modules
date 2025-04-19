@@ -7,9 +7,11 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/distribution/cart"
 	"github.com/AMETORY/ametory-erp-modules/distribution/distributor"
+	"github.com/AMETORY/ametory-erp-modules/distribution/logistic"
 	"github.com/AMETORY/ametory-erp-modules/distribution/offering"
 	"github.com/AMETORY/ametory-erp-modules/distribution/order_request"
 	"github.com/AMETORY/ametory-erp-modules/distribution/shipping"
+	"github.com/AMETORY/ametory-erp-modules/distribution/storage"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/order"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
@@ -24,6 +26,8 @@ type DistributionService struct {
 	ShippingService     *shipping.ShippingService
 	auditTrailService   *audit_trail.AuditTrailService
 	CartService         *cart.CartService
+	LogisticService     *logistic.LogisticService
+	StorageService      *storage.StorageService
 }
 
 func NewDistributionService(ctx *context.ERPContext, auditTrailService *audit_trail.AuditTrailService, inventoryService *inventory.InventoryService, orderService *order.OrderService) *DistributionService {
@@ -38,6 +42,8 @@ func NewDistributionService(ctx *context.ERPContext, auditTrailService *audit_tr
 	service.OfferingService = offering.NewOfferingService(ctx.DB, ctx, auditTrailService)
 	service.ShippingService = shipping.NewShippingService(ctx.DB, ctx)
 	service.CartService = cart.NewCartService(ctx.DB, ctx, inventoryService)
+	service.LogisticService = logistic.NewLogisticService(ctx.DB, ctx, inventoryService)
+	service.StorageService = storage.NewStorageService(ctx.DB, ctx, inventoryService)
 	err := service.Migrate()
 	if err != nil {
 		panic(err)
@@ -68,6 +74,14 @@ func (s *DistributionService) Migrate() error {
 	}
 	if err := cart.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR CART MIGRATE", err)
+		return err
+	}
+	if err := logistic.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR LOGISTIC MIGRATE", err)
+		return err
+	}
+	if err := storage.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR STORAGE MIGRATE", err)
 		return err
 	}
 

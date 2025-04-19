@@ -56,6 +56,9 @@ type ProductModel struct {
 	Feedbacks        []ProductFeedbackModel `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"feedbacks,omitempty"`
 	Units            []*UnitModel           `gorm:"many2many:product_units;constraint:OnDelete:CASCADE;" json:"units,omitempty"`
 	DefaultUnit      *UnitModel             `gorm:"-" json:"default_unit,omitempty"`
+	IsSell           bool                   `gorm:"default:true" json:"is_sell,omitempty"`
+	IsBuy            bool                   `gorm:"default:true" json:"is_buy,omitempty"`
+	IsRaw            bool                   `gorm:"default:false" json:"is_raw,omitempty"`
 }
 
 func (ProductModel) TableName() string {

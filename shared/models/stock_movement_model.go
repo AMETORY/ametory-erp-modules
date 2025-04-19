@@ -11,13 +11,18 @@ import (
 type MovementType string
 
 const (
-	MovementTypeIn       MovementType = "IN"       // Stok masuk
-	MovementTypeOut      MovementType = "OUT"      // Stok keluar
-	MovementTypeSale     MovementType = "SALE"     // Stok keluar
-	MovementTypePurchase MovementType = "PURCHASE" // Stok keluar
-	MovementTypeReturn   MovementType = "RETURN"   // Stok keluar
-	MovementTypeTransfer MovementType = "TRANSFER" // Transfer stok
-	MovementTypeAdjust   MovementType = "ADJUST"   // Penyesuaian stok
+	MovementTypeIn          MovementType = "IN"           // Stok masuk
+	MovementTypeOut         MovementType = "OUT"          // Stok keluar
+	MovementTypeSale        MovementType = "SALE"         // Stok keluar
+	MovementTypePurchase    MovementType = "PURCHASE"     // Stok keluar
+	MovementTypeReturn      MovementType = "RETURN"       // Stok keluar
+	MovementTypeTransfer    MovementType = "TRANSFER"     // Transfer stok
+	MovementTypeAdjust      MovementType = "ADJUST"       // Penyesuaian stok
+	MovementTypeShippingIn  MovementType = "SHIPPING_IN"  // Stok masuk dari shipping
+	MovementTypeShippingOut MovementType = "SHIPPING_OUT" // Stok keluar ke shipping
+	MovementTypeDamage      MovementType = "DAMAGE"       // Stok rusak/hilang
+	MovementTypeLost        MovementType = "LOST"         // Stok hilang
+	MovementTypeSpoiled     MovementType = "SPOILED"      // Stok rusak
 )
 
 type StockMovementModel struct {
