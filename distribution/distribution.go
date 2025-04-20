@@ -37,23 +37,32 @@ func NewDistributionService(ctx *context.ERPContext, auditTrailService *audit_tr
 		ctx:               ctx,
 		auditTrailService: auditTrailService,
 	}
+	err := service.Migrate()
+	if err != nil {
+		panic(err)
+	}
+	service.LogisticService = logistic.NewLogisticService(ctx.DB, ctx, inventoryService)
+	service.StorageService = storage.NewStorageService(ctx.DB, ctx, inventoryService)
 	service.DistributorService = distributor.NewDistributorService(ctx.DB, ctx)
 	service.OrderRequestService = order_request.NewOrderRequestService(ctx.DB, ctx, orderService.MerchantService, inventoryService.ProductService, auditTrailService)
 	service.OfferingService = offering.NewOfferingService(ctx.DB, ctx, auditTrailService)
 	service.ShippingService = shipping.NewShippingService(ctx.DB, ctx)
 	service.CartService = cart.NewCartService(ctx.DB, ctx, inventoryService)
-	service.LogisticService = logistic.NewLogisticService(ctx.DB, ctx, inventoryService)
-	service.StorageService = storage.NewStorageService(ctx.DB, ctx, inventoryService)
-	err := service.Migrate()
-	if err != nil {
-		panic(err)
-	}
+
 	return &service
 }
 
 func (s *DistributionService) Migrate() error {
 	if s.ctx.SkipMigration {
 		return nil
+	}
+	if err := logistic.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR LOGISTIC MIGRATE", err)
+		return err
+	}
+	if err := storage.Migrate(s.ctx.DB); err != nil {
+		log.Println("ERROR STORAGE MIGRATE", err)
+		return err
 	}
 	if err := distributor.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR DISTRIBUTOR MIGRATE", err)
@@ -74,14 +83,6 @@ func (s *DistributionService) Migrate() error {
 	}
 	if err := cart.Migrate(s.ctx.DB); err != nil {
 		log.Println("ERROR CART MIGRATE", err)
-		return err
-	}
-	if err := logistic.Migrate(s.ctx.DB); err != nil {
-		log.Println("ERROR LOGISTIC MIGRATE", err)
-		return err
-	}
-	if err := storage.Migrate(s.ctx.DB); err != nil {
-		log.Println("ERROR STORAGE MIGRATE", err)
 		return err
 	}
 

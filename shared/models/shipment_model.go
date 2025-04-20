@@ -19,7 +19,7 @@ type ShipmentModel struct {
 	Feedbacks            []ShipmentFeedback      `gorm:"foreignKey:ShipmentID" json:"feedbacks,omitempty"`
 	IncidentEvents       []IncidentEventModel    `gorm:"foreignKey:ShipmentID" json:"incident_events,omitempty"`
 	CurrentShipmentLegID *string                 `gorm:"size:36" json:"current_shipment_leg_id,omitempty"`
-	CurrentShipmentLeg   *ShipmentLegModel       `gorm:"foreignKey:CurrentShipmentLegID;constraint:OnDelete:SET NULL" json:"current_shipment_leg,omitempty"`
+	CurrentShipmentLeg   *ShipmentLegModel       `gorm:"-" json:"current_shipment_leg,omitempty"`
 	ShipmentDate         time.Time               `json:"shipment_date,omitempty"`
 	ExpectedFinishAt     *time.Time              `json:"expected_finish_at,omitempty"`
 	IsDelayed            bool                    `json:"is_delayed,omitempty"`
@@ -35,6 +35,15 @@ func (s *ShipmentModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	// Add logic to execute before creating a ShipmentModel record, if needed
+	return nil
+}
+
+func (s *ShipmentModel) AfterFind(tx *gorm.DB) (err error) {
+	if s.CurrentShipmentLegID != nil {
+		var shipmentLeg ShipmentLegModel
+		tx.Where("id = ?", *s.CurrentShipmentLegID).First(&shipmentLeg)
+		s.CurrentShipmentLeg = &shipmentLeg
+	}
 	return nil
 }
 
@@ -59,24 +68,24 @@ func (s *ShipmentItem) BeforeCreate(tx *gorm.DB) (err error) {
 
 type ShipmentLegModel struct {
 	shared.BaseModel
-	Shipment       *ShipmentModel          `gorm:"foreignKey:ShipmentID;constraint:OnDelete:CASCADE" json:"shipment,omitempty"`
-	ShipmentID     *string                 `gorm:"size:36" json:"shipment_id,omitempty"`
-	FromLocation   *WarehouseLocationModel `gorm:"foreignKey:FromLocationID;constraint:OnDelete:CASCADE" json:"from_location,omitempty"`
-	FromLocationID *string                 `gorm:"size:36" json:"from_location_id,omitempty"`
-	ToLocation     *WarehouseLocationModel `gorm:"foreignKey:ToLocationID;constraint:OnDelete:CASCADE" json:"to_location,omitempty"`
-	ToLocationID   *string                 `gorm:"size:36" json:"to_location_id,omitempty"`
-	TransportMode  string                  `gorm:"type:varchar(50)" json:"transport_mode,omitempty"` // Truck, Boat, Air, Manual, etc
-	NumberPlate    string                  `gorm:"type:varchar(20)" json:"number_plate,omitempty"`
-	DriverName     string                  `gorm:"type:varchar(100)" json:"driver_name,omitempty"`
-	VehicleInfo    string                  `gorm:"type:varchar(255)" json:"vehicle_info,omitempty"`
-	Status         string                  `gorm:"type:varchar(20)" json:"status,omitempty"` // Pending, In Transit, Completed
-	DepartedAt     *time.Time              `json:"departed_at,omitempty"`
-	ArrivedAt      *time.Time              `json:"arrived_at,omitempty"`
-	TrackingEvents []TrackingEventModel    `gorm:"foreignKey:ShipmentLegID;constraint:OnDelete:CASCADE" json:"tracking_events,omitempty"`
-	ShippedByID    *string                 `gorm:"size:36" json:"shipped_by_id,omitempty"`
-	ShippedBy      *UserModel              `gorm:"foreignKey:ShippedByID;constraint:OnDelete:SET NULL" json:"shipped_by,omitempty"`
-	ArrivedByID    *string                 `gorm:"size:36" json:"arrived_by_id,omitempty"`
-	ArrivedBy      *UserModel              `gorm:"foreignKey:ArrivedByID;constraint:OnDelete:SET NULL" json:"arrived_by,omitempty"`
+	Shipment       *ShipmentModel       `gorm:"foreignKey:ShipmentID;constraint:OnDelete:CASCADE" json:"shipment,omitempty"`
+	ShipmentID     *string              `gorm:"size:36" json:"shipment_id,omitempty"`
+	FromLocation   *LocationPointModel  `gorm:"foreignKey:FromLocationID;constraint:OnDelete:CASCADE" json:"from_location,omitempty"`
+	FromLocationID *string              `gorm:"size:36" json:"from_location_id,omitempty"`
+	ToLocation     *LocationPointModel  `gorm:"foreignKey:ToLocationID;constraint:OnDelete:CASCADE" json:"to_location,omitempty"`
+	ToLocationID   *string              `gorm:"size:36" json:"to_location_id,omitempty"`
+	TransportMode  string               `gorm:"type:varchar(50)" json:"transport_mode,omitempty"` // Truck, Boat, Air, Manual, etc
+	NumberPlate    string               `gorm:"type:varchar(20)" json:"number_plate,omitempty"`
+	DriverName     string               `gorm:"type:varchar(100)" json:"driver_name,omitempty"`
+	VehicleInfo    string               `gorm:"type:varchar(255)" json:"vehicle_info,omitempty"`
+	Status         string               `gorm:"type:varchar(20)" json:"status,omitempty"` // Pending, In Transit, Completed
+	DepartedAt     *time.Time           `json:"departed_at,omitempty"`
+	ArrivedAt      *time.Time           `json:"arrived_at,omitempty"`
+	TrackingEvents []TrackingEventModel `gorm:"foreignKey:ShipmentLegID;constraint:OnDelete:CASCADE" json:"tracking_events,omitempty"`
+	ShippedByID    *string              `gorm:"size:36" json:"shipped_by_id,omitempty"`
+	ShippedBy      *UserModel           `gorm:"foreignKey:ShippedByID;constraint:OnDelete:SET NULL" json:"shipped_by,omitempty"`
+	ArrivedByID    *string              `gorm:"size:36" json:"arrived_by_id,omitempty"`
+	ArrivedBy      *UserModel           `gorm:"foreignKey:ArrivedByID;constraint:OnDelete:SET NULL" json:"arrived_by,omitempty"`
 }
 
 func (ShipmentLegModel) TableName() string {

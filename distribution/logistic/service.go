@@ -21,9 +21,9 @@ func NewLogisticService(db *gorm.DB, ctx *context.ERPContext, inventoryService *
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&models.DistributionEventModel{},
+	err := db.AutoMigrate(
 		&models.ShipmentModel{},
+		&models.DistributionEventModel{},
 		&models.ShipmentLegModel{},
 		&models.TrackingEventModel{},
 		&models.IncidentEventModel{},
@@ -31,6 +31,17 @@ func Migrate(db *gorm.DB) error {
 		&models.DistributionEventReport{},
 		&models.ShipmentFeedback{},
 	)
+
+	if err != nil {
+		return err
+	}
+
+	err = db.Exec("ALTER TABLE shipments ADD CONSTRAINT fk_shipments_shipment_legs FOREIGN KEY (current_shipment_leg_id) REFERENCES shipment_legs(id) ON DELETE SET NULL ON UPDATE RESTRICT").Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *LogisticService) CreateDistributionEvent(data *models.DistributionEventModel) error {

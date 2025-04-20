@@ -23,43 +23,66 @@ func NewStorageService(db *gorm.DB, ctx *context.ERPContext, inventoryService *i
 
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&models.WarehouseLocationModel{},
+		&models.LocationPointModel{},
 	)
 }
-
-func (s *StorageService) CreateWarehouse(data *models.WarehouseModel, lat, lng float64) error {
-	if err := s.db.Create(data).Error; err != nil {
-		return err
-	}
-
-	loc := models.WarehouseLocationModel{
-		Name:        data.Name,
-		Type:        "WAREHOUSE",
-		WarehouseID: &data.ID,
-		Address:     data.Address,
-		Latitude:    lat,
-		Longitude:   lng,
-	}
-	return s.CreateLocation(&loc)
+func (s *StorageService) UpdateWarehouse(id string, data *models.WarehouseModel) error {
+	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
-func (s *StorageService) CreateLocation(data *models.WarehouseLocationModel) error {
+func (s *StorageService) DeleteWarehouse(id string) error {
+	return s.db.Where("id = ?", id).Delete(&models.WarehouseModel{}).Error
+}
+func (s *StorageService) CreateWarehouse(data *models.WarehouseModel, lat, lng *float64) error {
 	if err := s.db.Create(data).Error; err != nil {
 		return err
+	}
+	if lat != nil && lng != nil {
+		loc := models.LocationPointModel{
+			Name:        data.Name,
+			Type:        "WAREHOUSE",
+			WarehouseID: &data.ID,
+			Address:     data.Address,
+			Latitude:    *lat,
+			Longitude:   *lng,
+		}
+		return s.CreateLocation(&loc, nil)
 	}
 	return nil
 }
 
-func (s *StorageService) UpdateWarehouseLocation(id string, data *models.WarehouseLocationModel) error {
+func (s *StorageService) CreateLocation(data *models.LocationPointModel, warehouse *models.WarehouseModel) error {
+	if warehouse != nil {
+		if warehouse.ID == "" {
+			err := s.db.Create(warehouse).Error
+			if err != nil {
+				return err
+			}
+		} else {
+			err := s.db.Save(warehouse).Error
+			if err != nil {
+				return err
+			}
+		}
+		data.WarehouseID = &warehouse.ID
+	}
+	if err := s.db.Create(data).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *StorageService) UpdateWarehouseLocation(id string, data *models.LocationPointModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
 func (s *StorageService) DeleteWarehouseLocation(id string) error {
-	return s.db.Where("id = ?", id).Delete(&models.WarehouseLocationModel{}).Error
+	return s.db.Where("id = ?", id).Delete(&models.LocationPointModel{}).Error
 }
 
-func (s *StorageService) GetWarehouseLocationByID(id string) (*models.WarehouseLocationModel, error) {
-	var invoice models.WarehouseLocationModel
+func (s *StorageService) GetWarehouseLocationByID(id string) (*models.LocationPointModel, error) {
+	var invoice models.LocationPointModel
 	err := s.db.Where("id = ?", id).First(&invoice).Error
 	return &invoice, err
 }
@@ -76,9 +99,9 @@ func (s *StorageService) GetWarehouseLocations(request http.Request, search stri
 		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
 	}
 	request.URL.Query().Get("page")
-	stmt = stmt.Model(&models.WarehouseLocationModel{})
+	stmt = stmt.Model(&models.LocationPointModel{})
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]models.WarehouseLocationModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.LocationPointModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }

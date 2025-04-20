@@ -6,8 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// WarehouseLocationModel adalah model database untuk warehouse location
-type WarehouseLocationModel struct {
+// LocationPointModel adalah model database untuk warehouse location
+type LocationPointModel struct {
 	shared.BaseModel
 	Name        string          `gorm:"not null;type:varchar(255)" json:"name,omitempty"`
 	WarehouseID *string         `gorm:"size:36" json:"warehouse_id,omitempty"`
@@ -18,13 +18,13 @@ type WarehouseLocationModel struct {
 	Longitude   float64         `json:"longitude" gorm:"type:decimal(11,8);"`
 }
 
-func (m *WarehouseLocationModel) BeforeCreate(tx *gorm.DB) (err error) {
+func (m *LocationPointModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if m.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return
 }
 
-func (m *WarehouseLocationModel) TableName() string {
-	return "warehouse_locations"
+func (m *LocationPointModel) TableName() string {
+	return "location_points"
 }

@@ -10,12 +10,12 @@ type RoleModel struct {
 	shared.BaseModel
 	Name            string            `gorm:"not null" json:"name"`
 	Permissions     []PermissionModel `gorm:"many2many:role_permissions;constraint:OnDelete:CASCADE;" json:"permissions"`
-	CompanyID       *string           `json:"company_id"`
-	IsAdmin         bool              `json:"is_admin"`
-	IsMerchant      bool              `json:"is_merchant"`
-	IsSuperAdmin    bool              `json:"is_super_admin"`
-	IsOwner         bool              `json:"is_owner"`
-	PermissionNames []string          `gorm:"-" json:"permission_names"`
+	CompanyID       *string           `json:"company_id,omitempty"`
+	IsAdmin         bool              `json:"is_admin,omitempty"`
+	IsMerchant      bool              `json:"is_merchant,omitempty"`
+	IsSuperAdmin    bool              `json:"is_super_admin,omitempty"`
+	IsOwner         bool              `json:"is_owner,omitempty"`
+	PermissionNames []string          `gorm:"-" json:"permission_names,omitempty"`
 }
 
 func (r *RoleModel) AfterFind(tx *gorm.DB) (err error) {
