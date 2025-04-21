@@ -3,6 +3,7 @@ package stock_opname
 import (
 	"errors"
 	"math"
+	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -11,6 +12,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -29,7 +31,7 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.StockOpnameHeader{}, &models.StockOpnameDetail{})
 }
 
-func (s *StockOpnameService) CreateStockOpnameFromHeader(warehouseID string, data *models.StockOpnameHeader, notes string) error {
+func (s *StockOpnameService) CreateStockOpnameFromHeader(data *models.StockOpnameHeader) error {
 	return s.db.Create(data).Error
 }
 
@@ -40,7 +42,79 @@ func (s *StockOpnameService) UpdateStockOpname(stockOpnameID string, data *model
 		Error
 }
 
-func (s *StockOpnameService) DeleteStockOpname(stockOpnameID string) error {
+func (s *StockOpnameService) GetStockOpnameByID(stockOpnameID string) (*models.StockOpnameHeader, error) {
+	var stockOpnameHeader models.StockOpnameHeader
+	if err := s.db.
+		Preload("Warehouse").
+		Preload("CreatedBy").
+		Preload("Details.Product").
+		First(&stockOpnameHeader, "id = ?", stockOpnameID).Error; err != nil {
+		return nil, err
+	}
+	return &stockOpnameHeader, nil
+}
+
+func (s *StockOpnameService) GetStockOpnames(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("stock_opname_number ILIKE ? OR notes ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.StockOpnameHeader{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.StockOpnameHeader{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *StockOpnameService) AddItem(stockOpnameID string, data *models.StockOpnameDetail) error {
+	var stockOpnameHeader models.StockOpnameHeader
+	if err := s.db.First(&stockOpnameHeader, "id = ?", stockOpnameID).Error; err != nil {
+		return err
+	}
+	data.StockOpnameID = stockOpnameID
+	systemQty, err := s.productService.GetStock(data.ProductID, nil, &stockOpnameHeader.WarehouseID)
+	if err != nil {
+		return err
+	}
+
+	data.SystemQty = systemQty
+
+	return s.db.Debug().Create(&data).Error
+}
+
+func (s *StockOpnameService) UpdateItem(stockOpnameDetailID string, data *models.StockOpnameDetail) error {
+	var stockOpnameDetail models.StockOpnameDetail
+	if err := s.db.First(&stockOpnameDetail, "id = ?", stockOpnameDetailID).Error; err != nil {
+		return err
+	}
+	if err := s.db.Model(&models.StockOpnameDetail{}).
+		Where("id = ?", stockOpnameDetailID).
+		Updates(data).
+		Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *StockOpnameService) DeleteItem(stockOpnameDetailID string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Delete stock opname detail
+		if err := tx.Where("id = ?", stockOpnameDetailID).Unscoped().Delete(&models.StockOpnameDetail{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (s *StockOpnameService) DeleteStockOpname(stockOpnameID string, skipTransaction bool) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Delete stock opname detail
 		if err := tx.Where("stock_opname_id = ?", stockOpnameID).Delete(&models.StockOpnameDetail{}).Error; err != nil {
@@ -52,9 +126,11 @@ func (s *StockOpnameService) DeleteStockOpname(stockOpnameID string) error {
 			return err
 		}
 
-		// Delete related inventory transactions
-		if err := tx.Where("transaction_secondary_ref_id = ?", stockOpnameID).Delete(&models.TransactionModel{}).Error; err != nil {
-			return err
+		if !skipTransaction {
+			// Delete related inventory transactions
+			if err := tx.Where("transaction_secondary_ref_id = ?", stockOpnameID).Delete(&models.TransactionModel{}).Error; err != nil {
+				return err
+			}
 		}
 
 		// Delete stock opname header
@@ -108,7 +184,7 @@ func (s *StockOpnameService) CreateStockOpname(warehouseID string, products []mo
 func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time.Time, userID string, inventoryID, expenseID, revenueID *string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var stockOpnameHeader models.StockOpnameHeader
-		if err := tx.Preload("Details").First(&stockOpnameHeader, stockOpnameID).Error; err != nil {
+		if err := tx.Preload("Details").First(&stockOpnameHeader, "id = ?", stockOpnameID).Error; err != nil {
 			return err
 		}
 

@@ -24,6 +24,10 @@ type ShipmentModel struct {
 	ExpectedFinishAt     *time.Time              `json:"expected_finish_at,omitempty"`
 	IsDelayed            bool                    `json:"is_delayed,omitempty"`
 	Notes                string                  `gorm:"type:text" json:"notes,omitempty"`
+	FromLocation         *LocationPointModel     `gorm:"foreignKey:FromLocationID;constraint:OnDelete:CASCADE" json:"from_location,omitempty"`
+	FromLocationID       *string                 `gorm:"size:36" json:"from_location_id,omitempty"`
+	ToLocation           *LocationPointModel     `gorm:"foreignKey:ToLocationID;constraint:OnDelete:CASCADE" json:"to_location,omitempty"`
+	ToLocationID         *string                 `gorm:"size:36" json:"to_location_id,omitempty"`
 }
 
 func (ShipmentModel) TableName() string {

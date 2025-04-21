@@ -2,11 +2,14 @@ package logistic
 
 import (
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -36,12 +39,36 @@ func Migrate(db *gorm.DB) error {
 		return err
 	}
 
+	err = db.Exec("ALTER TABLE shipments DROP CONSTRAINT IF EXISTS fk_shipments_shipment_legs").Error
+	if err != nil {
+		return err
+	}
 	err = db.Exec("ALTER TABLE shipments ADD CONSTRAINT fk_shipments_shipment_legs FOREIGN KEY (current_shipment_leg_id) REFERENCES shipment_legs(id) ON DELETE SET NULL ON UPDATE RESTRICT").Error
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (s *LogisticService) ListDistributionEvents(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("notes ILIKE ? OR name ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.DistributionEventModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.DistributionEventModel{})
+	page.Page = page.Page + 1
+	return page, nil
 }
 
 func (s *LogisticService) CreateDistributionEvent(data *models.DistributionEventModel) error {
@@ -106,7 +133,7 @@ func (s *LogisticService) CreateShipmentLeg(data *models.ShipmentLegModel) error
 	return nil
 }
 
-func (s *LogisticService) MonitorDistributionEvent(eventID string) (*models.DistributionEventModel, error) {
+func (s *LogisticService) GetDistributionEvent(eventID string) (*models.DistributionEventModel, error) {
 	distributionEvent := models.DistributionEventModel{}
 	if err := s.db.
 		Preload("Shipments.ShipmentLegs").

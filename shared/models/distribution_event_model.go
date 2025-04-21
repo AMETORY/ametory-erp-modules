@@ -11,11 +11,11 @@ import (
 // DistributionEventModel adalah model database untuk distribution event
 type DistributionEventModel struct {
 	shared.BaseModel
-	Name        string `gorm:"not null"`
-	Description string
-	StartDate   time.Time
-	EndDate     *time.Time
-	Shipments   []ShipmentModel `gorm:"foreignKey:DistributionEventID"`
+	Name        string          `gorm:"not null" json:"name,omitempty"`
+	Description string          `json:"description,omitempty"`
+	StartDate   time.Time       `json:"start_date,omitempty"`
+	EndDate     *time.Time      `json:"end_date,omitempty"`
+	Shipments   []ShipmentModel `gorm:"foreignKey:DistributionEventID" json:"shipments,omitempty"`
 }
 
 func (DistributionEventModel) TableName() string {

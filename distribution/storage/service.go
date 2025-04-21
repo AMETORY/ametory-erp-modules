@@ -26,6 +26,28 @@ func Migrate(db *gorm.DB) error {
 		&models.LocationPointModel{},
 	)
 }
+
+func (s *StorageService) GetWarehouses(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("warehouses.description ILIKE ? OR  warehouses.name ILIKE ? OR warehouses.code ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	stmt = stmt.Preload("Company")
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	stmt = stmt.Model(&models.WarehouseModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.WarehouseModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
 func (s *StorageService) UpdateWarehouse(id string, data *models.WarehouseModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
@@ -82,14 +104,21 @@ func (s *StorageService) DeleteWarehouseLocation(id string) error {
 }
 
 func (s *StorageService) GetWarehouseLocationByID(id string) (*models.LocationPointModel, error) {
-	var invoice models.LocationPointModel
-	err := s.db.Where("id = ?", id).First(&invoice).Error
-	return &invoice, err
+	var location models.LocationPointModel
+	err := s.db.Preload("Warehouse").
+		Preload("Province").
+		Preload("Regency").
+		Preload("District").
+		Preload("Village").Where("id = ?", id).First(&location).Error
+	return &location, err
 }
-
 func (s *StorageService) GetWarehouseLocations(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Warehouse").
+		Preload("Province").
+		Preload("Regency").
+		Preload("District").
+		Preload("Village")
 	if search != "" {
 		stmt = stmt.Where("name ILIKE ?",
 			"%"+search+"%",

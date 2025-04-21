@@ -30,7 +30,7 @@ type InventoryService struct {
 	PurchaseService         *purchase.PurchaseService
 	PurchaseReturnService   *purchase_return.PurchaseReturnService
 	BrandService            *brand.BrandService
-	StockOpenameService     *stock_opname.StockOpnameService
+	StockOpnameService      *stock_opname.StockOpnameService
 	TagService              *product.TagService
 	UnitService             *unit.UnitService
 }
@@ -66,7 +66,7 @@ func NewInventoryService(ctx *context.ERPContext) *InventoryService {
 		PurchaseReturnService:   purchase_return.NewPurchaseReturnService(ctx.DB, ctx, financeService, stockmovementSrv, purchaseSrv),
 		BrandService:            brand.NewBrandService(ctx.DB, ctx),
 		TagService:              tagService,
-		StockOpenameService:     stock_opname.NewStockOpnameService(ctx.DB, ctx, productSrv, stockmovementSrv),
+		StockOpnameService:      stock_opname.NewStockOpnameService(ctx.DB, ctx, productSrv, stockmovementSrv),
 		UnitService:             unitService,
 	}
 	err := service.Migrate()
