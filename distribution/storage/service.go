@@ -22,6 +22,7 @@ func NewStorageService(db *gorm.DB, ctx *context.ERPContext, inventoryService *i
 }
 
 func Migrate(db *gorm.DB) error {
+
 	return db.AutoMigrate(
 		&models.LocationPointModel{},
 	)
@@ -105,20 +106,12 @@ func (s *StorageService) DeleteWarehouseLocation(id string) error {
 
 func (s *StorageService) GetWarehouseLocationByID(id string) (*models.LocationPointModel, error) {
 	var location models.LocationPointModel
-	err := s.db.Preload("Warehouse").
-		Preload("Province").
-		Preload("Regency").
-		Preload("District").
-		Preload("Village").Where("id = ?", id).First(&location).Error
+	err := s.db.Preload("Warehouse").Where("id = ?", id).First(&location).Error
 	return &location, err
 }
 func (s *StorageService) GetWarehouseLocations(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Warehouse").
-		Preload("Province").
-		Preload("Regency").
-		Preload("District").
-		Preload("Village")
+	stmt := s.db.Preload("Warehouse")
 	if search != "" {
 		stmt = stmt.Where("name ILIKE ?",
 			"%"+search+"%",

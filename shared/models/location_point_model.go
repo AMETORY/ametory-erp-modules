@@ -20,13 +20,13 @@ type LocationPointModel struct {
 	Longitude   float64                         `json:"longitude" gorm:"type:decimal(11,8);"`
 	ZipCode     *string                         `json:"zip_code,omitempty"`
 	ProvinceID  *string                         `json:"province_id,omitempty" gorm:"type:char(2);index;constraint:OnDelete:SET NULL;"`
-	Province    *indonesia_regional.RegProvince `gorm:"foreignKey:ProvinceID;constraint:OnDelete:SET NULL;" json:"province,omitempty"`
+	Province    *indonesia_regional.RegProvince `gorm:"-" json:"province,omitempty"`
 	RegencyID   *string                         `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
-	Regency     *indonesia_regional.RegRegency  `gorm:"foreignKey:RegencyID;constraint:OnDelete:SET NULL;" json:"regency,omitempty"`
+	Regency     *indonesia_regional.RegRegency  `gorm:"-" json:"regency,omitempty"`
 	DistrictID  *string                         `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
-	District    *indonesia_regional.RegDistrict `gorm:"foreignKey:DistrictID;constraint:OnDelete:SET NULL;" json:"district,omitempty"`
+	District    *indonesia_regional.RegDistrict `gorm:"-" json:"district,omitempty"`
 	VillageID   *string                         `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
-	Village     *indonesia_regional.RegVillage  `gorm:"foreignKey:VillageID;constraint:OnDelete:SET NULL;" json:"village,omitempty"`
+	Village     *indonesia_regional.RegVillage  `gorm:"-" json:"village,omitempty"`
 }
 
 func (m *LocationPointModel) BeforeCreate(tx *gorm.DB) (err error) {
@@ -38,4 +38,24 @@ func (m *LocationPointModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (m *LocationPointModel) TableName() string {
 	return "location_points"
+}
+
+func (m *LocationPointModel) AfterFind(tx *gorm.DB) (err error) {
+	if m.ProvinceID != nil {
+		prov := indonesia_regional.GetProvince(tx, *m.ProvinceID)
+		m.Province = &prov
+	}
+	if m.RegencyID != nil {
+		reg := indonesia_regional.GetRegency(tx, *m.RegencyID)
+		m.Regency = &reg
+	}
+	if m.DistrictID != nil {
+		dis := indonesia_regional.GetDistrict(tx, *m.DistrictID)
+		m.District = &dis
+	}
+	if m.VillageID != nil {
+		vil := indonesia_regional.GetVillage(tx, *m.VillageID)
+		m.Village = &vil
+	}
+	return
 }

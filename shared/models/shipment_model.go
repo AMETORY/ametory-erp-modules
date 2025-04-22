@@ -45,7 +45,7 @@ func (s *ShipmentModel) BeforeCreate(tx *gorm.DB) (err error) {
 func (s *ShipmentModel) AfterFind(tx *gorm.DB) (err error) {
 	if s.CurrentShipmentLegID != nil {
 		var shipmentLeg ShipmentLegModel
-		tx.Where("id = ?", *s.CurrentShipmentLegID).First(&shipmentLeg)
+		tx.Preload("FromLocation").Preload("ToLocation").Where("id = ?", *s.CurrentShipmentLegID).First(&shipmentLeg)
 		s.CurrentShipmentLeg = &shipmentLeg
 	}
 	return nil
@@ -72,6 +72,7 @@ func (s *ShipmentItem) BeforeCreate(tx *gorm.DB) (err error) {
 
 type ShipmentLegModel struct {
 	shared.BaseModel
+	SeqNumber      int                  `gorm:"not null;default:1" json:"seq_number,omitempty"`
 	Shipment       *ShipmentModel       `gorm:"foreignKey:ShipmentID;constraint:OnDelete:CASCADE" json:"shipment,omitempty"`
 	ShipmentID     *string              `gorm:"size:36" json:"shipment_id,omitempty"`
 	FromLocation   *LocationPointModel  `gorm:"foreignKey:FromLocationID;constraint:OnDelete:CASCADE" json:"from_location,omitempty"`
@@ -82,7 +83,7 @@ type ShipmentLegModel struct {
 	NumberPlate    string               `gorm:"type:varchar(20)" json:"number_plate,omitempty"`
 	DriverName     string               `gorm:"type:varchar(100)" json:"driver_name,omitempty"`
 	VehicleInfo    string               `gorm:"type:varchar(255)" json:"vehicle_info,omitempty"`
-	Status         string               `gorm:"type:varchar(20)" json:"status,omitempty"` // Pending, In Transit, Completed
+	Status         string               `gorm:"type:varchar(20);default:PENDING" json:"status,omitempty"` // Pending, In Transit, Completed
 	DepartedAt     *time.Time           `json:"departed_at,omitempty"`
 	ArrivedAt      *time.Time           `json:"arrived_at,omitempty"`
 	TrackingEvents []TrackingEventModel `gorm:"foreignKey:ShipmentLegID;constraint:OnDelete:CASCADE" json:"tracking_events,omitempty"`
@@ -100,6 +101,13 @@ func (s *ShipmentLegModel) BeforeCreate(tx *gorm.DB) (err error) {
 	if s.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
+	var lastSeqNumber ShipmentLegModel
+	if err := tx.Where("shipment_id = ?", s.ShipmentID).Order("seq_number desc").First(&lastSeqNumber).Error; err == nil {
+		tx.Statement.SetColumn("seq_number", lastSeqNumber.SeqNumber+1)
+	} else {
+		tx.Statement.SetColumn("seq_number", 1)
+	}
+
 	// Add logic to execute before creating a ShipmentLegModel record, if needed
 	return nil
 }

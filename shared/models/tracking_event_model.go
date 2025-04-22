@@ -10,6 +10,7 @@ import (
 
 type TrackingEventModel struct {
 	shared.BaseModel
+	SeqNumber     int               `gorm:"not null;default:1" json:"seq_number,omitempty"`
 	ShipmentLegID *string           `json:"shipment_leg_id,omitempty"`
 	ShipmentLeg   *ShipmentLegModel `gorm:"foreignKey:ShipmentLegID;constraint:OnDelete:CASCADE" json:"shipment_leg,omitempty"`
 	Status        string            `json:"status,omitempty" gorm:"type:varchar(20)"`
@@ -24,6 +25,13 @@ func (t *TrackingEventModel) BeforeCreate(tx *gorm.DB) error {
 	if t.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
+	var lastSeqNumber TrackingEventModel
+	if err := tx.Where("shipment_leg_id = ?", t.ShipmentLegID).Order("seq_number desc").First(&lastSeqNumber).Error; err == nil {
+		tx.Statement.SetColumn("seq_number", lastSeqNumber.SeqNumber+1)
+	} else {
+		tx.Statement.SetColumn("seq_number", 1)
+	}
+
 	return nil
 }
 

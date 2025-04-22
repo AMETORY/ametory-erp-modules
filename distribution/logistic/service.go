@@ -26,6 +26,7 @@ func NewLogisticService(db *gorm.DB, ctx *context.ERPContext, inventoryService *
 func Migrate(db *gorm.DB) error {
 	err := db.AutoMigrate(
 		&models.ShipmentModel{},
+		&models.ShipmentItem{},
 		&models.DistributionEventModel{},
 		&models.ShipmentLegModel{},
 		&models.TrackingEventModel{},
@@ -70,6 +71,25 @@ func (s *LogisticService) ListDistributionEvents(request http.Request, search st
 	page.Page = page.Page + 1
 	return page, nil
 }
+func (s *LogisticService) ListShipments(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("notes ILIKE ? OR code ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.ShipmentModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.ShipmentModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
 
 func (s *LogisticService) CreateDistributionEvent(data *models.DistributionEventModel) error {
 	if err := s.db.Create(data).Error; err != nil {
@@ -83,6 +103,22 @@ func (s *LogisticService) CreateShipment(data *models.ShipmentModel) error {
 	}
 
 	return nil
+}
+
+func (s *LogisticService) DeleteItemShipment(shipmentID string, itemID string) error {
+	return s.db.Delete(&models.ShipmentItem{}, "shipment_id = ? AND id = ?", shipmentID, itemID).Error
+}
+
+func (s *LogisticService) DeleteShipment(shipmentID string) error {
+	if err := s.db.Delete(&models.ShipmentItem{}, "shipment_id = ?", shipmentID).Error; err != nil {
+		return err
+	}
+
+	if err := s.db.Delete(&models.ShipmentLegModel{}, "shipment_id = ?", shipmentID).Error; err != nil {
+		return err
+	}
+
+	return s.db.Delete(&models.ShipmentModel{}, "id = ?", shipmentID).Error
 }
 
 func (s *LogisticService) ReadyToShip(shipmentID string, date time.Time, notes *string) error {
@@ -133,11 +169,29 @@ func (s *LogisticService) CreateShipmentLeg(data *models.ShipmentLegModel) error
 	return nil
 }
 
+func (s *LogisticService) DeleteDistributionEvent(eventID string) error {
+	distributionEvent := models.DistributionEventModel{}
+	if err := s.db.Preload("Shipments").First(&distributionEvent, "id = ?", eventID).Error; err != nil {
+		return err
+	}
+
+	if err := s.db.Delete(&distributionEvent.Shipments, "distribution_event_id = ?", eventID).Error; err != nil {
+		return err
+	}
+	if err := s.db.Delete(&models.DistributionEventModel{}, "id = ?", eventID).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *LogisticService) GetDistributionEvent(eventID string) (*models.DistributionEventModel, error) {
 	distributionEvent := models.DistributionEventModel{}
 	if err := s.db.
-		Preload("Shipments.ShipmentLegs").
-		Preload("Shipments.Items").
+		Preload("Shipments", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("Items").Preload("ShipmentLegs").
+				Preload("FromLocation.Warehouse").
+				Preload("ToLocation.Warehouse")
+		}).
 		First(&distributionEvent, "id = ?", eventID).Error; err != nil {
 		return nil, err
 	}
@@ -145,11 +199,32 @@ func (s *LogisticService) GetDistributionEvent(eventID string) (*models.Distribu
 	return &distributionEvent, nil
 }
 
-func (s *LogisticService) MonitorShipment(shipmentID string) (*models.ShipmentModel, error) {
+func (s *LogisticService) UpdateStatusShipment(shipmentID string, status string) error {
+	shipment := models.ShipmentModel{}
+	if err := s.db.First(&shipment, "id = ?", shipmentID).Error; err != nil {
+		return err
+	}
+
+	shipment.Status = status
+	return s.db.Save(&shipment).Error
+}
+
+func (s *LogisticService) GetShipment(shipmentID string) (*models.ShipmentModel, error) {
 	shipment := models.ShipmentModel{}
 	if err := s.db.
-		Preload("ShipmentLegs").
-		Preload("Items").
+		Preload("ShipmentLegs", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("TrackingEvents").
+				Preload("FromLocation.Warehouse").
+				Preload("ToLocation.Warehouse")
+		}).
+		Preload("Items", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("Product").Preload("Unit")
+		}).
+		Preload("FromLocation.Warehouse").
+		Preload("ToLocation.Warehouse").
+		Preload("DistributionEvent", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		}).
 		First(&shipment, "id = ?", shipmentID).Error; err != nil {
 		return nil, err
 	}
@@ -157,6 +232,13 @@ func (s *LogisticService) MonitorShipment(shipmentID string) (*models.ShipmentMo
 	return &shipment, nil
 }
 
+func (s *LogisticService) AddItemShipment(shipmentID string, item *models.ShipmentItem) error {
+	if err := s.db.Create(item).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
 func (s *LogisticService) StartShipmentLegDelivery(shipmentLegID string, date time.Time, notes string) error {
 	shipmentLeg := models.ShipmentLegModel{}
 	if err := s.db.
@@ -168,6 +250,7 @@ func (s *LogisticService) StartShipmentLegDelivery(shipmentLegID string, date ti
 	}
 
 	shipmentLeg.DepartedAt = &date
+	shipmentLeg.Status = "IN_DELIVERY"
 	if err := s.db.Save(&shipmentLeg).Error; err != nil {
 		return err
 	}
@@ -219,6 +302,7 @@ func (s *LogisticService) ArrivedShipmentLegDelivery(shipmentLegID string, date 
 	}
 
 	shipmentLeg.ArrivedAt = &date
+	shipmentLeg.Status = "ARRIVED"
 	if err := s.db.Save(&shipmentLeg).Error; err != nil {
 		return err
 	}
@@ -227,21 +311,24 @@ func (s *LogisticService) ArrivedShipmentLegDelivery(shipmentLegID string, date 
 		return errors.New("to location id is nil")
 	}
 
-	for _, v := range shipmentLeg.Shipment.Items {
-		if _, err := s.inventoryService.StockMovementService.AddMovement(
-			date,
-			*v.ProductID,
-			*shipmentLeg.ToLocation.WarehouseID,
-			nil,
-			nil,
-			nil,
-			nil,
-			v.Quantity,
-			models.MovementTypeShippingIn,
-			shipmentLegID,
-			notes,
-		); err != nil {
-			return err
+	if shipmentLeg.ToLocation.WarehouseID != nil {
+
+		for _, v := range shipmentLeg.Shipment.Items {
+			if _, err := s.inventoryService.StockMovementService.AddMovement(
+				date,
+				*v.ProductID,
+				*shipmentLeg.ToLocation.WarehouseID,
+				nil,
+				nil,
+				nil,
+				nil,
+				v.Quantity,
+				models.MovementTypeShippingIn,
+				shipmentLegID,
+				notes,
+			); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -258,17 +345,9 @@ func (s *LogisticService) ArrivedShipmentLegDelivery(shipmentLegID string, date 
 	return s.UpdateIsDelayedForShipment(*shipmentLeg.ShipmentID)
 }
 
-func (s *LogisticService) AddTrackingEvent(shipmentLegID string, status string, latitude float64, longitude float64, notes string) error {
-	trackingEvent := models.TrackingEventModel{
-		ShipmentLegID: &shipmentLegID,
-		Status:        status,
-		Latitude:      latitude,
-		Longitude:     longitude,
-		Timestamp:     time.Now(),
-		Notes:         notes,
-	}
+func (s *LogisticService) AddTrackingEvent(shipmentLegID string, data *models.TrackingEventModel) error {
 
-	if err := s.db.Create(&trackingEvent).Error; err != nil {
+	if err := s.db.Create(&data).Error; err != nil {
 		return err
 	}
 
@@ -294,7 +373,11 @@ func (s *LogisticService) GenerateShipmentReport(shipmentID string) (*models.Shi
 	return &shipment, nil
 }
 
-func (s *LogisticService) GenerateDistributionEventReport(distributionEventID string, reportID *string) (*models.DistributionEventReport, error) {
+func (s *LogisticService) GetDistributionEventReport(distributionEventID string) (*models.DistributionEventReport, error) {
+
+	return s.GenerateDistributionEventReport(distributionEventID)
+}
+func (s *LogisticService) GenerateDistributionEventReport(distributionEventID string) (*models.DistributionEventReport, error) {
 	distributionEvent := models.DistributionEventModel{}
 	if err := s.db.
 		Preload("Shipments.ShipmentLegs.TrackingEvents").
@@ -306,15 +389,10 @@ func (s *LogisticService) GenerateDistributionEventReport(distributionEventID st
 	}
 
 	report := models.DistributionEventReport{
-		DistributionEvent:   distributionEvent,
-		DistributionEventID: distributionEventID,
+		DistributionEvent: distributionEvent,
 	}
 
-	if reportID != nil {
-		if err := s.db.First(&report, "id = ?", *reportID).Error; err != nil {
-			return nil, err
-		}
-	}
+	s.db.First(&report, "distribution_event_id = ?", distributionEventID)
 
 	report.TotalShipments = (len(distributionEvent.Shipments))
 	report.TotalDestinations = 0
@@ -325,6 +403,7 @@ func (s *LogisticService) GenerateDistributionEventReport(distributionEventID st
 	for _, shipment := range distributionEvent.Shipments {
 		report.TotalItems += (len(shipment.Items))
 	}
+	report.DistributionEventID = distributionEventID
 	report.LostItems = 0
 	report.DamagedItems = 0
 	report.DelayedShipments = 0

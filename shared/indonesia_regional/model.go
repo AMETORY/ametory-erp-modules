@@ -1,5 +1,7 @@
 package indonesia_regional
 
+import "gorm.io/gorm"
+
 type RegProvince struct {
 	ID        string       `gorm:"primary_key" json:"id"`
 	Name      string       `gorm:"type:varchar(100);not null" json:"name"`
@@ -40,4 +42,27 @@ type RegVillage struct {
 
 func (RegVillage) TableName() string {
 	return "reg_villages"
+}
+
+func GetProvince(db *gorm.DB, id string) RegProvince {
+	var province RegProvince
+	db.Model(&RegProvince{}).Where("id = ?", id).First(&province)
+	return province
+}
+func GetRegency(db *gorm.DB, id string) RegRegency {
+	var regency RegRegency
+	db.Model(&RegRegency{}).Where("id = ?", id).First(&regency)
+	return regency
+}
+
+func GetDistrict(db *gorm.DB, id string) RegDistrict {
+	var district RegDistrict
+	db.Model(&RegDistrict{}).Where("id = ?", id).First(&district)
+	return district
+}
+
+func GetVillage(db *gorm.DB, id string) RegVillage {
+	var village RegVillage
+	db.Model(&RegVillage{}).Where("id = ?", id).First(&village)
+	return village
 }
