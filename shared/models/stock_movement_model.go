@@ -54,6 +54,7 @@ type StockMovementModel struct {
 	SalesRef          *SalesModel         `gorm:"-" json:"sales_ref,omitempty"`
 	PurchaseRef       *PurchaseOrderModel `gorm:"-" json:"purchase_ref,omitempty"`
 	ReturnRef         *ReturnModel        `gorm:"-" json:"return_ref,omitempty"`
+	StockOpnameRef    *StockOpnameHeader  `gorm:"-" json:"stock_opname_ref,omitempty"`
 }
 
 func (StockMovementModel) TableName() string {

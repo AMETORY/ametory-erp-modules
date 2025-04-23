@@ -214,6 +214,7 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 				movement.SecondaryRefType = &secRefType
 				movement.Value = detail.UnitValue
 				movement.UnitID = detail.UnitID
+				movement.CompanyID = stockOpnameHeader.CompanyID
 
 				err = tx.Save(movement).Error
 				if err != nil {
@@ -223,15 +224,19 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 				if inventoryID != nil && expenseID != nil && revenueID != nil {
 					inventoryTransID := utils.Uuid()
 					totalPrice := math.Abs(detail.Difference * detail.UnitValue * detail.UnitPrice)
+					code := utils.RandString(8, false)
 					if detail.Difference > 0 {
+
 						incomeTransID := utils.Uuid()
 						incomeTrans := models.TransactionModel{
 							BaseModel: shared.BaseModel{
 								ID: incomeTransID,
 							},
+							Code:                        code,
 							Date:                        date,
 							AccountID:                   revenueID,
 							Description:                 "Pendapatan Lain-lain / Penyesuaian Persediaan " + stockOpnameHeader.StockOpnameNumber,
+							Notes:                       detail.Notes,
 							TransactionRefID:            &inventoryTransID,
 							TransactionRefType:          "transaction",
 							TransactionSecondaryRefID:   &stockOpnameHeader.ID,
@@ -250,10 +255,12 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 							BaseModel: shared.BaseModel{
 								ID: inventoryTransID,
 							},
+							Code:                        code,
 							Date:                        date,
 							AccountID:                   inventoryID,
 							Description:                 "Penyesuaian Stock Opname " + stockOpnameHeader.StockOpnameNumber,
-							TransactionRefID:            &inventoryTransID,
+							Notes:                       detail.Notes,
+							TransactionRefID:            &incomeTransID,
 							TransactionRefType:          "transaction",
 							TransactionSecondaryRefID:   &stockOpnameHeader.ID,
 							TransactionSecondaryRefType: refType,
@@ -274,9 +281,11 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 							BaseModel: shared.BaseModel{
 								ID: expenseTransID,
 							},
+							Code:                        code,
 							Date:                        date,
 							AccountID:                   expenseID,
 							Description:                 "Kerugian Selisih Persediaan " + stockOpnameHeader.StockOpnameNumber,
+							Notes:                       detail.Notes,
 							TransactionRefID:            &inventoryTransID,
 							TransactionRefType:          "transaction",
 							TransactionSecondaryRefID:   &stockOpnameHeader.ID,
@@ -295,10 +304,12 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 							BaseModel: shared.BaseModel{
 								ID: inventoryTransID,
 							},
+							Code:                        code,
 							Date:                        date,
 							AccountID:                   inventoryID,
 							Description:                 "Penyesuaian Stock Opname " + stockOpnameHeader.StockOpnameNumber,
-							TransactionRefID:            &inventoryTransID,
+							Notes:                       detail.Notes,
+							TransactionRefID:            &expenseTransID,
 							TransactionRefType:          "transaction",
 							TransactionSecondaryRefID:   &stockOpnameHeader.ID,
 							TransactionSecondaryRefType: refType,

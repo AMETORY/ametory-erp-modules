@@ -289,6 +289,12 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 	if request.URL.Query().Get("is_cogs_closing_account") != "" {
 		stmt = stmt.Where("accounts.is_cogs_closing_account = ? ", true)
 	}
+	if request.URL.Query().Get("is_cogs_account") != "" {
+		stmt = stmt.Where("accounts.is_cogs_account = ? ", true)
+	}
+	if request.URL.Query().Get("is_inventory_account") != "" {
+		stmt = stmt.Where("accounts.is_inventory_account = ? ", true)
+	}
 	if request.URL.Query().Get("is_tax") != "" {
 		isTax := request.URL.Query().Get("is_tax") == "true" || request.URL.Query().Get("is_tax") == "1"
 		stmt = stmt.Where("accounts.is_tax = ? ", isTax)

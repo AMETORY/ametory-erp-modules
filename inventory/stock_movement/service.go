@@ -120,6 +120,13 @@ func (s *StockMovementService) GetStockMovements(request http.Request, search st
 						item.ReturnRef = &returnRef
 					}
 				}
+				if *item.ReferenceType == "stock_opname" {
+					var stockOpnameRef models.StockOpnameHeader
+					err := s.db.Where("id = ?", item.ReferenceID).First(&stockOpnameRef).Error
+					if err == nil {
+						item.StockOpnameRef = &stockOpnameRef
+					}
+				}
 			}
 		}
 		newItems = append(newItems, item)

@@ -52,6 +52,30 @@ func Migrate(db *gorm.DB) error {
 	return nil
 }
 
+func (s *LogisticService) GetAllShipments(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.
+		Preload("FromLocation.Warehouse").
+		Preload("ToLocation.Warehouse").
+		Preload("DistributionEvent", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		})
+	if search != "" {
+		stmt = stmt.Where("notes ILIKE ? OR code ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.ShipmentModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.ShipmentModel{})
+	return page, nil
+
+}
 func (s *LogisticService) ListDistributionEvents(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -213,7 +237,9 @@ func (s *LogisticService) GetShipment(shipmentID string) (*models.ShipmentModel,
 	shipment := models.ShipmentModel{}
 	if err := s.db.
 		Preload("ShipmentLegs", func(db *gorm.DB) *gorm.DB {
-			return db.Preload("TrackingEvents").
+			return db.Preload("TrackingEvents", func(db *gorm.DB) *gorm.DB {
+				return db.Order("seq_number ASC")
+			}).
 				Preload("FromLocation.Warehouse").
 				Preload("ToLocation.Warehouse")
 		}).
