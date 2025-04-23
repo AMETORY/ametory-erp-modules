@@ -66,6 +66,7 @@ type AccountModel struct {
 	IsProfitLossClosingAccount bool          `json:"is_profit_loss_closing_account,omitempty" gorm:"default:false;not null"`
 	IsDepreciation             bool          `json:"is_depreciation,omitempty" gorm:"default:false;not null"`
 	IsAmortization             bool          `json:"is_amortization,omitempty" gorm:"default:false;not null"`
+	IsCogmAccount              bool          `json:"is_cogm_account,omitempty" gorm:"default:false;not null"`
 
 	// Transactions          []Transaction `gorm:"constraint:OnDelete:CASCADE;"`
 }

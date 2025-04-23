@@ -31,7 +31,6 @@ func GeneratePDF(wkhtmltopdfPath, footer, html string) ([]byte, error) {
 	page.NoBackground.Set(false)         // Ensure background is not disabled
 	page.DisableSmartShrinking.Set(true) // Disable smart shrinking
 	// page.UserStyleSheet.Set("path/to/your/styles.css") // Optionally add custom stylesheet
-
 	// Add the page to the PDF generator
 	pdfg.AddPage(page)
 	pdfg.MarginBottom.Set(0)

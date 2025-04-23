@@ -77,10 +77,9 @@ func (s *FinanceReportService) GenerateAccountReport(accountID string, request h
 
 	var balanceCurrent, balanceBefore float64
 	// BEFORE
-
 	debit, credit, _ := s.GetAccountBalance(accountID, nil, startDate)
 	switch account.Type {
-	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE:
+	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
 		balanceCurrent = debit - credit
 	case models.LIABILITY, models.EQUITY, models.REVENUE, models.INCOME, models.CONTRA_ASSET, models.CONTRA_EXPENSE:
 		balanceCurrent = credit - debit
@@ -100,7 +99,7 @@ func (s *FinanceReportService) GenerateAccountReport(accountID string, request h
 	// AFTER
 	debit, credit, _ = s.GetAccountBalance(accountID, endDate, nil)
 	switch account.Type {
-	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE:
+	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
 		balanceAfter = debit - credit
 	case models.LIABILITY, models.EQUITY, models.REVENUE, models.INCOME, models.CONTRA_ASSET, models.CONTRA_EXPENSE:
 		balanceAfter = credit - debit
@@ -1461,6 +1460,7 @@ func (s *FinanceReportService) GetMonthlySalesReport(companyID string, year int)
 				AND EXTRACT(YEAR FROM sales_date) = ?
 				AND EXTRACT(MONTH FROM sales_date) = ?
 				AND sales.company_id = ?
+				AND sales.deleted_at is null
 		`, year, month, companyID).Scan(&report.Total).Error
 		if err != nil {
 			return nil, err
@@ -1495,6 +1495,7 @@ func (s *FinanceReportService) GetWeeklySalesReport(companyID string, year, mont
 					AND EXTRACT(MONTH FROM sales_date) = ?
 					AND EXTRACT(WEEK FROM sales_date) = ?
 					AND sales.company_id = ?
+					AND sales.deleted_at is null
 			`, year, month, week, companyID).Scan(&report.Total).Error
 			if err != nil {
 				return nil, err
@@ -1532,6 +1533,7 @@ func (s *FinanceReportService) GetWeeklyPurchaseReport(companyID string, year, m
 					AND EXTRACT(MONTH FROM purchase_date) = ?
 					AND EXTRACT(WEEK FROM purchase_date) = ?
 					AND purchase_orders.company_id = ?
+					AND purchase_orders.deleted_at is null
 			`, year, month, week, companyID).Scan(&report.Total).Error
 			if err != nil {
 				return nil, err
@@ -1563,6 +1565,7 @@ func (s *FinanceReportService) GetMonthlyPurchaseReport(companyID string, year i
 				AND EXTRACT(YEAR FROM purchase_date) = ?
 				AND EXTRACT(MONTH FROM purchase_date) = ?
 				AND purchase_orders.company_id = ?
+				AND purchase_orders.deleted_at is null
 		`, year, month, companyID).Scan(&report.Total).Error
 		if err != nil {
 			return nil, err
@@ -1593,6 +1596,7 @@ func (s *FinanceReportService) CalculateSalesByTimeRange(
 				AND sales.document_type = ?
 				AND EXTRACT(QUARTER FROM sales_date) = 1
 				AND EXTRACT(YEAR FROM sales_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+				AND sales.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "Q2":
 		err = s.db.Raw(`
@@ -1605,6 +1609,7 @@ func (s *FinanceReportService) CalculateSalesByTimeRange(
 				AND sales.document_type = ?
 				AND EXTRACT(QUARTER FROM sales_date) = 2
 				AND EXTRACT(YEAR FROM sales_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+				AND sales.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "Q3":
 		err = s.db.Raw(`
@@ -1617,6 +1622,7 @@ func (s *FinanceReportService) CalculateSalesByTimeRange(
 				AND sales.document_type = ?
 				AND EXTRACT(QUARTER FROM sales_date) = 3
 				AND EXTRACT(YEAR FROM sales_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+				AND sales.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "Q4":
 		err = s.db.Raw(`
@@ -1629,6 +1635,7 @@ func (s *FinanceReportService) CalculateSalesByTimeRange(
 				AND sales.document_type = ?
 				AND EXTRACT(QUARTER FROM sales_date) = 4
 				AND EXTRACT(YEAR FROM sales_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+				AND sales.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "THIS_MONTH":
 		err = s.db.Raw(`
@@ -1640,6 +1647,7 @@ func (s *FinanceReportService) CalculateSalesByTimeRange(
 				sales.company_id = ?
 				AND sales.document_type = ?
 				AND sales_date BETWEEN date_trunc('month', CURRENT_DATE) AND date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+				AND sales.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "THIS_WEEK":
 		err = s.db.Raw(`
@@ -1651,6 +1659,7 @@ func (s *FinanceReportService) CalculateSalesByTimeRange(
 				sales.company_id = ?
 				AND sales.document_type = ?
 				AND sales_date BETWEEN date_trunc('week', CURRENT_DATE) AND date_trunc('week', CURRENT_DATE) + INTERVAL '1 week'
+				AND sales.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "THIS_YEAR":
 		err = s.db.Raw(`
@@ -1662,6 +1671,7 @@ func (s *FinanceReportService) CalculateSalesByTimeRange(
 				sales.company_id = ?
 				AND sales.document_type = ?
 				AND sales_date BETWEEN date_trunc('year', CURRENT_DATE) AND date_trunc('year', CURRENT_DATE) + INTERVAL '1 year'
+				AND sales.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	default:
 		err = errors.New("invalid time range")
@@ -1692,6 +1702,7 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 				AND purchase_orders.document_type = ?
 				AND EXTRACT(QUARTER FROM purchase_date) = 1
 				AND EXTRACT(YEAR FROM purchase_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+				AND purchase_orders.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "Q2":
 		err = s.db.Raw(`
@@ -1704,6 +1715,7 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 				AND purchase_orders.document_type = ?
 				AND EXTRACT(QUARTER FROM purchase_date) = 2
 				AND EXTRACT(YEAR FROM purchase_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+				AND purchase_orders.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "Q3":
 		err = s.db.Raw(`
@@ -1716,6 +1728,7 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 				AND purchase_orders.document_type = ?
 				AND EXTRACT(QUARTER FROM purchase_date) = 3
 				AND EXTRACT(YEAR FROM purchase_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+				AND purchase_orders.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "Q4":
 		err = s.db.Raw(`
@@ -1728,6 +1741,7 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 				AND purchase_orders.document_type = ?
 				AND EXTRACT(QUARTER FROM purchase_date) = 4
 				AND EXTRACT(YEAR FROM purchase_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+				AND purchase_orders.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "THIS_MONTH":
 		err = s.db.Raw(`
@@ -1739,6 +1753,7 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 				purchase_orders.company_id = ?
 				AND purchase_orders.document_type = ?
 				AND purchase_date BETWEEN date_trunc('month', CURRENT_DATE) AND date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+				AND purchase_orders.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "THIS_WEEK":
 		err = s.db.Raw(`
@@ -1750,6 +1765,7 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 				purchase_orders.company_id = ?
 				AND purchase_orders.document_type = ?
 				AND purchase_date BETWEEN date_trunc('week', CURRENT_DATE) AND date_trunc('week', CURRENT_DATE) + INTERVAL '1 week'
+				AND purchase_orders.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	case "THIS_YEAR":
 		err = s.db.Raw(`
@@ -1761,6 +1777,7 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 				purchase_orders.company_id = ?
 				AND purchase_orders.document_type = ?
 				AND purchase_date BETWEEN date_trunc('year', CURRENT_DATE) AND date_trunc('year', CURRENT_DATE) + INTERVAL '1 year'
+				AND purchase_orders.deleted_at is null
 		`, companyID, documentType).Scan(&total).Error
 	default:
 		err = errors.New("invalid time range")
@@ -1782,6 +1799,7 @@ func (s *FinanceReportService) GetSumCashBank(companyID string) (float64, error)
 		WHERE
 			accounts.type = ? AND cashflow_sub_group = ?
 			AND accounts.company_id = ? 
+			AND transactions.deleted_at is null
 	`, models.ASSET, constants.CASH_BANK, companyID).Scan(&total).Error
 	if err != nil {
 		return 0, err
@@ -1807,6 +1825,7 @@ func (s *FinanceReportService) GetAlmostDueSales(companyID string, interval int)
 			AND sales.document_type = ?
 			AND (sales.due_date <= CURRENT_DATE + INTERVAL '%v'  DAY OR sales.due_date IS NULL)
 			AND sales.paid <> sales.total
+			AND sales.deleted_at is null
 		ORDER BY
 			sales.due_date ASC
 	`, interval), companyID, models.INVOICE).Scan(&reports).Error
@@ -1833,6 +1852,7 @@ func (s *FinanceReportService) GetAlmostDuePurchase(companyID string, interval i
 			AND purchase_orders.document_type = ?
 			AND (purchase_orders.due_date <= CURRENT_DATE + INTERVAL '%v' DAY OR purchase_orders.due_date IS NULL)
 			AND purchase_orders.paid <> purchase_orders.total
+			AND purchase_orders.deleted_at is null
 		ORDER BY
 			purchase_orders.due_date ASC
 	`, interval), companyID, models.BILL).Scan(&reports).Error

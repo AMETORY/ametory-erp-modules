@@ -347,7 +347,7 @@ func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionMo
 		transaction.IsAccountReceivable = true
 	}
 	switch accountType {
-	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE:
+	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
 		transaction.Debit = transaction.Amount
 		transaction.Credit = 0
 	case models.LIABILITY, models.EQUITY, models.REVENUE, models.INCOME, models.CONTRA_ASSET, models.CONTRA_EXPENSE:

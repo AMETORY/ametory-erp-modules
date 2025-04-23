@@ -92,7 +92,7 @@ func (s *SMTPSender) send(subject string, attachment []string) error {
 	var client *smtp.Client
 	var auth smtp.Auth
 	var err error
-	if s.smtpPort == 587 {
+	if s.smtpPort == 587 || s.smtpPort == 2525 {
 		_, err := s.sendEmailWithTLS(e)
 		if err != nil {
 			return err

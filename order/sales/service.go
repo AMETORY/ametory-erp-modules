@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -189,7 +190,9 @@ func (s *SalesService) DeleteSales(id string) error {
 
 func (s *SalesService) GetSalesByID(id string) (*models.SalesModel, error) {
 	var sales, refSales models.SalesModel
-	err := s.db.Preload("SalesPayments").Preload("PaymentAccount").Where("id = ?", id).First(&sales).Error
+	err := s.db.Preload("SalesPayments", func(db *gorm.DB) *gorm.DB {
+		return db.Order("updated_at asc")
+	}).Preload("PaymentAccount").Where("id = ?", id).First(&sales).Error
 	if err != nil {
 		return nil, err
 	}
@@ -916,4 +919,131 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 	})
 	s.financeService.TransactionService.SetDB(s.db)
 	return err
+}
+
+func (s *SalesService) GetPdf(sales *models.SalesModel, templatePath, timeFormatStr, footer string, showCompany, showShipped bool) ([]byte, error) {
+	if timeFormatStr == "" {
+		timeFormatStr = "02/01/2006"
+	}
+
+	company := models.CompanyModel{}
+	err := s.db.Find(&company, "id = ?", *sales.CompanyID).Error
+	if err != nil {
+		return nil, err
+	}
+
+	dueDate := ""
+	if sales.DueDate != nil {
+		dueDate = sales.DueDate.Format(timeFormatStr)
+	}
+
+	items := []utils.InvoicePDFItem{}
+	for i, v := range sales.Items {
+		unitName := ""
+		if v.Unit != nil {
+			unitName = v.Unit.Name
+		}
+		taxPercent := 0.0
+		taxName := ""
+		if v.Tax != nil {
+			taxPercent = v.Tax.Amount
+			taxName = v.Tax.Code
+		}
+		items = append(items, utils.InvoicePDFItem{
+			No:                 i + 1,
+			Description:        v.Description,
+			Notes:              v.Notes,
+			Quantity:           utils.FormatRupiah(v.Quantity),
+			UnitPrice:          utils.FormatRupiah(v.UnitPrice),
+			UnitName:           unitName,
+			Total:              utils.FormatRupiah(v.Total),
+			SubTotal:           utils.FormatRupiah(v.SubTotal),
+			SubtotalBeforeDisc: utils.FormatRupiah(v.SubtotalBeforeDisc),
+			TotalDiscount:      utils.FormatRupiah(v.DiscountAmount),
+			DiscountPercent:    utils.FormatRupiah(v.DiscountPercent),
+			TaxAmount:          utils.FormatRupiah(v.TotalTax),
+			TaxPercent:         utils.FormatRupiah(taxPercent),
+			TaxName:            taxName,
+		})
+	}
+
+	payments := []utils.InvoicePDFPayment{}
+
+	for _, v := range sales.SalesPayments {
+		payments = append(payments, utils.InvoicePDFPayment{
+			Date:               v.PaymentDate.Format(timeFormatStr),
+			Description:        v.Notes,
+			PaymentMethod:      strings.ReplaceAll(v.PaymentMethod, "_", " "),
+			Amount:             utils.FormatRupiah(v.Amount),
+			PaymentDiscount:    utils.FormatRupiah(v.PaymentDiscount),
+			PaymentMethodNotes: v.PaymentMethodNotes,
+		})
+	}
+
+	billedTo := utils.InvoicePDFContact{}
+	shippedTo := utils.InvoicePDFContact{}
+	contactName, ok := sales.ContactDataParsed["name"].(string)
+	if ok {
+		billedTo.Name = contactName
+	}
+	contactEmail, ok := sales.ContactDataParsed["email"].(string)
+	if ok {
+		billedTo.Email = contactEmail
+	}
+	contactPhone, ok := sales.ContactDataParsed["phone"].(string)
+	if ok {
+		billedTo.Phone = contactPhone
+	}
+	contactAddress, ok := sales.ContactDataParsed["address"].(string)
+	if ok {
+		billedTo.Address = contactAddress
+	}
+
+	shippedName, ok := sales.DeliveryDataParsed["name"].(string)
+	if ok {
+		shippedTo.Name = shippedName
+	}
+	shippedEmail, ok := sales.DeliveryDataParsed["email"].(string)
+	if ok {
+		shippedTo.Email = shippedEmail
+	}
+	shippedPhone, ok := sales.DeliveryDataParsed["phone"].(string)
+	if ok {
+		shippedTo.Phone = shippedPhone
+	}
+	shippedAddress, ok := sales.DeliveryDataParsed["address"].(string)
+	if ok {
+		shippedTo.Address = shippedAddress
+	}
+
+	//DeliveryDataParsed
+
+	var data = utils.InvoicePDF{
+		ShowCompany: showCompany,
+		ShowShipped: showShipped,
+		Company: utils.InvoicePDFContact{
+			Name:    company.Name,
+			Address: company.Address,
+			Phone:   company.Phone,
+			Email:   company.Email,
+		},
+		Number:          sales.SalesNumber,
+		Date:            sales.SalesDate.Format(timeFormatStr),
+		DueDate:         dueDate,
+		Items:           items,
+		SubTotal:        utils.FormatRupiah(sales.Subtotal),
+		TotalDiscount:   utils.FormatRupiah(sales.TotalDiscount),
+		AfterDiscount:   utils.FormatRupiah(sales.Total - sales.TotalDiscount),
+		TotalTax:        utils.FormatRupiah(sales.TotalTax),
+		GrandTotal:      utils.FormatRupiah(sales.Total),
+		InvoicePayments: payments,
+		Balance:         utils.FormatRupiah(sales.Total - sales.Paid),
+		Paid:            utils.FormatRupiah(sales.Paid),
+		BilledTo:        billedTo,
+		ShippedTo:       shippedTo,
+		TermCondition:   sales.TermCondition,
+		PaymentTerms:    sales.PaymentTerms,
+	}
+
+	return utils.GenerateInvoicePDF(data, templatePath, footer)
 }

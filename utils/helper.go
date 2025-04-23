@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"math"
@@ -15,9 +16,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/ttacon/libphonenumber"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 func init() {
@@ -308,4 +312,51 @@ func GenerateRandomNumber(length int) string {
 		b[i] = charsetNumber[seededRand.Intn(len(charsetNumber))]
 	}
 	return string(b)
+}
+
+func GenerateInvoicePDF(data InvoicePDF, templatePath string, footer string) ([]byte, error) {
+	// 1. Render HTML dari template
+	if templatePath == "" {
+		templatePath = "templates/invoice.html"
+	}
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var htmlBuf bytes.Buffer
+	if err := tmpl.Execute(&htmlBuf, data); err != nil {
+		return nil, err
+	}
+
+	// 2. Generate PDF dari HTML string
+	pdfg, err := wkhtmltopdf.NewPDFGenerator()
+	if err != nil {
+		return nil, err
+	}
+	// fmt.Println(htmlBuf.String())
+	page := wkhtmltopdf.NewPageReader(strings.NewReader(htmlBuf.String()))
+	page.EnableLocalFileAccess.Set(true)
+	pdfg.AddPage(page)
+	page.DisableSmartShrinking.Set(true)
+	page.FooterRight.Set("[page]")
+	if footer != "" {
+		page.FooterLeft.Set(footer)
+	}
+	page.FooterFontSize.Set(8)
+
+	pdfg.Dpi.Set(300)
+	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
+
+	if err := pdfg.Create(); err != nil {
+		return nil, err
+	}
+
+	// 3. Return PDF sebagai []byte
+	return pdfg.Bytes(), nil
+}
+
+func FormatRupiah(amount float64) string {
+	p := message.NewPrinter(language.Indonesian)
+	return p.Sprintf("%.0f", amount)
 }
