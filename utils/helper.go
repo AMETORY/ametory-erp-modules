@@ -347,6 +347,10 @@ func GenerateInvoicePDF(data InvoicePDF, templatePath string, footer string) ([]
 
 	pdfg.Dpi.Set(300)
 	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
+	pdfg.MarginLeft.Set(15)
+	pdfg.MarginRight.Set(15)
+	pdfg.MarginBottom.Set(15)
+	pdfg.MarginTop.Set(15)
 
 	if err := pdfg.Create(); err != nil {
 		return nil, err

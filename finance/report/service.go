@@ -44,7 +44,7 @@ func (s *FinanceReportService) GenerateProfitLoss(report *models.ProfitLoss) err
 	return nil
 }
 
-func (s *FinanceReportService) GenerateAccountReport(accountID string, request http.Request) (*models.AccountReport, error) {
+func (s *FinanceReportService) GenerateAccountReport(accountID string, companyID *string, request http.Request) (*models.AccountReport, error) {
 	account, err := s.accountService.GetAccountByID(accountID)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (s *FinanceReportService) GenerateAccountReport(accountID string, request h
 
 	var balanceCurrent, balanceBefore float64
 	// BEFORE
-	debit, credit, _ := s.GetAccountBalance(accountID, nil, startDate)
+	debit, credit, _ := s.GetAccountBalance(accountID, companyID, nil, startDate)
 	switch account.Type {
 	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
 		balanceCurrent = debit - credit
@@ -89,15 +89,15 @@ func (s *FinanceReportService) GenerateAccountReport(accountID string, request h
 	balanceBefore = balanceCurrent
 
 	// CURRENT
-	pageCurrent, err := s.GetAccountTransactions(accountID, startDate, endDate)
+	pageCurrent, err := s.GetAccountTransactions(accountID, companyID, startDate, endDate)
 	if err != nil {
 		return nil, err
 	}
-	balance, _, _ := s.getBalance(&pageCurrent, &balanceCurrent)
+	balance, _, _ := s.getBalance(&pageCurrent, &balanceCurrent, companyID)
 
 	var balanceAfter float64
 	// AFTER
-	debit, credit, _ = s.GetAccountBalance(accountID, endDate, nil)
+	debit, credit, _ = s.GetAccountBalance(accountID, companyID, endDate, nil)
 	switch account.Type {
 	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
 		balanceAfter = debit - credit
@@ -117,7 +117,7 @@ func (s *FinanceReportService) GenerateAccountReport(accountID string, request h
 		Transactions:   pageCurrent,
 	}, nil
 }
-func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, currentBalance *float64) (float64, float64, float64) {
+func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, currentBalance *float64, companyID *string) (float64, float64, float64) {
 
 	newItems := make([]models.TransactionModel, 0)
 	var balance, credit, debit float64
@@ -125,49 +125,49 @@ func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, curre
 		if item.TransactionRefID != nil {
 			if item.TransactionRefType == "journal" {
 				var journalRef models.JournalModel
-				err := s.db.Where("id = ?", item.TransactionRefID).First(&journalRef).Error
+				err := s.db.Where("id = ?", item.TransactionRefID).Where("company_id = ?", *companyID).First(&journalRef).Error
 				if err == nil {
 					item.JournalRef = &journalRef
 				}
 			}
 			if item.TransactionRefType == "transaction" {
 				var transRef models.TransactionModel
-				err := s.db.Preload("Account").Where("id = ?", item.TransactionRefID).First(&transRef).Error
+				err := s.db.Preload("Account").Where("id = ?", item.TransactionRefID).Where("company_id = ?", *companyID).First(&transRef).Error
 				if err == nil {
 					item.TransactionRef = &transRef
 				}
 			}
 			if item.TransactionRefType == "sales" {
 				var salesRef models.SalesModel
-				err := s.db.Where("id = ?", item.TransactionRefID).First(&salesRef).Error
+				err := s.db.Where("id = ?", item.TransactionRefID).Where("company_id = ?", *companyID).First(&salesRef).Error
 				if err == nil {
 					item.SalesRef = &salesRef
 				}
 			}
 			if item.TransactionSecondaryRefType == "sales" {
 				var salesRef models.SalesModel
-				err := s.db.Where("id = ?", item.TransactionSecondaryRefID).First(&salesRef).Error
+				err := s.db.Where("id = ?", item.TransactionSecondaryRefID).Where("company_id = ?", *companyID).First(&salesRef).Error
 				if err == nil {
 					item.SalesRef = &salesRef
 				}
 			}
 			if item.TransactionRefType == "purchase" {
 				var purchaseRef models.PurchaseOrderModel
-				err := s.db.Where("id = ?", item.TransactionRefID).First(&purchaseRef).Error
+				err := s.db.Where("id = ?", item.TransactionRefID).Where("company_id = ?", *companyID).First(&purchaseRef).Error
 				if err == nil {
 					item.PurchaseRef = &purchaseRef
 				}
 			}
 			if item.TransactionSecondaryRefType == "purchase" {
 				var purchaseRef models.PurchaseOrderModel
-				err := s.db.Where("id = ?", item.TransactionSecondaryRefID).First(&purchaseRef).Error
+				err := s.db.Where("id = ?", item.TransactionSecondaryRefID).Where("company_id = ?", *companyID).First(&purchaseRef).Error
 				if err == nil {
 					item.PurchaseRef = &purchaseRef
 				}
 			}
 			if item.TransactionRefType == "net-surplus" {
 				var netSurplusRef models.NetSurplusModel
-				err := s.db.Where("id = ?", item.TransactionRefID).First(&netSurplusRef).Error
+				err := s.db.Where("id = ?", item.TransactionRefID).Where("company_id = ?", *companyID).First(&netSurplusRef).Error
 				if err == nil {
 					item.NetSurplusRef = &netSurplusRef
 				}
@@ -189,7 +189,7 @@ func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, curre
 	return balance, credit, debit
 }
 
-func (s *FinanceReportService) GetAccountBalance(accountID string, startDate *time.Time, endDate *time.Time) (float64, float64, error) {
+func (s *FinanceReportService) GetAccountBalance(accountID string, companyID *string, startDate *time.Time, endDate *time.Time) (float64, float64, error) {
 	amount := struct {
 		Credit float64 `sql:"credit"`
 		Debit  float64 `sql:"debit"`
@@ -201,6 +201,9 @@ func (s *FinanceReportService) GetAccountBalance(accountID string, startDate *ti
 	if endDate != nil {
 		db = db.Where("date < ?", endDate)
 	}
+	if companyID != nil {
+		db = db.Where("company_id", *companyID)
+	}
 	err := db.Scan(&amount).Error
 	if err != nil {
 		return 0, 0, err
@@ -209,7 +212,7 @@ func (s *FinanceReportService) GetAccountBalance(accountID string, startDate *ti
 	return amount.Debit, amount.Credit, nil
 }
 
-func (s *FinanceReportService) GetAccountTransactions(accountID string, startDate *time.Time, endDate *time.Time) ([]models.TransactionModel, error) {
+func (s *FinanceReportService) GetAccountTransactions(accountID string, companyID *string, startDate *time.Time, endDate *time.Time) ([]models.TransactionModel, error) {
 	var transactions []models.TransactionModel
 	db := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id")
 
@@ -220,7 +223,9 @@ func (s *FinanceReportService) GetAccountTransactions(accountID string, startDat
 		db = db.Where("transactions.date < ?", *endDate)
 	}
 	db = db.Where("transactions.account_id = ?", accountID)
-
+	if companyID != nil {
+		db = db.Where("transactions.company_id = ?", *companyID)
+	}
 	db = db.Order("date asc")
 	err := db.Find(&transactions).Error
 	if err != nil {
@@ -249,8 +254,18 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 	if err != nil {
 		return nil, errors.New("inventory account not found")
 	}
+	var stockOpnameAccounts []models.AccountModel
+	err = s.db.Where("is_stock_opname_account = ? and company_id = ?", true, report.CompanyID).First(&stockOpnameAccounts).Error
+	if err != nil {
+		return nil, errors.New("inventory account not found")
+	}
 
-	var beginningInventory, purchases, freightInAndOtherCost, totalPurchases, purchaseReturns, purchaseDiscounts, totalPurchaseDiscounts, netPurchases, goodsAvailable, endingInventory, cogs float64
+	stockOpnameAccountIDs := []string{}
+	for _, v := range stockOpnameAccounts {
+		stockOpnameAccountIDs = append(stockOpnameAccountIDs, v.ID)
+	}
+
+	var beginningInventory, purchases, freightInAndOtherCost, totalPurchases, purchaseReturns, purchaseDiscounts, totalPurchaseDiscounts, netPurchases, goodsAvailable, endingInventory, cogs, stockOpname float64
 	amount := struct {
 		Sum float64 `sql:"sum"`
 	}{}
@@ -258,6 +273,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 		Where("date < ?", report.StartDate).
 		Select("sum(debit-credit) as sum").
 		Where("account_id = ?", inventoryAccount.ID).
+		Where("company_id = ?", report.CompanyID).
 		Scan(&amount).Error
 	if err != nil {
 		return nil, err
@@ -271,6 +287,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 		Where("date between ? and ?", report.StartDate, report.EndDate).
 		Select("sum(debit-credit) as sum").
 		Where("account_id = ?", inventoryAccount.ID).
+		Where("company_id = ?", report.CompanyID).
 		Scan(&amount).Error
 	if err != nil {
 		return nil, err
@@ -283,6 +300,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 		Where("date between ? and ?", report.StartDate, report.EndDate).
 		Select("sum(debit-credit) as sum").
 		Where("account_id = ?", inventoryAccount.ID).
+		Where("company_id = ?", report.CompanyID).
 		Scan(&amount).Error
 	if err != nil {
 		return nil, err
@@ -295,6 +313,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 		Where("date between ? and ?", report.StartDate, report.EndDate).
 		Select("sum(credit-debit) as sum").
 		Where("account_id = ?", inventoryAccount.ID).
+		Where("company_id = ?", report.CompanyID).
 		Scan(&amount).Error
 	if err != nil {
 		return nil, err
@@ -305,6 +324,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 		Where("date between ? and ?", report.StartDate, report.EndDate).
 		Select("sum(credit-debit) as sum").
 		Where("account_id = ?", inventoryAccount.ID).
+		Where("company_id = ?", report.CompanyID).
 		Scan(&amount).Error
 	if err != nil {
 		return nil, err
@@ -317,15 +337,29 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 		Where("date < ?", report.EndDate).
 		Select("sum(debit-credit) as sum").
 		Where("account_id = ?", inventoryAccount.ID).
+		Where("company_id = ?", report.CompanyID).
 		Scan(&amount).Error
 	if err != nil {
 		return nil, err
 	}
 	endingInventory = amount.Sum
 
+	// STOCK OPNAME
+
+	err = s.db.Model(&models.TransactionModel{}).
+		Where("date < ?", report.EndDate).
+		Select("sum(debit-credit) as sum").
+		Where("account_id IN (?)", stockOpnameAccountIDs).
+		Where("company_id = ?", report.CompanyID).
+		Scan(&amount).Error
+	if err != nil {
+		return nil, err
+	}
+	stockOpname = amount.Sum
+
 	netPurchases = totalPurchases - totalPurchaseDiscounts
 	goodsAvailable = beginningInventory + netPurchases
-	cogs = goodsAvailable - endingInventory
+	cogs = goodsAvailable - endingInventory - stockOpname
 
 	cogsData := models.COGSReport{
 		BeginningInventory:     beginningInventory,
@@ -340,6 +374,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 		EndingInventory:        endingInventory,
 		COGS:                   cogs,
 		InventoryAccount:       inventoryAccount,
+		StockOpname:            stockOpname,
 	}
 	cogsData.StartDate = report.StartDate
 	cogsData.EndDate = report.EndDate
@@ -923,7 +958,7 @@ func (s *FinanceReportService) TrialBalanceReport(report models.GeneralReport) (
 				continue
 			}
 			// TRIAL BALANCE
-			trialBalanceDebit, trialBalanceCredit, err := s.GetAccountBalance(account.ID, &report.EndDate, nil)
+			trialBalanceDebit, trialBalanceCredit, err := s.GetAccountBalance(account.ID, &report.CompanyID, &report.EndDate, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -937,7 +972,7 @@ func (s *FinanceReportService) TrialBalanceReport(report models.GeneralReport) (
 			})
 
 			// ADJUSTMENT
-			adjustmentDebit, adjustmentCredit, err := s.GetAccountBalance(account.ID, &report.StartDate, &report.EndDate)
+			adjustmentDebit, adjustmentCredit, err := s.GetAccountBalance(account.ID, &report.CompanyID, &report.StartDate, &report.EndDate)
 			if err != nil {
 				return nil, err
 			}
@@ -952,7 +987,7 @@ func (s *FinanceReportService) TrialBalanceReport(report models.GeneralReport) (
 			})
 
 			// BALANCE SHEET
-			balanceSheetDebit, balanceSheetCredit, err := s.GetAccountBalance(account.ID, nil, &report.EndDate)
+			balanceSheetDebit, balanceSheetCredit, err := s.GetAccountBalance(account.ID, &report.CompanyID, nil, &report.EndDate)
 			if err != nil {
 				return nil, err
 			}
@@ -981,7 +1016,7 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 	fmt.Println("GENERATE PROFIT LOSS", report.StartDate, report.EndDate)
 
 	revenueAccounts := []models.AccountModel{}
-	err = s.db.Where("type IN (?)", []models.AccountType{models.INCOME, models.REVENUE, models.CONTRA_REVENUE}).Find(&revenueAccounts).Error
+	err = s.db.Where("type IN (?)", []models.AccountType{models.INCOME, models.REVENUE, models.CONTRA_REVENUE}).Where("company_id = ?", report.CompanyID).Find(&revenueAccounts).Error
 	if err != nil {
 		return nil, err
 	}
@@ -995,6 +1030,7 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 			Select("sum(credit-debit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", revenue.ID).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1018,7 +1054,7 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 	profitLoss.GrossProfit = revenueSum - cogsReport.COGS
 
 	expenseAccounts := []models.AccountModel{}
-	err = s.db.Where("type IN (?)", []models.AccountType{models.EXPENSE}).Find(&expenseAccounts).Error
+	err = s.db.Where("type IN (?)", []models.AccountType{models.EXPENSE}).Where("company_id = ?", report.CompanyID).Find(&expenseAccounts).Error
 	if err != nil {
 		return nil, err
 	}
@@ -1032,6 +1068,7 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 			Select("sum(debit-credit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", expense.ID).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1105,6 +1142,7 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 			Select("sum(debit-credit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", expense.ID).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1135,6 +1173,7 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 			Select("sum(debit-credit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", expense.ID).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1164,6 +1203,7 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 			Select("sum(debit-credit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", expense.ID).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1212,6 +1252,7 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 			Select("sum(credit-debit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", expense.ID).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1243,6 +1284,7 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 			Select("sum(credit-debit) as sum").
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", expense.ID).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1300,6 +1342,7 @@ func (s *FinanceReportService) GenerateCapitalChangeReport(report models.General
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", v.ID).
 			Where("is_opening_balance = ?", true).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1325,6 +1368,7 @@ func (s *FinanceReportService) GenerateCapitalChangeReport(report models.General
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", v.ID).
 			Where("is_opening_balance = ?", false).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1344,6 +1388,7 @@ func (s *FinanceReportService) GenerateCapitalChangeReport(report models.General
 			Joins("JOIN accounts ON accounts.id = transactions.account_id").
 			Where("transactions.account_id = ?", v.ID).
 			Where("is_opening_balance = ?", false).
+			Where("transactions.company_id = ?", report.CompanyID).
 			Scan(&amount).Error
 		if err != nil {
 			return nil, err
@@ -1380,28 +1425,28 @@ func (s *FinanceReportService) GenerateCashFlowReport(cashFlow models.CashFlowRe
 	fmt.Println("======================================")
 	fmt.Println("OPERATING")
 	fmt.Println("======================================")
-	operating, totalOperating := s.getCashFlowAmount(cashFlow.Operating)
+	operating, totalOperating := s.getCashFlowAmount(cashFlow.Operating, &cashFlow.CompanyID)
 	cashFlow.Operating = operating
 	cashFlow.TotalOperating = totalOperating
 
 	fmt.Println("======================================")
 	fmt.Println("INVESTING")
 	fmt.Println("======================================")
-	investing, totalInvesting := s.getCashFlowAmount(cashFlow.Investing)
+	investing, totalInvesting := s.getCashFlowAmount(cashFlow.Investing, &cashFlow.CompanyID)
 	cashFlow.Investing = investing
 	cashFlow.TotalInvesting = totalInvesting
 
 	fmt.Println("======================================")
 	fmt.Println("FINANCING")
 	fmt.Println("======================================")
-	financing, totalInvesting := s.getCashFlowAmount(cashFlow.Financing)
+	financing, totalInvesting := s.getCashFlowAmount(cashFlow.Financing, &cashFlow.CompanyID)
 	cashFlow.Financing = financing
 	cashFlow.TotalFinancing = totalInvesting
 
 	return &cashFlow, nil
 }
 
-func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGroup) ([]models.CashflowSubGroup, float64) {
+func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGroup, companyID *string) ([]models.CashflowSubGroup, float64) {
 
 	total := 0.0
 	for i, v := range groups {
@@ -1412,6 +1457,7 @@ func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGrou
 			Joins("JOIN transactions transRef ON transRef.id = transactions.transaction_ref_id").
 			Joins("JOIN accounts accountRef ON accountRef.id = transRef.account_id").
 			Where("accounts.cashflow_sub_group = ?", v.Name).
+			Where("accounts.company_id = ?", *companyID).
 			Where("accountRef.cashflow_sub_group = ?", "cash_bank").
 			Group("refid, transactions.id, accountRef.name").
 			Find(&transactions)

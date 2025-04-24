@@ -181,7 +181,7 @@ func (s *StockOpnameService) CreateStockOpname(warehouseID string, products []mo
 	return &stockOpnameHeader, nil
 }
 
-func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time.Time, userID string, inventoryID, expenseID, revenueID *string) error {
+func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time.Time, userID string, inventoryID *string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var stockOpnameHeader models.StockOpnameHeader
 		if err := tx.Preload("Details").First(&stockOpnameHeader, "id = ?", stockOpnameID).Error; err != nil {
@@ -221,11 +221,17 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 					return err
 				}
 
-				if inventoryID != nil && expenseID != nil && revenueID != nil {
+				if inventoryID != nil {
+
 					inventoryTransID := utils.Uuid()
 					totalPrice := math.Abs(detail.Difference * detail.UnitValue * detail.UnitPrice)
 					code := utils.RandString(8, false)
 					if detail.Difference > 0 {
+						var stockOpnameAccount models.AccountModel
+						err := s.db.Where("is_stock_opname_account = ? and company_id = ? and type = ?", true, *stockOpnameHeader.CompanyID, models.REVENUE).First(&stockOpnameAccount).Error
+						if err != nil {
+							return err
+						}
 
 						incomeTransID := utils.Uuid()
 						incomeTrans := models.TransactionModel{
@@ -234,7 +240,7 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 							},
 							Code:                        code,
 							Date:                        date,
-							AccountID:                   revenueID,
+							AccountID:                   &stockOpnameAccount.ID,
 							Description:                 "Pendapatan Lain-lain / Penyesuaian Persediaan " + stockOpnameHeader.StockOpnameNumber,
 							Notes:                       detail.Notes,
 							TransactionRefID:            &inventoryTransID,
@@ -246,7 +252,7 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 							Amount:                      totalPrice,
 							UserID:                      &userID,
 						}
-						err := tx.Create(&incomeTrans).Error
+						err = tx.Create(&incomeTrans).Error
 						if err != nil {
 							return err
 						}
@@ -276,6 +282,12 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 
 					}
 					if detail.Difference < 0 {
+						var stockOpnameAccount models.AccountModel
+						err := s.db.Where("is_stock_opname_account = ? and company_id = ? and type = ?", true, *stockOpnameHeader.CompanyID, models.EXPENSE).First(&stockOpnameAccount).Error
+						if err != nil {
+							return err
+						}
+
 						expenseTransID := utils.Uuid()
 						expenseTrans := models.TransactionModel{
 							BaseModel: shared.BaseModel{
@@ -283,7 +295,7 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 							},
 							Code:                        code,
 							Date:                        date,
-							AccountID:                   expenseID,
+							AccountID:                   &stockOpnameAccount.ID,
 							Description:                 "Kerugian Selisih Persediaan " + stockOpnameHeader.StockOpnameNumber,
 							Notes:                       detail.Notes,
 							TransactionRefID:            &inventoryTransID,
@@ -295,7 +307,7 @@ func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time
 							Amount:                      totalPrice,
 							UserID:                      &userID,
 						}
-						err := tx.Create(&expenseTrans).Error
+						err = tx.Create(&expenseTrans).Error
 						if err != nil {
 							return err
 						}

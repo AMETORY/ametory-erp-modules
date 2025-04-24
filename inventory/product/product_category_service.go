@@ -46,6 +46,10 @@ func (s *ProductCategoryService) GetProductCategories(request http.Request, sear
 			"%"+search+"%",
 		)
 	}
+
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
 	stmt = stmt.Model(&models.ProductCategoryModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ProductCategoryModel{})

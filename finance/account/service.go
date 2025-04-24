@@ -252,6 +252,33 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 				return paginate.Page{}, err
 			}
 		}
+
+		var stockOpnameAccount models.AccountModel
+		err = s.db.Where("is_stock_opname_account = ? and company_id = ?", true, request.Header.Get("ID-Company")).First(&stockOpnameAccount).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err := s.db.Create(&models.AccountModel{
+				Code:                 "44001",
+				CompanyID:            &companyID,
+				Name:                 "Koreksi Persediaan Masuk",
+				Type:                 models.REVENUE,
+				Category:             constants.CATEGORY_REVENUE,
+				IsStockOpnameAccount: true,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+			err = s.db.Create(&models.AccountModel{
+				Code:                 "54001",
+				CompanyID:            &companyID,
+				Name:                 "Penyesuaian Persediaan",
+				Type:                 models.EXPENSE,
+				Category:             constants.CATEGORY_EXPENSE,
+				IsStockOpnameAccount: true,
+			}).Error
+			if err != nil {
+				return paginate.Page{}, err
+			}
+		}
 	}
 
 	pg := paginate.New()

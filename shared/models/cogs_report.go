@@ -13,5 +13,6 @@ type COGSReport struct {
 	GoodsAvailable         float64      `gorm:"column:goods_available" json:"goods_available"`
 	EndingInventory        float64      `gorm:"column:ending_inventory" json:"ending_inventory"`
 	COGS                   float64      `gorm:"column:cogs" json:"cogs"`
+	StockOpname            float64      `gorm:"column:stock_opname" json:"stock_opname"`
 	InventoryAccount       AccountModel `gorm:"-" json:"inventory_account"`
 }

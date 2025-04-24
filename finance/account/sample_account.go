@@ -52,7 +52,7 @@ var GenericChartOfAccount = []models.AccountModel{
 	{
 		Name:             "Piutang Dagang",
 		Code:             "12001",
-		Type:             models.ASSET,
+		Type:             models.RECEIVABLE,
 		CashflowSubGroup: constants.ACCEPTANCE_FROM_CUSTOMERS,
 		CashflowGroup:    constants.CASHFLOW_GROUP_OPERATING,
 		Category:         constants.CATEGORY_RECEIVABLE,
@@ -61,7 +61,7 @@ var GenericChartOfAccount = []models.AccountModel{
 	{
 		Name:             "Piutang Bukan Dagang",
 		Code:             "12002",
-		Type:             models.ASSET,
+		Type:             models.RECEIVABLE,
 		CashflowSubGroup: constants.ACCEPTANCE_FROM_CUSTOMERS,
 		CashflowGroup:    constants.CASHFLOW_GROUP_OPERATING,
 		Category:         constants.CATEGORY_RECEIVABLE,

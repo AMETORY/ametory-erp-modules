@@ -29,6 +29,10 @@ func (s *PriceCategoryService) GetPriceCategories(request http.Request, search s
 		)
 	}
 
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+
 	stmt = stmt.Model(&models.PriceCategoryModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.PriceCategoryModel{})
