@@ -1,6 +1,10 @@
 package models
 
-import "github.com/AMETORY/ametory-erp-modules/shared"
+import (
+	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type BillOfMaterial struct {
 	shared.BaseModel
@@ -11,6 +15,13 @@ type BillOfMaterial struct {
 	Status     string         `json:"status"` // e.g. Active, Inactive
 	Items      []BOMItem      `json:"items" gorm:"foreignKey:BOMID"`
 	Operations []BOMOperation `json:"operations" gorm:"foreignKey:BOMID"`
+}
+
+func (bom *BillOfMaterial) BeforeCreate(tx *gorm.DB) (err error) {
+	if bom.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return
 }
 
 type BOMItem struct {
@@ -25,6 +36,13 @@ type BOMItem struct {
 	Unit      *UnitModel      `json:"unit" gorm:"foreignKey:UnitID;constraint:OnDelete:CASCADE"`
 }
 
+func (bi *BOMItem) BeforeCreate(tx *gorm.DB) (err error) {
+	if bi.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return
+}
+
 type BOMOperation struct {
 	shared.BaseModel
 	BOMID        string          `json:"bom_id"`
@@ -32,4 +50,11 @@ type BOMOperation struct {
 	Operation    string          `json:"operation"` // e.g. ASSEMBLY, INSPECTION
 	WorkCenterID string          `json:"work_center_id"`
 	WorkCenter   *WorkCenter     `json:"work_center" gorm:"foreignKey:WorkCenterID;constraint:OnDelete:CASCADE"`
+}
+
+func (bo *BOMOperation) BeforeCreate(tx *gorm.DB) (err error) {
+	if bo.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return
 }

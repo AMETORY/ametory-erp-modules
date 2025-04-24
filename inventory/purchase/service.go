@@ -45,7 +45,8 @@ func (s *PurchaseService) UpdatePurchase(id string, data *models.PurchaseOrderMo
 
 func (s *PurchaseService) DeletePurchase(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		err := tx.Where("transaction_ref_id = ?", id).Delete(&models.TransactionModel{}).Error
+		fmt.Println("DELETE PURCHASE")
+		err := tx.Where("transaction_ref_id = ? OR transaction_secondary_ref_id = ?", id, id).Delete(&models.TransactionModel{}).Error
 		if err != nil {
 			return err
 		}

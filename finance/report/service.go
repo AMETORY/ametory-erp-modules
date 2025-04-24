@@ -254,8 +254,9 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 	if err != nil {
 		return nil, errors.New("inventory account not found")
 	}
+	fmt.Println("GET STOCK OPNAME ACCOUNT")
 	var stockOpnameAccounts []models.AccountModel
-	err = s.db.Where("is_stock_opname_account = ? and company_id = ?", true, report.CompanyID).First(&stockOpnameAccounts).Error
+	err = s.db.Where("is_stock_opname_account = ? and company_id = ?", true, report.CompanyID).Find(&stockOpnameAccounts).Error
 	if err != nil {
 		return nil, errors.New("inventory account not found")
 	}
@@ -346,6 +347,7 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 
 	// STOCK OPNAME
 
+	fmt.Println("GET STOCK OPNAME")
 	err = s.db.Model(&models.TransactionModel{}).
 		Where("date < ?", report.EndDate).
 		Select("sum(debit-credit) as sum").

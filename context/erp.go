@@ -15,6 +15,7 @@ type ERPContext struct {
 	Request *http.Request    // HTTP request
 	// Tambahkan service lainnya di sini
 	InventoryService            interface{} // Contoh: InventoryService
+	ManufactureService          interface{} // Contoh: ManufactureService
 	AuthService                 interface{} // Contoh: AuthService
 	AdminAuthService            interface{} // Contoh: AdminAuthService
 	RBACService                 interface{} // Contoh: RBACService

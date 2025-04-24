@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type WorkOrder struct {
@@ -23,13 +25,21 @@ type WorkOrder struct {
 	ProductionProcesses []ProductionProcess `gorm:"foreignKey:WorkOrderID" json:"production_processes,omitempty"`
 }
 
+func (wo *WorkOrder) BeforeCreate(tx *gorm.DB) error {
+	if wo.ID == "" {
+		wo.ID = uuid.New().String()
+	}
+	return nil
+}
+
 type ProductionProcess struct {
 	shared.BaseModel
 	WorkOrderID      string                     `gorm:"not null" json:"work_order_id,omitempty"`
 	WorkOrder        WorkOrder                  `json:"work_order,omitempty"`
 	WorkCenterID     uint                       `gorm:"not null" json:"work_center_id,omitempty"`
 	WorkCenter       WorkCenter                 `json:"work_center,omitempty"`
-	BOM              BillOfMaterial             `json:"bom,omitempty"`
+	BOMID            string                     `gorm:"not null" json:"bom_id,omitempty"`
+	BOM              BillOfMaterial             `gorm:"foreignKey:BOMID;constraint:OnDelete:CASCADE" json:"bom,omitempty"`
 	ProcessName      string                     `json:"process_name,omitempty"`               // misal: Cutting, Welding, Packing
 	Sequence         int                        `json:"sequence,omitempty" gorm:"default:1"`  // urutan dalam proses produksi
 	ProductID        string                     `gorm:"not null" json:"product_id,omitempty"` // produk utama
@@ -40,8 +50,8 @@ type ProductionProcess struct {
 	UnitOfMeasure    string                     `json:"unit_of_measure,omitempty"`                  // misal: "pcs", "kg"
 	StartedAt        *time.Time                 `json:"started_at,omitempty"`
 	FinishedAt       *time.Time                 `json:"finished_at,omitempty"`
-	AssignedToUserID *string                    `json:"assigned_to_user_id,omitempty"` // user/operator yang bertanggung jawab
-	AssignedTo       *UserModel                 `json:"assigned_to,omitempty"`
+	AssignedToUserID *string                    `json:"assigned_to_user_id,omitempty" gorm:"type:char(36)"`
+	AssignedTo       *UserModel                 `gorm:"foreignKey:AssignedToUserID;constraint:OnDelete:SET NULL;" json:"assigned_to,omitempty"`
 	Status           string                     `json:"status,omitempty" gorm:"default:DRAFT"`                            // DRAFT, WAITING, IN_PROGRESS, DONE, FAILED, CANCELLED
 	MaterialCost     float64                    `json:"material_cost,omitempty"`                                          // otomatis dari BOM (per unit * qty)
 	OtherCost        float64                    `json:"other_cost,omitempty"`                                             // dari additional cost
@@ -53,6 +63,13 @@ type ProductionProcess struct {
 	Outputs          []ProductionOutput         `gorm:"foreignKey:ProductionProcessID" json:"outputs,omitempty"`          // Relasi ke Output (jika multi-output atau output tambahan)
 }
 
+func (p *ProductionProcess) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == "" {
+		p.ID = uuid.New().String()
+	}
+	return
+}
+
 type ProductionAdditionalCost struct {
 	shared.BaseModel
 	ProductionProcessID string            `json:"production_process_id"`
@@ -60,6 +77,13 @@ type ProductionAdditionalCost struct {
 	Type                string            `json:"type"` // contoh: "Labor", "Electricity", "Maintenance"
 	Description         string            `json:"description"`
 	Amount              float64           `json:"amount"`
+}
+
+func (p *ProductionAdditionalCost) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == "" {
+		p.ID = uuid.New().String()
+	}
+	return
 }
 
 type ProductionOutput struct {
@@ -75,6 +99,13 @@ type ProductionOutput struct {
 	Notes               string            `json:"notes"`
 }
 
+func (p *ProductionOutput) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == "" {
+		p.ID = uuid.New().String()
+	}
+	return
+}
+
 type WorkCenter struct {
 	shared.BaseModel
 	Code        string  `gorm:"unique;not null" json:"code"` // contoh: "WC-MESIN-01"
@@ -82,4 +113,11 @@ type WorkCenter struct {
 	Description string  `json:"description,omitempty"`
 	Location    string  `json:"location,omitempty"` // misal: "Lantai 1 - Workshop A"
 	Capacity    float64 `json:"capacity,omitempty"` // jumlah unit yang bisa diproses sekaligus
+}
+
+func (w *WorkCenter) BeforeCreate(tx *gorm.DB) (err error) {
+	if w.ID == "" {
+		w.ID = uuid.New().String()
+	}
+	return
 }
