@@ -23,6 +23,9 @@ type ContactModel struct {
 	User                  *UserModel    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 	CompanyID             *string       `json:"company_id,omitempty" gorm:"company_id"`
 	Company               *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
+	Tags                  []TagModel    `gorm:"many2many:contact_tags;constraint:OnDelete:CASCADE;" json:"tags,omitempty"`
+	Count                 int           `gorm:"-" json:"count" sql:"count"`
+	Color                 string        `json:"color" gorm:"-" sql:"color"`
 }
 
 func (ContactModel) TableName() string {
@@ -36,4 +39,9 @@ func (u *ContactModel) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-// Migrate menjalankan migrasi database untuk model contact
+type CountByTag struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+	Count int    `json:"count"`
+}

@@ -111,44 +111,29 @@ func (s *ContactService) DeleteContact(id string) error {
 
 // UpdateContact mengupdate informasi contact
 func (s *ContactService) UpdateContact(id string, data *models.ContactModel) (*models.ContactModel, error) {
-	var contact models.ContactModel
-	if err := s.ctx.DB.First(&contact, "id = ?", id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("contact not found")
-		}
+	if err := s.ctx.DB.Where("id = ?", id).Updates(&data).Error; err != nil {
 		return nil, err
 	}
 
-	// Update fields
-	contact.Name = data.Name
-	contact.Email = data.Email
-	contact.Code = data.Code
-	contact.Phone = data.Phone
-	contact.Address = data.Address
-	contact.ContactPerson = data.ContactPerson
-	contact.ContactPersonPosition = data.ContactPersonPosition
-	contact.IsCustomer = data.IsCustomer
-	contact.IsVendor = data.IsVendor
-	contact.IsSupplier = data.IsSupplier
-
-	if err := s.ctx.DB.Save(&contact).Error; err != nil {
-		return nil, err
-	}
-
-	return &contact, nil
+	return data, nil
 }
 
 // GetContacts mengambil semua contact dengan pagination
 func (s *ContactService) GetContacts(request http.Request, search string, isCustomer, isVendor, isSupplier *bool) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.ctx.DB
+	stmt := s.ctx.DB.Preload("Tags")
 	if search != "" {
-		stmt = stmt.Where("contacts.name ILIKE ? OR contacts.email ILIKE ? OR contacts.phone ILIKE ? OR contacts.address ILIKE ?",
+		stmt = stmt.
+			Joins("LEFT JOIN contact_tags ON contact_tags.contact_model_id = contacts.id").
+			Joins("LEFT JOIN tags ON tags.id = contact_tags.tag_model_id")
+		stmt = stmt.Where("contacts.name ILIKE ? OR contacts.email ILIKE ? OR contacts.phone ILIKE ? OR contacts.address ILIKE ? OR tags.name ILIKE ?",
+			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
 		)
+
 	}
 
 	if isCustomer != nil || isVendor != nil || isSupplier != nil {
@@ -165,7 +150,10 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 		stmt = stmt.Where(sbWhere)
 	}
 	if request.Header.Get("ID-Company") != "" {
-		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+		stmt = stmt.Where("contacts.company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
 	}
 	stmt = stmt.Model(&models.ContactModel{})
 	utils.FixRequest(&request)
@@ -183,4 +171,31 @@ func (s *ContactService) Migrate() error {
 
 func (s *ContactService) DB() *gorm.DB {
 	return s.ctx.DB
+}
+
+// CountContactByTagID menghitung jumlah contact berdasarkan ID tag
+func (s *ContactService) CountContactByTag() ([]models.CountByTag, error) {
+	var tag []models.CountByTag
+	if err := s.ctx.DB.Model(&models.ContactModel{}).
+		Joins("JOIN contact_tags ON contact_tags.contact_model_id = contacts.id").
+		Joins("JOIN tags ON contact_tags.tag_model_id = tags.id").
+		Select("tags.id, tags.name, tags.color, COUNT(*) as count").
+		Group("tags.id, tags.name, tags.color").
+		Scan(&tag).Error; err != nil {
+		return nil, err
+	}
+	return tag, nil
+}
+
+// GetContactByTagIDs mengambil semua contact berdasarkan ID tag
+func (s *ContactService) GetContactByTagIDs(tagIDs []string) ([]models.ContactModel, error) {
+	var contacts []models.ContactModel
+	if err := s.ctx.DB.Model(&models.ContactModel{}).
+		Joins("JOIN contact_tags ON contact_tags.contact_model_id = contacts.id").
+		Joins("JOIN tags ON contact_tags.tag_model_id = tags.id").
+		Where("tags.id IN (?)", tagIDs).
+		Find(&contacts).Error; err != nil {
+		return nil, err
+	}
+	return contacts, nil
 }

@@ -8,10 +8,12 @@ import (
 
 type TagModel struct {
 	shared.BaseModel
-	Name        string `gorm:"not null;unique" json:"name"`
-	Description string `json:"description,omitempty"`
-	Color       string `gorm:"type:varchar(255);default:'#FFFFFF'" json:"color,omitempty"`
-	IconUrl     string `gorm:"type:varchar(255)" json:"icon_url,omitempty"`
+	Name        string        `gorm:"not null;unique" json:"name"`
+	Description string        `json:"description,omitempty"`
+	Color       string        `gorm:"type:varchar(255);default:'#FFFFFF'" json:"color,omitempty"`
+	IconUrl     string        `gorm:"type:varchar(255)" json:"icon_url,omitempty"`
+	CompanyID   *string       `json:"company_id,omitempty"`
+	Company     *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (TagModel) TableName() string {
