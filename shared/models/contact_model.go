@@ -26,6 +26,8 @@ type ContactModel struct {
 	Tags                  []TagModel    `gorm:"many2many:contact_tags;constraint:OnDelete:CASCADE;" json:"tags,omitempty"`
 	Count                 int           `gorm:"-" json:"count" sql:"count"`
 	Color                 string        `json:"color" gorm:"-" sql:"color"`
+	IsCompleted           bool          `json:"is_completed" gorm:"-" sql:"is_completed"`
+	Data                  any           `json:"data" gorm:"-"`
 }
 
 func (ContactModel) TableName() string {
