@@ -27,6 +27,7 @@ type ContactModel struct {
 	Count                 int           `gorm:"-" json:"count" sql:"count"`
 	Color                 string        `json:"color" gorm:"-" sql:"color"`
 	IsCompleted           bool          `json:"is_completed" gorm:"-" sql:"is_completed"`
+	IsSuccess             bool          `json:"is_success" gorm:"-" sql:"is_success"`
 	Data                  any           `json:"data" gorm:"-"`
 }
 
