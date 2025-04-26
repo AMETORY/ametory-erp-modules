@@ -102,8 +102,8 @@ func (js *JournalService) GetJournals(request http.Request, search string) (pagi
 }
 
 func (js *JournalService) AddTransaction(journalID string, transaction *models.TransactionModel, amount float64) error {
-	transaction.TransactionRefID = &journalID
-	transaction.TransactionRefType = "journal"
+	transaction.TransactionSecondaryRefID = &journalID
+	transaction.TransactionSecondaryRefType = "journal"
 
 	return js.transactionService.CreateTransaction(transaction, amount)
 }
@@ -114,7 +114,7 @@ func (js *JournalService) DeleteTransaction(id string) error {
 
 func (js *JournalService) GetTransactions(journalID string, request http.Request) ([]models.TransactionModel, error) {
 	var trans []models.TransactionModel
-	db := js.db.Preload("Account").Where("transaction_ref_id = ? AND transaction_ref_type = ?", journalID, "journal")
+	db := js.db.Preload("Account").Where("(transaction_ref_id = ? AND transaction_ref_type = ?) OR (transaction_secondary_ref_id = ? AND transaction_secondary_ref_type = ?)", journalID, "journal", journalID, "journal")
 	if request.Header.Get("ID-Company") != "" {
 		db = db.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}

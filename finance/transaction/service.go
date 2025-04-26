@@ -76,6 +76,7 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 					transaction.Debit = -transaction.Amount
 				}
 			}
+
 			if err := s.db.Create(transaction).Error; err != nil {
 				return err
 			}
@@ -355,7 +356,8 @@ func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionMo
 		transaction.Debit = 0
 
 	case models.ASSET:
-
+		transaction.Debit = transaction.Amount
+		transaction.Credit = 0
 		if transaction.IsIncome {
 			transaction.Debit = transaction.Amount
 			transaction.Credit = 0
