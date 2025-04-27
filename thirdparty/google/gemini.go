@@ -300,9 +300,16 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 	return "", nil
 }
 
-func (s *GeminiService) GetHistories() []models.GeminiHistoryModel {
+func (s *GeminiService) GetHistories(agentID *string, companyID *string) []models.GeminiHistoryModel {
 	var historyModels []models.GeminiHistoryModel
-	s.ctx.DB.Order("created_at asc").Find(&historyModels)
+	db := s.ctx.DB.Model(&models.GeminiHistoryModel{})
+	if agentID != nil {
+		db = db.Where("agent_id = ?", agentID)
+	}
+	if companyID != nil {
+		db = db.Where("company_id = ?", companyID)
+	}
+	db.Order("created_at asc").Find(&historyModels)
 	return historyModels
 }
 

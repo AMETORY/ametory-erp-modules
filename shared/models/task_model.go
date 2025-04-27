@@ -46,6 +46,8 @@ type TaskModel struct {
 	TaskAttribute           *TaskAttributeModel    `json:"task_attribute,omitempty" gorm:"foreignKey:TaskAttributeID;constraint:OnDelete:CASCADE;"`
 	TaskAttibuteData        *string                `json:"task_attribute_data,omitempty" gorm:"type:JSON"`
 	TaskAttributeDataParsed any                    `gorm:"-" json:"task_attribute_data_parsed,omitempty" `
+	RefID                   *string                `gorm:"type:char(36);index" json:"ref_id,omitempty"`
+	RefType                 *string                `gorm:"type:varchar(255);index" json:"ref_type,omitempty"`
 }
 
 func (TaskModel) TableName() string {

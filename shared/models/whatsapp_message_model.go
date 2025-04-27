@@ -29,6 +29,7 @@ type WhatsappMessageModel struct {
 	IsGroup     bool                   `json:"is_group"`
 	SentAt      *time.Time             `json:"sent_at" gorm:"-"`
 	IsRead      bool                   `json:"is_read" gorm:"default:false"`
+	MessageID   *string                `json:"message_id" gorm:"column:message_id"`
 }
 
 func (m *WhatsappMessageModel) TableName() string {

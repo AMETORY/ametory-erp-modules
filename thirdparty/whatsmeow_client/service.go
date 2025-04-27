@@ -28,7 +28,7 @@ func NewWhatsmeowService(baseURL, mockNumber string, isMock bool, redisKey strin
 	}
 }
 
-func (s *WhatsmeowService) SendMessage(msg WaMessage) (map[string]interface{}, error) {
+func (s *WhatsmeowService) SendMessage(msg WaMessage) (any, error) {
 	if s.IsMock && s.MockNumber != "" {
 		msg.To = s.MockNumber
 		msg.IsGroup = false
@@ -235,6 +235,38 @@ func (s *WhatsmeowService) UpdateWebhook(sessionID string, webhook, headerKey st
 	// fmt.Println(s.BaseURL + "/v1/update-webhook/" + sessionID)
 	// fmt.Println(`{"webhook":"` + webhook + `", "header_key":"` + headerKey + `"}`)
 	req, err := http.NewRequest("PUT", s.BaseURL+"/v1/update-webhook/"+sessionID, bytes.NewBufferString(`{"webhook":"`+webhook+`", "header_key":"`+headerKey+`"}`))
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	return nil
+}
+func (s *WhatsmeowService) MarkAsRead(sessionID string, msgIDs []string, senderPhoneNumber string) error {
+	var data = map[string]interface{}{
+		"msg_ids": msgIDs,
+		"chat_id": senderPhoneNumber,
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	// fmt.Println(s.BaseURL + "/v1/update-webhook/" + sessionID)
+	// fmt.Println(`{"webhook":"` + webhook + `", "header_key":"` + headerKey + `"}`)
+	req, err := http.NewRequest("PUT", s.BaseURL+"/v1/message/"+sessionID+"/mark-read", bytes.NewBufferString(string(jsonData)))
 	if err != nil {
 		log.Println(err)
 		return err
