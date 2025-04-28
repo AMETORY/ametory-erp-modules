@@ -76,6 +76,12 @@ func (ws *WhatsappService) GetWhatsappLastMessages(JID, session string) (models.
 	return msg, err
 
 }
+func (ws *WhatsappService) GetWhatsappLastCustomerMessages(JID, session string, msg *models.WhatsappMessageModel) error {
+	stmt := ws.db
+	stmt = stmt.Order("created_at DESC").Where("j_id = ? and session = ?", JID, session)
+	return stmt.First(&msg).Error
+
+}
 
 func (ws *WhatsappService) GetMessageSession(JID string) ([]models.WhatsappMessageModel, error) {
 
@@ -112,7 +118,7 @@ func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, re
 
 func (ws *WhatsappService) GetMessageSessionChatBySessionName(sessionName string, contact_id *string, request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := ws.db.Preload("Contact").Model(&models.WhatsappMessageModel{})
+	stmt := ws.db.Preload("Member.User").Preload("Contact").Model(&models.WhatsappMessageModel{})
 
 	if sessionName != "" {
 		stmt = stmt.Where("session = ?", sessionName)
