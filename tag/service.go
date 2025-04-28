@@ -53,7 +53,7 @@ func (s *TagService) UpdateTag(id string, tag *models.TagModel) error {
 }
 
 func (s *TagService) DeleteTag(id string) error {
-	if err := s.db.Delete(&models.TagModel{}, id).Error; err != nil {
+	if err := s.db.Unscoped().Delete(&models.TagModel{}, "id = ?", id).Error; err != nil {
 		return err
 	}
 	return nil

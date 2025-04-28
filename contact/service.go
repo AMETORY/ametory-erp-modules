@@ -3,6 +3,7 @@ package contact
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -29,6 +30,20 @@ func NewContactService(ctx *context.ERPContext, companyService *company.CompanyS
 
 // CreateContact membuat contact baru
 func (s *ContactService) CreateContact(data *models.ContactModel) error {
+	if data.Phone != nil {
+		var existingContact models.ContactModel
+		if err := s.ctx.DB.Where("phone = ?", data.Phone).First(&existingContact).Error; err == nil {
+			return errors.New("contact with this phone number already exists")
+		}
+	}
+	if data.Email != "" {
+		var existingContact models.ContactModel
+		if err := s.ctx.DB.Where("email = ?", data.Email).First(&existingContact).Error; err == nil {
+			return errors.New("contact with this email already exists")
+		}
+	}
+	// Check if a contact with the same phone number already exists
+
 	return s.ctx.DB.Create(data).Error
 }
 
@@ -121,11 +136,14 @@ func (s *ContactService) UpdateContact(id string, data *models.ContactModel) (*m
 // GetContacts mengambil semua contact dengan pagination
 func (s *ContactService) GetContacts(request http.Request, search string, isCustomer, isVendor, isSupplier *bool) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.ctx.DB.Preload("Tags")
-	if search != "" {
+	stmt := s.ctx.DB.Preload("Tags").Preload("Products")
+	if search != "" || request.URL.Query().Get("tag_ids") != "" {
 		stmt = stmt.
 			Joins("LEFT JOIN contact_tags ON contact_tags.contact_model_id = contacts.id").
 			Joins("LEFT JOIN tags ON tags.id = contact_tags.tag_model_id")
+	}
+	if search != "" {
+
 		stmt = stmt.Where("contacts.name ILIKE ? OR contacts.email ILIKE ? OR contacts.phone ILIKE ? OR contacts.address ILIKE ? OR tags.name ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
@@ -154,6 +172,9 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 	}
 	if request.URL.Query().Get("order") != "" {
 		stmt = stmt.Order(request.URL.Query().Get("order"))
+	}
+	if request.URL.Query().Get("tag_ids") != "" {
+		stmt = stmt.Where("tags.id in (?)", strings.Split(request.URL.Query().Get("tag_ids"), ","))
 	}
 	stmt = stmt.Model(&models.ContactModel{})
 	utils.FixRequest(&request)
