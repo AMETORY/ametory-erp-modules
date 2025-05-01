@@ -37,6 +37,7 @@ type WhatsappMessageModel struct {
 	Member       *MemberModel           `gorm:"foreignKey:MemberID" json:"member,omitempty"`
 	UserID       *string                `json:"user_id,omitempty" gorm:"column:user_id"`
 	User         *UserModel             `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	IsNew        bool                   `json:"is_new" gorm:"default:false"`
 }
 
 func (m *WhatsappMessageModel) TableName() string {
@@ -97,7 +98,7 @@ type WhatsappMessageSession struct {
 	Contact      *ContactModel `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
 	RefID        *string       `json:"ref_id,omitempty"`
 	RefType      *string       `json:"ref_type,omitempty"`
-	Ref          interface{}   `json:"ref,omitempty" gorm:"-"`
+	Ref          any           `json:"ref,omitempty" gorm:"-"`
 	IsHumanAgent bool          `json:"is_human_agent"`
 	CountUnread  int           `json:"count_unread" gorm:"-"`
 }
