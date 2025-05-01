@@ -135,8 +135,9 @@ func (s *ContactService) UpdateContact(id string, data *models.ContactModel) (*m
 
 // GetContacts mengambil semua contact dengan pagination
 func (s *ContactService) GetContacts(request http.Request, search string, isCustomer, isVendor, isSupplier *bool) (paginate.Page, error) {
+
 	pg := paginate.New()
-	stmt := s.ctx.DB.Preload("Tags").Preload("Products")
+	stmt := s.ctx.DB.Preload("Tags").Preload("Products").Distinct()
 	if search != "" || request.URL.Query().Get("tag_ids") != "" {
 		stmt = stmt.
 			Joins("LEFT JOIN contact_tags ON contact_tags.contact_model_id = contacts.id").

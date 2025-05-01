@@ -49,7 +49,8 @@ func (s *UnitService) GetUnits(request http.Request, search string) (paginate.Pa
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("brands.description ILIKE ? OR brands.name ILIKE ?",
+		stmt = stmt.Where("name ILIKE ? OR code ILIKE ? OR description ILIKE ?",
+			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
 		)

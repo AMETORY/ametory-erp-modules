@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -105,5 +106,63 @@ func (m *WhatsappMessageSession) BeforeCreate(tx *gorm.DB) error {
 	if m.ID == "" {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
+	return nil
+}
+
+type WhatsappMessageTemplate struct {
+	shared.BaseModel
+	Title       string            `gorm:"type:varchar(255)" json:"title"`
+	ShortCut    string            `gorm:"type:varchar(255)" json:"short_cut"`
+	Description string            `gorm:"type:text" json:"description"`
+	CompanyID   *string           `json:"company_id,omitempty" gorm:"column:company_id;constraint:OnDelete:CASCADE;"`
+	Company     *CompanyModel     `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	UserID      *string           `json:"user_id,omitempty" gorm:"column:user_id;constraint:OnDelete:CASCADE;"`
+	User        *UserModel        `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	MemberID    *string           `json:"member_id,omitempty" gorm:"column:member_id;constraint:OnDelete:CASCADE;"`
+	Member      *MemberModel      `gorm:"foreignKey:MemberID" json:"member,omitempty"`
+	Messages    []MessageTemplate `gorm:"-" json:"messages,omitempty"`
+}
+
+func (m *WhatsappMessageTemplate) BeforeCreate(tx *gorm.DB) error {
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+
+	if m.ShortCut == "" {
+		m.ShortCut = utils.URLify(m.Title)
+	}
+	return nil
+}
+
+func (m *WhatsappMessageTemplate) AfterFind(tx *gorm.DB) error {
+	var messages []MessageTemplate
+	tx.Where("whatsapp_message_template_id = ?", m.ID).Preload("Products").Find(&messages)
+	m.Messages = messages
+	return nil
+}
+
+type MessageTemplate struct {
+	shared.BaseModel
+	WhatsappMessageTemplateID *string                  `json:"whatsapp_message_template_id,omitempty" gorm:"column:whatsapp_message_template_id;constraint:OnDelete:CASCADE;"`
+	WhatsappMessageTemplate   *WhatsappMessageTemplate `gorm:"foreignKey:WhatsappMessageTemplateID" json:"whatsapp_message_template,omitempty"`
+	Type                      string                   `json:"type"`
+	Header                    string                   `json:"header"`
+	Body                      string                   `json:"body"`
+	Footer                    string                   `json:"footer"`
+	ButtonText                string                   `json:"button_text"`
+	ButtonUrl                 string                   `json:"button_url"`
+	Files                     []FileModel              `json:"files,omitempty" gorm:"-"`
+	Products                  []ProductModel           `gorm:"many2many:whatsapp_message_template_products" json:"products,omitempty"`
+}
+
+func (m *MessageTemplate) BeforeCreate(tx *gorm.DB) error {
+	if m.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return nil
+}
+
+func (m *MessageTemplate) AfterFind(tx *gorm.DB) error {
+	tx.Model(&FileModel{}).Where("ref_id = ? AND ref_type = ?", m.ID, "message_template").Find(&m.Files)
 	return nil
 }

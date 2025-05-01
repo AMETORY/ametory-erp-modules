@@ -224,6 +224,9 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	if request.URL.Query().Get("category_id") != "" {
 		stmt = stmt.Where("products.category_id = ?", request.URL.Query().Get("category_id"))
 	}
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	}
 
 	stmt = stmt.Distinct("products.id")
 	stmt = stmt.Select("products.*")

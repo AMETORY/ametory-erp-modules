@@ -2,7 +2,9 @@ package whatsapp
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
@@ -103,10 +105,37 @@ func (ws *WhatsappService) GetMessageSession(JID string) ([]models.WhatsappMessa
 
 func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := ws.db.Preload("Contact").Model(&models.WhatsappMessageSession{})
+	stmt := ws.db.Preload("Contact.Tags").Model(&models.WhatsappMessageSession{})
 
 	if sessionName != "" {
 		stmt = stmt.Where("session = ?", sessionName)
+	}
+
+	if request.URL.Query().Get("search") != "" || request.URL.Query().Get("tag_ids") != "" {
+		stmt = stmt.
+			Joins("LEFT JOIN contacts ON contacts.id = whatsapp_message_sessions.contact_id").
+			Joins("LEFT JOIN contact_tags ON contact_tags.contact_model_id = contacts.id").
+			Joins("LEFT JOIN tags ON tags.id = contact_tags.tag_model_id")
+	}
+
+	if request.URL.Query().Get("is_unread") != "" || request.URL.Query().Get("is_unreplied") != "" {
+		stmt = stmt.
+			Joins("LEFT JOIN whatsapp_messages ON whatsapp_messages.session = whatsapp_message_sessions.session")
+		if request.URL.Query().Get("is_unread") != "" && request.URL.Query().Get("is_unreplied") != "" {
+			fmt.Println("is_unread && is_unreplied")
+			stmt = stmt.Where("(whatsapp_messages.is_read = ? AND whatsapp_messages.is_from_me = ?)  OR (whatsapp_messages.is_replied = ? AND whatsapp_messages.is_from_me = ?)", false, false, false, false)
+
+		} else if request.URL.Query().Get("is_unread") != "" {
+			fmt.Println("is_unread")
+			stmt = stmt.Where("(whatsapp_messages.is_read = ? AND whatsapp_messages.is_from_me = ?) ", false, false)
+		} else if request.URL.Query().Get("is_unreplied") != "" {
+			fmt.Println("is_unreplied")
+			stmt = stmt.Where("whatsapp_messages.is_replied = ? AND whatsapp_messages.is_from_me = ?", false, false)
+		}
+	}
+
+	if request.URL.Query().Get("tag_ids") != "" {
+		stmt = stmt.Where("tags.id in (?)", strings.Split(request.URL.Query().Get("tag_ids"), ","))
 	}
 
 	stmt = stmt.Order("last_online_at DESC")
@@ -138,6 +167,124 @@ func (ws *WhatsappService) MarkMessageAsRead(messageId string) error {
 	stmt := ws.db.Model(&models.WhatsappMessageModel{}).Where("id= ?", messageId).Update("is_read", true)
 	if stmt.RowsAffected == 0 {
 		return errors.New("message not found")
+	}
+	if stmt.Error != nil {
+		return stmt.Error
+	}
+	return nil
+}
+
+func (s *WhatsappService) GetWhatsappMessageTemplates(request http.Request, search string, memberID *string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Preload("Member").Preload("User")
+	if search != "" {
+		stmt = stmt.Where("name title ILIKE ?",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	if memberID != nil {
+		stmt = stmt.Where("member_id = ?", *memberID)
+	}
+	// request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.WhatsappMessageTemplate{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.WhatsappMessageTemplate{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (ws *WhatsappService) GetWhatsappMessageTemplate(ID string) (models.WhatsappMessageTemplate, error) {
+	var msg models.WhatsappMessageTemplate
+	stmt := ws.db.Where("id = ?", ID)
+	err := stmt.First(&msg).Error
+	if err != nil {
+		return msg, errors.New("template not found")
+	}
+
+	for i, message := range msg.Messages {
+		for j, v := range message.Products {
+			var images []models.FileModel
+			ws.db.Where("ref_id = ? and ref_type = ?", v.ID, "product").Find(&images)
+			v.ProductImages = images
+			msg.Messages[i].Products[j] = v
+		}
+
+	}
+	return msg, err
+}
+
+func (ws *WhatsappService) AddMessage(id string, msg *models.MessageTemplate) error {
+	msg.WhatsappMessageTemplateID = &id
+	stmt := ws.db.Create(msg)
+	if stmt.RowsAffected == 0 {
+		return errors.New("message not created")
+	}
+	return nil
+}
+
+func (ws *WhatsappService) DeleteMessage(id string, messageId string) error {
+	stmt := ws.db.Delete(&models.MessageTemplate{}, "whatsapp_message_template_id = ? AND id = ?", id, messageId)
+	if stmt.RowsAffected == 0 {
+		return errors.New("message not found")
+	}
+	if stmt.Error != nil {
+		return stmt.Error
+	}
+	return nil
+}
+
+func (ws *WhatsappService) CreateWhatsappMessageTemplate(msg *models.WhatsappMessageTemplate) error {
+	var firstMsg models.MessageTemplate
+	firstMsg.ID = utils.Uuid()
+	firstMsg.Type = "whatsapp"
+
+	stmt := ws.db.Create(msg)
+	if stmt.RowsAffected == 0 {
+		return errors.New("template not created")
+	}
+	if stmt.Error != nil {
+		return stmt.Error
+	}
+
+	firstMsg.WhatsappMessageTemplateID = &msg.ID
+	return ws.ctx.DB.Create(&firstMsg).Error
+}
+
+func (ws *WhatsappService) UpdateWhatsappMessageTemplate(id string, msg *models.WhatsappMessageTemplate) error {
+	stmt := ws.db.Model(&models.WhatsappMessageTemplate{}).Where("id = ?", id).Updates(msg)
+	if stmt.RowsAffected == 0 {
+		return errors.New("template not found")
+	}
+	if stmt.Error != nil {
+		return stmt.Error
+	}
+	return nil
+}
+
+func (ws *WhatsappService) AddProductWhatsappMessageTemplate(templateID string, ID string, product *models.ProductModel) error {
+	var template models.WhatsappMessageTemplate
+	stmt := ws.db.Where("id = ?", templateID).First(&template)
+	if stmt.RowsAffected == 0 {
+		return errors.New("template not found")
+	}
+
+	var msg models.MessageTemplate
+	stmt = ws.db.Where("id = ?", ID).First(&msg)
+	if stmt.RowsAffected == 0 {
+		return errors.New("msg not found")
+	}
+	ws.db.Model(&msg).Association("Products").Clear()
+
+	return ws.db.Model(&msg).Association("Products").Append(product)
+}
+
+func (ws *WhatsappService) DeleteWhatsappMessageTemplate(ID string) error {
+	stmt := ws.db.Delete(&models.WhatsappMessageTemplate{}, "id = ?", ID)
+	if stmt.RowsAffected == 0 {
+		return errors.New("template not found")
 	}
 	if stmt.Error != nil {
 		return stmt.Error

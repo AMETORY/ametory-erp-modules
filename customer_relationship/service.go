@@ -38,5 +38,7 @@ func (cs *CustomerRelationshipService) Migrate() error {
 		&models.FormTemplate{},
 		&models.FormModel{},
 		&models.FormResponseModel{},
+		&models.WhatsappMessageTemplate{},
+		&models.MessageTemplate{},
 	)
 }
