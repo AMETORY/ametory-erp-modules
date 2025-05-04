@@ -48,6 +48,7 @@ type TaskModel struct {
 	TaskAttributeDataParsed any                    `gorm:"-" json:"task_attribute_data_parsed,omitempty" `
 	RefID                   *string                `gorm:"type:char(36);index" json:"ref_id,omitempty"`
 	RefType                 *string                `gorm:"type:varchar(255);index" json:"ref_type,omitempty"`
+	LastActionTriggerAt     *time.Time             `json:"last_action_trigger_at,omitempty"`
 }
 
 func (TaskModel) TableName() string {

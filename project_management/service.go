@@ -42,6 +42,7 @@ func (cs *ProjectManagementService) Migrate() error {
 		&models.ProjectModel{},
 		&models.ProjectActivityModel{},
 		&models.ColumnModel{},
+		&models.ColumnAction{},
 		&models.TeamModel{},
 		&models.MemberModel{},
 		&models.MemberInvitationModel{},
