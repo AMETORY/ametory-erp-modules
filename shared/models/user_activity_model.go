@@ -23,6 +23,10 @@ const (
 	UserActivityClockOut UserActivityType = "CLOCK_OUT"
 	UserActivityAttend   UserActivityType = "ATTEND"
 	UserActivityWorkOn   UserActivityType = "WORK_ON"
+	UserActivitySales    UserActivityType = "SALES"
+	UserActivityPurchase UserActivityType = "PURCHASE"
+	UserActivityApprove  UserActivityType = "APPROVE"
+	UserActivityDecline  UserActivityType = "DECLINE"
 )
 
 type UserActivityModel struct {

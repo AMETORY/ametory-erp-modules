@@ -90,6 +90,17 @@ func (s *UserService) GetUserActivitiesByUserID(userID string, request http.Requ
 	return page, nil
 }
 
+func (s *UserService) GetLastClockinByUser(userID string, thresholdDuration time.Duration) (*models.UserActivityModel, error) {
+	activity := &models.UserActivityModel{}
+	err := s.db.Where("user_id = ? AND activity_type = ? AND started_at >= ?", userID, models.UserActivityClockIn, time.Now().Add(-thresholdDuration)).
+		Order("started_at DESC").
+		First(activity).Error
+	if err != nil {
+		return nil, err
+	}
+	return activity, nil
+}
+
 func (s *UserService) CreateActivity(userID string, activity *models.UserActivityModel) error {
 	now := time.Now()
 	if activity.StartedAt == nil {
