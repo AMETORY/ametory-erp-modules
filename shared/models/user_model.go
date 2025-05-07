@@ -23,6 +23,7 @@ type UserModel struct {
 	VerificationToken          string             `json:"verification_token,omitempty"`
 	VerificationTokenExpiredAt *time.Time         `gorm:"index" json:"verification_token_expired_at,omitempty"`
 	Roles                      []RoleModel        `gorm:"many2many:user_roles;constraint:OnDelete:CASCADE;" json:"roles,omitempty"`
+	Role                       *RoleModel         `gorm:"-" json:"role,omitempty"`
 	Companies                  []CompanyModel     `gorm:"many2many:user_companies;constraint:OnDelete:CASCADE;" json:"companies,omitempty"`
 	Distributors               []DistributorModel `gorm:"many2many:user_distributors;constraint:OnDelete:CASCADE;" json:"distributors,omitempty"`
 	ProfilePicture             *FileModel         `json:"profile_picture,omitempty" gorm:"-"`
@@ -98,6 +99,10 @@ func (u *UserModel) AfterFind(tx *gorm.DB) error {
 	err := tx.Where("ref_id = ? and ref_type = ?", u.ID, "user").First(&file).Error
 	if err == nil {
 		u.ProfilePicture = &file
+	}
+
+	if len(u.Roles) == 1 {
+		u.Role = &u.Roles[0]
 	}
 	return nil
 }

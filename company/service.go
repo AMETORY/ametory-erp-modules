@@ -62,6 +62,16 @@ func (s *CompanyService) GetCompanyByID(id string) (*models.CompanyModel, error)
 	err := s.ctx.DB.Where("id = ?", id).First(&company).Error
 	return &company, err
 }
+
+func (s *CompanyService) GetCompanyUsers(id string, request http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.ctx.DB.Model(&models.UserModel{}).Preload("Roles", "roles.company_id = ?", id).
+		Joins("JOIN user_companies ON user_companies.user_model_id = users.id").
+		Where("user_companies.company_model_id = ?", id)
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(&request).Response(&[]models.UserModel{})
+	return page, nil
+}
 func (s *CompanyService) GetCompanyWithMerchantsByID(id string) (*models.CompanyModel, error) {
 	var company models.CompanyModel
 	err := s.ctx.DB.Where("id = ?", id).First(&company).Error
