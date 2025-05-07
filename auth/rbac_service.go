@@ -72,6 +72,27 @@ func (s *RBACService) AssignPermissionToRole(roleName string, permissionName str
 
 	return nil
 }
+func (s *RBACService) AssignPermissionToRoleID(id string, permissionName string) error {
+	var role models.RoleModel
+	var permission models.PermissionModel
+
+	// Cari peran
+	if err := s.db.Where("id = ?", id).First(&role).Error; err != nil {
+		return errors.New("role not found")
+	}
+
+	// Cari izin
+	if err := s.db.Where("name = ?", permissionName).First(&permission).Error; err != nil {
+		return errors.New("permission not found")
+	}
+
+	// Tetapkan izin ke peran
+	if err := s.db.Model(&role).Association("Permissions").Append(&permission); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // CheckPermission memeriksa apakah pengguna memiliki izin tertentu
 func (s *RBACService) CheckPermission(userID string, permissionNames []string) (bool, error) {
@@ -251,7 +272,7 @@ func (s *RBACService) GetAllRoles(request http.Request, search string) (paginate
 // GetRoleByID mengambil peran berdasarkan ID
 func (s *RBACService) GetRoleByID(roleID string) (*models.RoleModel, error) {
 	var role models.RoleModel
-	if err := s.db.First(&role, roleID).Error; err != nil {
+	if err := s.db.First(&role, "id = ?", roleID).Error; err != nil {
 		return nil, errors.New("role not found")
 	}
 	return &role, nil
@@ -279,7 +300,7 @@ func (s *RBACService) UpdateRole(roleID, name string, isAdmin, isSuperAdmin, isM
 
 // DeleteRole menghapus peran berdasarkan ID
 func (s *RBACService) DeleteRole(roleID string) error {
-	if err := s.db.Delete(&models.RoleModel{}, roleID).Error; err != nil {
+	if err := s.db.Delete(&models.RoleModel{}, "id = ?", roleID).Error; err != nil {
 		return err
 	}
 	return nil

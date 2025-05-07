@@ -190,7 +190,9 @@ func (s *SalesService) DeleteSales(id string) error {
 
 func (s *SalesService) GetSalesByID(id string) (*models.SalesModel, error) {
 	var sales, refSales models.SalesModel
-	err := s.db.Preload("SalesPayments", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("PublishedBy", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id, full_name")
+	}).Preload("SalesPayments", func(db *gorm.DB) *gorm.DB {
 		return db.Order("updated_at asc")
 	}).Preload("PaymentAccount").Where("id = ?", id).First(&sales).Error
 	if err != nil {
@@ -246,6 +248,9 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 	}
 	if request.URL.Query().Get("doc_type") != "" {
 		stmt = stmt.Where("document_type = ?", request.URL.Query().Get("doc_type"))
+	}
+	if request.URL.Query().Get("sales_user_id") != "" {
+		stmt = stmt.Where("sales_user_id = ?", request.URL.Query().Get("sales_user_id"))
 	}
 	stmt = stmt.Model(&models.SalesModel{})
 	utils.FixRequest(&request)
@@ -361,7 +366,8 @@ func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemM
 	if err != nil {
 		return err
 	}
-	return s.UpdateTotal(sales)
+
+	return s.UpdateItem(sales, item.ID, item)
 }
 
 func (s *SalesService) GetItems(id string) ([]models.SalesItemModel, error) {
@@ -460,6 +466,7 @@ func (s *SalesService) UpdateItem(sales *models.SalesModel, itemID string, item 
 	}
 	item.TotalTax = taxAmount
 	item.Total = item.SubTotal + taxAmount
+	utils.LogJson(item)
 	err := s.db.Where("sales_id = ? AND id = ?", sales.ID, itemID).Omit("sales_id").Save(item).Error
 	if err != nil {
 		return err

@@ -408,6 +408,10 @@ func (s *FinanceReportService) GetClosingBook(request http.Request, search strin
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
 	}
+
+	if request.URL.Query().Get("status") != "" {
+		stmt = stmt.Where("status = ?", request.URL.Query().Get("status"))
+	}
 	request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.ClosingBook{})
 	utils.FixRequest(&request)

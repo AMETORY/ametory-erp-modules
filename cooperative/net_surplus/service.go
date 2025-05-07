@@ -58,12 +58,12 @@ func (n *NetSurplusService) GetTransactions(netSurplusID string) []models.Transa
 	return transactions
 }
 
-func (n *NetSurplusService) GetNetSurplusTotal(netSurplus *models.NetSurplusModel) error {
+func (n *NetSurplusService) GetNetSurplusTotal(tx *gorm.DB, netSurplus *models.NetSurplusModel) error {
 	if netSurplus.ClosingBookID == nil {
 		return errors.New("closing book id is required")
 	}
 	var closingBook models.ClosingBook
-	err := n.db.Model(&models.ClosingBook{}).Where("id = ?", netSurplus.ClosingBookID).First(&closingBook).Error
+	err := tx.Model(&models.ClosingBook{}).Where("id = ?", netSurplus.ClosingBookID).First(&closingBook).Error
 	if err != nil {
 		return err
 	}
@@ -85,18 +85,18 @@ func (n *NetSurplusService) GetNetSurplusTotal(netSurplus *models.NetSurplusMode
 	totalSaving := float64(0)
 	totalLoan := float64(0)
 	var savings []models.SavingModel
-	n.db.Where("company_id = ? and (date between ? and ?) and net_surplus_id is null", *netSurplus.CompanyID, netSurplus.StartDate, netSurplus.EndDate).Find(&savings)
+	tx.Where("company_id = ? and (date between ? and ?) and net_surplus_id is null", *netSurplus.CompanyID, netSurplus.StartDate, netSurplus.EndDate).Find(&savings)
 	for _, s := range savings {
 		totalSaving += s.Amount
 	}
 	var loans []models.LoanApplicationModel
-	n.db.Where("company_id = ? and (submission_date between ? and ?) and net_surplus_id is null and (status = ? OR status = ?)", *netSurplus.CompanyID, netSurplus.StartDate, netSurplus.EndDate, "SETTLEMENT", "DISBURSED").Find(&loans)
+	tx.Where("company_id = ? and (submission_date between ? and ?) and net_surplus_id is null and (status = ? OR status = ?)", *netSurplus.CompanyID, netSurplus.StartDate, netSurplus.EndDate, "SETTLEMENT", "DISBURSED").Debug().Find(&loans)
 	for _, s := range loans {
 		totalLoan += s.LoanAmount
 	}
 
 	var invoices []models.SalesModel
-	n.db.Where("company_id = ? and member_id  is not null and net_surplus_id is null", *netSurplus.CompanyID).Find(&invoices)
+	tx.Where("company_id = ? and member_id  is not null and net_surplus_id is null", *netSurplus.CompanyID).Find(&invoices)
 	for _, s := range invoices {
 		totalTransactions += s.Total
 	}
@@ -120,10 +120,10 @@ func (n *NetSurplusService) GetNetSurplusTotal(netSurplus *models.NetSurplusMode
 	}
 	*netSurplus.ProfitLossData = string(b)
 
-	return n.db.Save(&netSurplus).Error
+	return tx.Save(&netSurplus).Error
 }
 
-func (n *NetSurplusService) CreateDistribution(netSurplus *models.NetSurplusModel) error {
+func (n *NetSurplusService) CreateDistribution(tx *gorm.DB, netSurplus *models.NetSurplusModel) error {
 
 	setting, err := n.cooperativeSettingService.GetSetting(netSurplus.CompanyID)
 	if err != nil {
@@ -228,26 +228,32 @@ func (s *NetSurplusService) GetNetSurplusByID(id string, memberID *string) (*mod
 	return &netSurplus, nil
 }
 func (c *NetSurplusService) CreateNetSurplus(netSurplus *models.NetSurplusModel) error {
-	if err := c.db.Create(netSurplus).Error; err != nil {
-		return err
-	}
+	err := c.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(netSurplus).Error; err != nil {
+			return err
+		}
 
-	err := c.GetNetSurplusTotal(netSurplus)
+		err := c.GetNetSurplusTotal(tx, netSurplus)
+		if err != nil {
+			return err
+		}
+		err = c.CreateDistribution(tx, netSurplus)
+		if err != nil {
+			return err
+		}
+		err = c.GetMembers(tx, netSurplus)
+		if err != nil {
+			return err
+		}
+
+		c.GenNumber(tx, netSurplus, netSurplus.CompanyID)
+
+		return tx.Save(netSurplus).Error
+	})
 	if err != nil {
 		return err
 	}
-	err = c.CreateDistribution(netSurplus)
-	if err != nil {
-		return err
-	}
-	err = c.GetMembers(netSurplus)
-	if err != nil {
-		return err
-	}
-
-	c.GenNumber(netSurplus, netSurplus.CompanyID)
-
-	return c.db.Save(netSurplus).Error
+	return nil
 
 }
 
@@ -267,17 +273,25 @@ func (s *NetSurplusService) DeleteNetSurplus(id string) error {
 		if err != nil {
 			return err
 		}
+		err = tx.Where("net_surplus_id = ?", id).Model(&models.LoanApplicationModel{}).Update("net_surplus_id", nil).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Where("net_surplus_id = ?", id).Model(&models.SavingModel{}).Update("net_surplus_id", nil).Error
+		if err != nil {
+			return err
+		}
 		return tx.Where("id = ?", id).Delete(&models.NetSurplusModel{}).Error
 	})
 }
 
-func (n *NetSurplusService) GetMembers(netSurplus *models.NetSurplusModel) error {
+func (n *NetSurplusService) GetMembers(tx *gorm.DB, netSurplus *models.NetSurplusModel) error {
 	// getCompany, _ := c.Get("companySession")
 	// company := getCompany.(CompanyModel)
 	// company.GetCooperativeSetting()
 	// setting := company.CooperativeSetting
 	var memberData []models.CooperativeMemberModel
-	err := n.db.Find(&memberData, "company_id = ?", netSurplus.CompanyID).Error
+	err := tx.Find(&memberData, "company_id = ?", netSurplus.CompanyID).Error
 	if err != nil {
 		return err
 	}
@@ -289,21 +303,21 @@ func (n *NetSurplusService) GetMembers(netSurplus *models.NetSurplusModel) error
 		totalSaving := float64(0)
 		totalLoan := float64(0)
 		var savings []models.SavingModel
-		n.db.Where("company_id = ? and cooperative_member_id = ? and (date between ? and ?) and net_surplus_id is null", netSurplus.CompanyID, member.ID, netSurplus.StartDate, netSurplus.EndDate).Find(&savings)
+		tx.Where("company_id = ? and cooperative_member_id = ? and (date between ? and ?) and net_surplus_id is null", netSurplus.CompanyID, member.ID, netSurplus.StartDate, netSurplus.EndDate).Find(&savings)
 		for _, s := range savings {
 			totalSaving += s.Amount
 			s.NetSurplusID = &netSurplus.ID
-			err := n.db.Save(&s).Error
+			err := tx.Save(&s).Error
 			if err != nil {
 				return err
 			}
 		}
 		var loans []models.LoanApplicationModel
-		n.db.Where("company_id = ? and member_id = ? and (submission_date between ? and ?) and net_surplus_id is null and (status = ? OR status = ?)", netSurplus.CompanyID, member.ID, netSurplus.StartDate, netSurplus.EndDate, "SETTLEMENT", "DISBURSED").Find(&loans)
+		tx.Where("company_id = ? and member_id = ? and (submission_date between ? and ?) and net_surplus_id is null and (status = ? OR status = ?)", netSurplus.CompanyID, member.ID, netSurplus.StartDate, netSurplus.EndDate, "SETTLEMENT", "DISBURSED").Find(&loans)
 		for _, s := range loans {
 			totalLoan += s.LoanAmount
 			s.NetSurplusID = &netSurplus.ID
-			err := n.db.Save(&s).Error
+			err := tx.Save(&s).Error
 			if err != nil {
 				return err
 			}
@@ -312,7 +326,7 @@ func (n *NetSurplusService) GetMembers(netSurplus *models.NetSurplusModel) error
 		// fmt.Println("totalSaving", totalSaving)
 
 		var invoices []models.SalesModel
-		err := n.db.Where("company_id = ? and member_id = ? and net_surplus_id is null", netSurplus.CompanyID, member.ID).Find(&invoices).Error
+		err := tx.Where("company_id = ? and member_id = ? and net_surplus_id is null", netSurplus.CompanyID, member.ID).Find(&invoices).Error
 		if err != nil {
 			// fmt.Println("ERROR", err)
 			return err
@@ -320,7 +334,7 @@ func (n *NetSurplusService) GetMembers(netSurplus *models.NetSurplusModel) error
 		for _, s := range invoices {
 			totalTransactions += s.Total
 			s.NetSurplusID = &netSurplus.ID
-			err := n.db.Save(&s).Error
+			err := tx.Save(&s).Error
 			if err != nil {
 				return err
 			}
@@ -364,7 +378,7 @@ func (n *NetSurplusService) GetMembers(netSurplus *models.NetSurplusModel) error
 	return nil
 }
 
-func (c *NetSurplusService) GenNumber(netSurplus *models.NetSurplusModel, companyID *string) error {
+func (c *NetSurplusService) GenNumber(tx *gorm.DB, netSurplus *models.NetSurplusModel, companyID *string) error {
 	setting, err := c.cooperativeSettingService.GetSetting(companyID)
 	if err != nil {
 		return err
@@ -378,7 +392,7 @@ func (c *NetSurplusService) GenNumber(netSurplus *models.NetSurplusModel, compan
 		RandomNumericLength:   setting.RandomNumericLength,
 		RandomCharacterLength: setting.RandomCharacterLength,
 	}
-	if err := c.db.Where("company_id = ?", companyID).Limit(1).Order("created_at desc").Find(&lastLoan).Error; err != nil {
+	if err := tx.Where("company_id = ?", companyID).Limit(1).Order("created_at desc").Find(&lastLoan).Error; err != nil {
 		nextNumber = shared.GenerateInvoiceBillNumber(data, "00")
 	} else {
 		nextNumber = shared.ExtractNumber(data, lastLoan.NetSurplusNumber)

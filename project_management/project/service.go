@@ -226,8 +226,8 @@ func (s *ProjectService) CheckIdleColumn() error {
 
 						switch idlePeriode {
 						case "days":
-							fmt.Println(now.Sub(*task.UpdatedAt).Hours()*24, "HARI")
-							if now.Sub(*task.UpdatedAt).Hours()*24 > idleTime {
+							fmt.Println(now.Sub(*task.UpdatedAt).Hours()/24, "HARI")
+							if now.Sub(*task.UpdatedAt).Hours()/24 > idleTime {
 								readyToSend = true
 							}
 						case "hours":

@@ -121,6 +121,28 @@ func (s *WhatsmeowService) CheckConnected(JID string) ([]byte, error) {
 
 	return body, nil
 }
+
+func (s *WhatsmeowService) DisconnectDeviceByJID(JID string) error {
+	req, err := http.NewRequest("DELETE", s.BaseURL+"/v1/device-delete/"+JID, nil)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	return nil
+}
+
 func (s *WhatsmeowService) CreateQR(sessionID, webhook, headerKey string) ([]byte, error) {
 	req, err := http.NewRequest("POST", s.BaseURL+"/v1/create-qr", bytes.NewBufferString(`{"session":"`+sessionID+`","webhook":"`+webhook+`", "header_key":"`+headerKey+`"}`))
 	if err != nil {
@@ -253,6 +275,36 @@ func (s *WhatsmeowService) UpdateWebhook(sessionID string, webhook, headerKey st
 	}()
 
 	return nil
+}
+
+func (s *WhatsmeowService) GetJIDBySessionName(sessionName string) (map[string]interface{}, error) {
+	req, err := http.NewRequest("GET", s.BaseURL+"/v1/jid/"+sessionName, nil)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	client.Timeout = 30 * time.Second
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	var response map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return response, nil
 }
 func (s *WhatsmeowService) MarkAsRead(sessionID string, msgIDs []string, senderPhoneNumber string) error {
 	var data = map[string]interface{}{

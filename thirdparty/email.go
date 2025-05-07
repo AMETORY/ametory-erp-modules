@@ -25,6 +25,7 @@ type SMTPSender struct {
 	body           string
 	from           mail.Address
 	to             []mail.Address
+	Tls            bool
 }
 
 // NewSMTPSender NewSMTPSender
@@ -37,6 +38,10 @@ func NewSMTPSender(smtpServer string, smtpPort int, smtpUsername, smtpPassword s
 		from:         from,
 		to:           []mail.Address{},
 	}
+}
+
+func (s *SMTPSender) SetTls(tls bool) {
+	s.Tls = tls
 }
 
 func (s *SMTPSender) SetTemplate(layout string, template string) *SMTPSender {
@@ -80,10 +85,12 @@ func (s *SMTPSender) send(subject string, attachment []string) error {
 	e := email.NewEmail()
 	e.From = s.from.Address
 	fmt.Println("FROM", e.From)
+	log.Println("FROM", e.From)
 	for _, v := range s.to {
-		e.To = append(e.To, v.String())
+		e.To = append(e.To, v.Address)
 	}
 	fmt.Println("TO", e.To)
+	log.Println("TO", e.To)
 	e.Subject = subject
 	e.HTML = []byte(s.body)
 	for _, v := range attachment {
@@ -92,7 +99,7 @@ func (s *SMTPSender) send(subject string, attachment []string) error {
 	var client *smtp.Client
 	var auth smtp.Auth
 	var err error
-	if s.smtpPort == 587 || s.smtpPort == 2525 {
+	if s.smtpPort == 587 || s.smtpPort == 2525 || s.Tls {
 		_, err := s.sendEmailWithTLS(e)
 		if err != nil {
 			return err
@@ -148,7 +155,7 @@ func (s *SMTPSender) sendEmailWithTLS(e *email.Email) (*smtp.Client, error) {
 	// Koneksi TLS
 
 	// Buat koneksi ke server SMTP
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", s.smtpServer, s.smtpPort))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%v", s.smtpServer, s.smtpPort))
 	if err != nil {
 		return nil, fmt.Errorf("gagal membuat koneksi TLS: %v", err)
 	}
