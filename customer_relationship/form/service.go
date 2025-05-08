@@ -43,6 +43,10 @@ func (s *FormService) GetFormTemplates(request http.Request, search string) (pag
 		stmt = stmt.Where("title LIKE ?", "%"+search+"%")
 	}
 
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.FormTemplate{})
 	page.Page = page.Page + 1

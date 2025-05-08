@@ -138,6 +138,15 @@ func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, re
 		stmt = stmt.Where("tags.id in (?)", strings.Split(request.URL.Query().Get("tag_ids"), ","))
 	}
 
+	if request.Header.Get("ID-Company") != "" {
+		if request.Header.Get("ID-Company") == "nil" || request.Header.Get("ID-Company") == "null" {
+			stmt = stmt.Where("whatsapp_message_sessions.company_id is null")
+		} else {
+			stmt = stmt.Where("whatsapp_message_sessions.company_id = ?", request.Header.Get("ID-Company"))
+
+		}
+	}
+
 	stmt = stmt.Order("last_online_at DESC")
 
 	utils.FixRequest(&request)

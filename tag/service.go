@@ -60,8 +60,14 @@ func (s *TagService) DeleteTag(id string) error {
 }
 
 func (s *TagService) ListTags(request http.Request, search string) (paginate.Page, error) {
+
 	pg := paginate.New()
+
 	stmt := s.db
+	if request.Header.Get("ID-Company") != "" {
+		companyID := request.Header.Get("ID-Company")
+		stmt = stmt.Where("company_id = ?", companyID)
+	}
 	stmt = stmt.Model(&models.TagModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.TagModel{})

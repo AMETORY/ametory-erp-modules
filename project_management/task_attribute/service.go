@@ -51,6 +51,9 @@ func (s *TaskAttributeService) GetTaskAttributes(request *http.Request, search s
 	if search != "" {
 		stmt = stmt.Where("title ILIKE ? OR description ILIKE ?", "%"+search+"%", "%"+search+"%")
 	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	stmt = stmt.Order("created_at asc")
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.TaskAttributeModel{})

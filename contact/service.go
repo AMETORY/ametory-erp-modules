@@ -32,13 +32,13 @@ func NewContactService(ctx *context.ERPContext, companyService *company.CompanyS
 func (s *ContactService) CreateContact(data *models.ContactModel) error {
 	if data.Phone != nil {
 		var existingContact models.ContactModel
-		if err := s.ctx.DB.Where("phone = ?", data.Phone).First(&existingContact).Error; err == nil {
+		if err := s.ctx.DB.Where("phone = ? and company_id = ?", data.Phone, *data.CompanyID).First(&existingContact).Error; err == nil {
 			return errors.New("contact with this phone number already exists")
 		}
 	}
 	if data.Email != "" {
 		var existingContact models.ContactModel
-		if err := s.ctx.DB.Where("email = ?", data.Email).First(&existingContact).Error; err == nil {
+		if err := s.ctx.DB.Where("email = ? and company_id = ?", data.Email, *data.CompanyID).First(&existingContact).Error; err == nil {
 			return errors.New("contact with this email already exists")
 		}
 	}
@@ -196,12 +196,13 @@ func (s *ContactService) DB() *gorm.DB {
 }
 
 // CountContactByTagID menghitung jumlah contact berdasarkan ID tag
-func (s *ContactService) CountContactByTag() ([]models.CountByTag, error) {
+func (s *ContactService) CountContactByTag(companyID string) ([]models.CountByTag, error) {
 	var tag []models.CountByTag
 	if err := s.ctx.DB.Model(&models.ContactModel{}).
 		Joins("JOIN contact_tags ON contact_tags.contact_model_id = contacts.id").
 		Joins("JOIN tags ON contact_tags.tag_model_id = tags.id").
 		Select("tags.id, tags.name, tags.color, COUNT(*) as count").
+		Where("tags.company_id = ?", companyID).
 		Group("tags.id, tags.name, tags.color").
 		Scan(&tag).Error; err != nil {
 		return nil, err

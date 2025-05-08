@@ -11,22 +11,23 @@ import (
 type UserActivityType string
 
 const (
-	UserActivityLogin    UserActivityType = "LOGIN"
-	UserActivityLogout   UserActivityType = "LOGOUT"
-	UserActivityBreak    UserActivityType = "BREAK"
-	UserActivityBreakOff UserActivityType = "BREAK_OFF"
-	UserActivityMeeting  UserActivityType = "MEETING"
-	UserActivityTraining UserActivityType = "TRAINING"
-	UserActivityOnline   UserActivityType = "ONLINE"
-	UserActivityOffline  UserActivityType = "OFFLINE"
-	UserActivityClockIn  UserActivityType = "CLOCK_IN"
-	UserActivityClockOut UserActivityType = "CLOCK_OUT"
-	UserActivityAttend   UserActivityType = "ATTEND"
-	UserActivityWorkOn   UserActivityType = "WORK_ON"
-	UserActivitySales    UserActivityType = "SALES"
-	UserActivityPurchase UserActivityType = "PURCHASE"
-	UserActivityApprove  UserActivityType = "APPROVE"
-	UserActivityDecline  UserActivityType = "DECLINE"
+	UserActivityLogin      UserActivityType = "LOGIN"
+	UserActivityLogout     UserActivityType = "LOGOUT"
+	UserActivityBreak      UserActivityType = "BREAK"
+	UserActivityBreakOff   UserActivityType = "BREAK_OFF"
+	UserActivityMeeting    UserActivityType = "MEETING"
+	UserActivityTraining   UserActivityType = "TRAINING"
+	UserActivityOnline     UserActivityType = "ONLINE"
+	UserActivityOffline    UserActivityType = "OFFLINE"
+	UserActivityClockIn    UserActivityType = "CLOCK_IN"
+	UserActivityClockOut   UserActivityType = "CLOCK_OUT"
+	UserActivityCheckPoint UserActivityType = "CHECK_POINT"
+	UserActivityAttend     UserActivityType = "ATTEND"
+	UserActivityWorkOn     UserActivityType = "WORK_ON"
+	UserActivitySales      UserActivityType = "SALES"
+	UserActivityPurchase   UserActivityType = "PURCHASE"
+	UserActivityApprove    UserActivityType = "APPROVE"
+	UserActivityDecline    UserActivityType = "DECLINE"
 )
 
 type UserActivityModel struct {
@@ -56,6 +57,12 @@ func (m *UserActivityModel) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+func (m *UserActivityModel) AfterFind(tx *gorm.DB) error {
+	var files []FileModel
+	tx.Where("ref_id = ? AND ref_type in (?)", m.ID, []string{"user_activity", "clock_in", "clock_out", "check_point"}).Find(&files)
+	m.Files = files
+	return nil
+}
 func (m *UserActivityModel) TableName() string {
 	return "user_activities"
 }

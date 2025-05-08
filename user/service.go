@@ -115,7 +115,7 @@ func (s *UserService) CreateActivity(userID string, activity *models.UserActivit
 
 func (s *UserService) GetFilesByID(ID string) ([]models.FileModel, error) {
 	files := []models.FileModel{}
-	if err := s.db.Where("ref_id = ? and ref_type = ?", ID, "user_activity").Find(&files).Error; err != nil {
+	if err := s.db.Where("ref_id = ? and ref_type in (?)", ID, []string{"user_activity", "clock_in", "clock_out", "check_point"}).Find(&files).Error; err != nil {
 		return nil, err
 	}
 	return files, nil
@@ -125,6 +125,33 @@ func (s *UserService) FinishActivityByUser(userID string, activityType models.Us
 	// Find the last activity with the given type
 	activity := &models.UserActivityModel{}
 	if err := s.db.Where("user_id = ? and activity_type = ? and finished_at is null", userID, activityType).Order("started_at DESC").First(activity).Error; err != nil {
+		return nil, err
+	}
+
+	// Set the finished_at field to the current time
+	now := time.Now()
+	activity.FinishedAt = &now
+
+	// Calculate and set the duration
+	if activity.StartedAt != nil {
+		duration := now.Sub(*activity.StartedAt)
+		activity.Duration = &duration
+		activity.FinishedLatitude = latitude
+		activity.FinishedLongitude = longitude
+		activity.FinishedNotes = notes
+	}
+
+	// Update the activity in the database
+	if err := s.db.Save(activity).Error; err != nil {
+		return nil, err
+	}
+
+	return activity, nil
+}
+func (s *UserService) FinishActivityByActivityID(userID string, activityID string, latitude *float64, longitude *float64, notes *string) (*models.UserActivityModel, error) {
+	// Find the last activity with the given type
+	activity := &models.UserActivityModel{}
+	if err := s.db.Where("user_id = ? and id = ? and finished_at is null", userID, activityID).Order("started_at DESC").First(activity).Error; err != nil {
 		return nil, err
 	}
 
