@@ -190,7 +190,7 @@ func (s *SalesService) DeleteSales(id string) error {
 
 func (s *SalesService) GetSalesByID(id string) (*models.SalesModel, error) {
 	var sales, refSales models.SalesModel
-	err := s.db.Preload("PublishedBy", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("SalesUser").Preload("PublishedBy", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id, full_name")
 	}).Preload("SalesPayments", func(db *gorm.DB) *gorm.DB {
 		return db.Order("updated_at asc")
@@ -235,7 +235,7 @@ func (s *SalesService) GetSalesBySalesNumber(salesNumber string) (*models.SalesM
 
 func (s *SalesService) GetSales(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Contact")
+	stmt := s.db.Preload("SalesUser").Preload("Contact")
 	if search != "" {
 		stmt = stmt.Where("sales.description ILIKE ? OR sales.code ILIKE ? OR sales.sales_number ILIKE ?",
 			"%"+search+"%",
