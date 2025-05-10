@@ -61,8 +61,8 @@ func (s *DistributorService) GetDistributors(request http.Request, search string
 	page.Page = page.Page + 1
 	return page, nil
 }
-func (s *DistributorService) GetAllProduct(request http.Request, search string, distibutorID string) (paginate.Page, error) {
+func (s *DistributorService) GetAllProduct(request http.Request, search string, distibutorID string, status *string) (paginate.Page, error) {
 	inventorySrv := s.ctx.InventoryService.(*inventory.InventoryService)
 	request.Header.Set("ID-Distributor", distibutorID)
-	return inventorySrv.ProductService.GetProducts(request, search)
+	return inventorySrv.ProductService.GetProducts(request, search, status)
 }

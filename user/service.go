@@ -115,7 +115,7 @@ func (s *UserService) CreateActivity(userID string, activity *models.UserActivit
 
 func (s *UserService) GetFilesByID(ID string) ([]models.FileModel, error) {
 	files := []models.FileModel{}
-	if err := s.db.Where("ref_id = ? and ref_type in (?)", ID, []string{"user_activity", "clock_in", "clock_out", "check_point"}).Find(&files).Error; err != nil {
+	if err := s.db.Where("ref_id = ? and ref_type in (?)", ID, []string{"user_activity", "clock_in", "clock_out", "check_point", "check_point_finish"}).Find(&files).Error; err != nil {
 		return nil, err
 	}
 	return files, nil

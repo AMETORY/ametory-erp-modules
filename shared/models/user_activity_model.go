@@ -59,7 +59,7 @@ func (m *UserActivityModel) BeforeCreate(tx *gorm.DB) error {
 
 func (m *UserActivityModel) AfterFind(tx *gorm.DB) error {
 	var files []FileModel
-	tx.Where("ref_id = ? AND ref_type in (?)", m.ID, []string{"user_activity", "clock_in", "clock_out", "check_point"}).Find(&files)
+	tx.Where("ref_id = ? AND ref_type in (?)", m.ID, []string{"user_activity", "clock_in", "clock_out", "check_point", "check_point_finish"}).Find(&files)
 	m.Files = files
 	return nil
 }

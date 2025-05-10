@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -180,7 +181,7 @@ func (s *ProductService) GetProductBySku(sku string) (*models.ProductModel, erro
 	return &product, nil
 }
 
-func (s *ProductService) GetProducts(request http.Request, search string) (paginate.Page, error) {
+func (s *ProductService) GetProducts(request http.Request, search string, status *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Tags").Preload("Variants.Attributes.Attribute").Preload("Company").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
@@ -226,6 +227,16 @@ func (s *ProductService) GetProducts(request http.Request, search string) (pagin
 	}
 	if request.URL.Query().Get("order") != "" {
 		stmt = stmt.Order(request.URL.Query().Get("order"))
+	}
+	if request.URL.Query().Get("status") != "" {
+		stmt = stmt.Where("products.status = ?", request.URL.Query().Get("status"))
+	}
+	if request.URL.Query().Get("category_ids") != "" {
+		stmt = stmt.Where("products.category_id IN (?)", strings.Split(request.URL.Query().Get("category_ids"), ","))
+	}
+
+	if status != nil {
+		stmt = stmt.Where("products.status = ?", status)
 	}
 
 	stmt = stmt.Distinct("products.id")

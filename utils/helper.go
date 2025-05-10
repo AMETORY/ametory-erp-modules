@@ -364,3 +364,20 @@ func FormatRupiah(amount float64) string {
 	p := message.NewPrinter(language.Indonesian)
 	return p.Sprintf("%.0f", amount)
 }
+
+func NumToAlphabet(num int) string {
+	b := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	res := []rune{}
+	for num > 0 {
+		res = append(res, b[num%26-1])
+		num /= 26
+	}
+	return string(resverse(res))
+}
+
+func resverse(r []rune) []rune {
+	for i, j := 0, len(r)-1; i < len(r)/2; i, j = i+1, j-1 {
+		r[i], r[j] = r[j], r[i]
+	}
+	return r
+}

@@ -75,3 +75,21 @@ func (f *Firestore) makePublic(object string) error {
 	}
 	return nil
 }
+
+func (f *Firestore) DeleteFileFromFirebaseStorage(objString string) error {
+	client, err := f.client.Storage(f.ctx)
+	if err != nil {
+		return fmt.Errorf("error getting Storage client: %v", err)
+	}
+
+	bucket, err := client.Bucket(f.bucket)
+	if err != nil {
+		return fmt.Errorf("error getting bucket: %v", err)
+	}
+
+	if err := bucket.Object(objString).Delete(f.ctx); err != nil {
+		return fmt.Errorf("error deleting object: %v", err)
+	}
+
+	return nil
+}

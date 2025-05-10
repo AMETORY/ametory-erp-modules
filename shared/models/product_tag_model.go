@@ -8,7 +8,7 @@ import (
 
 type TagModel struct {
 	shared.BaseModel
-	Name        string        `gorm:"not null;unique" json:"name"`
+	Name        string        `gorm:"not null" json:"name"`
 	Description string        `json:"description,omitempty"`
 	Color       string        `gorm:"type:varchar(255);default:'#FFFFFF'" json:"color,omitempty"`
 	IconUrl     string        `gorm:"type:varchar(255)" json:"icon_url,omitempty"`

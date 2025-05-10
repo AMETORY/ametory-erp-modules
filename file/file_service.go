@@ -110,3 +110,24 @@ func (s *FileService) UpdateFileByID(id string, file *models.FileModel) error {
 func (s *FileService) UpdateFileRefByID(id string, refID, refType string) error {
 	return s.ctx.DB.Model(&models.FileModel{}).Where("id = ?", id).Updates(map[string]interface{}{"ref_id": refID, "ref_type": refType}).Error
 }
+
+func (s *FileService) DeleteFile(id string) error {
+	file := &models.FileModel{}
+	err := s.ctx.DB.Where("id = ?", id).First(file).Error
+	if err != nil {
+		return err
+	}
+
+	if file.Provider == "local" {
+		os.Remove(file.Path)
+	}
+	if file.Provider == "firebase" {
+		firestoreSrv, ok := s.ctx.Firestore.(*thirdparty.Firestore)
+		if !ok {
+			return fmt.Errorf("firestore service is not found")
+		}
+		firestoreSrv.DeleteFileFromFirebaseStorage(file.Path)
+	}
+
+	return s.ctx.DB.Delete(file).Error
+}

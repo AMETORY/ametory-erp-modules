@@ -39,6 +39,7 @@ type WhatsappMessageModel struct {
 	User         *UserModel             `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	IsNew        bool                   `json:"is_new" gorm:"default:false"`
 	RefID        *string                `json:"ref_id,omitempty" gorm:"column:ref_id"`
+	IsAutoPilot  bool                   `json:"is_auto_pilot" gorm:"default:false"`
 }
 
 func (m *WhatsappMessageModel) TableName() string {

@@ -73,6 +73,12 @@ type ColumnAction struct {
 	ActionValue     string           `json:"action_value,omitempty"`
 	ActionValueType string           `json:"action_value_type,omitempty"`
 	Status          string           `gorm:"type:varchar(50);default:DRAFT" json:"status,omitempty"`
+	Files           []FileModel      `json:"files,omitempty" gorm:"-"`
+}
+
+func (m *ColumnAction) AfterFind(tx *gorm.DB) error {
+	tx.Model(&FileModel{}).Where("ref_id = ? AND ref_type = ?", m.ID, "column_action").Find(&m.Files)
+	return nil
 }
 
 func (c *ColumnAction) BeforeCreate(tx *gorm.DB) (err error) {

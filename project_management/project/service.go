@@ -55,7 +55,7 @@ func (s *ProjectService) GetProjectByID(id string, memberID *string) (*models.Pr
 
 func (s *ProjectService) GetColumnActionsByColumnID(id string) ([]models.ColumnAction, error) {
 	var action []models.ColumnAction
-	err := s.db.Where("column_id = ?", id).Find(&action).Error
+	err := s.db.Where("column_id = ?", id).Preload("Column", func(db *gorm.DB) *gorm.DB { return db.Select("id", "name") }).Find(&action).Error
 	if err != nil {
 		return []models.ColumnAction{}, err
 	}
@@ -252,6 +252,15 @@ func (s *ProjectService) CheckIdleColumn() error {
 							task.LastActionTriggerAt = &now
 							task.UpdatedAt = &now
 							s.ctx.DB.Omit(clause.Associations).Save(&task)
+
+							for _, v := range action.Files {
+								if strings.Contains(v.MimeType, "image") && v.URL != "" {
+									sendWAFileMessage(s.ctx, waSession.JID, *waSession.Contact.Phone, "", "image", v.URL)
+								} else {
+									sendWAFileMessage(s.ctx, waSession.JID, *waSession.Contact.Phone, "", "document", v.URL)
+								}
+							}
+
 						}
 						// if waSession.Contact.Phone != nil {
 						// 	msg := parseMsgTemplate(*waSession.Contact, task.CreatedBy, actionData["message"].(string))
@@ -317,6 +326,19 @@ func sendWAMessage(erpContext *context.ERPContext, jid, to, message string) (any
 		Text:    message,
 		To:      to,
 		IsGroup: false,
+	}
+	// utils.LogJson(replyData)
+	return erpContext.ThirdPartyServices["WA"].(*whatsmeow_client.WhatsmeowService).SendMessage(replyData)
+}
+
+func sendWAFileMessage(erpContext *context.ERPContext, jid, to, message, fileType, fileUrl string) (any, error) {
+	replyData := whatsmeow_client.WaMessage{
+		JID:      jid,
+		Text:     message,
+		To:       to,
+		IsGroup:  false,
+		FileType: fileType,
+		FileUrl:  fileUrl,
 	}
 	// utils.LogJson(replyData)
 	return erpContext.ThirdPartyServices["WA"].(*whatsmeow_client.WhatsmeowService).SendMessage(replyData)
