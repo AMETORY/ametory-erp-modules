@@ -82,6 +82,13 @@ func (s *ContactService) GetContactByID(id string) (*models.ContactModel, error)
 		}
 		return nil, err
 	}
+	if contact.DebtLimit > 0 {
+		contact.DebtLimitRemain = contact.DebtLimit - s.GetTotalDebt(&contact)
+	}
+	if contact.ReceivablesLimit > 0 {
+		contact.ReceivablesLimitRemain = contact.ReceivablesLimit - s.GetTotalReceivable(&contact)
+	}
+
 	return &contact, nil
 }
 
@@ -181,7 +188,49 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ContactModel{})
 	page.Page = page.Page + 1
+
+	items := page.Items.(*[]models.ContactModel)
+	newItems := make([]models.ContactModel, 0)
+	for _, item := range *items {
+		if item.DebtLimit > 0 {
+			var total = s.GetTotalDebt(&item)
+			item.TotalDebt = total
+			item.DebtLimitRemain = item.DebtLimit - total
+		}
+		if item.ReceivablesLimit > 0 {
+			var total = s.GetTotalReceivable(&item)
+			item.TotalReceivable = total
+			item.ReceivablesLimitRemain = item.ReceivablesLimit - total
+		}
+
+		newItems = append(newItems, item)
+	}
+	page.Items = &newItems
 	return page, nil
+}
+
+// getTotalDebt menghitung total debt dari contact
+func (s *ContactService) GetTotalDebt(contact *models.ContactModel) float64 {
+	var total float64
+	if err := s.ctx.DB.Model(&models.SalesModel{}).
+		Where("document_type = ?", models.INVOICE).
+		Where("contact_id = ?", contact.ID).
+		Select("COALESCE(SUM(total - paid), 0)  as total").
+		Scan(&total).Error; err != nil {
+		return 0
+	}
+	return total
+}
+func (s *ContactService) GetTotalReceivable(contact *models.ContactModel) float64 {
+	var total float64
+	if err := s.ctx.DB.Model(&models.PurchaseOrderModel{}).
+		Where("document_type = ?", models.PURCHASE_ORDER).
+		Where("contact_id = ?", contact.ID).
+		Select("COALESCE(SUM(total - paid), 0) as total").
+		Scan(&total).Error; err != nil {
+		return 0
+	}
+	return total
 }
 
 func (s *ContactService) Migrate() error {
