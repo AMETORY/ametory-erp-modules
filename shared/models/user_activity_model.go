@@ -48,6 +48,8 @@ type UserActivityModel struct {
 	FinishedLatitude  *float64         `json:"finished_latitude" gorm:"type:decimal(10,8)"`
 	FinishedLongitude *float64         `json:"finished_longitude" gorm:"type:decimal(11,8)"`
 	FinishedNotes     *string          `gorm:"type:text" json:"finished_notes,omitempty"`
+	CompanyID         *string          `json:"company_id,omitempty"`
+	Company           *CompanyModel    `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (m *UserActivityModel) BeforeCreate(tx *gorm.DB) error {

@@ -71,11 +71,15 @@ func (s *UserService) GetUserActivitiesByUserID(userID string, request http.Requ
 	if request.URL.Query().Get("activity_type") != "" {
 		stmt = stmt.Where("activity_type = ?", request.URL.Query().Get("activity_type"))
 	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	if request.URL.Query().Get("sort") != "" {
 		stmt = stmt.Order(request.URL.Query().Get("sort"))
 	} else {
 		stmt = stmt.Order("created_at DESC")
 	}
+
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.UserActivityModel{})
 
@@ -90,9 +94,9 @@ func (s *UserService) GetUserActivitiesByUserID(userID string, request http.Requ
 	return page, nil
 }
 
-func (s *UserService) GetLastClockinByUser(userID string, thresholdDuration time.Duration) (*models.UserActivityModel, error) {
+func (s *UserService) GetLastClockinByUser(userID string, companyID string, thresholdDuration time.Duration) (*models.UserActivityModel, error) {
 	activity := &models.UserActivityModel{}
-	err := s.db.Where("user_id = ? AND activity_type = ? AND started_at >= ?", userID, models.UserActivityClockIn, time.Now().Add(-thresholdDuration)).
+	err := s.db.Where("user_id = ? AND activity_type = ? AND company_id = ? AND started_at >= ?", userID, models.UserActivityClockIn, companyID, time.Now().Add(-thresholdDuration)).
 		Order("started_at DESC").
 		First(activity).Error
 	if err != nil {

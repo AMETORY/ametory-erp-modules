@@ -92,6 +92,13 @@ func (s *MerchantService) DeleteMerchant(id string) error {
 func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, error) {
 	var merchant models.MerchantModel
 	err := s.db.Preload("Company").Preload("User").Where("id = ?", id).First(&merchant).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.New("merchant not found")
+	}
+	file, err := s.GetPicture(id)
+	if err == nil {
+		merchant.Picture = file
+	}
 	return &merchant, err
 }
 func (s *MerchantService) GetActiveMerchantByID(id, companyID string) (*models.MerchantModel, error) {
@@ -106,7 +113,18 @@ func (s *MerchantService) GetActiveMerchantByID(id, companyID string) (*models.M
 	if merchant.Status == "SUSPENDED" {
 		return nil, errors.New("merchant is suspended")
 	}
+	file, err := s.GetPicture(id)
+	if err == nil {
+		merchant.Picture = file
+	}
+
 	return &merchant, err
+}
+
+func (s *MerchantService) GetPicture(id string) (*models.FileModel, error) {
+	var picture models.FileModel
+	err := s.db.Where("ref_id = ? AND ref_type = ?", id, "merchant").Order("created_at DESC").First(&picture).Error
+	return &picture, err
 }
 
 func (s *MerchantService) GetMerchants(request http.Request, search string) (paginate.Page, error) {
@@ -221,7 +239,7 @@ func (s *MerchantService) GetMerchantProductDetail(id, merchantID string, wareho
 
 	return &product, nil
 }
-func (s *MerchantService) GetMerchantProducts(request http.Request, search string, merchantID string, warehouseID *string, status []string) (paginate.Page, error) {
+func (s *MerchantService) GetMerchantProducts(request http.Request, search string, merchantID string, warehouseID *string, status []string, useBrand bool) (paginate.Page, error) {
 	pg := paginate.New()
 
 	var products []models.ProductModel
@@ -231,18 +249,29 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 		warehouseID = merchant.DefaultWarehouseID
 	}
 
-	stmt := s.db.Joins("JOIN product_merchants ON product_merchants.product_model_id = products.id").
-		Joins("JOIN brands ON brands.id = products.brand_id").
-		Joins("LEFT JOIN product_variants ON product_variants.product_id = products.id").
-		Where("product_merchants.merchant_model_id = ?", merchantID)
+	stmt := s.db.Joins("JOIN product_merchants ON product_merchants.product_model_id = products.id").Preload("Category").
+		Joins("LEFT JOIN product_variants ON product_variants.product_id = products.id")
 
+	if useBrand {
+		stmt = stmt.Joins("JOIN brands ON brands.id = products.brand_id")
+	}
+	stmt = stmt.Where("product_merchants.merchant_model_id = ?", merchantID)
 	if search != "" {
-		stmt = stmt.Where("products.name ILIKE ? OR products.sku ILIKE ? OR products.description ILIKE ? OR brands.name ILIKE ? OR product_variants.display_name ILIKE ?",
-			"%"+search+"%",
-			"%"+search+"%",
-			"%"+search+"%",
-			"%"+search+"%",
-			"%"+search+"%")
+		if useBrand {
+			stmt = stmt.Where("products.name ILIKE ? OR products.sku ILIKE ? OR products.description ILIKE ? OR brands.name ILIKE ? OR product_variants.display_name ILIKE ?",
+				"%"+search+"%",
+				"%"+search+"%",
+				"%"+search+"%",
+				"%"+search+"%",
+				"%"+search+"%")
+		} else {
+			stmt = stmt.Where("products.name ILIKE ? OR products.sku ILIKE ? OR products.description ILIKE ? OR product_variants.display_name ILIKE ?",
+				"%"+search+"%",
+				"%"+search+"%",
+				"%"+search+"%",
+				"%"+search+"%")
+		}
+
 	}
 	stmt = stmt.Distinct("products.id")
 	stmt = stmt.Select("products.*", "product_merchants.price as price").Preload("Variants.Attributes.Attribute").Preload("Brand").Preload("Tags").Model(&models.ProductModel{})
