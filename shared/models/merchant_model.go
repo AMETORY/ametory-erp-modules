@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -23,12 +25,16 @@ type MerchantModel struct {
 	RegencyID          *string            `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
 	DistrictID         *string            `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
 	VillageID          *string            `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
+	ZipCode            *string            `json:"zip_code,omitempty"`
 	Status             string             `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
 	MerchantType       *string            `json:"merchant_type" gorm:"type:VARCHAR(20);default:'REGULAR_STORE'"`
 	MerchantTypeID     *string            `json:"merchant_type_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
 	Picture            *FileModel         `json:"picture,omitempty" gorm:"-"`
 	OrderRequest       *OrderRequestModel `json:"order_request,omitempty" gorm:"-"`
 	Distance           float64            `json:"distance" gorm:"-"`
+	Users              []*UserModel       `gorm:"many2many:merchant_users;constraint:OnDelete:CASCADE;" json:"users,omitempty"`
+	Workflow           *json.RawMessage   `json:"workflow,omitempty" gorm:"type:JSON;default:'[]'"`
+	Menu               *json.RawMessage   `json:"menu,omitempty" gorm:"type:JSON;default:'[]'"`
 }
 
 func (m *MerchantModel) TableName() string {
@@ -105,4 +111,19 @@ func (m *MerchantAvailableProductItem) AfterFind(tx *gorm.DB) (err error) {
 	tx.Where("ref_id = ? and ref_type = ?", m.ProductID, "product").Find(&images)
 	m.ProductImages = images
 	return
+}
+
+type MerchantUser struct {
+	UserModelID     string `gorm:"primaryKey;uniqueIndex:merchant_users_user_id_merchant_id_key" json:"user_id"`
+	MerchantModelID string `gorm:"primaryKey;uniqueIndex:merchant_users_user_id_merchant_id_key" json:"merchant_id"`
+}
+
+type MerchantDesk struct {
+	shared.BaseModel
+	MerchantID *string        `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Merchant   *MerchantModel `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
+	DeskName   string         `json:"desk_name"`
+	Status     string         `gorm:"type:varchar(20);default:'AVAILABLE'" json:"status,omitempty"`
+	Position   int            `json:"position"`
+	Capacity   int            `json:"capacity"`
 }

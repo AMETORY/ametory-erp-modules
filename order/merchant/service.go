@@ -28,7 +28,7 @@ func NewMerchantService(db *gorm.DB, ctx *context.ERPContext, financeService *fi
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&models.MerchantModel{}, &models.MerchantTypeModel{})
+	return db.AutoMigrate(&models.MerchantModel{}, &models.MerchantTypeModel{}, &models.MerchantUser{}, &models.MerchantDesk{})
 }
 
 func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) ([]models.MerchantModel, error) {
@@ -91,7 +91,7 @@ func (s *MerchantService) DeleteMerchant(id string) error {
 
 func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, error) {
 	var merchant models.MerchantModel
-	err := s.db.Preload("Company").Preload("User").Where("id = ?", id).First(&merchant).Error
+	err := s.db.Preload("Company").Preload("DefaultWarehouse").Preload("User").Preload("Users").Where("id = ?", id).First(&merchant).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("merchant not found")
 	}
@@ -323,6 +323,10 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			v.LastStock = ProductMerchant.LastStock
 			v.Price = ProductMerchant.Price
 			v.AdjustmentPrice = ProductMerchant.AdjustmentPrice
+		}
+		prices, err := s.ListPricesOfProduct(v.ID)
+		if err == nil {
+			v.Prices = prices
 		}
 
 		newItems = append(newItems, v)
@@ -781,4 +785,139 @@ func (s *MerchantService) GetSalesCountByBrandAndOrderType(request *http.Request
 	// 	salesCountByBrand = append(salesCountByBrand, value...)
 	// }
 	return grouped, nil
+}
+
+func (s *MerchantService) GetMerchantUsers(request http.Request, search, merchantID, companyID string) (paginate.Page, error) {
+	pg := paginate.New()
+
+	var users []models.UserModel
+
+	stmt := s.db.Joins("JOIN merchant_users ON merchant_users.user_model_id = users.id")
+
+	stmt = stmt.Where("merchant_users.merchant_model_id = ?", merchantID)
+	if search != "" {
+		stmt = stmt.Where("users.full_name ILIKE ? OR users.email ILIKE ? OR users.phone ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%")
+
+	}
+	stmt = stmt.Distinct("users.id")
+	stmt = stmt.Select("users.*").Preload("Roles", "roles.company_id = ?", companyID).Model(&models.UserModel{})
+
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&users)
+	page.Page = page.Page + 1
+
+	return page, nil
+}
+
+func (s *MerchantService) AddMerchantUser(merchantID string, userIDs []string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, userID := range userIDs {
+
+		if err := tx.Model(&models.MerchantUser{}).Where("user_model_id = ? AND merchant_model_id = ?", userID, merchantID).FirstOrCreate(&models.MerchantUser{
+			UserModelID:     userID,
+			MerchantModelID: merchantID,
+		}).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) DeleteUserFromMerchant(merchantID string, userIDs []string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Where("merchant_model_id = ? AND user_model_id IN (?)", merchantID, userIDs).
+		Delete(&models.MerchantUser{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) ListPricesOfProduct(productID string) ([]models.PriceModel, error) {
+	var prices []models.PriceModel
+	err := s.db.Preload("PriceCategory").Where("product_id = ?", productID).Find(&prices).Error
+	return prices, err
+}
+
+func (s *MerchantService) GetDesksFromID(request http.Request, merchantID string) (paginate.Page, error) {
+	pg := paginate.New()
+	var desks []models.MerchantDesk
+	stmt := s.db.Where("merchant_id = ?", merchantID)
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("desk_name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+	stmt = stmt.Order("position").Model(&models.MerchantDesk{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&desks)
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *MerchantService) AddDeskToMerchant(merchantID string, desk *models.MerchantDesk) error {
+
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.MerchantDesk{}).FirstOrCreate(desk).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) UpdateMerchantDesk(merchantID string, deskId string, desk *models.MerchantDesk) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.MerchantDesk{}).Where("merchant_id = ? AND id = ?", merchantID, deskId).Updates(desk).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) DeleteDeskFromMerchant(merchantID string, deskID string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Where("merchant_id = ? AND id = ?", merchantID, deskID).
+		Delete(&models.MerchantDesk{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
