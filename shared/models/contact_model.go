@@ -37,6 +37,7 @@ type ContactModel struct {
 	TotalDebt              float64        `gorm:"-" json:"total_debt"`
 	TotalReceivable        float64        `gorm:"-" json:"total_receivable"`
 	TelegramID             *string        `json:"telegram_id"`
+	InstagramID            *string        `json:"instagram_id"`
 	ConnectionType         *string        `json:"connection_type" gorm:"default:whatsapp"`
 }
 
