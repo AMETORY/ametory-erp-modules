@@ -146,6 +146,15 @@ func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, re
 
 		}
 	}
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where(`whatsapp_message_sessions.session LIKE ? OR whatsapp_message_sessions.session_name LIKE ? OR contacts.name LIKE ? OR contacts.phone LIKE ? OR contacts.email LIKE ?`,
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+		)
+	}
 
 	stmt = stmt.Order("last_online_at DESC")
 

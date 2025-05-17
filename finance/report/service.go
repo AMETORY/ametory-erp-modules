@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -1908,6 +1909,78 @@ func (s *FinanceReportService) GetAlmostDuePurchase(companyID string, interval i
 		ORDER BY
 			purchase_orders.due_date ASC
 	`, interval), companyID, models.BILL).Scan(&reports).Error
+	if err != nil {
+		return nil, err
+	}
+	return reports, nil
+}
+
+func (s *FinanceReportService) GetProductSalesCustomers(companyID string, startDate, endDate time.Time, productIDs []string, customerIDs []string) ([]models.ProductSalesCustomer, error) {
+	reports := []models.ProductSalesCustomer{}
+	conditions := []string{
+		"sales.company_id = ?",
+		"sales.document_type = ?",
+		"sales_items.deleted_at is null",
+		"products.deleted_at is null",
+		"contacts.deleted_at is null",
+		"sales.deleted_at is null",
+		"units.deleted_at is null",
+		"sales.sales_date BETWEEN ? and ?",
+		"sales.status IN ('POSTED', 'FINISHED')",
+		"sales_items.product_id IS NOT NULL AND sales_items.product_id <> ''",
+	}
+
+	args := []interface{}{companyID, models.INVOICE, startDate, endDate}
+
+	if len(productIDs) > 0 {
+		conditions = append(conditions, "products.id IN (?)")
+		args = append(args, productIDs)
+	}
+
+	if len(customerIDs) > 0 {
+		conditions = append(conditions, "contacts.id IN (?)")
+		args = append(args, customerIDs)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			products.id as product_id,
+			products.sku as product_code,
+			contacts.code as contact_code,
+			contacts.id as contact_id,
+			products.name as product_name,
+			contacts.name as contact_name,
+			COUNT(sales.id) as quantity,
+			units.name as unit_name,
+			units.code as unit_code,
+			SUM(sales_items.quantity * sales_items.unit_value) as total_quantity,
+			SUM(sales_items.total) as total_price
+		FROM
+			sales
+		LEFT JOIN sales_items on sales.id = sales_items.sales_id
+		LEFT JOIN products on sales_items.product_id = products.id
+		LEFT JOIN contacts on sales.contact_id = contacts.id
+		LEFT JOIN product_units on products.id = product_units.product_model_id AND product_units.is_default = true
+		LEFT JOIN units on product_units.unit_model_id = units.id
+		WHERE
+			%s
+		GROUP BY
+			products.id,
+			products.sku,
+			products.name,
+			contacts.id,
+			contacts.code,
+			contacts.name,
+			units.name,
+			units.code
+		ORDER BY
+			products.name ASC,
+			products.id ASC,
+			contacts.id ASC,
+			contacts.name ASC
+	`, strings.Join(conditions, " AND "))
+
+	err := s.db.Raw(query, args...).Scan(&reports).Error
 	if err != nil {
 		return nil, err
 	}

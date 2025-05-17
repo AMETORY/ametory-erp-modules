@@ -469,6 +469,7 @@ func (s *SalesService) UpdateItem(sales *models.SalesModel, itemID string, item 
 	}
 	item.TotalTax = taxAmount
 	item.Total = item.SubTotal + taxAmount
+	fmt.Println("UPDATE ITEM", item.Description)
 	utils.LogJson(item)
 	err := s.db.Where("sales_id = ? AND id = ?", sales.ID, itemID).Omit("sales_id").Save(item).Error
 	if err != nil {

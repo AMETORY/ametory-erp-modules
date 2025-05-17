@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 )
@@ -12,7 +13,7 @@ type KirimEmail struct {
 }
 
 func (s KirimEmail) SendEmail(from, domain, apiKey, subject, to, message string, attachment []string) error {
-	fmt.Println(from, domain, apiKey, subject, to, message)
+	// fmt.Println(from, domain, apiKey, subject, to, message)
 	url := "https://aplikasi.kirim.email/api/v3/transactional/messages"
 	method := "POST"
 
@@ -25,6 +26,7 @@ func (s KirimEmail) SendEmail(from, domain, apiKey, subject, to, message string,
 	err := writer.Close()
 	if err != nil {
 		fmt.Println(err)
+		log.Println(err)
 		return err
 	}
 
@@ -33,15 +35,22 @@ func (s KirimEmail) SendEmail(from, domain, apiKey, subject, to, message string,
 
 	if err != nil {
 		fmt.Println(err)
+		log.Println(err)
 		return err
 	}
 	req.Header.Set("domain", domain)
 	req.SetBasicAuth("api", apiKey)
 
+	// fmt.Println("domain", domain)
+	// fmt.Println("api", apiKey)
+	// fmt.Println("from", from)
+	// fmt.Println("to", to)
+
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	res, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
+		log.Println(err)
 		return err
 	}
 	defer res.Body.Close()

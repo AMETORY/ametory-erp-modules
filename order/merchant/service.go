@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -28,7 +29,13 @@ func NewMerchantService(db *gorm.DB, ctx *context.ERPContext, financeService *fi
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&models.MerchantModel{}, &models.MerchantTypeModel{}, &models.MerchantUser{}, &models.MerchantDesk{})
+	return db.AutoMigrate(
+		&models.MerchantModel{},
+		&models.MerchantTypeModel{},
+		&models.MerchantUser{},
+		&models.MerchantDesk{},
+		&models.MerchantDeskLayout{},
+	)
 }
 
 func (s *MerchantService) GetNearbyMerchants(lat, lng float64, radius float64) ([]models.MerchantModel, error) {
@@ -91,7 +98,7 @@ func (s *MerchantService) DeleteMerchant(id string) error {
 
 func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, error) {
 	var merchant models.MerchantModel
-	err := s.db.Preload("Company").Preload("DefaultWarehouse").Preload("User").Preload("Users").Where("id = ?", id).First(&merchant).Error
+	err := s.db.Preload("Company").Preload("DefaultWarehouse").Preload("DefaultPriceCategory").Preload("User").Preload("Users").Where("id = ?", id).First(&merchant).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("merchant not found")
 	}
@@ -123,10 +130,52 @@ func (s *MerchantService) GetActiveMerchantByID(id, companyID string) (*models.M
 
 func (s *MerchantService) GetPicture(id string) (*models.FileModel, error) {
 	var picture models.FileModel
-	err := s.db.Where("ref_id = ? AND ref_type = ?", id, "merchant").Order("created_at DESC").First(&picture).Error
-	return &picture, err
+	s.db.Where("ref_id = ? AND ref_type = ?", id, "merchant").Order("created_at DESC").First(&picture)
+	return &picture, nil
 }
 
+func (s *MerchantService) GetMerchantsByUserID(request http.Request, userID, companyID, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("pos_merchants.description ILIKE ? OR pos_merchants.name ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("pos_merchants.company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if request.URL.Query().Get("status") != "" {
+		stmt = stmt.Where("pos_merchants.status = ?", request.URL.Query().Get("status"))
+	}
+	stmt = stmt.Joins("JOIN merchant_users ON merchant_users.merchant_model_id = pos_merchants.id").
+		Where("merchant_users.user_model_id = ?", userID)
+
+	stmt = stmt.Where("pos_merchants.company_id = ?", companyID)
+	stmt = stmt.Model(&models.MerchantModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.MerchantModel{})
+	page.Page = page.Page + 1
+	items := page.Items.(*[]models.MerchantModel)
+	newItems := make([]models.MerchantModel, 0)
+
+	for _, v := range *items {
+		if v.CompanyID != nil {
+			var company models.CompanyModel
+			err := s.db.Select("name", "id").Where("id = ?", v.CompanyID).First(&company).Error
+			if err == nil {
+				v.Company = &company
+			}
+		}
+		pic, _ := s.GetPicture(v.ID)
+		v.Picture = pic
+		newItems = append(newItems, v)
+
+	}
+	page.Items = &newItems
+	return page, nil
+}
 func (s *MerchantService) GetMerchants(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -157,6 +206,8 @@ func (s *MerchantService) GetMerchants(request http.Request, search string) (pag
 				v.Company = &company
 			}
 		}
+		pic, _ := s.GetPicture(v.ID)
+		v.Picture = pic
 		newItems = append(newItems, v)
 
 	}
@@ -865,7 +916,7 @@ func (s *MerchantService) GetDesksFromID(request http.Request, merchantID string
 	if request.URL.Query().Get("search") != "" {
 		stmt = stmt.Where("desk_name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
 	}
-	stmt = stmt.Order("position").Model(&models.MerchantDesk{})
+	stmt = stmt.Order("order_number").Model(&models.MerchantDesk{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&desks)
 	page.Page = page.Page + 1
@@ -915,6 +966,95 @@ func (s *MerchantService) DeleteDeskFromMerchant(merchantID string, deskID strin
 
 	if err := tx.Where("merchant_id = ? AND id = ?", merchantID, deskID).
 		Delete(&models.MerchantDesk{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) GetLayoutDetailFromID(merchantID string, layoutID string) (*models.MerchantDeskLayout, error) {
+	var layout models.MerchantDeskLayout
+	if err := s.db.Preload("MerchantDesks").Where("merchant_id = ? AND id = ?", merchantID, layoutID).First(&layout).Error; err != nil {
+		return nil, err
+	}
+	return &layout, nil
+}
+func (s *MerchantService) GetLayoutsFromID(request http.Request, merchantID string) (paginate.Page, error) {
+	pg := paginate.New()
+	var layouts []models.MerchantDeskLayout
+	stmt := s.db.Preload("MerchantDesks").Where("merchant_id = ?", merchantID)
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("layout_name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+	stmt = stmt.Order("created_at").Model(&models.MerchantDeskLayout{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&layouts)
+	page.Page = page.Page + 1
+	return page, nil
+}
+func (s *MerchantService) AddLayoutToMerchant(merchantID string, layout *models.MerchantDeskLayout) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.MerchantDeskLayout{}).FirstOrCreate(layout).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) UpdateLayoutMerchant(merchantID string, layoutId string, layout *models.MerchantDeskLayout) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.MerchantDeskLayout{}).Where("merchant_id = ? AND id = ?", merchantID, layoutId).Updates(layout).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) DeleteLayoutMerchant(merchantID string, layoutID string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Where("merchant_id = ? AND id = ?", merchantID, layoutID).
+		Delete(&models.MerchantDeskLayout{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) UpdateTableStatus(merchantID string, tableID string, status string) error {
+	if strings.ToUpper(status) != "AVAILABLE" {
+		return errors.New("table status must be available")
+	}
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.MerchantDesk{}).Where("merchant_id = ? AND id = ?", merchantID, tableID).
+		Update("status", strings.ToUpper(status)).Error; err != nil {
 		tx.Rollback()
 		return err
 	}

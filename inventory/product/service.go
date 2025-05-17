@@ -118,7 +118,7 @@ func (s *ProductService) GetProductByID(id string, request *http.Request) (*mode
 		return nil, errors.New("request is nil")
 	}
 	var product models.ProductModel
-	err := s.db.Preload("Tags").Preload("Company").Preload("Variants").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("Tags").Preload("Company").Preload("Variants").Preload("Tax").Preload("MasterProduct").Preload("Category", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
@@ -187,7 +187,7 @@ func (s *ProductService) GetProducts(request http.Request, search string, status
 		return db.Select("id", "name")
 	}).Preload("Brand", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name")
-	})
+	}).Preload("Tax")
 	stmt = stmt.Joins("LEFT JOIN brands ON brands.id = products.brand_id")
 	stmt = stmt.Joins("LEFT JOIN product_categories ON product_categories.id = products.category_id")
 	stmt = stmt.Joins("LEFT JOIN product_variants ON product_variants.product_id = products.id")

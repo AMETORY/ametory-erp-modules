@@ -59,6 +59,10 @@ type ProductModel struct {
 	IsSell           bool                   `gorm:"default:true" json:"is_sell,omitempty"`
 	IsBuy            bool                   `gorm:"default:true" json:"is_buy,omitempty"`
 	IsRaw            bool                   `gorm:"default:false" json:"is_raw,omitempty"`
+	TaxID            *string                `json:"tax_id,omitempty"`
+	Tax              *TaxModel              `gorm:"foreignKey:TaxID;constraint:OnDelete:CASCADE" json:"tax,omitempty"`
+	MinimumStock     float64                `gorm:"default:0" json:"minimum_stock,omitempty"`
+	Suppliers        []*ContactModel        `gorm:"many2many:product_contacts;constraint:OnDelete:CASCADE;" json:"suppliers,omitempty"`
 }
 
 func (ProductModel) TableName() string {

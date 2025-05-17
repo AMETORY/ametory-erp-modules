@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
-	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -44,11 +43,11 @@ type PayRollModel struct {
 	EmployeeID                      string               `binding:"required" json:"employee_id"`
 	Employee                        EmployeeModel        `gorm:"foreignKey:EmployeeID" `
 	TaxSummary                      CountTaxSummary      `gorm:"-" json:"tax_summary"`
-	BpjsSetting                     *thirdparty.Bpjs     `gorm:"-" `
-	PayRollReportItemID             *string              `json:"pay_roll_report_item_id" gorm:"type:char(36)"`
-	CompanyID                       string               `json:"company_id" gorm:"not null"`
-	Company                         CompanyModel         `gorm:"foreignKey:CompanyID"`
-	IsLocked                        bool                 `json:"is_locked"`
+	// BpjsSetting                     *thirdparty.Bpjs     `gorm:"-" `
+	PayRollReportItemID *string      `json:"pay_roll_report_item_id" gorm:"type:char(36)"`
+	CompanyID           string       `json:"company_id" gorm:"not null"`
+	Company             CompanyModel `gorm:"foreignKey:CompanyID"`
+	IsLocked            bool         `json:"is_locked"`
 }
 
 func (p *PayRollModel) TableName() string {

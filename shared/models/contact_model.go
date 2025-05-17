@@ -36,6 +36,8 @@ type ContactModel struct {
 	DebtLimitRemain        float64        `gorm:"-" json:"debt_limit_remain"`
 	TotalDebt              float64        `gorm:"-" json:"total_debt"`
 	TotalReceivable        float64        `gorm:"-" json:"total_receivable"`
+	TelegramID             *string        `json:"telegram_id"`
+	ConnectionType         *string        `json:"connection_type" gorm:"default:whatsapp"`
 }
 
 func (ContactModel) TableName() string {

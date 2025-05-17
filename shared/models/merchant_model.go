@@ -10,31 +10,33 @@ import (
 
 type MerchantModel struct {
 	shared.BaseModel
-	Name               string             `json:"name" gorm:"not null"`
-	Address            string             `json:"address" gorm:"not null"`
-	Phone              string             `json:"phone" gorm:"not null"`
-	Latitude           float64            `json:"latitude" gorm:"type:decimal(10,8);not null"`
-	Longitude          float64            `json:"longitude" gorm:"type:decimal(11,8);not null"`
-	UserID             *string            `json:"user_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
-	User               *UserModel         `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
-	CompanyID          *string            `json:"company_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
-	DefaultWarehouseID *string            `json:"default_warehouse_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
-	DefaultWarehouse   *WarehouseModel    `json:"default_warehouse,omitempty" gorm:"foreignKey:DefaultWarehouseID;constraint:OnDelete:CASCADE;"`
-	Company            *CompanyModel      `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
-	ProvinceID         *string            `json:"province_id,omitempty" gorm:"type:char(2);index;constraint:OnDelete:SET NULL;"`
-	RegencyID          *string            `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
-	DistrictID         *string            `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
-	VillageID          *string            `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
-	ZipCode            *string            `json:"zip_code,omitempty"`
-	Status             string             `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
-	MerchantType       *string            `json:"merchant_type" gorm:"type:VARCHAR(20);default:'REGULAR_STORE'"`
-	MerchantTypeID     *string            `json:"merchant_type_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
-	Picture            *FileModel         `json:"picture,omitempty" gorm:"-"`
-	OrderRequest       *OrderRequestModel `json:"order_request,omitempty" gorm:"-"`
-	Distance           float64            `json:"distance" gorm:"-"`
-	Users              []*UserModel       `gorm:"many2many:merchant_users;constraint:OnDelete:CASCADE;" json:"users,omitempty"`
-	Workflow           *json.RawMessage   `json:"workflow,omitempty" gorm:"type:JSON;default:'[]'"`
-	Menu               *json.RawMessage   `json:"menu,omitempty" gorm:"type:JSON;default:'[]'"`
+	Name                   string              `json:"name" gorm:"not null"`
+	Address                string              `json:"address" gorm:"not null"`
+	Phone                  string              `json:"phone" gorm:"not null"`
+	Latitude               float64             `json:"latitude" gorm:"type:decimal(10,8);not null"`
+	Longitude              float64             `json:"longitude" gorm:"type:decimal(11,8);not null"`
+	UserID                 *string             `json:"user_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
+	User                   *UserModel          `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
+	CompanyID              *string             `json:"company_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
+	DefaultWarehouseID     *string             `json:"default_warehouse_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
+	DefaultWarehouse       *WarehouseModel     `json:"default_warehouse,omitempty" gorm:"foreignKey:DefaultWarehouseID;constraint:OnDelete:CASCADE;"`
+	DefaultPriceCategoryID *string             `json:"default_price_category_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
+	DefaultPriceCategory   *PriceCategoryModel `json:"default_price_category,omitempty" gorm:"foreignKey:DefaultPriceCategoryID;constraint:OnDelete:CASCADE;"`
+	Company                *CompanyModel       `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
+	ProvinceID             *string             `json:"province_id,omitempty" gorm:"type:char(2);index;constraint:OnDelete:SET NULL;"`
+	RegencyID              *string             `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
+	DistrictID             *string             `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
+	VillageID              *string             `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
+	ZipCode                *string             `json:"zip_code,omitempty"`
+	Status                 string              `gorm:"type:VARCHAR(20);default:'ACTIVE'" json:"status,omitempty"`
+	MerchantType           *string             `json:"merchant_type" gorm:"type:VARCHAR(20);default:'REGULAR_STORE'"`
+	MerchantTypeID         *string             `json:"merchant_type_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
+	Picture                *FileModel          `json:"picture,omitempty" gorm:"-"`
+	OrderRequest           *OrderRequestModel  `json:"order_request,omitempty" gorm:"-"`
+	Distance               float64             `json:"distance" gorm:"-"`
+	Users                  []*UserModel        `gorm:"many2many:merchant_users;constraint:OnDelete:CASCADE;" json:"users,omitempty"`
+	Workflow               *json.RawMessage    `json:"workflow,omitempty" gorm:"type:JSON;default:'[]'"`
+	Menu                   *json.RawMessage    `json:"menu,omitempty" gorm:"type:JSON;default:'[]'"`
 }
 
 func (m *MerchantModel) TableName() string {
@@ -120,10 +122,25 @@ type MerchantUser struct {
 
 type MerchantDesk struct {
 	shared.BaseModel
-	MerchantID *string        `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
-	Merchant   *MerchantModel `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
-	DeskName   string         `json:"desk_name"`
-	Status     string         `gorm:"type:varchar(20);default:'AVAILABLE'" json:"status,omitempty"`
-	Position   int            `json:"position"`
-	Capacity   int            `json:"capacity"`
+	MerchantID           *string             `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Merchant             *MerchantModel      `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
+	DeskName             *string             `json:"desk_name"`
+	Status               *string             `gorm:"type:varchar(20);default:'AVAILABLE'" json:"status,omitempty"`
+	OrderNumber          *int                `json:"order_number"`
+	Capacity             int                 `json:"capacity"`
+	Position             json.RawMessage     `gorm:"type:JSON;default:'{}'" json:"position"`
+	Shape                string              `gorm:"type:varchar(255);default:'rectangle'" json:"shape"`
+	Width                float64             `json:"width" gorm:"default:80"`
+	Height               float64             `json:"height" gorm:"default:60"`
+	MerchantDeskLayoutID *string             `json:"merchant_desk_layout_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	MerchantDeskLayout   *MerchantDeskLayout `gorm:"foreignKey:MerchantDeskLayoutID;constraint:OnDelete:CASCADE;" json:"merchant_desk_layout,omitempty"`
+}
+
+type MerchantDeskLayout struct {
+	shared.BaseModel
+	Name          string         `gorm:"type:varchar(255)" json:"name,omitempty"`
+	Description   string         `gorm:"type:varchar(255)" json:"description,omitempty"`
+	MerchantID    *string        `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Merchant      *MerchantModel `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
+	MerchantDesks []MerchantDesk `gorm:"foreignKey:MerchantDeskLayoutID;constraint:OnDelete:CASCADE;" json:"merchant_desks,omitempty"`
 }
