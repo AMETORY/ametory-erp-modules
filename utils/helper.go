@@ -381,3 +381,13 @@ func resverse(r []rune) []rune {
 	}
 	return r
 }
+
+// LogPrint print error message with RFC3339 timestamp.
+// This function is used to log error message from goroutine.
+func LogPrint(v ...any) {
+	log.Printf("[%s] %s\n", time.Now().Format(time.RFC3339), v)
+}
+func LogPrintf(format string, v ...any) {
+	content := fmt.Sprintf(format, v...)
+	log.Printf("[%s] %s\n", time.Now().Format(time.RFC3339), content)
+}

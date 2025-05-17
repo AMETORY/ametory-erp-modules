@@ -32,8 +32,8 @@ type InstagramMessage struct {
 	IsNew                     bool                     `json:"is_new" gorm:"default:false"`
 	RefID                     *string                  `json:"ref_id,omitempty" gorm:"column:ref_id"`
 	IsAutoPilot               bool                     `json:"is_auto_pilot" gorm:"default:false"`
-	InstagramMessageSessionID *string                  `json:"telegram_message_session_id,omitempty" gorm:"column:telegram_message_session_id"`
-	InstagramMessageSession   *InstagramMessageSession `gorm:"foreignKey:InstagramMessageSessionID" json:"telegram_message_session,omitempty"`
+	InstagramMessageSessionID *string                  `json:"instagram_message_session_id,omitempty" gorm:"column:instagram_message_session_id"`
+	InstagramMessageSession   *InstagramMessageSession `gorm:"foreignKey:InstagramMessageSessionID" json:"instagram_message_session,omitempty"`
 }
 
 func (t *InstagramMessage) BeforeCreate(tx *gorm.DB) error {
