@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AMETORY/ametory-erp-modules/contact"
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/finance/account"
 	"github.com/AMETORY/ametory-erp-modules/finance/transaction"
@@ -25,6 +26,7 @@ type FinanceReportService struct {
 	ctx                *context.ERPContext
 	accountService     *account.AccountService
 	transactionService *transaction.TransactionService
+	contactService     *contact.ContactService
 }
 
 func NewFinanceReportService(db *gorm.DB, ctx *context.ERPContext, accountService *account.AccountService, transactionService *transaction.TransactionService) *FinanceReportService {
@@ -40,6 +42,9 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.ClosingBook{})
 }
 
+func (s *FinanceReportService) SetContactService(contactService *contact.ContactService) {
+	s.contactService = contactService
+}
 func (s *FinanceReportService) GenerateProfitLoss(report *models.ProfitLoss) error {
 
 	return nil
@@ -1985,4 +1990,252 @@ func (s *FinanceReportService) GetProductSalesCustomers(companyID string, startD
 		return nil, err
 	}
 	return reports, nil
+}
+
+func (s *FinanceReportService) GetAccountReceivableLedger(companyID string, contactID string, startDate, endDate time.Time) (*models.AccountReceivableLedgerReport, error) {
+	if s.contactService == nil {
+		return nil, errors.New("contact service is not initialized")
+	}
+	reports := []models.AccountReceivableLedger{}
+	err := s.db.Table("transactions").
+		Select("distinct transactions.id, transactions.description, transactions.\"date\", transactions.debit, transactions.credit, "+
+			"case when s.id is not null then s.sales_number when ss.id is not null then ss.sales_number when sss.id is not null then sss.sales_number else null end ref, "+
+			"case when transactions.transaction_secondary_ref_type != '' then transactions.transaction_secondary_ref_type else transactions.transaction_ref_type end ref_type, "+
+			"case when s.id is not null then s.id when ss.id is not null then ss.id when sss.id is not null then sss.id else null end ref_id").
+		Joins("join accounts a on a.id = transactions.account_id").
+		Joins("left join sales s on s.id = transactions.transaction_ref_id").
+		Joins("left join sales ss on ss.id = transactions.transaction_secondary_ref_id").
+		Joins("left join \"returns\" r on r.id = transactions.transaction_secondary_ref_id").
+		Joins("left join sales sss on sss.id = r.ref_id").
+		Where("a.type in (?)", []string{"RECEIVABLE"}).
+		Where("(transactions.transaction_ref_type = ? or transactions.transaction_secondary_ref_type = ? or transactions.transaction_secondary_ref_type = ?)",
+			"sales", "sales", "return_sales").
+		Where("(s.status in (?) or ss.status in (?) or sss.status in (?))",
+			[]string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}).
+		Where("(s.document_type = ? or ss.document_type = ? or sss.document_type = ?)",
+			"INVOICE", "INVOICE", "INVOICE").
+		Where("(s.contact_id = ? or ss.contact_id = ? or sss.contact_id = ?)", contactID, contactID, contactID).
+		Where("transactions.company_id = ?", companyID).
+		Where("transactions.date between ? and ?", startDate, endDate).
+		Order("date asc").
+		Scan(&reports).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var totalBefore struct {
+		TotalDebit  float64
+		TotalCredit float64
+		Balance     float64
+	}
+
+	err = s.db.Table("transactions").
+		Select("sum(debit) as total_debit, sum(credit) as total_credit, sum(debit - credit) as balance").
+		Joins("join accounts a on a.id = transactions.account_id").
+		Joins("left join sales s on s.id = transactions.transaction_ref_id").
+		Joins("left join sales ss on ss.id = transactions.transaction_secondary_ref_id").
+		Joins("left join \"returns\" r on r.id = transactions.transaction_secondary_ref_id").
+		Joins("left join sales sss on sss.id = r.ref_id").
+		Where("a.type in (?)", []string{"RECEIVABLE"}).
+		Where("(transactions.transaction_ref_type = ? or transactions.transaction_secondary_ref_type = ? or transactions.transaction_secondary_ref_type = ?)",
+			"sales", "sales", "return_sales").
+		Where("(s.status in (?) or ss.status in (?) or sss.status in (?))",
+			[]string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}).
+		Where("(s.document_type = ? or ss.document_type = ? or sss.document_type = ?)",
+			"INVOICE", "INVOICE", "INVOICE").
+		Where("(s.contact_id = ? or ss.contact_id = ? or sss.contact_id = ?)",
+			contactID, contactID, contactID).
+		Where("transactions.company_id = ?", companyID).Where("transactions.date < ?", startDate).Scan(&totalBefore).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var totalAfter struct {
+		TotalDebit  float64
+		TotalCredit float64
+		Balance     float64
+	}
+
+	err = s.db.Table("transactions").
+		Select("sum(debit) as total_debit, sum(credit) as total_credit, sum(debit - credit) as balance").
+		Joins("join accounts a on a.id = transactions.account_id").
+		Joins("left join sales s on s.id = transactions.transaction_ref_id").
+		Joins("left join sales ss on ss.id = transactions.transaction_secondary_ref_id").
+		Joins("left join \"returns\" r on r.id = transactions.transaction_secondary_ref_id").
+		Joins("left join sales sss on sss.id = r.ref_id").
+		Where("a.type in (?)", []string{"RECEIVABLE"}).
+		Where("(transactions.transaction_ref_type = ? or transactions.transaction_secondary_ref_type = ? or transactions.transaction_secondary_ref_type = ?)",
+			"sales", "sales", "return_sales").
+		Where("(s.status in (?) or ss.status in (?) or sss.status in (?))",
+			[]string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}).
+		Where("(s.document_type = ? or ss.document_type = ? or sss.document_type = ?)",
+			"INVOICE", "INVOICE", "INVOICE").
+		Where("(s.contact_id = ? or ss.contact_id = ? or sss.contact_id = ?)",
+			contactID, contactID, contactID).
+		Where("transactions.company_id = ?", companyID).Where("transactions.date > ?", endDate).Scan(&totalAfter).Error
+	if err != nil {
+		return nil, err
+	}
+
+	balance := totalBefore.Balance
+	var totalDebit, totalCredit, totalBalance float64
+	for i, v := range reports {
+		balance += v.Debit - v.Credit
+		v.Balance = balance
+		reports[i] = v
+		totalDebit += v.Debit
+		totalCredit += v.Credit
+		totalBalance += v.Debit - v.Credit
+	}
+
+	var contact models.ContactModel
+	s.db.First(&contact, "id = ?", contactID)
+
+	if contact.DebtLimit > 0 {
+		contact.DebtLimitRemain = contact.DebtLimit - s.contactService.GetTotalDebt(&contact)
+	}
+	if contact.ReceivablesLimit > 0 {
+		contact.ReceivablesLimitRemain = contact.ReceivablesLimit - s.contactService.GetTotalReceivable(&contact)
+	}
+
+	return &models.AccountReceivableLedgerReport{
+		Ledgers:            reports,
+		TotalDebit:         totalDebit,
+		TotalCredit:        totalCredit,
+		TotalBalance:       totalBalance,
+		TotalDebitBefore:   totalBefore.TotalDebit,
+		TotalCreditBefore:  totalBefore.TotalCredit,
+		TotalBalanceBefore: totalBefore.Balance,
+		TotalDebitAfter:    totalAfter.TotalDebit,
+		TotalCreditAfter:   totalAfter.TotalCredit,
+		TotalBalanceAfter:  totalAfter.Balance,
+		GrandTotalDebit:    totalDebit + totalBefore.TotalDebit + totalAfter.TotalDebit,
+		GrandTotalCredit:   totalCredit + totalBefore.TotalCredit + totalAfter.TotalCredit,
+		GrandTotalBalance:  totalBalance + totalBefore.Balance + totalAfter.Balance,
+		Contact:            contact,
+	}, nil
+}
+
+func (s *FinanceReportService) GetAccountPayableLedger(companyID string, contactID string, startDate, endDate time.Time) (*models.AccountReceivableLedgerReport, error) {
+	if s.contactService == nil {
+		return nil, errors.New("contact service is not initialized")
+	}
+	reports := []models.AccountReceivableLedger{}
+	err := s.db.Table("transactions").
+		Select("distinct transactions.id, transactions.description, transactions.\"date\", transactions.debit, transactions.credit, "+
+			"case when s.id is not null then s.purchase_number when ss.id is not null then ss.purchase_number when sss.id is not null then sss.purchase_number else null end ref, "+
+			"case when transactions.transaction_secondary_ref_type != '' then transactions.transaction_secondary_ref_type else transactions.transaction_ref_type end ref_type, "+
+			"case when s.id is not null then s.id when ss.id is not null then ss.id when sss.id is not null then sss.id else null end ref_id").
+		Joins("join accounts a on a.id = transactions.account_id").
+		Joins("left join purchase_orders s on s.id = transactions.transaction_ref_id").
+		Joins("left join purchase_orders ss on ss.id = transactions.transaction_secondary_ref_id").
+		Joins("left join \"returns\" r on r.id = transactions.transaction_secondary_ref_id").
+		Joins("left join purchase_orders sss on sss.id = r.ref_id").
+		Where("a.type in (?)", []string{"LIABILITY"}).
+		Where("(transactions.transaction_ref_type = ? or transactions.transaction_secondary_ref_type = ? or transactions.transaction_secondary_ref_type = ?)",
+			"purchase", "purchase", "return_purchase").
+		Where("(s.status in (?) or ss.status in (?) or sss.status in (?))",
+			[]string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}).
+		Where("(s.document_type = ? or ss.document_type = ? or sss.document_type = ?)",
+			"BILL", "BILL", "BILL").
+		Where("(s.contact_id = ? or ss.contact_id = ? or sss.contact_id = ?)", contactID, contactID, contactID).
+		Where("transactions.company_id = ?", companyID).
+		Where("transactions.date between ? and ?", startDate, endDate).
+		Order("date asc").
+		Scan(&reports).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var totalBefore struct {
+		TotalDebit  float64
+		TotalCredit float64
+		Balance     float64
+	}
+
+	err = s.db.Table("transactions").
+		Select("sum(debit) as total_debit, sum(credit) as total_credit, sum(debit - credit) as balance").
+		Joins("join accounts a on a.id = transactions.account_id").
+		Joins("left join purchase_orders s on s.id = transactions.transaction_ref_id").
+		Joins("left join purchase_orders ss on ss.id = transactions.transaction_secondary_ref_id").
+		Joins("left join \"returns\" r on r.id = transactions.transaction_secondary_ref_id").
+		Joins("left join purchase_orders sss on sss.id = r.ref_id").
+		Where("a.type in (?)", []string{"LIABILITY"}).
+		Where("(transactions.transaction_ref_type = ? or transactions.transaction_secondary_ref_type = ? or transactions.transaction_secondary_ref_type = ?)",
+			"purchase", "purchase", "return_purchase").
+		Where("(s.status in (?) or ss.status in (?) or sss.status in (?))",
+			[]string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}).
+		Where("(s.document_type = ? or ss.document_type = ? or sss.document_type = ?)",
+			"BILL", "BILL", "BILL").
+		Where("(s.contact_id = ? or ss.contact_id = ? or sss.contact_id = ?)",
+			contactID, contactID, contactID).
+		Where("transactions.company_id = ?", companyID).Where("transactions.date < ?", startDate).Scan(&totalBefore).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var totalAfter struct {
+		TotalDebit  float64
+		TotalCredit float64
+		Balance     float64
+	}
+
+	err = s.db.Table("transactions").
+		Select("sum(debit) as total_debit, sum(credit) as total_credit, sum(debit - credit) as balance").
+		Joins("join accounts a on a.id = transactions.account_id").
+		Joins("left join purchase_orders s on s.id = transactions.transaction_ref_id").
+		Joins("left join purchase_orders ss on ss.id = transactions.transaction_secondary_ref_id").
+		Joins("left join \"returns\" r on r.id = transactions.transaction_secondary_ref_id").
+		Joins("left join purchase_orders sss on sss.id = r.ref_id").
+		Where("a.type in (?)", []string{"LIABILITY"}).
+		Where("(transactions.transaction_ref_type = ? or transactions.transaction_secondary_ref_type = ? or transactions.transaction_secondary_ref_type = ?)",
+			"purchase", "purchase", "return_purchase").
+		Where("(s.status in (?) or ss.status in (?) or sss.status in (?))",
+			[]string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}, []string{"POSTED", "FINISHED"}).
+		Where("(s.document_type = ? or ss.document_type = ? or sss.document_type = ?)",
+			"BILL", "BILL", "BILL").
+		Where("(s.contact_id = ? or ss.contact_id = ? or sss.contact_id = ?)",
+			contactID, contactID, contactID).
+		Where("transactions.company_id = ?", companyID).Where("transactions.date > ?", endDate).Scan(&totalAfter).Error
+	if err != nil {
+		return nil, err
+	}
+
+	balance := totalBefore.Balance
+	var totalDebit, totalCredit, totalBalance float64
+	for i, v := range reports {
+		balance += v.Credit - v.Debit
+		v.Balance = balance
+		reports[i] = v
+		totalDebit += v.Debit
+		totalCredit += v.Credit
+		totalBalance += v.Credit - v.Debit
+	}
+
+	var contact models.ContactModel
+	s.db.First(&contact, "id = ?", contactID)
+
+	if contact.DebtLimit > 0 {
+		contact.DebtLimitRemain = contact.DebtLimit - s.contactService.GetTotalDebt(&contact)
+	}
+	if contact.ReceivablesLimit > 0 {
+		contact.ReceivablesLimitRemain = contact.ReceivablesLimit - s.contactService.GetTotalReceivable(&contact)
+	}
+
+	return &models.AccountReceivableLedgerReport{
+		Ledgers:            reports,
+		TotalDebit:         totalDebit,
+		TotalCredit:        totalCredit,
+		TotalBalance:       totalBalance,
+		TotalDebitBefore:   totalBefore.TotalDebit,
+		TotalCreditBefore:  totalBefore.TotalCredit,
+		TotalBalanceBefore: totalBefore.Balance,
+		TotalDebitAfter:    totalAfter.TotalDebit,
+		TotalCreditAfter:   totalAfter.TotalCredit,
+		TotalBalanceAfter:  totalAfter.Balance,
+		GrandTotalDebit:    totalDebit + totalBefore.TotalDebit + totalAfter.TotalDebit,
+		GrandTotalCredit:   totalCredit + totalBefore.TotalCredit + totalAfter.TotalCredit,
+		GrandTotalBalance:  totalBalance + totalBefore.Balance + totalAfter.Balance,
+		Contact:            contact,
+	}, nil
 }

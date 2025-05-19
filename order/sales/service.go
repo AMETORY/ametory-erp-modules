@@ -249,6 +249,15 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 	if request.URL.Query().Get("doc_type") != "" {
 		stmt = stmt.Where("document_type = ?", request.URL.Query().Get("doc_type"))
 	}
+	if request.URL.Query().Get("status") != "" {
+		stmt = stmt.Where("status = ?", request.URL.Query().Get("status"))
+	}
+	if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("sales_date >= ?", request.URL.Query().Get("start_date"))
+	}
+	if request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("sales_date <= ?", request.URL.Query().Get("end_date"))
+	}
 	if request.URL.Query().Get("sales_user_id") != "" {
 		stmt = stmt.Where("sales_user_id = ?", request.URL.Query().Get("sales_user_id"))
 	}
@@ -363,6 +372,12 @@ func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemM
 			return err
 		}
 		item.BasePrice = product.Price
+
+		if product.TaxID != nil {
+			item.TaxID = product.TaxID
+			item.Tax = product.Tax
+
+		}
 	}
 
 	err := s.db.Create(item).Error

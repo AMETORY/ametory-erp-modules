@@ -215,6 +215,7 @@ func (s *ContactService) GetTotalDebt(contact *models.ContactModel) float64 {
 	if err := s.ctx.DB.Model(&models.SalesModel{}).
 		Where("document_type = ?", models.INVOICE).
 		Where("contact_id = ?", contact.ID).
+		Where("status IN (?)", []string{"POSTED", "FINISHED"}).
 		Select("COALESCE(SUM(total - paid), 0)  as total").
 		Scan(&total).Error; err != nil {
 		return 0
@@ -224,8 +225,9 @@ func (s *ContactService) GetTotalDebt(contact *models.ContactModel) float64 {
 func (s *ContactService) GetTotalReceivable(contact *models.ContactModel) float64 {
 	var total float64
 	if err := s.ctx.DB.Model(&models.PurchaseOrderModel{}).
-		Where("document_type = ?", models.PURCHASE_ORDER).
+		Where("document_type = ?", models.BILL).
 		Where("contact_id = ?", contact.ID).
+		Where("status IN (?)", []string{"POSTED", "FINISHED"}).
 		Select("COALESCE(SUM(total - paid), 0) as total").
 		Scan(&total).Error; err != nil {
 		return 0
