@@ -17,11 +17,11 @@ type MerchantModel struct {
 	Longitude              float64             `json:"longitude" gorm:"type:decimal(11,8);not null"`
 	UserID                 *string             `json:"user_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
 	User                   *UserModel          `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
-	CompanyID              *string             `json:"company_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
 	DefaultWarehouseID     *string             `json:"default_warehouse_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
 	DefaultWarehouse       *WarehouseModel     `json:"default_warehouse,omitempty" gorm:"foreignKey:DefaultWarehouseID;constraint:OnDelete:CASCADE;"`
 	DefaultPriceCategoryID *string             `json:"default_price_category_id,omitempty" gorm:"type:char(36);index;constraint:OnDelete:CASCADE;"`
 	DefaultPriceCategory   *PriceCategoryModel `json:"default_price_category,omitempty" gorm:"foreignKey:DefaultPriceCategoryID;constraint:OnDelete:CASCADE;"`
+	CompanyID              *string             `json:"company_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE;"`
 	Company                *CompanyModel       `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
 	ProvinceID             *string             `json:"province_id,omitempty" gorm:"type:char(2);index;constraint:OnDelete:SET NULL;"`
 	RegencyID              *string             `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
@@ -37,6 +37,7 @@ type MerchantModel struct {
 	Users                  []*UserModel        `gorm:"many2many:merchant_users;constraint:OnDelete:CASCADE;" json:"users,omitempty"`
 	Workflow               *json.RawMessage    `json:"workflow,omitempty" gorm:"type:JSON;default:'[]'"`
 	Menu                   *json.RawMessage    `json:"menu,omitempty" gorm:"type:JSON;default:'[]'"`
+	Stations               []MerchantStation   `json:"stations,omitempty" gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;"`
 }
 
 func (m *MerchantModel) TableName() string {
@@ -143,4 +144,57 @@ type MerchantDeskLayout struct {
 	MerchantID    *string        `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
 	Merchant      *MerchantModel `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
 	MerchantDesks []MerchantDesk `gorm:"foreignKey:MerchantDeskLayoutID;constraint:OnDelete:CASCADE;" json:"merchant_desks,omitempty"`
+}
+
+type MerchantOrder struct {
+	shared.BaseModel
+	MerchantID     *string         `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Merchant       *MerchantModel  `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
+	ContactID      *string         `json:"contact_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Contact        *ContactModel   `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE;" json:"contact,omitempty"`
+	ContactData    json.RawMessage `gorm:"type:JSON;default:'{}'" json:"contact_data,omitempty"`
+	Total          float64         `json:"total,omitempty"`
+	SubTotal       float64         `json:"sub_total,omitempty"`
+	MerchantDeskID *string         `json:"merchant_desk_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	MerchantDesk   *MerchantDesk   `gorm:"foreignKey:MerchantDeskID;constraint:OnDelete:CASCADE;" json:"merchant_desk,omitempty"`
+	Step           string          `json:"step,omitempty"`
+	NextStep       string          `json:"next_step,omitempty" gorm:"-"`
+	OrderStatus    string          `json:"order_status,omitempty"`
+	Code           string          `json:"code,omitempty"`
+	Items          json.RawMessage `gorm:"type:JSON;default:'[]'" json:"items,omitempty"`
+}
+
+type MerchantOrderItem struct {
+	ID                 string       `json:"id,omitempty"`
+	ProductID          string       `json:"product_id,omitempty"`
+	Product            ProductModel `json:"product,omitempty"`
+	Quantity           int          `json:"quantity,omitempty"`
+	DiscountAmount     float64      `json:"discount_amount,omitempty"`
+	DiscountPercent    float64      `json:"discount_percent,omitempty"`
+	UnitPrice          float64      `json:"unit_price,omitempty"`
+	SubtotalBeforeDisc float64      `json:"subtotal_before_disc,omitempty"`
+	Subtotal           float64      `json:"subtotal,omitempty"`
+	UnitName           string       `json:"unit_name,omitempty"`
+	UnitValue          float64      `json:"unit_value,omitempty"`
+}
+type MerchantStation struct {
+	shared.BaseModel
+	MerchantID  *string                `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Merchant    *MerchantModel         `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
+	StationName string                 `json:"station_name"`
+	Description string                 `json:"description"`
+	Orders      []MerchantStationOrder `gorm:"foreignKey:MerchantStationID;constraint:OnDelete:CASCADE;" json:"orders,omitempty"`
+	Products    []ProductModel         `gorm:"-" json:"products,omitempty"`
+}
+
+type MerchantStationOrder struct {
+	shared.BaseModel
+	MerchantStationID *string          `json:"merchant_station_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	MerchantStation   *MerchantStation `gorm:"foreignKey:MerchantStationID;constraint:OnDelete:CASCADE;" json:"merchant_station,omitempty"`
+	OrderID           string           `json:"order_id"`
+	Order             *MerchantOrder   `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE;" json:"order,omitempty"`
+	Status            string           `json:"status,omitempty"`
+	Item              json.RawMessage  `gorm:"type:JSON;default:'{}'" json:"item,omitempty"`
+	MerchantDeskID    *string          `json:"merchant_desk_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	MerchantDesk      *MerchantDesk    `gorm:"foreignKey:MerchantDeskID;constraint:OnDelete:CASCADE;" json:"merchant_desk,omitempty"`
 }

@@ -102,6 +102,7 @@ type WhatsappMessageSession struct {
 	RefType      *string       `json:"ref_type,omitempty"`
 	Ref          any           `json:"ref,omitempty" gorm:"-"`
 	IsHumanAgent bool          `json:"is_human_agent"`
+	IsGroup      bool          `json:"is_group" gorm:"default:false"`
 	CountUnread  int           `json:"count_unread" gorm:"-"`
 }
 

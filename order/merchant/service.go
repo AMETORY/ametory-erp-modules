@@ -1,6 +1,7 @@
 package merchant
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/inventory"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/google/uuid"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -35,6 +37,9 @@ func Migrate(db *gorm.DB) error {
 		&models.MerchantUser{},
 		&models.MerchantDesk{},
 		&models.MerchantDeskLayout{},
+		&models.MerchantOrder{},
+		&models.MerchantStation{},
+		&models.MerchantStationOrder{},
 	)
 }
 
@@ -110,7 +115,7 @@ func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, err
 }
 func (s *MerchantService) GetActiveMerchantByID(id, companyID string) (*models.MerchantModel, error) {
 	var merchant models.MerchantModel
-	err := s.db.Preload("Company").Preload("User").Preload("DefaultWarehouse").Where("id = ? AND company_id = ?", id, companyID).First(&merchant).Error
+	err := s.db.Preload("Company").Preload("User").Preload("Stations").Preload("DefaultWarehouse").Where("id = ? AND company_id = ?", id, companyID).First(&merchant).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("merchant not found")
 	}
@@ -123,6 +128,19 @@ func (s *MerchantService) GetActiveMerchantByID(id, companyID string) (*models.M
 	file, err := s.GetPicture(id)
 	if err == nil {
 		merchant.Picture = file
+	}
+
+	for i, v := range merchant.Stations {
+		var productMerchants []models.ProductMerchant
+		s.db.Model(&models.ProductMerchant{}).Where("merchant_model_id = ? AND merchant_station_id = ?", id, v.ID).Find(&productMerchants)
+		for _, prod := range productMerchants {
+			var product models.ProductModel
+			err := s.db.Model(&models.ProductModel{}).Where("id = ?", prod.ProductModelID).First(&product).Error
+			if err == nil {
+				v.Products = append(v.Products, product)
+			}
+		}
+		merchant.Stations[i] = v
 	}
 
 	return &merchant, err
@@ -367,13 +385,16 @@ func (s *MerchantService) GetMerchantProducts(request http.Request, search strin
 			}
 		}
 
+		fmt.Println("GET MERCHANT PRODUCT", v.ID, merchantID)
 		var ProductMerchant models.ProductMerchant
-		err = s.db.Select("last_updated_stock", "last_stock", "price").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
+		err = s.db.Select("last_updated_stock", "last_stock", "price", "merchant_station_id").Where("product_model_id = ? AND merchant_model_id = ?", v.ID, merchantID).First(&ProductMerchant).Error
 		if err == nil {
 			v.LastUpdatedStock = ProductMerchant.LastUpdatedStock
 			v.LastStock = ProductMerchant.LastStock
 			v.Price = ProductMerchant.Price
 			v.AdjustmentPrice = ProductMerchant.AdjustmentPrice
+			v.MerchantStationID = ProductMerchant.MerchantStationID
+			fmt.Println("GET MERCHANT PRODUCT #1", v.ID, merchantID, ProductMerchant.MerchantStationID)
 		}
 		prices, err := s.ListPricesOfProduct(v.ID)
 		if err == nil {
@@ -1043,7 +1064,11 @@ func (s *MerchantService) DeleteLayoutMerchant(merchantID string, layoutID strin
 }
 
 func (s *MerchantService) UpdateTableStatus(merchantID string, tableID string, status string) error {
-	if strings.ToUpper(status) != "AVAILABLE" {
+	var table models.MerchantDesk
+	if err := s.db.Model(&table).Where("merchant_id = ? AND id = ?", merchantID, tableID).First(&table).Error; err != nil {
+		return err
+	}
+	if strings.ToUpper(*table.Status) != "AVAILABLE" {
 		return errors.New("table status must be available")
 	}
 	tx := s.db.Begin()
@@ -1060,4 +1085,259 @@ func (s *MerchantService) UpdateTableStatus(merchantID string, tableID string, s
 	}
 
 	return tx.Commit().Error
+}
+
+func (s *MerchantService) GetMerchantStations(request http.Request, merchantID string) (paginate.Page, error) {
+	pg := paginate.New()
+	var search = request.URL.Query().Get("search")
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("station_name ILIKE ? OR description ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.MerchantStation{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.MerchantStation{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *MerchantService) GetMerchantStationDetail(merchantID string, stationID string) (*models.MerchantStation, error) {
+	var station models.MerchantStation
+	if err := s.db.Where("merchant_id = ? AND id = ?", merchantID, stationID).First(&station).Error; err != nil {
+		return nil, err
+	}
+
+	var productMerchants []models.ProductMerchant
+	s.db.Model(&models.ProductMerchant{}).Where("merchant_model_id = ? AND merchant_station_id = ?", merchantID, stationID).Find(&productMerchants)
+	for _, prod := range productMerchants {
+		var product models.ProductModel
+		err := s.db.Model(&models.ProductModel{}).Where("id = ?", prod.ProductModelID).First(&product).Error
+		if err == nil {
+			station.Products = append(station.Products, product)
+		}
+	}
+	return &station, nil
+}
+
+func (s *MerchantService) GetOrdersFromStation(request http.Request, merchantID string, stationID string, status []string) (paginate.Page, error) {
+	pg := paginate.New()
+	var orders []models.MerchantStationOrder
+	stmt := s.db.Preload("MerchantStation").Preload("Order.MerchantDesk").Model(&models.MerchantStationOrder{}).Where("merchant_station_id = ? AND status IN (?)", stationID, status)
+	stmt = stmt.Joins("JOIN merchant_stations ON merchant_stations.id = merchant_station_orders.merchant_station_id")
+	stmt = stmt.Order("merchant_station_orders.created_at DESC")
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&orders)
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *MerchantService) GetProductsFromMerchantStation(merchantID string, stationID string) ([]models.ProductModel, error) {
+	productMerchants := []models.ProductMerchant{}
+	if err := s.db.Where("merchant_model_id = ? AND merchant_station_id = ?", merchantID, stationID).Find(&productMerchants).Error; err != nil {
+		return nil, err
+	}
+
+	products := []models.ProductModel{}
+	for _, prodMerchant := range productMerchants {
+		var product models.ProductModel
+		if err := s.db.Where("id = ?", prodMerchant.ProductModelID).First(&product).Error; err == nil {
+			img, err := s.inventoryService.ProductService.ListImagesOfProduct(product.ID)
+			if err == nil {
+				product.ProductImages = img
+			}
+			products = append(products, product)
+		}
+	}
+
+	return products, nil
+}
+
+func (s *MerchantService) CreateMerchantStation(merchantID string, station *models.MerchantStation) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	station.MerchantID = &merchantID
+	station.ID = uuid.New().String()
+
+	if err := tx.Create(station).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) UpdateMerchantStation(merchantID string, stationID string, station *models.MerchantStation) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.MerchantStation{}).Where("merchant_id = ? AND id = ?", merchantID, stationID).Updates(station).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) DeleteMerchantStation(merchantID string, stationID string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Where("merchant_id = ? AND id = ?", merchantID, stationID).Delete(&models.MerchantStation{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) AddProductsToMerchantStation(merchantID string, stationID string, productIDs []string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, pid := range productIDs {
+		var productMerchant models.ProductMerchant
+		if err := tx.Model(&models.ProductMerchant{}).Where("product_model_id = ? AND merchant_model_id = ?", pid, merchantID).
+			First(&productMerchant).Error; err == nil {
+			productMerchant.MerchantStationID = &stationID
+			if err := tx.Save(&productMerchant).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) DeleteProductFromMerchantStation(merchantID string, stationID string, productIDs []string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, pid := range productIDs {
+		if err := tx.Model(&models.ProductMerchant{}).Where("product_model_id = ? AND merchant_model_id = ?", pid, merchantID).Update("merchant_station_id", nil).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) CreateOrder(merchantID string, order *models.MerchantOrder) error {
+	var existingOrder models.MerchantOrder
+	err := s.db.Where("merchant_id = ? AND merchant_desk_id = ? AND order_status = ?", merchantID, order.MerchantDeskID, "ACTIVE").First(&existingOrder).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		order.ID = utils.Uuid()
+		order.MerchantID = &merchantID
+		order.OrderStatus = "ACTIVE"
+		order.Code = strings.ToUpper(utils.GenerateRandomString(6))
+		return s.db.Create(order).Error
+
+	}
+	existingItems := parseItems(existingOrder.Items)
+	newItems := parseItems(order.Items)
+	existingItems = append(existingItems, newItems...)
+	b, _ := json.Marshal(existingItems)
+	existingOrder.Items = b
+	order.ID = existingOrder.ID
+	var total, subTotal float64
+	for _, v := range existingItems {
+		total += v.Subtotal
+		subTotal += v.SubtotalBeforeDisc
+	}
+
+	existingOrder.Total = total
+	existingOrder.SubTotal = subTotal
+	return s.db.Save(&existingOrder).Error
+}
+
+func parseItems(orderItems json.RawMessage) []models.MerchantOrderItem {
+	items := []models.MerchantOrderItem{}
+
+	err := json.Unmarshal(orderItems, &items)
+	if err != nil {
+		return []models.MerchantOrderItem{}
+	}
+	return items
+}
+func (s *MerchantService) DistributeOrder(merchantID string, order *models.MerchantOrder) ([]models.MerchantStationOrder, error) {
+
+	items := []models.MerchantOrderItem{}
+
+	err := json.Unmarshal(order.Items, &items)
+	if err != nil {
+		return nil, err
+	}
+	// fmt.Println(string(order.Items))
+	// utils.LogJson(items)
+	orderStations := []models.MerchantStationOrder{}
+	for _, v := range items {
+		var productMerchant models.ProductMerchant
+		if err := s.db.Model(&productMerchant).Where("product_model_id = ? AND merchant_model_id = ?", v.ProductID, merchantID).First(&productMerchant).Error; err != nil {
+			return nil, err
+		}
+
+		if productMerchant.MerchantStationID != nil {
+			itemStation, err := json.Marshal(v)
+			if err != nil {
+				return nil, err
+			}
+			var orderStation models.MerchantStationOrder = models.MerchantStationOrder{
+				MerchantStationID: productMerchant.MerchantStationID,
+				OrderID:           order.ID,
+				Status:            "PENDING",
+				Item:              itemStation,
+				MerchantDeskID:    order.MerchantDeskID,
+			}
+			orderStation.ID = utils.Uuid()
+			if err := s.db.Create(&orderStation).Error; err != nil {
+				return nil, err
+			}
+			orderStations = append(orderStations, orderStation)
+
+		}
+
+	}
+
+	return orderStations, nil
+}
+
+func (s *MerchantService) GetOrders(request http.Request, merchantID string) (paginate.Page, error) {
+	pg := paginate.New()
+
+	var orders []models.MerchantOrder
+
+	stmt := s.db.Preload("MerchantDesk").Preload("Contact").Where("merchant_id = ?", merchantID).Model(&models.MerchantOrder{})
+
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&orders)
+	page.Page = page.Page + 1
+
+	return page, nil
 }

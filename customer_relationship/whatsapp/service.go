@@ -156,6 +156,15 @@ func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, re
 		)
 	}
 
+	if request.URL.Query().Get("type") != "" {
+		if request.URL.Query().Get("type") == "group" {
+			stmt = stmt.Where("whatsapp_message_sessions.is_group = ?", true)
+		} else if request.URL.Query().Get("type") == "personal" {
+			stmt = stmt.Where("whatsapp_message_sessions.is_group = ?", false)
+		}
+
+	}
+
 	stmt = stmt.Order("last_online_at DESC")
 
 	utils.FixRequest(&request)
