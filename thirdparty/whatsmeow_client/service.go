@@ -94,6 +94,34 @@ func (s *WhatsmeowService) GetContact(JID, search, page, limit string) ([]byte, 
 	return body, nil
 }
 
+func (s *WhatsmeowService) CheckNumber(JID string, number string) ([]byte, error) {
+	req, err := http.NewRequest("GET", s.BaseURL+"/v1/check-number/"+JID+"/"+number, nil)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	client.Timeout = 30 * time.Second
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
 func (s *WhatsmeowService) CheckConnected(JID string) ([]byte, error) {
 	req, err := http.NewRequest("GET", s.BaseURL+"/v1/connected/"+JID, nil)
 	if err != nil {

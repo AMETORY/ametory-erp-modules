@@ -1136,6 +1136,14 @@ func (s *MerchantService) GetOrdersFromStation(request http.Request, merchantID 
 	return page, nil
 }
 
+func (s *MerchantService) GetMerchantOrderStation(orderStationID string, stationID string) (*models.MerchantStationOrder, error) {
+	var orderStation models.MerchantStationOrder
+	if err := s.db.Where("id = ? AND  merchant_station_id = ?", orderStationID, stationID).First(&orderStation).Error; err != nil {
+		return nil, err
+	}
+	return &orderStation, nil
+}
+
 func (s *MerchantService) GetProductsFromMerchantStation(merchantID string, stationID string) ([]models.ProductModel, error) {
 	productMerchants := []models.ProductMerchant{}
 	if err := s.db.Where("merchant_model_id = ? AND merchant_station_id = ?", merchantID, stationID).Find(&productMerchants).Error; err != nil {
@@ -1328,6 +1336,13 @@ func (s *MerchantService) DistributeOrder(merchantID string, order *models.Merch
 	return orderStations, nil
 }
 
+func (s *MerchantService) GetOrderDetail(orderID string, merchantID string) (*models.MerchantOrder, error) {
+	var order models.MerchantOrder
+	if err := s.db.Preload("MerchantDesk").Preload("Contact").Where("id = ? AND merchant_id = ?", orderID, merchantID).First(&order).Error; err != nil {
+		return nil, err
+	}
+	return &order, nil
+}
 func (s *MerchantService) GetOrders(request http.Request, merchantID string) (paginate.Page, error) {
 	pg := paginate.New()
 
@@ -1340,4 +1355,16 @@ func (s *MerchantService) GetOrders(request http.Request, merchantID string) (pa
 	page.Page = page.Page + 1
 
 	return page, nil
+}
+
+func (s *MerchantService) UpdateStationOrderStatus(stationID, stationOrderID string, status string) error {
+	var orderStation models.MerchantStationOrder
+	if err := s.db.Model(&models.MerchantStationOrder{}).Where("merchant_station_id = ? AND id = ?", stationID, stationOrderID).First(&orderStation).Error; err != nil {
+		return err
+	}
+	orderStation.Status = status
+	if err := s.db.Save(&orderStation).Error; err != nil {
+		return err
+	}
+	return nil
 }
