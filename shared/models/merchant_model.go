@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
@@ -38,6 +39,10 @@ type MerchantModel struct {
 	Workflow               *json.RawMessage    `json:"workflow,omitempty" gorm:"type:JSON;default:'[]'"`
 	Menu                   *json.RawMessage    `json:"menu,omitempty" gorm:"type:JSON;default:'[]'"`
 	Stations               []MerchantStation   `json:"stations,omitempty" gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;"`
+	EnableXendit           bool                `json:"enable_xendit,omitempty" gorm:"default:false"`
+	XenditApiKey           string              `json:"xendit_api_key,omitempty" gorm:"type:varchar(255);"`
+	XenditApiKeyCensored   string              `json:"xendit_api_key_censored,omitempty" gorm:"-"`
+	Xendit                 *XenditModel        `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"xendit,omitempty"`
 }
 
 func (m *MerchantModel) TableName() string {
@@ -148,20 +153,23 @@ type MerchantDeskLayout struct {
 
 type MerchantOrder struct {
 	shared.BaseModel
-	MerchantID     *string         `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
-	Merchant       *MerchantModel  `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
-	ContactID      *string         `json:"contact_id" gorm:"index;constraint:OnDelete:CASCADE;"`
-	Contact        *ContactModel   `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE;" json:"contact,omitempty"`
-	ContactData    json.RawMessage `gorm:"type:JSON;default:'{}'" json:"contact_data,omitempty"`
-	Total          float64         `json:"total,omitempty"`
-	SubTotal       float64         `json:"sub_total,omitempty"`
-	MerchantDeskID *string         `json:"merchant_desk_id" gorm:"index;constraint:OnDelete:CASCADE;"`
-	MerchantDesk   *MerchantDesk   `gorm:"foreignKey:MerchantDeskID;constraint:OnDelete:CASCADE;" json:"merchant_desk,omitempty"`
-	Step           string          `json:"step,omitempty"`
-	NextStep       string          `json:"next_step,omitempty" gorm:"-"`
-	OrderStatus    string          `json:"order_status,omitempty"`
-	Code           string          `json:"code,omitempty"`
-	Items          json.RawMessage `gorm:"type:JSON;default:'[]'" json:"items,omitempty"`
+	MerchantID            *string                `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Merchant              *MerchantModel         `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
+	ContactID             *string                `json:"contact_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Contact               *ContactModel          `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE;" json:"contact,omitempty"`
+	ContactData           json.RawMessage        `gorm:"type:JSON;default:'{}'" json:"contact_data,omitempty"`
+	Total                 float64                `json:"total,omitempty"`
+	SubTotal              float64                `json:"sub_total,omitempty"`
+	MerchantDeskID        *string                `json:"merchant_desk_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	MerchantDesk          *MerchantDesk          `gorm:"foreignKey:MerchantDeskID;constraint:OnDelete:CASCADE;" json:"merchant_desk,omitempty"`
+	Step                  string                 `json:"step,omitempty"`
+	NextStep              string                 `json:"next_step,omitempty" gorm:"-"`
+	OrderStatus           string                 `json:"order_status,omitempty"`
+	Code                  string                 `json:"code,omitempty"`
+	Items                 json.RawMessage        `gorm:"type:JSON;default:'[]'" json:"items,omitempty"`
+	MerchantStationOrders []MerchantStationOrder `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE;" json:"-"`
+	MerchantStations      []MerchantStation      `gorm:"-" json:"merchant_stations,omitempty"`
+	Payments              []MerchantPayment      `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE;" json:"payments,omitempty"`
 }
 
 type MerchantOrderItem struct {
@@ -176,6 +184,7 @@ type MerchantOrderItem struct {
 	Subtotal           float64      `json:"subtotal,omitempty"`
 	UnitName           string       `json:"unit_name,omitempty"`
 	UnitValue          float64      `json:"unit_value,omitempty"`
+	Notes              string       `json:"notes,omitempty"`
 }
 type MerchantStation struct {
 	shared.BaseModel
@@ -197,4 +206,23 @@ type MerchantStationOrder struct {
 	Item              json.RawMessage  `gorm:"type:JSON;default:'{}'" json:"item,omitempty"`
 	MerchantDeskID    *string          `json:"merchant_desk_id" gorm:"index;constraint:OnDelete:CASCADE;"`
 	MerchantDesk      *MerchantDesk    `gorm:"foreignKey:MerchantDeskID;constraint:OnDelete:CASCADE;" json:"merchant_desk,omitempty"`
+}
+
+type MerchantPayment struct {
+	shared.BaseModel
+	Date             time.Time       `json:"date"`
+	MerchantID       *string         `json:"merchant_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Merchant         *MerchantModel  `gorm:"foreignKey:MerchantID;constraint:OnDelete:CASCADE;" json:"merchant,omitempty"`
+	OrderID          string          `json:"order_id"`
+	Order            *MerchantOrder  `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE;" json:"order,omitempty"`
+	Amount           float64         `json:"amount"`
+	Change           float64         `json:"change"`
+	Notes            string          `json:"notes"`
+	PaymentMethod    string          `gorm:"type:varchar(255)" json:"payment_method"`
+	PaymentProvider  string          `gorm:"type:varchar(255)" json:"payment_provider"`
+	ExternalID       string          `gorm:"type:varchar(255)" json:"external_id"`
+	ExternalRef      string          `gorm:"type:varchar(255)" json:"external_ref"`
+	ExternalProvider string          `gorm:"type:varchar(255)" json:"external_provider"`
+	ExternalURL      string          `gorm:"type:varchar(255)" json:"external_url"`
+	PaymentData      json.RawMessage `gorm:"type:JSON;default:'{}'" json:"payment_data"`
 }

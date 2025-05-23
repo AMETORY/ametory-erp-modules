@@ -40,6 +40,8 @@ func Migrate(db *gorm.DB) error {
 		&models.MerchantOrder{},
 		&models.MerchantStation{},
 		&models.MerchantStationOrder{},
+		&models.MerchantPayment{},
+		&models.XenditModel{},
 	)
 }
 
@@ -94,7 +96,7 @@ func (s *MerchantService) UpdateMerchant(id string, data *models.MerchantModel) 
 		}
 		data.MerchantType = &merchantType.Name
 	}
-	return s.db.Where("id = ?", id).Updates(data).Error
+	return s.db.Where("id = ?", id).Omit("Xendit").Updates(data).Error
 }
 
 func (s *MerchantService) DeleteMerchant(id string) error {
@@ -103,7 +105,9 @@ func (s *MerchantService) DeleteMerchant(id string) error {
 
 func (s *MerchantService) GetMerchantByID(id string) (*models.MerchantModel, error) {
 	var merchant models.MerchantModel
-	err := s.db.Preload("Company").Preload("DefaultWarehouse").Preload("DefaultPriceCategory").Preload("User").Preload("Users").Where("id = ?", id).First(&merchant).Error
+	err := s.db.Preload("Company").Preload("DefaultWarehouse").
+		Preload("Xendit").
+		Preload("DefaultPriceCategory").Preload("User").Preload("Users").Where("id = ?", id).First(&merchant).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("merchant not found")
 	}
@@ -154,7 +158,7 @@ func (s *MerchantService) GetPicture(id string) (*models.FileModel, error) {
 
 func (s *MerchantService) GetMerchantsByUserID(request http.Request, userID, companyID, search string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db
+	stmt := s.db.Preload("Xendit")
 	if search != "" {
 		stmt = stmt.Where("pos_merchants.description ILIKE ? OR pos_merchants.name ILIKE ?",
 			"%"+search+"%",
@@ -1336,11 +1340,32 @@ func (s *MerchantService) DistributeOrder(merchantID string, order *models.Merch
 	return orderStations, nil
 }
 
-func (s *MerchantService) GetOrderDetail(orderID string, merchantID string) (*models.MerchantOrder, error) {
+func (s *MerchantService) GetOrderDetail(merchantID string, orderID string) (*models.MerchantOrder, error) {
 	var order models.MerchantOrder
-	if err := s.db.Preload("MerchantDesk").Preload("Contact").Where("id = ? AND merchant_id = ?", orderID, merchantID).First(&order).Error; err != nil {
+	if err := s.db.Preload("MerchantDesk").
+		Preload("Payments").
+		Preload("MerchantStationOrders.MerchantStation").Preload("Contact").Where("id = ? AND merchant_id = ?", orderID, merchantID).First(&order).Error; err != nil {
 		return nil, err
 	}
+
+	orderStationMap := make(map[string][]models.MerchantStationOrder)
+	for _, v := range order.MerchantStationOrders {
+		orderStationMap[*v.MerchantStationID] = append(orderStationMap[*v.MerchantStationID], v)
+	}
+
+	var orderStations []models.MerchantStation
+	var station models.MerchantStation
+	for stationID, stations := range orderStationMap {
+		fmt.Printf("Station ID: %s\n", stationID)
+
+		if len(stations) > 0 {
+			station = *stations[0].MerchantStation
+		}
+		station.Orders = stations
+		orderStations = append(orderStations, station)
+	}
+
+	order.MerchantStations = orderStations
 	return &order, nil
 }
 func (s *MerchantService) GetOrders(request http.Request, merchantID string) (paginate.Page, error) {
@@ -1368,3 +1393,22 @@ func (s *MerchantService) UpdateStationOrderStatus(stationID, stationOrderID str
 	}
 	return nil
 }
+
+// func (s *MerchantService) MerchantOrderPayment(orderID string, payment *models.MerchantOrderPayment) error {
+// 	tx := s.db.Begin()
+// 	defer func() {
+// 		if r := recover(); r != nil {
+// 			tx.Rollback()
+// 		}
+// 	}()
+
+// 	payment.ID = utils.Uuid()
+// 	payment.OrderID = orderID
+
+// 	if err := tx.Create(payment).Error; err != nil {
+// 		tx.Rollback()
+// 		return err
+// 	}
+
+// 	return tx.Commit().Error
+// }

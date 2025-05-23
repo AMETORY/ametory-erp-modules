@@ -64,6 +64,7 @@ type ProductModel struct {
 	MinimumStock      float64                `gorm:"default:0" json:"minimum_stock,omitempty"`
 	Suppliers         []*ContactModel        `gorm:"many2many:product_contacts;constraint:OnDelete:CASCADE;" json:"suppliers,omitempty"`
 	MerchantStationID *string                `json:"merchant_station_id" gorm:"-"`
+	EnableStock       bool                   `gorm:"default:true" json:"enable_stock,omitempty"`
 }
 
 func (ProductModel) TableName() string {
