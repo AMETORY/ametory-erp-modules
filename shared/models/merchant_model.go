@@ -140,6 +140,10 @@ type MerchantDesk struct {
 	Height               float64             `json:"height" gorm:"default:60"`
 	MerchantDeskLayoutID *string             `json:"merchant_desk_layout_id" gorm:"index;constraint:OnDelete:CASCADE;"`
 	MerchantDeskLayout   *MerchantDeskLayout `gorm:"foreignKey:MerchantDeskLayoutID;constraint:OnDelete:CASCADE;" json:"merchant_desk_layout,omitempty"`
+	ContactName          string              `json:"contact_name"`
+	ContactPhone         string              `json:"contact_phone"`
+	ContactID            *string             `json:"contact_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Contact              *ContactModel       `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE;" json:"contact,omitempty"`
 }
 
 type MerchantDeskLayout struct {
@@ -170,13 +174,17 @@ type MerchantOrder struct {
 	MerchantStationOrders []MerchantStationOrder `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE;" json:"-"`
 	MerchantStations      []MerchantStation      `gorm:"-" json:"merchant_stations,omitempty"`
 	Payments              []MerchantPayment      `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE;" json:"payments,omitempty"`
+	CashierID             *string                `json:"cashier_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Cashier               *UserModel             `gorm:"foreignKey:CashierID;constraint:OnDelete:CASCADE;" json:"cashier,omitempty"`
+	ContactName           string                 `json:"contact_name" gorm:"-"`
+	ContactPhone          string                 `json:"contact_phone" gorm:"-"`
 }
 
 type MerchantOrderItem struct {
 	ID                 string       `json:"id,omitempty"`
 	ProductID          string       `json:"product_id,omitempty"`
 	Product            ProductModel `json:"product,omitempty"`
-	Quantity           int          `json:"quantity,omitempty"`
+	Quantity           float64      `json:"quantity,omitempty"`
 	DiscountAmount     float64      `json:"discount_amount,omitempty"`
 	DiscountPercent    float64      `json:"discount_percent,omitempty"`
 	UnitPrice          float64      `json:"unit_price,omitempty"`

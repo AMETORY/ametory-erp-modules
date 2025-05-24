@@ -22,6 +22,28 @@ type InvoicePDF struct {
 	ShowShipped     bool
 }
 
+type ReceiptData struct {
+	Items           []ReceiptItem `json:"items"`
+	SubTotalPrice   string        `json:"sub_total_price"`
+	DiscountAmount  string        `json:"discount_amount"`
+	TotalPrice      string        `json:"total_price"`
+	CashierName     string        `json:"cashier_name"`
+	Code            string        `json:"code"`
+	Date            string        `json:"date"`
+	CustomerName    string        `json:"customer_name"`
+	MerchantName    string        `json:"merchant_name"`
+	MerchantAddress string        `json:"merchant_address"`
+}
+
+type ReceiptItem struct {
+	Description     string `json:"description"`
+	Quantity        string `json:"quantity"`
+	Price           string `json:"price"`
+	Total           string `json:"total"`
+	DiscountPercent string `json:"discount_percent"`
+	Notes           string `json:"notes"`
+}
+
 type InvoicePDFItem struct {
 	No                 int
 	Description        string

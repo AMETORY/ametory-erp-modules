@@ -314,6 +314,46 @@ func GenerateRandomNumber(length int) string {
 	return string(b)
 }
 
+func GenerateOrderReceipt(data ReceiptData, templatePath string) ([]byte, error) {
+	if templatePath == "" {
+		templatePath = "templates/invoice.html"
+	}
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var htmlBuf bytes.Buffer
+	if err := tmpl.Execute(&htmlBuf, data); err != nil {
+		return nil, err
+	}
+
+	// 2. Generate PDF dari HTML string
+	pdfg, err := wkhtmltopdf.NewPDFGenerator()
+	if err != nil {
+		return nil, err
+	}
+	// fmt.Println(htmlBuf.String())
+	page := wkhtmltopdf.NewPageReader(strings.NewReader(htmlBuf.String()))
+	page.EnableLocalFileAccess.Set(true)
+	pdfg.AddPage(page)
+	page.DisableSmartShrinking.Set(true)
+	page.FooterFontSize.Set(8)
+
+	pdfg.Dpi.Set(300)
+	pdfg.PageWidth.Set(57) // Set to receipt width in millimeters
+	pdfg.MarginLeft.Set(3)
+	pdfg.MarginRight.Set(3)
+	pdfg.MarginBottom.Set(3)
+	pdfg.MarginTop.Set(3)
+
+	if err := pdfg.Create(); err != nil {
+		return nil, err
+	}
+
+	// 3. Return PDF sebagai []byte
+	return pdfg.Bytes(), nil
+}
 func GenerateInvoicePDF(data InvoicePDF, templatePath string, footer string) ([]byte, error) {
 	// 1. Render HTML dari template
 	if templatePath == "" {

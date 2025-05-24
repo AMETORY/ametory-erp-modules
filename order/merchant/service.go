@@ -1000,7 +1000,7 @@ func (s *MerchantService) DeleteDeskFromMerchant(merchantID string, deskID strin
 
 func (s *MerchantService) GetLayoutDetailFromID(merchantID string, layoutID string) (*models.MerchantDeskLayout, error) {
 	var layout models.MerchantDeskLayout
-	if err := s.db.Preload("MerchantDesks").Where("merchant_id = ? AND id = ?", merchantID, layoutID).First(&layout).Error; err != nil {
+	if err := s.db.Preload("MerchantDesks.Contact").Where("merchant_id = ? AND id = ?", merchantID, layoutID).First(&layout).Error; err != nil {
 		return nil, err
 	}
 	return &layout, nil
@@ -1008,7 +1008,7 @@ func (s *MerchantService) GetLayoutDetailFromID(merchantID string, layoutID stri
 func (s *MerchantService) GetLayoutsFromID(request http.Request, merchantID string) (paginate.Page, error) {
 	pg := paginate.New()
 	var layouts []models.MerchantDeskLayout
-	stmt := s.db.Preload("MerchantDesks").Where("merchant_id = ?", merchantID)
+	stmt := s.db.Preload("MerchantDesks.Contact").Where("merchant_id = ?", merchantID)
 	if request.URL.Query().Get("search") != "" {
 		stmt = stmt.Where("layout_name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
 	}
@@ -1062,6 +1062,62 @@ func (s *MerchantService) DeleteLayoutMerchant(merchantID string, layoutID strin
 		Delete(&models.MerchantDeskLayout{}).Error; err != nil {
 		tx.Rollback()
 		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (s *MerchantService) UpdateTableContact(merchantID string, tableID string, contactName string, contactPhone string, contactID string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	var phoneNumber string
+	if contactPhone != "" {
+		phoneNumber = utils.ParsePhoneNumber(contactPhone, "ID")
+	}
+
+	if err := tx.Model(&models.MerchantDesk{}).Where("merchant_id = ? AND id = ?", merchantID, tableID).
+		Updates(map[string]any{
+			"contact_name":  contactName,
+			"contact_phone": phoneNumber,
+			"contact_id":    contactID,
+		}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	var merchant models.MerchantModel
+
+	if phoneNumber != "" {
+		if err := tx.Model(&models.MerchantModel{}).Where("id = ?", merchantID).First(&merchant).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+		var contact models.ContactModel
+		err := tx.Model(&models.ContactModel{}).Where("phone = ? AND company_id = ?", phoneNumber, merchant.CompanyID).First(&contact).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			contact.Name = contactName
+			contact.Phone = &phoneNumber
+			contact.CompanyID = merchant.CompanyID
+			contact.IsCustomer = true
+			if err := tx.Model(&models.ContactModel{}).Create(&contact).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+	}
+
+	if contactID != "" {
+		if err := tx.Model(&models.MerchantDesk{}).Where("merchant_id = ? AND id = ?", merchantID, tableID).
+			Updates(map[string]any{
+				"contact_id": contactID,
+			}).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
 
 	return tx.Commit().Error
@@ -1343,7 +1399,9 @@ func (s *MerchantService) DistributeOrder(merchantID string, order *models.Merch
 func (s *MerchantService) GetOrderDetail(merchantID string, orderID string) (*models.MerchantOrder, error) {
 	var order models.MerchantOrder
 	if err := s.db.Preload("MerchantDesk").
+		Preload("Cashier").
 		Preload("Payments").
+		Preload("Contact").
 		Preload("MerchantStationOrders.MerchantStation").Preload("Contact").Where("id = ? AND merchant_id = ?", orderID, merchantID).First(&order).Error; err != nil {
 		return nil, err
 	}
@@ -1412,3 +1470,122 @@ func (s *MerchantService) UpdateStationOrderStatus(stationID, stationOrderID str
 
 // 	return tx.Commit().Error
 // }
+
+func (s *MerchantService) GetPrintReceipt(order *models.MerchantOrder, templatePath, timeFormatStr string) ([]byte, error) {
+	if timeFormatStr == "" {
+		timeFormatStr = "02/01/2006 15:04"
+	}
+	var orderItems []models.MerchantOrderItem
+	json.Unmarshal(order.Items, &orderItems)
+	items := []utils.ReceiptItem{}
+	discTotal := 0.0
+	customerName := ""
+	if order.Contact != nil {
+		customerName = order.Contact.Name
+	}
+
+	merchant, err := s.GetMerchantByID(*order.MerchantID)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range orderItems {
+		disc := ""
+		if v.DiscountPercent > 0 {
+			disc = fmt.Sprintf("%v%%", v.DiscountPercent)
+		}
+		discTotal += v.DiscountAmount
+		items = append(items, utils.ReceiptItem{
+			Description:     v.Product.Name,
+			Quantity:        utils.FormatRupiah(v.Quantity),
+			Price:           utils.FormatRupiah(v.UnitPrice),
+			Total:           utils.FormatRupiah(v.Subtotal),
+			DiscountPercent: disc,
+			Notes:           v.Notes,
+		})
+
+	}
+	date := order.UpdatedAt.Format(timeFormatStr)
+	var data utils.ReceiptData = utils.ReceiptData{
+		Items:           items,
+		SubTotalPrice:   utils.FormatRupiah(order.SubTotal),
+		TotalPrice:      utils.FormatRupiah(order.Total),
+		CashierName:     order.Cashier.FullName,
+		Code:            order.Code,
+		Date:            date,
+		DiscountAmount:  utils.FormatRupiah(discTotal),
+		CustomerName:    customerName,
+		MerchantName:    merchant.Name,
+		MerchantAddress: fmt.Sprintf("%s, %s", merchant.Address, merchant.Phone),
+	}
+
+	return utils.GenerateOrderReceipt(data, templatePath)
+}
+
+func (s *MerchantService) SplitBill(order *models.MerchantOrder, contact *models.ContactModel, newItems []models.MerchantOrderItem) (*models.MerchantOrder, error) {
+
+	var orderItems []models.MerchantOrderItem
+	json.Unmarshal(order.Items, &orderItems)
+
+	var newOrder models.MerchantOrder
+	newOrder.ID = utils.Uuid()
+	newOrder.MerchantID = order.MerchantID
+	newOrder.OrderStatus = order.OrderStatus
+	newOrder.CashierID = order.CashierID
+	if contact != nil {
+		newOrder.ContactID = &contact.ID
+		b, _ := json.Marshal(contact)
+		newOrder.ContactData = b
+	}
+	newOrder.SubTotal = 0
+	newOrder.Total = 0
+
+	err := s.ctx.DB.Transaction(func(tx *gorm.DB) error {
+
+		for i, v := range newItems {
+			s.countSubtotal(&v)
+			newItems[i] = v
+		}
+		b, _ := json.Marshal(newItems)
+		newOrder.Items = b
+
+		err := tx.Create(&newOrder).Error
+		if err != nil {
+			return err
+		}
+
+		for i, oldItem := range orderItems {
+			for _, newItem := range newItems {
+				if oldItem.ID == newItem.ID {
+					oldItem.Quantity = oldItem.Quantity - newItem.Quantity
+					s.countSubtotal(&oldItem)
+					orderItems[i] = oldItem
+				}
+			}
+		}
+
+		c, _ := json.Marshal(orderItems)
+		order.Items = c
+
+		err = tx.Save(&order).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &newOrder, nil
+}
+
+func (s *MerchantService) countSubtotal(item *models.MerchantOrderItem) {
+	var beforeDisc = item.Quantity * item.UnitPrice
+	item.SubtotalBeforeDisc = beforeDisc
+	if item.DiscountPercent > 0 {
+		item.Subtotal = beforeDisc - (beforeDisc * item.DiscountPercent / 100)
+		item.DiscountAmount = beforeDisc * item.DiscountPercent / 100
+	} else {
+		item.Subtotal = beforeDisc - item.DiscountAmount
+	}
+}
