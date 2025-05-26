@@ -144,6 +144,7 @@ type MerchantDesk struct {
 	ContactPhone         string              `json:"contact_phone"`
 	ContactID            *string             `json:"contact_id" gorm:"index;constraint:OnDelete:CASCADE;"`
 	Contact              *ContactModel       `gorm:"foreignKey:ContactID;constraint:OnDelete:CASCADE;" json:"contact,omitempty"`
+	ActiveOrders         []MerchantOrder     `gorm:"foreignKey:MerchantDeskID;constraint:OnDelete:CASCADE;" json:"active_orders,omitempty"`
 }
 
 type MerchantDeskLayout struct {
@@ -178,6 +179,8 @@ type MerchantOrder struct {
 	Cashier               *UserModel             `gorm:"foreignKey:CashierID;constraint:OnDelete:CASCADE;" json:"cashier,omitempty"`
 	ContactName           string                 `json:"contact_name" gorm:"-"`
 	ContactPhone          string                 `json:"contact_phone" gorm:"-"`
+	ParentID              *string                `json:"parent_id" gorm:"index;constraint:OnDelete:CASCADE;"`
+	Parent                *MerchantOrder         `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;" json:"parent,omitempty"`
 }
 
 type MerchantOrderItem struct {

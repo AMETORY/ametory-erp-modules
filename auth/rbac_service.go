@@ -203,6 +203,52 @@ func (s *RBACService) CheckSuperAdminPermission(adminID string) (bool, error) {
 	return false, nil
 }
 
+// AddPermissionsToRole menambahkan beberapa izin ke peran
+func (s *RBACService) AddPermissionsToRole(roleID string, permissionNames []string) error {
+	var role models.RoleModel
+	var permissions []models.PermissionModel
+
+	// Cari peran
+	if err := s.db.First(&role, "id = ?", roleID).Error; err != nil {
+		return errors.New("role not found")
+	}
+
+	// Cari izin
+	if err := s.db.Where("name IN (?)", permissionNames).Find(&permissions).Error; err != nil {
+		return errors.New("permissions not found")
+	}
+
+	// Tetapkan izin ke peran
+	if err := s.db.Model(&role).Association("Permissions").Append(&permissions); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetRoleByName mengambil peran berdasarkan nama
+func (s *RBACService) GetRoleByName(name string, isAdmin bool) (*models.RoleModel, error) {
+	var role models.RoleModel
+	if err := s.db.Where("name = ? AND is_admin = ?", name, isAdmin).First(&role).Error; err != nil {
+		return nil, errors.New("role not found")
+	}
+	return &role, nil
+}
+
+// CheckRoleExistsByName memeriksa apakah peran dengan nama tertentu ada
+func (s *RBACService) CheckRoleExistsByName(name string, isAdmin bool) (bool, error) {
+	var count int64
+	if err := s.db.Model(&models.RoleModel{}).
+		Where("name = ? AND is_admin = ?", name, isAdmin).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	if count > 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 // CreateRole membuat peran baru
 func (s *RBACService) CreateRole(name string, isAdmin, isSuperAdmin, isMerchant bool, companyID *string) (*models.RoleModel, error) {
 	role := models.RoleModel{

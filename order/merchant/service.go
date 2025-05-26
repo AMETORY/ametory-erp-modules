@@ -1128,8 +1128,8 @@ func (s *MerchantService) UpdateTableStatus(merchantID string, tableID string, s
 	if err := s.db.Model(&table).Where("merchant_id = ? AND id = ?", merchantID, tableID).First(&table).Error; err != nil {
 		return err
 	}
-	if strings.ToUpper(*table.Status) != "AVAILABLE" {
-		return errors.New("table status must be available")
+	if strings.ToUpper(*table.Status) == "OCCUPIED" {
+		return errors.New("table is already occupied")
 	}
 	tx := s.db.Begin()
 	defer func() {
@@ -1433,6 +1433,21 @@ func (s *MerchantService) GetOrders(request http.Request, merchantID string) (pa
 
 	stmt := s.db.Preload("MerchantDesk").Preload("Contact").Where("merchant_id = ?", merchantID).Model(&models.MerchantOrder{})
 
+	if request.URL.Query().Get("status") != "" {
+		stmt = stmt.Where("order_status IN (?)", strings.Split(request.URL.Query().Get("status"), ","))
+	}
+	if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("created_at >= ?", request.URL.Query().Get("start_date"))
+	}
+	if request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("created_at <= ?", request.URL.Query().Get("end_date"))
+	}
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("updated_at desc")
+
+	}
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&orders)
 	page.Page = page.Page + 1
@@ -1531,6 +1546,10 @@ func (s *MerchantService) SplitBill(order *models.MerchantOrder, contact *models
 	newOrder.MerchantID = order.MerchantID
 	newOrder.OrderStatus = order.OrderStatus
 	newOrder.CashierID = order.CashierID
+	newOrder.Step = order.Step
+	newOrder.MerchantDeskID = order.MerchantDeskID
+	newOrder.ParentID = &order.ID
+	newOrder.Code = strings.ToUpper(utils.GenerateRandomString(6))
 	if contact != nil {
 		newOrder.ContactID = &contact.ID
 		b, _ := json.Marshal(contact)
@@ -1540,15 +1559,37 @@ func (s *MerchantService) SplitBill(order *models.MerchantOrder, contact *models
 	newOrder.Total = 0
 
 	err := s.ctx.DB.Transaction(func(tx *gorm.DB) error {
-
+		newItems2 := []models.MerchantOrderItem{}
 		for i, v := range newItems {
 			s.countSubtotal(&v)
 			newItems[i] = v
+			if v.Quantity > 0 {
+				newItems2 = append(newItems2, v)
+			}
 		}
+		newItems = newItems2
 		b, _ := json.Marshal(newItems)
 		newOrder.Items = b
 
 		err := tx.Create(&newOrder).Error
+		if err != nil {
+			return err
+		}
+		subtotal := 0.0
+		total := 0.0
+		for _, newItem := range newItems {
+			subtotal += newItem.SubtotalBeforeDisc
+			total += newItem.Subtotal
+		}
+		newOrder.SubTotal = subtotal
+		newOrder.Total = total
+
+		fmt.Println("UPDATE NEW ORDER SUBTOTAL", subtotal)
+		fmt.Println("UPDATE NEW ORDER TOTAL", total)
+		err = tx.Model(&models.MerchantOrder{}).Where("id = ?", newOrder.ID).Debug().Updates(map[string]any{
+			"sub_total": subtotal,
+			"total":     total,
+		}).Error
 		if err != nil {
 			return err
 		}
@@ -1563,10 +1604,71 @@ func (s *MerchantService) SplitBill(order *models.MerchantOrder, contact *models
 			}
 		}
 
-		c, _ := json.Marshal(orderItems)
-		order.Items = c
+		for _, oldOrder := range order.MerchantStationOrders {
+			var item models.MerchantOrderItem
+			json.Unmarshal(oldOrder.Item, &item)
+			for _, newItem := range newItems {
+				if item.ID == newItem.ID {
+					item.Quantity = item.Quantity - newItem.Quantity
+					s.countSubtotal(&item)
 
-		err = tx.Save(&order).Error
+					if newItem.Quantity > 0 {
+						b, _ := json.Marshal(newItem)
+						newStatonOrder := models.MerchantStationOrder{
+							OrderID:           newOrder.ID,
+							Item:              b,
+							Status:            oldOrder.Status,
+							MerchantDeskID:    oldOrder.MerchantDeskID,
+							MerchantStationID: oldOrder.MerchantStationID,
+						}
+
+						newStatonOrder.ID = utils.Uuid()
+						fmt.Println("CREATE NEW STATION ORDER", newStatonOrder)
+						tx.Create(&newStatonOrder)
+					}
+
+				}
+			}
+			if item.Quantity > 0 {
+				b, _ := json.Marshal(item)
+				oldOrder.Item = b
+				fmt.Println("UPDATE OLD STATION ORDER", oldOrder)
+				tx.Save(&oldOrder)
+			}
+
+			if item.Quantity == 0 {
+				tx.Delete(&oldOrder)
+			}
+
+		}
+
+		old_subtotal := 0.0
+		old_total := 0.0
+		fmt.Println("UPDATE OLD ORDER", order)
+		for _, v := range orderItems {
+			utils.LogJson(v)
+			old_subtotal += v.SubtotalBeforeDisc
+			old_total += v.Subtotal
+		}
+		fmt.Println("UPDATE OLD ORDER SUBTOTAL", old_subtotal)
+		fmt.Println("UPDATE OLD ORDER TOTAL", old_total)
+		order.SubTotal = old_subtotal
+		order.Total = old_total
+
+		orderItems2 := []models.MerchantOrderItem{}
+		for _, v := range orderItems {
+			if v.Quantity > 0 {
+				orderItems2 = append(orderItems2, v)
+			}
+		}
+		orderItems = orderItems2
+		c, _ := json.Marshal(orderItems)
+
+		err = tx.Model(&models.MerchantOrder{}).Where("id = ?", order.ID).Debug().Updates(map[string]any{
+			"sub_total": old_subtotal,
+			"total":     old_total,
+			"items":     c,
+		}).Error
 		if err != nil {
 			return err
 		}
@@ -1588,4 +1690,13 @@ func (s *MerchantService) countSubtotal(item *models.MerchantOrderItem) {
 	} else {
 		item.Subtotal = beforeDisc - item.DiscountAmount
 	}
+}
+
+func (s *MerchantService) GetMerchantTableDetail(merchantID string, tableID string) (*models.MerchantDesk, error) {
+	table := &models.MerchantDesk{}
+	err := s.db.Preload("Contact").Preload("MerchantDeskLayout").Preload("ActiveOrders", "order_status = 'ACTIVE'").Where("merchant_id = ? AND id = ?", merchantID, tableID).First(table).Error
+	if err != nil {
+		return nil, err
+	}
+	return table, nil
 }
