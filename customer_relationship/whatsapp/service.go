@@ -65,6 +65,8 @@ func (ws *WhatsappService) GetWhatsappMessages(request http.Request, search stri
 		stmt = stmt.Where("session = ?", request.URL.Query().Get("session"))
 	}
 
+	// fmt.Println("KESINI nggak")
+
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.WhatsappMessageModel{})
 	return page, nil
@@ -172,12 +174,15 @@ func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, re
 	return page, nil
 }
 
-func (ws *WhatsappService) GetMessageSessionChatBySessionName(sessionName string, contact_id *string, request http.Request) (paginate.Page, error) {
+func (ws *WhatsappService) GetMessageSessionChatBySessionName(sessionName string, jid string, contact_id *string, request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := ws.db.Preload("Member.User").Preload("Contact").Model(&models.WhatsappMessageModel{})
-
+	fmt.Println("KADIEU")
 	if sessionName != "" {
 		stmt = stmt.Where("session = ?", sessionName)
+	}
+	if jid != "" {
+		stmt = stmt.Where("j_id = ?", jid)
 	}
 	if contact_id != nil {
 		stmt = stmt.Where("contact_id = ?", *contact_id)

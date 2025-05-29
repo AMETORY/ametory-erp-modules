@@ -312,3 +312,42 @@ func (s *AdminAuthService) GetUserByEmail(email string) (*models.AdminModel, err
 	}
 	return &user, nil
 }
+
+func (s *AdminAuthService) GetUserByID(userID string) (*models.AdminModel, error) {
+	var user models.AdminModel
+	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (s *AdminAuthService) VerificationEmail(token string) error {
+	var user models.AdminModel
+
+	// Cari user berdasarkan token
+	if err := s.db.Where("verification_token = ?", token).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("invalid token")
+		}
+		return err
+	}
+
+	// Verifikasi apakah token belum expired
+	if time.Now().After(*user.VerificationTokenExpiredAt) {
+		return errors.New("token has expired")
+	}
+
+	// Tandai user sebagai verified
+	now := time.Now()
+	user.VerifiedAt = &now
+	user.VerificationToken = ""
+	user.VerificationTokenExpiredAt = nil
+
+	if err := s.db.Save(&user).Error; err != nil {
+		return err
+	}
+	return nil
+}

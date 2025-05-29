@@ -19,7 +19,7 @@ type AdminModel struct {
 	VerificationToken          string      `gorm:"index" json:"-"`
 	VerificationTokenExpiredAt *time.Time  `gorm:"index" json:"verification_token_expired_at,omitempty"`
 	Roles                      []RoleModel `gorm:"many2many:admin_roles;constraint:OnDelete:CASCADE;" json:"roles,omitempty"`
-	ProfilePicture             *FileModel  `json:"profile_picture" gorm:"-"`
+	ProfilePicture             *FileModel  `json:"profile_picture,omitempty" gorm:"-"`
 	RoleID                     *string     `json:"role_id" gorm:"-"`
 }
 
