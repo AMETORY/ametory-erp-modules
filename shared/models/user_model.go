@@ -96,7 +96,7 @@ func (u *UserModel) AfterFind(tx *gorm.DB) error {
 	u.IsVerified = u.VerifiedAt != nil
 
 	file := FileModel{}
-	err := tx.Where("ref_id = ? and ref_type = ?", u.ID, "user").First(&file).Error
+	err := tx.Where("ref_id = ? and ref_type = ?", u.ID, "user").Order("created_at desc").First(&file).Error
 	if err == nil {
 		u.ProfilePicture = &file
 	}

@@ -45,10 +45,14 @@ func (s *AuthService) Register(fullname, username, email, password, phoneNumber 
 	if err != nil {
 		return nil, err
 	}
-
+	var verificationToken string
+	var verificationTokenExpiredAt *time.Time
 	// Generate verification token
-	verificationToken := utils.RandString(32, false)
-	verificationTokenExpiredAt := time.Now().AddDate(0, 0, 7) // 7 hari
+	if email != "" {
+		verificationToken = utils.RandString(32, false)
+		exp := time.Now().AddDate(0, 0, 7)
+		verificationTokenExpiredAt = &exp
+	}
 
 	// Buat user baru
 	user := models.UserModel{
@@ -57,7 +61,7 @@ func (s *AuthService) Register(fullname, username, email, password, phoneNumber 
 		Email:                      email,
 		Password:                   hashedPassword,
 		VerificationToken:          verificationToken,
-		VerificationTokenExpiredAt: &verificationTokenExpiredAt,
+		VerificationTokenExpiredAt: verificationTokenExpiredAt,
 		PhoneNumber:                &phoneNumber,
 	}
 
@@ -174,14 +178,14 @@ func (s *AuthService) Verification(token, newPassword string) error {
 	return nil
 }
 
-func (s *AuthService) GetUserByPhoneNumber(phoneNumber string) bool {
+func (s *AuthService) GetUserDataByPhoneNumber(phoneNumber string) (*models.UserModel, error) {
 	var user models.UserModel
 	if err := s.db.Where("phone_number = ?", phoneNumber).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false
+			return nil, err
 		}
 	}
-	return true
+	return &user, nil
 }
 func (s *AuthService) GetUserByEmail(email string) bool {
 	var user models.UserModel
