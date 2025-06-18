@@ -10,6 +10,9 @@ import (
 )
 
 func main() {
+	fmt.Println("Welcome to ametory-erp-modules code generator!")
+	fmt.Println("This program will help you generate a new ametory-erp-modules project.")
+	fmt.Println("Please answer the questions below to get started.")
 	// Basic project info
 	qs := []*survey.Question{
 		{
