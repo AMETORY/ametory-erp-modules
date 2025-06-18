@@ -10,46 +10,76 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/app"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
 )
 
-func main() { // Initialize the application container with options
+func main() {
 
+	rootCmd := &cobra.Command{
+		Use:   "app",
+		Short: "Application CLI",
+	}
+
+	migrateCmd := &cobra.Command{
+		Use:   "migrate",
+		Short: "Run database migrations",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Running migrations...")
+			// Add migration logic here
+			initContainer(false)
+		},
+	}
+
+	serveCmd := &cobra.Command{
+		Use:   "serve",
+		Short: "Start the application server",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Starting server...")
+			appContainer := initContainer(true)
+
+			r := gin.Default()
+
+			r.GET("/", func(c *gin.Context) {
+				c.JSON(http.StatusOK, gin.H{
+					"message": "Hello, World!",
+				})
+			})
+
+			v1 := r.Group("/api/v1")
+			router.SetUpAuthRoutes(v1, appContainer)
+
+			r.Run(":" + config.App.Server.Port)
+		},
+	}
+
+	rootCmd.AddCommand(migrateCmd, serveCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatalf("Error executing command, %s", err)
+	}
+}
+
+func initContainer(skipMigrate bool) *app.AppContainer {
 	ctx := context.Background()
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Gagal memuat konfigurasi: %v", err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Initialize database
 	db, err := config.InitDB(cfg)
 	if err != nil {
-		log.Fatalf("Gagal menghubungkan ke database: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	fmt.Println("Berhasil terhubung ke database", cfg.Database.Name)
-	appContainer := app.NewAppContainer(
+	fmt.Println("Successfully connected to database", cfg.Database.Name)
+
+	return app.NewAppContainer(
 		db,
 		nil,
 		&ctx,
-		false,
+		skipMigrate,
 		cfg.Server.BaseURL,
 		app.WithAdminAuth(),
 		app.WithHRIS(),
 	)
-
-	fmt.Println("Berhasil init AppContainer")
-
-	r := gin.Default()
-
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Hello, World!",
-		})
-	})
-
-	v1 := r.Group("/api/v1")
-	router.SetUpAuthRoutes(v1, appContainer)
-
-	r.Run(":" + cfg.Server.Port)
-
 }

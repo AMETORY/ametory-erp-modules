@@ -2,6 +2,7 @@ package app
 
 import (
 	ctx "context"
+	"log"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/auth"
@@ -82,6 +83,9 @@ type AppContainer struct {
 type AppContainerOption func(*AppContainer)
 
 func NewAppContainer(db *gorm.DB, req *http.Request, golangContext *ctx.Context, skipMigrate bool, baseURL string, opts ...AppContainerOption) *AppContainer {
+	if skipMigrate {
+		log.Println("Skipping migration ...")
+	}
 	container := &AppContainer{
 		erpContext:         context.NewERPContext(db, req, golangContext, skipMigrate),
 		DB:                 db,
