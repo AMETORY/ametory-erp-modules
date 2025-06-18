@@ -126,7 +126,7 @@ func createGoMod(config ProjectConfig) error {
 go 1.21
 
 require (
-	github.com/AMETORY/ametory-erp-modules v1.0.1
+	github.com/AMETORY/ametory-erp-modules v1.0.2
 )`, config.ModuleName)
 
 	return os.WriteFile(
