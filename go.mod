@@ -101,4 +101,4 @@ require (
 	github.com/schollz/progressbar/v3 v3.14.1
 )
 
-replace github.com/AMETORY/ametory-erp-modules/internal/generatorlib => ./internal/generatorlib
+// replace github.com/AMETORY/ametory-erp-modules/internal/generatorlib => ./internal/generatorlib
