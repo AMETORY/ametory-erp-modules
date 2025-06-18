@@ -1,3 +1,6 @@
+//go:generate mkdir -p templates
+//go:generate cp ../../internal/generatorlib/templates/*.tmpl templates/
+
 package main
 
 import (

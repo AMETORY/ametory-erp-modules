@@ -100,3 +100,5 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/schollz/progressbar/v3 v3.14.1
 )
+
+replace github.com/AMETORY/ametory-erp-modules/internal/generatorlib => ./internal/generatorlib

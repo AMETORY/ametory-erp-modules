@@ -1,13 +1,27 @@
 package generatorlib
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"text/template"
 
 	"github.com/schollz/progressbar/v3"
 )
+
+//go:embed templates/*
+var templateFS embed.FS
+
+func loadTemplate(name string) (*template.Template, error) {
+	content, err := fs.ReadFile(templateFS, "templates/"+name)
+	if err != nil {
+		return nil, err
+	}
+
+	return template.New(name).Parse(string(content))
+}
 
 type ProjectConfig struct {
 	ModuleName   string
@@ -62,7 +76,7 @@ func createGoMod(config ProjectConfig) error {
 go 1.21
 
 require (
-	github.com/AMETORY/ametory-erp-modules v0.1.0
+	github.com/AMETORY/ametory-erp-modules v1.0.1
 )`, config.ModuleName)
 
 	return os.WriteFile(
@@ -73,30 +87,24 @@ require (
 }
 
 func generateFromTemplate(templateName, outputPath string, data ProjectConfig) error {
-	// Read template
-	tmplContent, err := os.ReadFile(filepath.Join("internal/generatorlib/templates", templateName))
+	tmpl, err := loadTemplate(templateName)
 	if err != nil {
-		return fmt.Errorf("failed to read template: %w", err)
+		return err
 	}
 
-	// Create directory if needed
+	// Buat direktori jika belum ada
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
 		return err
 	}
 
-	// Parse and execute template
-	tmpl, err := template.New(templateName).Parse(string(tmplContent))
-	if err != nil {
-		return fmt.Errorf("failed to parse template: %w", err)
-	}
-
 	file, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
+		return err
 	}
 	defer file.Close()
 
 	return tmpl.Execute(file, data)
+
 }
 
 func createGitIgnore(projectDir string) error {
