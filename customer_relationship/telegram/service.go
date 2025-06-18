@@ -22,6 +22,7 @@ type TelegramService struct {
 	ctx     *context.ERPContext
 	botName *string
 	token   *string
+	input   *TelegramMsg
 }
 
 func NewTelegramService(ctx *context.ERPContext) *TelegramService {
@@ -31,15 +32,36 @@ func NewTelegramService(ctx *context.ERPContext) *TelegramService {
 	return service
 }
 
+func (t *TelegramService) SetInput(input *TelegramMsg) {
+	t.input = input
+}
+
 func (t *TelegramService) SetToken(botName, token *string) {
 	t.botName = botName
 	t.token = token
+}
+
+func (t *TelegramService) GetWebhookInfo() (map[string]any, error) {
+	if t.botName == nil || t.token == nil {
+		return nil, errors.New("botName and token must be set")
+	}
+	resp, err := http.Get(fmt.Sprintf("https://api.telegram.org/bot%s/getWebhookInfo", *t.token))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var webhookInfo map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&webhookInfo); err != nil {
+		return nil, err
+	}
+	return webhookInfo, nil
 }
 func (t *TelegramService) SetWebhook(webhookURL string) error {
 	if t.botName == nil || t.token == nil {
 		return errors.New("botName and token must be set")
 	}
-	log.Println("SET WEBHOOK", fmt.Sprintf("https://api.telegram.org/bot%s/setWebhook?url=%s", *t.token, webhookURL))
+	// log.Println("SET WEBHOOK", fmt.Sprintf("https://api.telegram.org/bot%s/setWebhook?url=%s", *t.token, webhookURL))
 	resp, err := http.PostForm(fmt.Sprintf("https://api.telegram.org/bot%s/setWebhook?url=%s", *t.token, webhookURL), url.Values{})
 	if err != nil {
 		return err
@@ -52,27 +74,172 @@ func (t *TelegramService) SetWebhook(webhookURL string) error {
 	return nil
 }
 
-func (t *TelegramService) SendTelegramMessage(input *TelegramMsg) error {
+func (t *TelegramService) GetUserProfilePhotos(userId int64) (map[string]any, error) {
 	if t.botName == nil || t.token == nil {
-		return errors.New("botName and token must be set")
+		return nil, errors.New("botName and token must be set")
+	}
+
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/getUserProfilePhotos?user_id=%d", *t.token, userId)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to get user profile photos")
+	}
+
+	var result struct {
+		Ok     bool                 `json:"ok"`
+		Result models.TelegramPhoto `json:"result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	fileResp := map[string]any{}
+	for _, v := range result.Result.Photos {
+		lastV := v[len(v)-1]
+		fileResp, err = t.GetFile(lastV.FileID)
+		if err != nil {
+			return nil, err
+		}
+		break
+	}
+	return fileResp, nil
+}
+
+func (t *TelegramService) GetFile(fileId string) (map[string]interface{}, error) {
+	if t.botName == nil || t.token == nil {
+		return nil, errors.New("botName and token must be set")
+	}
+
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/getFile?file_id=%s", *t.token, fileId)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to get file")
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+func (t *TelegramService) GetMe() (map[string]interface{}, error) {
+	if t.botName == nil || t.token == nil {
+		return nil, errors.New("botName and token must be set")
+	}
+
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/getMe", *t.token)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to get bot information")
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (ws *TelegramService) SendCSMessage() (any, error) {
+	if ws.input == nil {
+		return nil, errors.New("input is nil")
+	}
+
+	response, err := ws.SendTelegramMessage(ws.input)
+	if err != nil {
+		return nil, err
+	}
+
+	// utils.LogJson(response)
+	if response != nil {
+		mID, ok := response["result"].(map[string]any)["message_id"].(float64)
+		if !ok {
+			return nil, errors.New("failed to get message ID")
+		}
+
+		msgID := fmt.Sprintf("%.0f", mID)
+		ws.input.Data.MessageID = &msgID
+	}
+
+	if ws.input.Save && ws.input.Data != nil {
+		if err := ws.SaveMessage(ws.input.Data); err != nil {
+			return nil, err
+		}
+	}
+
+	return ws.input.Data, nil
+}
+
+func (t *TelegramService) SendTelegramMessage(input *TelegramMsg) (map[string]any, error) {
+	if t.botName == nil || t.token == nil {
+		return nil, errors.New("botName and token must be set")
 	}
 	// Create payload for the Telegram Bot API
 	payload := map[string]any{
 		"chat_id": input.ChatID,
 		"text":    input.Message,
 	}
+	if input.FileURL != "" {
+		if strings.Contains(input.MimeType, "audio") {
+			payload["audio"] = input.FileURL
+			payload["caption"] = input.Message
+		} else if strings.Contains(input.MimeType, "image") {
+			payload["photo"] = input.FileURL
+			payload["caption"] = input.Message
+		} else if strings.Contains(input.MimeType, "video") {
+			payload["video"] = input.FileURL
+			payload["caption"] = input.Message
+		} else {
+			payload["document"] = input.FileURL
+			payload["caption"] = input.Message
+		}
+		if input.FileCaption != "" {
+			payload["caption"] = input.FileCaption
+		}
+	}
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 
-		return err
+		return nil, err
 	}
 
 	// Send POST request to Telegram Bot API
 	url := "https://api.telegram.org/bot" + *t.token + "/sendMessage"
+	if input.FileURL != "" {
+		if strings.Contains(input.MimeType, "image") {
+			url = "https://api.telegram.org/bot" + *t.token + "/sendPhoto"
+		} else if strings.Contains(input.MimeType, "audio") {
+			url = "https://api.telegram.org/bot" + *t.token + "/sendAudio"
+		} else if strings.Contains(input.MimeType, "video") {
+			url = "https://api.telegram.org/bot" + *t.token + "/sendVideo"
+		} else {
+			url = "https://api.telegram.org/bot" + *t.token + "/sendDocument"
+		}
+	}
+
+	fmt.Println("URL:", url)
+	utils.LogJson(payload)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -80,8 +247,7 @@ func (t *TelegramService) SendTelegramMessage(input *TelegramMsg) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
-
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -92,7 +258,14 @@ func (t *TelegramService) SendTelegramMessage(input *TelegramMsg) error {
 	// 	return err
 	// }
 
-	return nil
+	var response map[string]any
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return response, nil
 }
 
 // func logTelegramMessage(chatID int64, message string) error {
@@ -110,8 +283,13 @@ func (t *TelegramService) SendTelegramMessage(input *TelegramMsg) error {
 // }
 
 type TelegramMsg struct {
-	ChatID  int64  `json:"chat_id"`
-	Message string `json:"message"`
+	ChatID      int64  `json:"chat_id"`
+	Message     string `json:"message"`
+	FileURL     string `json:"file_url"`
+	FileCaption string `json:"file_caption"`
+	MimeType    string `json:"mime_type"`
+	Save        bool   `json:"save"`
+	Data        *models.TelegramMessage
 }
 
 func (t *TelegramService) CheckSession(resp *models.TGResponse, input *models.ContactModel, connectionID, companyID string) (*models.TelegramMessageSession, error) {
@@ -195,10 +373,31 @@ func (ws *TelegramService) GetSessionMessageBySessionName(sessionName string, re
 		}
 	}
 
+	if request.URL.Query().Get("connection_session") != "" {
+		stmt = stmt.Where("telegram_message_sessions.session = ?", request.URL.Query().Get("connection_session"))
+
+	}
+
 	stmt = stmt.Order("last_online_at DESC")
 
 	utils.FixRequest(&request)
-	page := pg.With(stmt).Request(request).Response(&[]models.WhatsappMessageSession{})
+	page := pg.With(stmt).Request(request).Response(&[]models.TelegramMessageSession{})
+	page.Page = page.Page + 1
+
+	items := page.Items.(*[]models.TelegramMessageSession)
+	newItems := make([]models.TelegramMessageSession, 0)
+	for _, item := range *items {
+		// fmt.Println("CONTACT", item.Contact)
+		profile, err := item.Contact.GetProfilePicture(ws.ctx.DB)
+		if err == nil {
+			item.Contact.ProfilePicture = profile
+		}
+
+		// utils.LogJson(profile)
+
+		newItems = append(newItems, item)
+	}
+	page.Items = &newItems
 	return page, nil
 }
 

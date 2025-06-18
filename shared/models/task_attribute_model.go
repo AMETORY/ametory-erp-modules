@@ -14,6 +14,8 @@ type TaskAttributeModel struct {
 	Description string                    `json:"description"`
 	Fields      []TaskAttributeFieldModel `json:"fields" gorm:"-"`
 	Data        *string                   `json:"data,omitempty" gorm:"type:JSON"`
+	CompanyID   *string                   `json:"company_id,omitempty"`
+	Company     *CompanyModel             `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (m *TaskAttributeModel) BeforeCreate(tx *gorm.DB) (err error) {

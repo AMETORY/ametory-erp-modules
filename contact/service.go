@@ -73,6 +73,18 @@ func (s *ContactService) CreateContactFromUser(user *models.UserModel, code stri
 	return &contact, nil
 }
 
+// GetContactByPhone mengambil contact berdasarkan phone
+func (s *ContactService) GetContactByPhone(phone string, companyID string) (*models.ContactModel, error) {
+	var contact models.ContactModel
+	if err := s.ctx.DB.Where("phone = ? and company_id = ?", phone, companyID).First(&contact).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("contact not found")
+		}
+		return nil, err
+	}
+	return &contact, nil
+}
+
 // GetContactByID mengambil contact berdasarkan ID
 func (s *ContactService) GetContactByID(id string) (*models.ContactModel, error) {
 	var contact models.ContactModel
@@ -144,7 +156,7 @@ func (s *ContactService) UpdateContact(id string, data *models.ContactModel) (*m
 func (s *ContactService) GetContacts(request http.Request, search string, isCustomer, isVendor, isSupplier *bool) (paginate.Page, error) {
 
 	pg := paginate.New()
-	stmt := s.ctx.DB.Preload("Tags").Preload("Products").Distinct()
+	stmt := s.ctx.DB.Select("contacts.id, contacts.name, contacts.email, contacts.phone, contacts.connection_type, contacts.custom_data").Preload("Tags").Preload("Products")
 	if search != "" || request.URL.Query().Get("tag_ids") != "" {
 		stmt = stmt.
 			Joins("LEFT JOIN contact_tags ON contact_tags.contact_model_id = contacts.id").
@@ -184,6 +196,8 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 	if request.URL.Query().Get("tag_ids") != "" {
 		stmt = stmt.Where("tags.id in (?)", strings.Split(request.URL.Query().Get("tag_ids"), ","))
 	}
+
+	stmt = stmt.Group("contacts.id, contacts.name, contacts.email, contacts.phone")
 	stmt = stmt.Model(&models.ContactModel{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ContactModel{})
@@ -201,6 +215,11 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 			var total = s.GetTotalReceivable(&item)
 			item.TotalReceivable = total
 			item.ReceivablesLimitRemain = item.ReceivablesLimit - total
+		}
+
+		profile, err := item.GetProfilePicture(s.ctx.DB)
+		if err == nil {
+			item.ProfilePicture = profile
 		}
 
 		newItems = append(newItems, item)

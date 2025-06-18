@@ -1,14 +1,18 @@
 package project
 
 import (
+	"ametory-pm/objects"
+	"ametory-pm/services/app"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/customer_relationship"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
 	"github.com/AMETORY/ametory-erp-modules/utils"
@@ -18,12 +22,28 @@ import (
 )
 
 type ProjectService struct {
-	db  *gorm.DB
-	ctx *context.ERPContext
+	db                          *gorm.DB
+	ctx                         *context.ERPContext
+	whatsmeowService            *whatsmeow_client.WhatsmeowService
+	customerRelationshipService *customer_relationship.CustomerRelationshipService
+	appService                  *app.AppService
 }
 
 func NewProjectService(ctx *context.ERPContext) *ProjectService {
-	return &ProjectService{db: ctx.DB, ctx: ctx}
+	whatsmeowService, ok := ctx.ThirdPartyServices["WA"].(*whatsmeow_client.WhatsmeowService)
+	if !ok {
+		panic("ThirdPartyServices is not instance of whatsmeow_client.WhatsmeowService")
+	}
+	var customerRelationshipService *customer_relationship.CustomerRelationshipService
+	customerRelationshipSrv, ok := ctx.CustomerRelationshipService.(*customer_relationship.CustomerRelationshipService)
+	if ok {
+		customerRelationshipService = customerRelationshipSrv
+	}
+	appService, ok := ctx.AppService.(*app.AppService)
+	if !ok {
+		panic("AppService is not instance of app.AppService")
+	}
+	return &ProjectService{db: ctx.DB, ctx: ctx, whatsmeowService: whatsmeowService, customerRelationshipService: customerRelationshipService, appService: appService}
 }
 
 func (s *ProjectService) CreateProject(data *models.ProjectModel) error {
@@ -199,11 +219,13 @@ func (s *ProjectService) CheckIdleColumn() error {
 	for _, action := range idleColumns {
 
 		if action.Action == "send_whatsapp_message" {
+			log.Println("READY TO GET TASK FROM", action.Name)
 			for _, task := range action.Column.Tasks {
 				var waSession models.WhatsappMessageSession
 				if task.RefID != nil && *task.RefType == "whatsapp_session" {
 					err := s.ctx.DB.Preload("Contact").First(&waSession, "id = ?", task.RefID).Error
 					if err == nil {
+						log.Println("READY TO EXCUTE IDLE TASK", waSession.Contact.Name)
 						// utils.LogJson(waSession)
 						actionData := map[string]any{}
 						err := json.Unmarshal(*action.ActionData, &actionData)
@@ -224,42 +246,146 @@ func (s *ProjectService) CheckIdleColumn() error {
 						}
 						readyToSend := false
 
+						updatedAt := *task.UpdatedAt
+						if task.LastActionTriggerAt != nil {
+							updatedAt = *task.LastActionTriggerAt
+						}
+
 						switch idlePeriode {
 						case "days":
-							fmt.Println(now.Sub(*task.UpdatedAt).Hours()/24, "HARI")
-							if now.Sub(*task.UpdatedAt).Hours()/24 > idleTime {
+							fmt.Println(now.Sub(updatedAt).Hours()/24, "HARI")
+							if now.Sub(updatedAt).Hours()/24 > idleTime && action.ActionStatus == "READY" {
 								readyToSend = true
 							}
 						case "hours":
-							fmt.Println(now.Sub(*task.UpdatedAt).Hours(), "JAM")
-							if now.Sub(*task.UpdatedAt).Hours() > idleTime {
+							fmt.Println(now.Sub(updatedAt).Hours(), "JAM", action.ActionStatus)
+
+							if now.Sub(updatedAt).Hours() > idleTime && action.ActionStatus == "READY" {
 								readyToSend = true
 							}
 						case "minutes":
-							fmt.Println(now.Sub(*task.UpdatedAt).Minutes(), "MENIT")
-							if now.Sub(*task.UpdatedAt).Minutes() > idleTime {
+							fmt.Println(now.Sub(updatedAt).Minutes(), "MENIT")
+							if now.Sub(updatedAt).Minutes() > idleTime && action.ActionStatus == "READY" {
 								readyToSend = true
 							}
 						}
 
 						if readyToSend {
-							msg := parseMsgTemplate(*waSession.Contact, task.CreatedBy, actionData["message"].(string))
-							_, err := sendWAMessage(s.ctx, waSession.JID, *waSession.Contact.Phone, msg)
-							if err != nil {
-								fmt.Println("ERROR SENDING MESSAGE", err)
-								continue
-							}
-							task.LastActionTriggerAt = &now
-							task.UpdatedAt = &now
-							s.ctx.DB.Omit(clause.Associations).Save(&task)
-
-							for _, v := range action.Files {
-								if strings.Contains(v.MimeType, "image") && v.URL != "" {
-									sendWAFileMessage(s.ctx, waSession.JID, *waSession.Contact.Phone, "", "image", v.URL)
-								} else {
-									sendWAFileMessage(s.ctx, waSession.JID, *waSession.Contact.Phone, "", "document", v.URL)
+							if action.ActionHour != nil {
+								parsedTime, err := time.Parse("15:04", *action.ActionHour)
+								if err != nil {
+									fmt.Println("ERROR PARSING TIME", err)
+									continue
 								}
+								// nowTime := time.Now().In(parsedTime.Location())
+								delay := time.Duration(parsedTime.Hour()-time.Now().Hour())*time.Hour +
+									time.Duration(parsedTime.Minute()-time.Now().Minute())*time.Minute
+								action.ActionStatus = "WAITING"
+								s.ctx.DB.Omit(clause.Associations).Save(&action)
+
+								log.Println("DELAY TO EXCUTE NOW", time.Now())
+								log.Println("DELAY TO EXCUTE IDLE TASK", delay)
+								fmt.Println("DELAY TO EXCUTE IDLE TASK", delay)
+								// time.Sleep(delay)
+
+								dataSchedule := objects.ScheduledMessage{
+									To:       *waSession.Contact.Phone,
+									Files:    action.Files,
+									Message:  parseMsgTemplate(*waSession.Contact, task.CreatedBy, actionData["message"].(string)),
+									Duration: delay,
+									Data: models.WhatsappMessageModel{
+										JID:     waSession.JID,
+										Message: parseMsgTemplate(*waSession.Contact, task.CreatedBy, actionData["message"].(string)),
+									},
+									Action: &action,
+									Task:   &task,
+								}
+
+								b, _ := json.Marshal(dataSchedule)
+								s.appService.Redis.Publish(*s.ctx.Ctx, "MESSAGE:SCHEDULED", b)
+
+							} else {
+								msgData := models.WhatsappMessageModel{
+									JID:     waSession.JID,
+									Message: parseMsgTemplate(*waSession.Contact, task.CreatedBy, actionData["message"].(string)),
+								}
+
+								s.customerRelationshipService.WhatsappService.SetMsgData(s.whatsmeowService, &msgData, *waSession.Contact.Phone, action.Files, []models.ProductModel{}, false, nil)
+								_, err := customer_relationship.SendCustomerServiceMessage(s.customerRelationshipService.WhatsappService)
+								if err != nil {
+									log.Println("ERROR", err)
+									continue
+								}
+								task.LastActionTriggerAt = &now
+								task.UpdatedAt = &now
+								s.ctx.DB.Omit(clause.Associations).Save(&task)
 							}
+
+							// thumbnail, restFiles := models.GetThumbnail(action.Files)
+							// var fileType, fileUrl string
+							// if thumbnail != nil {
+							// 	fileType = "image"
+							// 	fileUrl = thumbnail.URL
+							// }
+							// waData := whatsmeow_client.WaMessage{
+							// 	JID:      waSession.JID,
+							// 	Text:     parseMsgTemplate(*waSession.Contact, task.CreatedBy, actionData["message"].(string)),
+							// 	To:       *waSession.Contact.Phone,
+							// 	IsGroup:  false,
+							// 	FileType: fileType,
+							// 	FileUrl:  fileUrl,
+							// }
+
+							// _, err = s.whatsmeowService.SendMessage(waData)
+							// if err != nil {
+							// 	continue
+							// }
+
+							// for _, v := range restFiles {
+							// 	if strings.Contains(v.MimeType, "image") && v.URL != "" {
+							// 		resp, _ := s.whatsmeowService.SendMessage(whatsmeow_client.WaMessage{
+							// 			JID:      waSession.JID,
+							// 			Text:     "",
+							// 			To:       *waSession.Contact.Phone,
+							// 			IsGroup:  false,
+							// 			FileType: "image",
+							// 			FileUrl:  v.URL,
+							// 		})
+							// 		fmt.Println("RESPONSE", resp)
+							// 	} else {
+							// 		resp, _ := s.whatsmeowService.SendMessage(whatsmeow_client.WaMessage{
+							// 			JID:      waSession.JID,
+							// 			Text:     "",
+							// 			To:       *waSession.Contact.Phone,
+							// 			IsGroup:  false,
+							// 			FileType: "document",
+							// 			FileUrl:  v.URL,
+							// 		})
+							// 		fmt.Println("RESPONSE", resp)
+							// 	}
+
+							// }
+
+							action.ActionStatus = "READY"
+							s.ctx.DB.Omit(clause.Associations).Save(&action)
+
+							// msg := parseMsgTemplate(*waSession.Contact, task.CreatedBy, actionData["message"].(string))
+							// _, err := sendWAMessage(s.ctx, waSession.JID, *waSession.Contact.Phone, msg)
+							// if err != nil {
+							// 	fmt.Println("ERROR SENDING MESSAGE", err)
+							// 	continue
+							// }
+							// task.LastActionTriggerAt = &now
+							// task.UpdatedAt = &now
+							// s.ctx.DB.Omit(clause.Associations).Save(&task)
+
+							// for _, v := range action.Files {
+							// 	if strings.Contains(v.MimeType, "image") && v.URL != "" {
+							// 		sendWAFileMessage(s.ctx, waSession.JID, *waSession.Contact.Phone, "", "image", v.URL)
+							// 	} else {
+							// 		sendWAFileMessage(s.ctx, waSession.JID, *waSession.Contact.Phone, "", "document", v.URL)
+							// 	}
+							// }
 
 						}
 						// if waSession.Contact.Phone != nil {

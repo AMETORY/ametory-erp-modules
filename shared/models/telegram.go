@@ -14,11 +14,48 @@ type TGResponse struct {
 }
 
 type TelegramMsg struct {
-	MessageID int64        `json:"message_id"`
-	From      TelegramUser `json:"from"`
-	Chat      TelegramChat `json:"chat"`
-	Date      int64        `json:"date"`
-	Text      string       `json:"text"`
+	MessageID      int64          `json:"message_id"`
+	From           TelegramUser   `json:"from"`
+	Chat           TelegramChat   `json:"chat"`
+	Date           int64          `json:"date"`
+	Text           string         `json:"text"`
+	Caption        string         `json:"caption"`
+	Photos         []TelegramFile `json:"photo"`
+	Video          *TelegramVideo `json:"video"`
+	Voice          *TelegramAudio `json:"voice"`
+	Document       *TelegramFile  `json:"document"`
+	ReplyToMessage *TelegramMsg   `json:"reply_to_message"`
+}
+
+type TelegramFile struct {
+	FileID       string `json:"file_id"`
+	FileUniqueID string `json:"file_unique_id"`
+	FileSize     int    `json:"file_size"`
+	Width        int    `json:"width"`
+	Height       int    `json:"height"`
+	FileName     string `json:"file_name"`
+	MimeType     string `json:"mime_type"`
+}
+
+type TelegramVideo struct {
+	Duration     int          `json:"duration"`
+	Width        int          `json:"width"`
+	Height       int          `json:"height"`
+	FileName     string       `json:"file_name"`
+	MimeType     string       `json:"mime_type"`
+	Thumbnail    TelegramFile `json:"thumbnail"`
+	Thumb        TelegramFile `json:"thumb"`
+	FileID       string       `json:"file_id"`
+	FileUniqueID string       `json:"file_unique_id"`
+	FileSize     int          `json:"file_size"`
+}
+
+type TelegramAudio struct {
+	Duration     int    `json:"duration"`
+	MimeType     string `json:"mime_type"`
+	FileID       string `json:"file_id"`
+	FileUniqueID string `json:"file_unique_id"`
+	FileSize     int    `json:"file_size"`
 }
 
 type TelegramUser struct {
@@ -64,6 +101,13 @@ type TelegramMessage struct {
 	IsAutoPilot              bool                    `json:"is_auto_pilot" gorm:"default:false"`
 	TelegramMessageSessionID *string                 `json:"telegram_message_session_id,omitempty" gorm:"column:telegram_message_session_id"`
 	TelegramMessageSession   *TelegramMessageSession `gorm:"foreignKey:TelegramMessageSessionID" json:"telegram_message_session,omitempty"`
+	QuotedMessage            *string                 `json:"quoted_message"`
+	QuotedMessageID          *string                 `json:"quoted_message_id"`
+}
+
+type TelegramPhoto struct {
+	TotalCount int              `json:"total_count"`
+	Photos     [][]TelegramFile `json:"photos"`
 }
 
 func (t *TelegramMessage) BeforeCreate(tx *gorm.DB) error {

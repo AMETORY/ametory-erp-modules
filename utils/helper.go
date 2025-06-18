@@ -18,6 +18,7 @@ import (
 
 	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 	"github.com/ttacon/libphonenumber"
 	"golang.org/x/text/language"
@@ -227,7 +228,7 @@ func FileHeaderToBytes(fileHeader *multipart.FileHeader) ([]byte, error) {
 }
 
 func FilenameTrimSpace(filename string) string {
-	return strings.ReplaceAll(filename, " ", "-")
+	return strings.ReplaceAll(strings.ReplaceAll(filename, " ", "-"), "%", "")
 }
 
 func ReduceMap(data map[string]interface{}, keys []string) map[string]interface{} {
@@ -430,4 +431,22 @@ func LogPrint(v ...any) {
 func LogPrintf(format string, v ...any) {
 	content := fmt.Sprintf(format, v...)
 	log.Printf("[%s] %s\n", time.Now().Format(time.RFC3339), content)
+}
+
+func GetMimeType(url string) string {
+	resp, err := http.Get(url)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	fileBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+
+	mtype := mimetype.Detect(fileBytes)
+
+	return mtype.String()
+
 }

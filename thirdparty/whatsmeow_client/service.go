@@ -3,6 +3,7 @@ package whatsmeow_client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -14,6 +15,7 @@ type WhatsmeowService struct {
 	MockNumber string
 	RedisKey   string
 	IsMock     bool
+	chatData   *WaMessage
 }
 
 func NewWhatsmeowService(baseURL, mockNumber string, isMock bool, redisKey string) *WhatsmeowService {
@@ -27,7 +29,15 @@ func NewWhatsmeowService(baseURL, mockNumber string, isMock bool, redisKey strin
 		RedisKey:   redisKey,
 	}
 }
-
+func (s *WhatsmeowService) SetChatData(msg WaMessage) {
+	s.chatData = &msg
+}
+func (s *WhatsmeowService) SendChatMessage() (any, error) {
+	if s.chatData == nil {
+		return nil, errors.New("chat data is empty")
+	}
+	return s.SendMessage(*s.chatData)
+}
 func (s *WhatsmeowService) SendMessage(msg WaMessage) (any, error) {
 	if s.IsMock && s.MockNumber != "" {
 		msg.To = s.MockNumber

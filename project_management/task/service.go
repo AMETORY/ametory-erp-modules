@@ -43,7 +43,7 @@ func (s *TaskService) DeleteTask(id string) error {
 
 func (s *TaskService) GetTaskByID(id string) (*models.TaskModel, error) {
 	var invoice models.TaskModel
-	err := s.db.Preload("TaskAttribute").Preload("FormResponse").Preload("Activities", func(db *gorm.DB) *gorm.DB {
+	err := s.db.Preload("Tags").Preload("TaskAttribute").Preload("FormResponse").Preload("Activities", func(db *gorm.DB) *gorm.DB {
 		return s.db.Preload("Member.User").Preload("Column").Preload("Task")
 	}).Preload("Assignee.User").Preload("Watchers.User").Preload("Comments", func(db *gorm.DB) *gorm.DB {
 		return db.Preload("Member.User").Order("published_at").Where("status = ?", "PUBLISHED")
@@ -59,7 +59,7 @@ func (s *TaskService) SetJoins(joins map[string][]interface{}) {
 }
 func (s *TaskService) GetTasks(request http.Request, search string, projectId *string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Assignee.User").Preload("Watchers.User")
+	stmt := s.db.Preload("Tags").Preload("Assignee.User").Preload("Watchers.User")
 	if search != "" {
 		stmt = stmt.Where("tasks.name ILIKE ? OR tasks.description ILIKE ?",
 			"%"+search+"%",

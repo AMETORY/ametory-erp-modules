@@ -74,6 +74,8 @@ type ColumnAction struct {
 	ActionValueType string           `json:"action_value_type,omitempty"`
 	Status          string           `gorm:"type:varchar(50);default:DRAFT" json:"status,omitempty"`
 	Files           []FileModel      `json:"files,omitempty" gorm:"-"`
+	ActionHour      *string          `gorm:"type:varchar(50)" json:"action_hour,omitempty"`
+	ActionStatus    string           `gorm:"type:varchar(50);default:READY" json:"action_status,omitempty"`
 }
 
 func (m *ColumnAction) AfterFind(tx *gorm.DB) error {

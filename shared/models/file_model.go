@@ -1,6 +1,8 @@
 package models
 
 import (
+	"strings"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -28,4 +30,17 @@ func (f *FileModel) BeforeCreate(tx *gorm.DB) error {
 		f.ID = uuid.New().String()
 	}
 	return nil
+}
+
+func GetThumbnail(files []FileModel) (*FileModel, []FileModel) {
+	restFiles := []FileModel{}
+	var thumbnail *FileModel
+	for _, v := range files {
+		if strings.HasPrefix(v.MimeType, "image/") && thumbnail == nil {
+			thumbnail = &v
+		} else {
+			restFiles = append(restFiles, v)
+		}
+	}
+	return thumbnail, restFiles
 }

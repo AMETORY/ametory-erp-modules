@@ -11,6 +11,14 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 )
 
+type CustomerServiceMessage interface {
+	SendCSMessage() (any, error)
+}
+
+func SendCustomerServiceMessage(cs CustomerServiceMessage) (any, error) {
+	return cs.SendCSMessage()
+}
+
 type CustomerRelationshipService struct {
 	ctx              *context.ERPContext
 	WhatsappService  *whatsapp.WhatsappService
@@ -40,6 +48,7 @@ func (cs *CustomerRelationshipService) Migrate() error {
 	}
 	return cs.ctx.DB.AutoMigrate(
 		&models.WhatsappMessageModel{},
+		&models.WhatsappMessageReaction{},
 		&models.WhatsappMessageSession{},
 		&models.FormTemplate{},
 		&models.FormModel{},

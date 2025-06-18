@@ -42,6 +42,16 @@ type ContactModel struct {
 	InstagramID            *string         `json:"instagram_id"`
 	ConnectionType         *string         `json:"connection_type" gorm:"default:whatsapp"`
 	CustomData             json.RawMessage `json:"custom_data,omitempty" gorm:"type:JSON;default:'{}'"`
+	ProfilePicture         *FileModel      `json:"profile_picture,omitempty" gorm:"-"`
+}
+
+func (u *ContactModel) GetProfilePicture(tx *gorm.DB) (*FileModel, error) {
+	file := FileModel{}
+	err := tx.Where("ref_id = ? and ref_type = ?", u.ID, "contact").Order("created_at desc").First(&file).Error
+	if err == nil {
+		return &file, nil
+	}
+	return nil, err
 }
 
 func (ContactModel) TableName() string {
@@ -60,4 +70,18 @@ type CountByTag struct {
 	Name  string `json:"name"`
 	Color string `json:"color"`
 	Count int    `json:"count"`
+}
+
+func (u *ContactModel) AfterFind(tx *gorm.DB) (err error) {
+	if u.Company != nil && u.Company.ID != "" {
+		var company CompanyModel
+		tx.Where("id = ?", u.Company.ID).First(&company)
+		u.Company = &company
+	}
+
+	// file, err := u.GetProfilePicture(tx)
+	// if err == nil {
+	// 	u.ProfilePicture = file
+	// }
+	return
 }
