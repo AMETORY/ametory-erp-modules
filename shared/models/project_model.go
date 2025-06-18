@@ -91,3 +91,13 @@ func (c *ColumnAction) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return nil
 }
+
+type ScheduledMessage struct {
+	To       string               `json:"to"`
+	Message  string               `json:"message"`
+	Duration time.Duration        `json:"duration"`
+	Files    []FileModel          `json:"files"`
+	Data     WhatsappMessageModel `json:"data"`
+	Action   *ColumnAction        `json:"action"`
+	Task     *TaskModel           `json:"task"`
+}

@@ -1,8 +1,6 @@
 package project
 
 import (
-	"ametory-pm/objects"
-	"ametory-pm/services/app"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -26,7 +24,6 @@ type ProjectService struct {
 	ctx                         *context.ERPContext
 	whatsmeowService            *whatsmeow_client.WhatsmeowService
 	customerRelationshipService *customer_relationship.CustomerRelationshipService
-	appService                  *app.AppService
 }
 
 func NewProjectService(ctx *context.ERPContext) *ProjectService {
@@ -39,11 +36,8 @@ func NewProjectService(ctx *context.ERPContext) *ProjectService {
 	if ok {
 		customerRelationshipService = customerRelationshipSrv
 	}
-	appService, ok := ctx.AppService.(*app.AppService)
-	if !ok {
-		panic("AppService is not instance of app.AppService")
-	}
-	return &ProjectService{db: ctx.DB, ctx: ctx, whatsmeowService: whatsmeowService, customerRelationshipService: customerRelationshipService, appService: appService}
+
+	return &ProjectService{db: ctx.DB, ctx: ctx, whatsmeowService: whatsmeowService, customerRelationshipService: customerRelationshipService}
 }
 
 func (s *ProjectService) CreateProject(data *models.ProjectModel) error {
@@ -208,7 +202,7 @@ func (s *ProjectService) DeleteColumnAction(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.ColumnAction{}).Error
 }
 
-func (s *ProjectService) CheckIdleColumn() error {
+func (s *ProjectService) CheckIdleColumn(callback func(models.ScheduledMessage)) error {
 	// Add logic to check for idle columns
 	var idleColumns []models.ColumnAction
 	err := s.db.Where("action_trigger = ?", "IDLE").Preload("Column.Tasks.CreatedBy").Find(&idleColumns).Error
@@ -288,7 +282,7 @@ func (s *ProjectService) CheckIdleColumn() error {
 								fmt.Println("DELAY TO EXCUTE IDLE TASK", delay)
 								// time.Sleep(delay)
 
-								dataSchedule := objects.ScheduledMessage{
+								dataSchedule := models.ScheduledMessage{
 									To:       *waSession.Contact.Phone,
 									Files:    action.Files,
 									Message:  parseMsgTemplate(*waSession.Contact, task.CreatedBy, actionData["message"].(string)),
@@ -301,8 +295,7 @@ func (s *ProjectService) CheckIdleColumn() error {
 									Task:   &task,
 								}
 
-								b, _ := json.Marshal(dataSchedule)
-								s.appService.Redis.Publish(*s.ctx.Ctx, "MESSAGE:SCHEDULED", b)
+								callback(dataSchedule)
 
 							} else {
 								msgData := models.WhatsappMessageModel{

@@ -1,25 +1,62 @@
 # ametory-erp-modules
 
-## TODO
+## EXAMPLE INIT CODE
 
-- [x] Authentication
-- [x] Manajemen Company
-- [ ] Manajemen Keuangan (Finance Management)
-- [ ] Manajemen Sumber Daya Manusia (HRM - Human Resource Management)
-- [ ] Manajemen Inventaris (Inventory Management)
-- [ ] Manajemen Produksi (Manufacturing Management)
-- [ ] Manajemen Rantai Pasok (Supply Chain Management)
-- [ ] Manajemen Proyek (Project Management)
-- [ ] Manajemen Hubungan Pelanggan (CRM - Customer Relationship Management)
-- [ ] Manajemen Aset (Asset Management)
-- [ ] Manajemen Laporan dan Analitik (Reporting and Analytics)
-- [ ] Manajemen Keamanan dan Akses (Security and Access Management)
-- [ ] Integrasi dengan Sistem Lain (Integration)
-- [ ] Manajemen Dokumen (Document Management)
-- [ ] Manajemen Kualitas (Quality Management)
-- [ ] Manajemen Risiko dan Kepatuhan (Risk and Compliance Management)
-- [ ] Manajemen E-Commerce
-- [ ] Notification Service
-    - Push Notification
-    - Email Notification
-    - Etc
+```go
+package main
+
+import (
+	"ametory-erp/api/router"
+	"ametory-erp/config"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/AMETORY/ametory-erp-modules/app"
+	"github.com/gin-gonic/gin"
+)
+
+func main() { // Initialize the application container with options
+
+	ctx := context.Background()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Gagal memuat konfigurasi: %v", err)
+	}
+
+	// Initialize database
+	db, err := config.InitDB(cfg)
+	if err != nil {
+		log.Fatalf("Gagal menghubungkan ke database: %v", err)
+	}
+
+	fmt.Println("Berhasil terhubung ke database", cfg.Database.Name)
+	appContainer := app.NewAppContainer(
+		db,
+		nil,
+		&ctx,
+		false,
+		cfg.Server.BaseURL,
+		app.WithAdminAuth(),
+		app.WithHRIS(),
+	)
+
+	fmt.Println("Berhasil init AppContainer")
+
+	r := gin.Default()
+
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Hello, World!",
+		})
+	})
+
+	v1 := r.Group("/api/v1")
+	router.SetUpAuthRoutes(v1, appContainer)
+
+	r.Run(":" + cfg.Server.Port)
+
+}
+
+```

@@ -40,8 +40,8 @@ type ERPContext struct {
 	AppService                  interface{}
 	CrowdFundingService         interface{}
 	NotificationService         interface{}
-	InternalService             interface{}
 	HRISService                 interface{}
+	InternalService             interface{}
 	TempData                    interface{}
 	Config                      ctxConfig
 
