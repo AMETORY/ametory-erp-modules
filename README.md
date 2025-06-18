@@ -102,3 +102,8 @@ run migrate with
 ```bash
 go run main.go migrate
 ```
+
+### Use CLI Generator
+```bash
+go install github.com/AMETORY/ametory-erp-modules/cmd/erpgen@latest
+```
