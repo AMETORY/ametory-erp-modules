@@ -1,30 +1,89 @@
 package main
 
 import (
-	"github.com/AMETORY/ametory-erp-modules/core"
-	{{- if contains .ThirdParties "Email (SMTP)" }}
-	"github.com/AMETORY/ametory-erp-modules/thirdparty"
-	{{- end }}
+	"{{.ModuleName}}/api/router"
+	"{{.ModuleName}}/config"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/AMETORY/ametory-erp-modules/app"
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	// Initialize context
-	erpContext := &core.ERPContext{
-		// Configuration
+
+	rootCmd := &cobra.Command{
+		Use:   "app",
+		Short: "Application CLI",
 	}
 
-	// Initialize container
-	container := core.NewAppContainer(erpContext)
-		{{- if contains .CoreModules "Auth & RBAC" }}
-		.WithAuthServices()
-		{{- end }}
-		{{- if contains .CoreModules "HRIS" }}
-		.WithHRIS()
-		{{- end }}
-		{{- if contains .ThirdParties "Email (SMTP)" }}
-		.WithEmailSender(&thirdparty.SMTPSender{})
-		{{- end }}
+	migrateCmd := &cobra.Command{
+		Use:   "migrate",
+		Short: "Run database migrations",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Running migrations...")
+			// Add migration logic here
+			initContainer(false)
+		},
+	}
 
-	// Start application
-	// ...
+	serveCmd := &cobra.Command{
+		Use:   "serve",
+		Short: "Start the application server",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Starting server...")
+			appContainer := initContainer(true)
+
+			r := gin.Default()
+
+			r.GET("/", func(c *gin.Context) {
+				c.JSON(http.StatusOK, gin.H{
+					"message": "Hello, World!",
+				})
+			})
+
+			v1 := r.Group("/api/v1")
+			router.SetUpAuthRoutes(v1, appContainer)
+
+			r.Run(":" + config.App.Server.Port)
+		},
+	}
+
+	rootCmd.AddCommand(migrateCmd, serveCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatalf("Error executing command, %s", err)
+	}
+}
+
+func initContainer(skipMigrate bool) *app.AppContainer {
+	ctx := context.Background()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	db, err := config.InitDB(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	fmt.Println("Successfully connected to database", cfg.Database.Name)
+
+	return app.NewAppContainer(
+		db,
+		nil,
+		&ctx,
+		skipMigrate,
+		cfg.Server.BaseURL,
+		{{- range .CoreModules}}
+		app.With{{.}}(),
+		{{- end}}
+		{{- range .ThirdParties}}
+		app.With{{.}}(),
+		{{- end}}
+	)
 }

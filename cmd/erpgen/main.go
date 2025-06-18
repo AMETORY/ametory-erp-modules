@@ -47,13 +47,31 @@ func main() {
 
 	// Module selection
 	coreModules := []string{
-		"Auth & RBAC",
-		"HRIS",
-		"CRM",
+		"Auth",
+		"AdminAuth",
+		"RBAC",
 		"Inventory",
 		"Manufacture",
+		"Company",
+		"Contact",
 		"Finance",
+		"Cooperative",
+		"Order",
 		"Logistic",
+		"AuditTrail",
+		"Distribution",
+		"CustomerRelationship",
+		"File",
+		"Medical",
+		"IndonesiaReg",
+		"User",
+		"ContentManagement",
+		"Tag",
+		"Message",
+		"ProjectManagement",
+		"CrowdFunding",
+		"Notification",
+		"HRIS",
 	}
 
 	var selectedCore []string
@@ -66,10 +84,13 @@ func main() {
 
 	// Third-party selection
 	thirdParty := []string{
-		"Email (SMTP)",
-		"Watzap",
+		"EmailSender",
+		"EmailAPIService",
+		"WatzapClient",
+		"WhatsmeowService",
 		"Firestore",
-		"FCM",
+		"FCMService",
+		"AppService",
 	}
 
 	var selectedThirdParty []string
@@ -108,4 +129,5 @@ func main() {
 	fmt.Printf("1. cd %s\n", answers.ProjectDir)
 	fmt.Println("2. go mod tidy")
 	fmt.Println("3. go run main.go")
+	fmt.Println("4. check third parties parameters and Customize your application as needed. You can add more modules or third-party integrations later.")
 }

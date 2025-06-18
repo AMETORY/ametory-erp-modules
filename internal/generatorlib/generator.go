@@ -20,7 +20,18 @@ func loadTemplate(name string) (*template.Template, error) {
 		return nil, err
 	}
 
-	return template.New(name).Parse(string(content))
+	tmpl := template.New(name).Funcs(template.FuncMap{
+		"contains": func(list []string, item string) bool {
+			for _, s := range list {
+				if s == item {
+					return true
+				}
+			}
+			return false
+		},
+	})
+
+	return tmpl.Parse(string(content))
 }
 
 type ProjectConfig struct {
@@ -56,13 +67,52 @@ func GenerateProject(config ProjectConfig) error {
 
 	// 3. Generate config file
 	if err := generateFromTemplate("config.yaml.tmpl",
-		filepath.Join(config.ProjectDir, "config", "erp.yaml"), config); err != nil {
+		filepath.Join(config.ProjectDir, "config.yaml"), config); err != nil {
 		return err
 	}
 	bar.Add(1)
 
 	// 4. Create other necessary files
 	if err := createGitIgnore(config.ProjectDir); err != nil {
+		return err
+	}
+	bar.Add(1)
+
+	// 5. Create directories for api handler
+	if err := generateFromTemplate("apihandler.go.tmpl",
+		filepath.Join(config.ProjectDir, "api", "handler", "auth.go"), config); err != nil {
+		return err
+	}
+	bar.Add(1)
+
+	// 6. Create directories for api router
+	if err := generateFromTemplate("apirouter.go.tmpl",
+		filepath.Join(config.ProjectDir, "api", "router", "auth.go"), config); err != nil {
+		return err
+	}
+	bar.Add(1)
+
+	// 7. Create directories for config
+	if err := generateFromTemplate("config.go.tmpl",
+		filepath.Join(config.ProjectDir, "config", "config.go"), config); err != nil {
+		return err
+	}
+	bar.Add(1)
+
+	if err := generateFromTemplate("database.go.tmpl",
+		filepath.Join(config.ProjectDir, "config", "database.go"), config); err != nil {
+		return err
+	}
+	bar.Add(1)
+
+	if err := generateFromTemplate("email.go.tmpl",
+		filepath.Join(config.ProjectDir, "config", "email.go"), config); err != nil {
+		return err
+	}
+	bar.Add(1)
+
+	if err := generateFromTemplate("server.go.tmpl",
+		filepath.Join(config.ProjectDir, "config", "server.go"), config); err != nil {
 		return err
 	}
 	bar.Add(1)
@@ -87,6 +137,8 @@ require (
 }
 
 func generateFromTemplate(templateName, outputPath string, data ProjectConfig) error {
+	// Buat template dengan fungsi custom
+
 	tmpl, err := loadTemplate(templateName)
 	if err != nil {
 		return err

@@ -38,6 +38,24 @@ func WithAuth() AppContainerOption {
 	}
 }
 
+// WithAdminAuth adds the AdminAuthService to the AppContainer.
+func WithAdminAuth() AppContainerOption {
+	return func(c *AppContainer) {
+		c.AdminAuthService = auth.NewAdminAuthService(c.erpContext)
+		log.Println("AdminAuthService initialized")
+	}
+}
+
+// WithRBAC adds the RBACService to the AppContainer.
+//
+// It is an optional option.
+func WithRBAC() AppContainerOption {
+	return func(c *AppContainer) {
+		c.RBACService = auth.NewRBACService(c.erpContext)
+		log.Println("RBACService initialized")
+	}
+}
+
 // WithInventory adds the InventoryService to the AppContainer.
 //
 // It is an optional option.
@@ -55,24 +73,6 @@ func WithManufacture() AppContainerOption {
 	return func(c *AppContainer) {
 		c.ManufactureService = manufacture.NewManufactureService(c.erpContext, c.InventoryService)
 		log.Println("ManufactureService initialized")
-	}
-}
-
-// WithAdminAuth adds the AdminAuthService to the AppContainer.
-func WithAdminAuth() AppContainerOption {
-	return func(c *AppContainer) {
-		c.AdminAuthService = auth.NewAdminAuthService(c.erpContext)
-		log.Println("AdminAuthService initialized")
-	}
-}
-
-// WithRBAC adds the RBACService to the AppContainer.
-//
-// It is an optional option.
-func WithRBAC() AppContainerOption {
-	return func(c *AppContainer) {
-		c.RBACService = auth.NewRBACService(c.erpContext)
-		log.Println("RBACService initialized")
 	}
 }
 
