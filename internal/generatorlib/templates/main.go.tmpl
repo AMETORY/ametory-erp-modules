@@ -1,0 +1,30 @@
+package main
+
+import (
+	"github.com/AMETORY/ametory-erp-modules/core"
+	{{- if contains .ThirdParties "Email (SMTP)" }}
+	"github.com/AMETORY/ametory-erp-modules/thirdparty"
+	{{- end }}
+)
+
+func main() {
+	// Initialize context
+	erpContext := &core.ERPContext{
+		// Configuration
+	}
+
+	// Initialize container
+	container := core.NewAppContainer(erpContext)
+		{{- if contains .CoreModules "Auth & RBAC" }}
+		.WithAuthServices()
+		{{- end }}
+		{{- if contains .CoreModules "HRIS" }}
+		.WithHRIS()
+		{{- end }}
+		{{- if contains .ThirdParties "Email (SMTP)" }}
+		.WithEmailSender(&thirdparty.SMTPSender{})
+		{{- end }}
+
+	// Start application
+	// ...
+}
