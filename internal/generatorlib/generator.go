@@ -2,6 +2,7 @@ package generatorlib
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 //go:embed templates/*
 var templateFS embed.FS
+var version = "1.0.4"
 
 func loadTemplate(name string) (*template.Template, error) {
 	content, err := fs.ReadFile(templateFS, "templates/"+name)
@@ -59,7 +61,7 @@ func GenerateAPI(config map[string]any) error {
 	fmt.Printf("Snake API Name: %s\n", snakeApiName)
 	fmt.Printf("Camel API Name: %s\n", camelApiName)
 
-	// 1. GENERATE ROUTE
+	// 1. GENERATE HANDLER
 
 	if err := generateFromTemplate("crud/handler.go.tmpl",
 		filepath.Join(projectDir, "api", "handler", snakeApiName+".go"), ProjectConfig{
@@ -72,6 +74,41 @@ func GenerateAPI(config map[string]any) error {
 		}); err != nil {
 		return err
 	}
+
+	// 2. GENERATE ROUTER
+	if err := generateFromTemplate("crud/route.go.tmpl",
+		filepath.Join(projectDir, "api", "router", snakeApiName+".go"), ProjectConfig{
+			ModuleName:       moduleName,
+			ProjectDir:       projectDir,
+			ApiName:          apiName,
+			SnakeApiName:     snakeApiName,
+			SnakeServiceName: SnakeServiceName,
+			CamelApiName:     camelApiName,
+		}); err != nil {
+		return err
+	}
+
+	authMiddleware := filepath.Join(projectDir, "api", "middleware", "auth.go")
+	if _, err := os.Stat(authMiddleware); err == nil {
+		fmt.Printf("Auth middleware already exist, skip generating.\n")
+	} else if errors.Is(err, os.ErrNotExist) {
+		// 3. GENERATE MIDDLEWARE
+		if err := generateFromTemplate("crud/middleware.go.tmpl",
+			authMiddleware, ProjectConfig{
+				ModuleName:       moduleName,
+				ProjectDir:       projectDir,
+				ApiName:          apiName,
+				SnakeApiName:     snakeApiName,
+				SnakeServiceName: SnakeServiceName,
+				CamelApiName:     camelApiName,
+			}); err != nil {
+			return err
+		}
+	} else {
+		return err
+	}
+
+	// 4. GENERATE SERVICE
 
 	return nil
 }
@@ -160,8 +197,8 @@ func createGoMod(config ProjectConfig) error {
 go 1.21
 
 require (
-	github.com/AMETORY/ametory-erp-modules v1.0.3
-)`, config.ModuleName)
+	github.com/AMETORY/ametory-erp-modules %s
+)`, config.ModuleName, version)
 
 	return os.WriteFile(
 		filepath.Join(config.ProjectDir, "go.mod"),

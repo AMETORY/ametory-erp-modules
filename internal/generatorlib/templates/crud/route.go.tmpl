@@ -1,23 +1,22 @@
 package router
 
 import (
-	"{{.ModuleName}}/api/handlers"
-	"{{.ModuleName}}/api/middlewares"
-
-	"github.com/AMETORY/ametory-erp-modules/context"
+	"{{.ModuleName}}/api/handler"
+	"{{.ModuleName}}/api/middleware"
+	"github.com/AMETORY/ametory-erp-modules/app"
 	"github.com/gin-gonic/gin"
 )
 
-func SetupTagRoutes(r *gin.RouterGroup, erpContext *context.ERPContext) {
-	handler := handlers.NewTagHandler(erpContext)
+func SetupTagRoutes(r *gin.RouterGroup, appContainer *app.AppContainer) {
+	hdl := handler.New{{.ApiName}}Handler(appContainer)
 
-	{{.CamelApiName}}Group := r.Group("/{{.SnakeApiName}")
-	{{.CamelApiName}}Group.Use(middlewares.AuthMiddleware(erpContext, true))
+	{{.CamelApiName}}Group := r.Group("/{{.SnakeApiName}}")
+	{{.CamelApiName}}Group.Use(middleware.AuthMiddleware(appContainer, true))
 	{
-		{{.CamelApiName}}Group.GET("/list", handler.GetTagsHandler)
-		{{.CamelApiName}}Group.GET("/:id",  handler.GetTagDetailHandler)
-		{{.CamelApiName}}Group.POST("/create",  handler.CreateTagHandler)
-		{{.CamelApiName}}Group.PUT("/:id",  handler.UpdateTagHandler)
-		{{.CamelApiName}}Group.DELETE("/:id",  handler.DeleteTagHandler)
+		{{.CamelApiName}}Group.GET("/list", hdl.List{{.ApiName}}Handler)
+		{{.CamelApiName}}Group.GET("/:id",  hdl.Get{{.ApiName}}Handler)
+		{{.CamelApiName}}Group.POST("/create",  hdl.Create{{.ApiName}}Handler)
+		{{.CamelApiName}}Group.PUT("/:id",  hdl.Update{{.ApiName}}Handler)
+		{{.CamelApiName}}Group.DELETE("/:id",  hdl.Delete{{.ApiName}}Handler)
 	}
 }

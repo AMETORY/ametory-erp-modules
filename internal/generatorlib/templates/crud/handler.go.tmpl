@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
-	_ "github.com/AMETORY/ametory-erp-modules/{{.SnakeServiceName}}/{{.SnakeApiName}}"
+	_ "github.com/AMETORY/ametory-erp-modules/{{.SnakeServiceName}}{{if ne .SnakeApiName .SnakeServiceName}}/{{.SnakeApiName}}{{end}}"
 	"github.com/AMETORY/ametory-erp-modules/app"
 	"github.com/gin-gonic/gin"
 	"net/http"

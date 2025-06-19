@@ -17,6 +17,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var version = "1.0.4"
+
 var (
 	coreModules = []string{
 		"Auth",
@@ -45,7 +47,7 @@ var (
 		"Notification",
 		"HRIS",
 	}
-
+	// TODO: please complete this
 	subModules = map[string][]string{
 		"Inventory": {
 			"Brand",
@@ -61,6 +63,81 @@ var (
 			"StockOpname",
 			"Unit",
 		},
+		"Company": {},
+		"Contact": {},
+		"Finance": {
+			"Account",
+			"Asset",
+			"Bank",
+			"Journal",
+			"Loan",
+			"Report",
+			"Saving",
+			"Tax",
+			"Transaction",
+		},
+		"Cooperative": {
+			"CooperativeMember",
+			"CooperativeSetting",
+			"LoanApplication",
+			"NetSurplus",
+			"Saving",
+		},
+		"CrowdFunding": {
+			"Campaign",
+			"Donation",
+		},
+		"CustomerRelationship": {
+			"CRM",
+			"Form",
+			"Instagram",
+			"KnowledgeBase",
+			"LiveChat",
+			"Telegram",
+			"Ticket",
+			"Whatsapp",
+		},
+		"Distribution": {
+			"Cart",
+			"Distributor",
+			"Logistic",
+			"Offering",
+			"OrderRequest",
+			"Shipping",
+			"Storage",
+		},
+		"HRIS": {
+			"Attendance",
+			"AttendancePolicy",
+			"DeductionSetting",
+			"Employee",
+			"EmployeeActivity",
+			"EmployeeOvertime",
+		},
+		"Message": {
+			"Chat",
+			"Inbox",
+		},
+		"Order": {
+			"Banner",
+			"Merchant",
+			"Payment",
+			"PaymentTerm",
+			"POS",
+			"Promotion",
+			"Sales",
+			"SalesReturn",
+			"Withdrawal",
+		},
+		"ProjectManagement": {
+			"Member",
+			"Project",
+			"Task",
+			"TaskAttribute",
+			"Team",
+		},
+		"Tag":  {},
+		"User": {},
 	}
 	thirdParty = []string{
 		"EmailSender",
@@ -126,30 +203,46 @@ func generateAPI() {
 
 	listSubModules, ok := subModules[apiName]
 	if ok {
-		var selectedSubModules []string
-		if err := survey.AskOne(&survey.MultiSelect{
-			Message: "Select sub-modules to generate:",
-			Options: listSubModules,
-		}, &selectedSubModules); err != nil {
-			log.Fatal(err)
-		}
-		if len(selectedSubModules) > 0 {
-			for _, subModule := range selectedSubModules {
-				subConfig := map[string]any{
-					"ModuleName":       moduleName,
-					"ProjectDir":       projectDir,
-					"ApiName":          subModule,
-					"SnakeServiceName": toSnakeCase(apiName),
-					"snakeApiName":     toSnakeCase(subModule),
-					"camelApiName":     toCamelCase(subModule),
-				}
-				// fmt.Printf("Generating sub-module: %s\n", subConfig)
-				if err := generatorlib.GenerateAPI(subConfig); err != nil {
-					log.Fatalf("Failed to generate sub-module %s: %v", subModule, err)
-				}
+		if len(listSubModules) == 0 {
+			fmt.Println("No sub-modules available for this API, generating only the main API.")
+			subConfig := map[string]any{
+				"ModuleName":       moduleName,
+				"ProjectDir":       projectDir,
+				"ApiName":          apiName,
+				"SnakeServiceName": toSnakeCase(apiName),
+				"snakeApiName":     toSnakeCase(apiName),
+				"camelApiName":     toCamelCase(apiName),
+			}
+			// fmt.Printf("Generating sub-module: %s\n", subConfig)
+			if err := generatorlib.GenerateAPI(subConfig); err != nil {
+				log.Fatalf("Failed to generate module %s: %v", apiName, err)
 			}
 		} else {
-			fmt.Println("No sub-modules selected, generating only the main API.")
+			var selectedSubModules []string
+			if err := survey.AskOne(&survey.MultiSelect{
+				Message: "Select sub-modules to generate:",
+				Options: listSubModules,
+			}, &selectedSubModules); err != nil {
+				log.Fatal(err)
+			}
+			if len(selectedSubModules) > 0 {
+				for _, subModule := range selectedSubModules {
+					subConfig := map[string]any{
+						"ModuleName":       moduleName,
+						"ProjectDir":       projectDir,
+						"ApiName":          subModule,
+						"SnakeServiceName": toSnakeCase(apiName),
+						"snakeApiName":     toSnakeCase(subModule),
+						"camelApiName":     toCamelCase(subModule),
+					}
+					// fmt.Printf("Generating sub-module: %s\n", subConfig)
+					if err := generatorlib.GenerateAPI(subConfig); err != nil {
+						log.Fatalf("Failed to generate sub-module %s: %v", subModule, err)
+					}
+				}
+			} else {
+				fmt.Println("No sub-modules selected, generating only the main API.")
+			}
 		}
 	} else {
 		fmt.Println("No sub-modules available for this API, generating only the main API.")
@@ -258,7 +351,7 @@ func initProject() {
 		"generated_by":  "ametory-erp-modules",
 		"author":        "ametsuramet",
 		"author email":  "ametsuramet@gmail.com",
-		"version":       "1.0.0",
+		"version":       version,
 		"module_name":   answers.ModuleName,
 		"project_dir":   absPath,
 		"core_modules":  selectedCore,

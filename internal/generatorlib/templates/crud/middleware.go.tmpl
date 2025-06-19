@@ -1,0 +1,69 @@
+package middleware
+
+import (
+	"{{.ModuleName}}/config"
+	"net/http"
+	"strings"
+
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+    "github.com/AMETORY/ametory-erp-modules/app"
+    
+)
+
+func AuthMiddleware(appContainer *app.AppContainer, checkCompany bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Ambil token dari header Authorization
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
+			c.Abort()
+			return
+		}
+		splitToken := strings.Split(authHeader, "Bearer ")
+
+		if len(splitToken) < 2 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Token"})
+			c.Abort()
+			return
+		}
+		reqToken := splitToken[1]
+		if reqToken == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "message": "Token unsplited"})
+			c.Abort()
+			return
+		}
+		// fmt.Println("reqToken: ", reqToken)
+
+		token, err := jwt.ParseWithClaims(reqToken, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+			return []byte(config.App.Server.SecretKey), nil
+		})
+
+		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.Abort()
+			return
+		}
+
+		if c.Request.Header.Get("ID-Company") == "" && checkCompany {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Company ID is required"})
+			c.Abort()
+		}
+
+		c.Set("companyID", c.Request.Header.Get("ID-Company"))
+		c.Set("userID", token.Claims.(*jwt.StandardClaims).Id)
+		user := models.UserModel{}
+		appContainer.DB.Find(&user, "id = ?", token.Claims.(*jwt.StandardClaims).Id)
+		var member models.MemberModel
+		appContainer.DB.Preload("Role", func(tx *gorm.DB) *gorm.DB {
+			return tx.Where("company_id = ?", c.Request.Header.Get("ID-Company")).Preload("Permissions")
+		}).Preload("Company").Where("user_id = ? and company_id = ?", token.Claims.(*jwt.StandardClaims).Id, c.Request.Header.Get("ID-Company")).Find(&member)
+		c.Set("user", user)
+		member.User = user
+		c.Set("member", member)
+		c.Set("memberID", member.ID)
+		c.Next()
+	}
+}
