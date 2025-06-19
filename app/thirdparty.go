@@ -79,6 +79,7 @@ func WithFirestore(ctx context.Context, firebaseCredentialFile, bucket string) A
 			panic("Failed to initialize Firestore: " + err.Error())
 		}
 		c.Firestore = fireStore
+		c.erpContext.Firestore = fireStore
 		log.Println("Firestore initialized")
 	}
 }

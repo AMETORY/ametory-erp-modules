@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupTagRoutes(r *gin.RouterGroup, appContainer *app.AppContainer) {
+func Setup{{.ApiName}}Routes(r *gin.RouterGroup, appContainer *app.AppContainer) {
 	hdl := handler.New{{.ApiName}}Handler(appContainer)
 
 	{{.CamelApiName}}Group := r.Group("/{{.SnakeApiName}}")

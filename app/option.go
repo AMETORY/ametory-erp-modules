@@ -175,6 +175,7 @@ func WithCustomerRelationship() AppContainerOption {
 func WithFile() AppContainerOption {
 	return func(c *AppContainer) {
 		c.FileService = file.NewFileService(c.erpContext, c.baseURL)
+		c.erpContext.Firestore = c.Firestore
 		log.Println("FileService initialized")
 	}
 }
