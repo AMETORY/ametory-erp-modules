@@ -20,7 +20,7 @@ type LoanModel struct {
 	InstallmentsPaid       float64              `json:"installments_paid"`
 	Description            string               `json:"description"`
 	Status                 string               `json:"status" gorm:"default:'PENDING'"`
-	PayRollInstallments    []PayRollInstallment `json:"pay_roll_installments" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relasi HasMany ke PayRollInstallment
+	PayRollInstallments    []PayRollInstallment `json:"pay_roll_installments" gorm:"foreignKey:EmployeeLoanID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relasi HasMany ke PayRollInstallment
 	ApprovedID             *string              `json:"approved_id"`
 	Approved               *UserModel           `gorm:"foreignKey:ApprovedID;constraint:OnDelete:CASCADE;"`
 	DateApprovedOrRejected *time.Time           `json:"date_approved_or_rejected"`

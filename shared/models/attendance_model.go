@@ -29,8 +29,8 @@ type AttendanceModel struct {
 	WorkingDuration            *time.Duration          `json:"working_duration" `
 	CompanyID                  string                  `json:"company_id" gorm:"not null"`
 	Company                    CompanyModel            `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
-	Activities                 []EmployeeActivityModel `json:"activities" gorm:"constraint:OnDelete:CASCADE"`
-	WorkReports                []WorkReport            `json:"work_reports" gorm:"constraint:OnDelete:CASCADE"`
+	Activities                 []EmployeeActivityModel `json:"activities" gorm:"foreignKey:AttendanceID;constraint:OnDelete:CASCADE"`
+	WorkReports                []WorkReport            `json:"work_reports" gorm:"foreignKey:AttendanceID;constraint:OnDelete:CASCADE"`
 	Status                     string                  `json:"status" gorm:"default:'ACTIVE'"`
 	Remarks                    string                  `json:"remarks" gorm:"type:TEXT"`
 	ClockOutRemarks            string                  `json:"clock_out_remarks" gorm:"type:TEXT"`
@@ -39,7 +39,7 @@ type AttendanceModel struct {
 	ClockOutAttendancePolicyID *string                 `json:"clock_out_attendance_policy_id"`
 	ClockOutAttendancePolicy   AttendancePolicy        `gorm:"foreignKey:ClockOutAttendancePolicyID"`
 	ScheduleID                 *string                 `json:"schedule_id"`
-	Schedule                   ScheduleModel           `gorm:"foreignKey:ScheduleID"`
+	Schedule                   *ScheduleModel          `gorm:"foreignKey:ScheduleID"`
 	Timezone                   string                  `gorm:"-"`
 	// AttendanceBulkImportID     *string              `json:"attendance_bulk_import_id"`
 	// AttendanceBulkImport       AttendanceBulkImport `gorm:"foreignKey:AttendanceBulkImportID"`

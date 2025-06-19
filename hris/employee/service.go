@@ -22,6 +22,7 @@ func NewEmployeeService(ctx *context.ERPContext) *EmployeeService {
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&models.EmployeeModel{},
+		&models.JobTitleModel{},
 	)
 }
 func (e *EmployeeService) CreateEmployee(employee *models.EmployeeModel) error {
@@ -49,7 +50,7 @@ func (e *EmployeeService) FindAllEmployees(request *http.Request) (paginate.Page
 	pg := paginate.New()
 	stmt := e.db.Model(&models.EmployeeModel{})
 	utils.FixRequest(request)
-	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeModel{})
+	page := pg.With(stmt).Request(&request).Response(&[]models.EmployeeModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }

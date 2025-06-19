@@ -87,6 +87,8 @@ type SalesModel struct {
 	NetSurplus            *NetSurplusModel        `json:"net_surplus,omitempty" gorm:"foreignKey:NetSurplusID;constraint:OnDelete:CASCADE"`
 	SalesUserID           *string                 `json:"sales_user_id,omitempty" gorm:"size:36"`
 	SalesUser             *UserModel              `json:"sales_user,omitempty" gorm:"foreignKey:SalesUserID;constraint:OnDelete:CASCADE"`
+	EmployeeID            *string                 `json:"employee_id,omitempty" gorm:"size:36"`
+	Employee              *EmployeeModel          `json:"employee,omitempty" gorm:"foreignKey:EmployeeID;constraint:OnDelete:CASCADE"`
 }
 
 func (s *SalesModel) AfterFind(tx *gorm.DB) (err error) {

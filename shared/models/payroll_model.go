@@ -33,15 +33,15 @@ type PayRollModel struct {
 	IsEffectiveRateAverage          bool                 `json:"is_effective_rate_average"`
 	Status                          string               `json:"status" gorm:"type:varchar(20);default:'DRAFT'"` //'DRAFT', 'RUNNING', 'FINISHED'
 	Attachments                     []string             `json:"attachments" gorm:"-"`
-	Transactions                    []TransactionModel   `json:"transactions" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	PayableTransactions             []TransactionModel   `json:"payable_transactions" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Items                           []PayrollItemModel   `json:"items" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Costs                           []PayRollCostModel   `json:"costs" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Transactions                    []TransactionModel   `json:"transactions" gorm:"-"`
+	PayableTransactions             []TransactionModel   `json:"payable_transactions" gorm:"foreignKey:PayRollPayableID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Items                           []PayrollItemModel   `json:"items" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:PayRollID"`
+	Costs                           []PayRollCostModel   `json:"costs" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:PayRollID"`
 	TakeHomePayCounted              string               `json:"take_home_pay_counted" gorm:"-"`
 	TakeHomePayReimbursementCounted string               `json:"take_home_pay_reimbursement_counted" gorm:"-"`
 	TaxPaymentID                    *string              `json:"tax_payment_id"`
-	EmployeeID                      string               `binding:"required" json:"employee_id"`
-	Employee                        EmployeeModel        `gorm:"foreignKey:EmployeeID" `
+	EmployeeID                      *string              `json:"employee_id" gorm:"not null"`
+	Employee                        *EmployeeModel       `gorm:"foreignKey:EmployeeID"`
 	TaxSummary                      CountTaxSummary      `gorm:"-" json:"tax_summary"`
 	// BpjsSetting                     *thirdparty.Bpjs     `gorm:"-" `
 	PayRollReportItemID *string      `json:"pay_roll_report_item_id" gorm:"type:char(36)"`

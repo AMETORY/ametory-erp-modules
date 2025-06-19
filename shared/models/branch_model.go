@@ -10,7 +10,7 @@ type BranchModel struct {
 	shared.BaseModel
 	Name      string          `json:"name,omitempty"`
 	Address   string          `json:"address,omitempty"`
-	Employees []EmployeeModel `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Employees []EmployeeModel `gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"employees,omitempty"`
 	CompanyID string          `json:"company_id,omitempty" gorm:"not null"`
 	Company   CompanyModel    `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 }

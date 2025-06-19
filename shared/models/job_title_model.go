@@ -8,9 +8,10 @@ import (
 
 type JobTitleModel struct {
 	shared.BaseModel
-	Name      string          `json:"name,omitempty"`
-	Address   string          `json:"address,omitempty"`
-	Employees []EmployeeModel `json:"employees,omitempty" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Name    string `json:"name,omitempty"`
+	Address string `json:"address,omitempty"`
+	// Employees []EmployeeModel `json:"employees,omitempty" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Employees []EmployeeModel `json:"employees,omitempty" gorm:"foreignKey:JobTitleID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	CompanyID string          `json:"company_id,omitempty" gorm:"not null"`
 	Company   CompanyModel    `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 }

@@ -13,7 +13,7 @@ type OrganizationModel struct {
 	Name             string              `gorm:"size:36" json:"name,omitempty"`
 	Code             string              `gorm:"size:36" json:"code,omitempty"`
 	Description      string              `gorm:"size:100" json:"description,omitempty"`
-	Employees        []EmployeeModel     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Employees        []EmployeeModel     `gorm:"foreignKey:organization_id;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	SubOrganizations []OrganizationModel `json:"sub_organizations,omitempty" gorm:"foreignKey:parent_id"`
 	CompanyID        string              `json:"company_id" gorm:"not null"`
 	Company          CompanyModel        `gorm:"foreignKey:CompanyID"`

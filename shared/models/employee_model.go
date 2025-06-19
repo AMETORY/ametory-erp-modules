@@ -36,12 +36,12 @@ type EmployeeModel struct {
 	TransportAllowance            float64                `json:"transport_allowance"`
 	MealAllowance                 float64                `json:"meal_allowance"`
 	NonTaxableIncomeLevelCode     string                 `json:"non_taxable_income_level_code"`
-	PayRolls                      []PayRollModel         `json:"pay_rolls" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Reimbursements                []ReimbursementModel   `json:"reimbursements" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	PayRolls                      []PayRollModel         `json:"pay_rolls" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Reimbursements                []ReimbursementModel   `json:"reimbursements" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	TaxPayerNumber                string                 `json:"tax_payer_number"`
 	Gender                        string                 `json:"gender"`
-	Attendance                    []AttendanceModel      `json:"attendance" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	Organization                  OrganizationModel      `gorm:"foreignKey:OrganizationID"`
+	Attendance                    []AttendanceModel      `json:"attendance" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Organization                  *OrganizationModel     `gorm:"foreignKey:OrganizationID"`
 	OrganizationID                *string                `json:"organization_id"`
 	WorkingType                   string                 `json:"working_type" gorm:"default:'FULL_TIME'"`
 	SalaryType                    string                 `json:"salary_type" gorm:"default:'MONTHLY'"`
@@ -50,7 +50,7 @@ type EmployeeModel struct {
 	TotalWorkingHours             float64                `json:"total_working_hours"`
 	DailyWorkingHours             float64                `json:"daily_working_hours"`
 	WorkSafetyRisks               string                 `gorm:"default:'very_low'" json:"work_safety_risks"`
-	Sales                         []SalesModel           `json:"sales" gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Sales                         []SalesModel           `json:"sales" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	IndonesianIdentityCardNumber  string                 `json:"indonesian_identity_card_number"`
 	BankAccountNumber             string                 `json:"bank_account_number"`
 	BankID                        *string                `json:"bank_id"`
@@ -59,14 +59,14 @@ type EmployeeModel struct {
 	Company                       CompanyModel           `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	UserID                        *string                `json:"user_id" `
 	Status                        string                 `gorm:"default:'ACTIVE'" json:"status"`
-	EmployeePushNotifTokens       []PushTokenModel       `json:"push_notification_tokens" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	EmployeePushNotifTokens       []PushTokenModel       `json:"push_notification_tokens" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	AnnualLeaveDays               int                    `json:"annual_leave_days" `
 	Tx                            *gorm.DB               `gorm:"-"`
 	LateDeductionSettingID        *string                `json:"late_deduction_setting_id"`
 	LateDeductionSetting          *DeductionSettingModel `gorm:"foreignKey:LateDeductionSettingID"`
 	NotPresenceDeductionSettingID *string                `json:"not_presence_deduction_setting_id"`
 	NotPresenceDeductionSetting   *DeductionSettingModel `gorm:"foreignKey:NotPresenceDeductionSettingID"`
-	Loans                         []LoanModel            `json:"loans" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Loans                         []LoanModel            `json:"loans" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
 func (e EmployeeModel) TableName() string {

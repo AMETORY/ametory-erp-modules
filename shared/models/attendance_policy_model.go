@@ -71,8 +71,6 @@ type AttendancePolicy struct {
 	Description             string            `json:"description"`
 	Priority                int               `json:"priority"`
 	CompanyID               *string           `json:"company_id"`
-	BranchID                *string           `json:"branch_id"`
-	OrganizationID          *string           `json:"organization_id"`
 	LocationEnabled         bool              `json:"location_enabled"`
 	Lat                     *float64          `json:"lat" gorm:"type:DECIMAL(10,8)"`
 	Lng                     *float64          `json:"lng" gorm:"type:DECIMAL(11,8)"`
@@ -91,6 +89,8 @@ type AttendancePolicy struct {
 	CustomConditionData     string            `gorm:"type:JSON" json:"custom_condition_data"`
 	Remarks                 Remarks           `gorm:"-"`
 	IsActive                bool              `json:"is_active"`
+	BranchID                *string           `json:"branch_id"`
+	OrganizationID          *string           `json:"organization_id"`
 	Branch                  BranchModel       `gorm:"foreignKey:BranchID"`
 	Organization            OrganizationModel `gorm:"foreignKey:OrganizationID"`
 	EarlyInToleranceInTime  time.Duration     `json:"early_in_tolerance" gorm:"default:15"`

@@ -16,8 +16,8 @@ type EmployeeActivityModel struct {
 	EndDate           *time.Time            `json:"end_date" gorm:"type:DATE" sql:"TYPE:DATE"`
 	StartTime         *time.Time            `json:"start_time" gorm:"type:TIME"`
 	EndTime           *time.Time            `json:"end_time" gorm:"type:TIME"`
-	EmployeeID        string                `json:"employee_id"`
-	Employee          EmployeeModel         `json:"employee" gorm:"foreignKey:EmployeeID"`
+	EmployeeID        *string               `json:"employee_id"`
+	Employee          *EmployeeModel        `json:"employee" gorm:"foreignKey:EmployeeID"`
 	AssignedToID      *string               `json:"assigned_to_id"`
 	AssignedTo        *EmployeeModel        `json:"assigned_to" gorm:"foreignKey:AssignedToID"`
 	Description       string                `json:"description" gorm:"type:TEXT"`
@@ -26,7 +26,7 @@ type EmployeeActivityModel struct {
 	Attachment        *string               `json:"attachment" gorm:"type:TEXT"`
 	CompanyID         string                `json:"company_id" gorm:"not null"`
 	Company           CompanyModel          `gorm:"foreignKey:CompanyID"`
-	Files             []FileModel           `json:"files" gorm:"constraint:OnDelete:CASCADE"`
+	Files             []FileModel           `json:"files" gorm:"-"`
 	Lat               *float64              `json:"lat" gorm:"type:DECIMAL(10,8)"`
 	Lng               *float64              `json:"lng" gorm:"type:DECIMAL(11,8)"`
 	Location          *string               `json:"location" gorm:"type:TEXT"`

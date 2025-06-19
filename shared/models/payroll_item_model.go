@@ -22,7 +22,7 @@ type PayrollItemModel struct {
 	PayRollID          string              `json:"pay_roll_id"`
 	PayRoll            PayRollModel        `gorm:"foreignKey:PayRollID;constraint:OnDelete:CASCADE" json:"-"`
 	ReimbursementID    *string             `json:"reimbursement_id"`
-	Reimbursement      ReimbursementModel  `gorm:"foreignKey:ReimbursementID" json:"-"`
+	Reimbursement      *ReimbursementModel `gorm:"foreignKey:ReimbursementID;constraint:OnDelete:CASCADE"`
 	Bpjs               bool                `json:"bpjs"`
 	BpjsCounted        bool                `json:"bpjs_counted"`
 	Tariff             float64             `json:"tariff"`

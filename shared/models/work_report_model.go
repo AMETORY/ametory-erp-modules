@@ -10,24 +10,24 @@ import (
 
 type WorkReport struct {
 	shared.BaseModel
-	EmployeeID     string          `json:"employee_id"`
-	Employee       EmployeeModel   `gorm:"foreignKey:EmployeeID"`
-	AttendanceID   *string         `json:"attendance_id"`
-	Attendance     AttendanceModel `gorm:"foreignKey:AttendanceID"`
-	WorkDate       time.Time       `json:"work_date"`
-	WorkTypeID     string          `json:"work_type_id"`
-	WorkType       WorkType        `gorm:"foreignKey:WorkTypeID"`             // Foreign key ke tabel WorkType
-	UnitsCompleted float64         `json:"units_completed"`                   // Jumlah unit pekerjaan yang diselesaikan
-	Status         string          `json:"status" gorm:"default:'SUBMITTED'"` // Status laporan: 'SUBMITTED', 'APPROVED', 'REJECTED'
-	SubmittedAt    time.Time       `json:"submitted_at"`
-	ApprovedDate   *time.Time      `json:"approved_date"`
-	ApprovedByID   *string         `json:"approved_by_id"`
-	ApprovedBy     EmployeeModel   `gorm:"foreignKey:ApprovedByID"`
-	CompanyID      string          `json:"company_id"`
-	Company        CompanyModel    `gorm:"foreignKey:CompanyID"`
-	Pictures       []FileModel     `json:"pictures" gorm:"-"`
-	Check          WorkReportCheck `json:"check" gorm:"foreignKey:WorkReportID"`
-	Remarks        string          `json:"remarks"`
+	EmployeeID     string           `json:"employee_id"`
+	Employee       EmployeeModel    `gorm:"foreignKey:EmployeeID"`
+	AttendanceID   *string          `json:"attendance_id"`
+	Attendance     *AttendanceModel `gorm:"foreignKey:AttendanceID"`
+	WorkDate       time.Time        `json:"work_date"`
+	WorkTypeID     string           `json:"work_type_id"`
+	WorkType       WorkType         `gorm:"foreignKey:WorkTypeID"`             // Foreign key ke tabel WorkType
+	UnitsCompleted float64          `json:"units_completed"`                   // Jumlah unit pekerjaan yang diselesaikan
+	Status         string           `json:"status" gorm:"default:'SUBMITTED'"` // Status laporan: 'SUBMITTED', 'APPROVED', 'REJECTED'
+	SubmittedAt    time.Time        `json:"submitted_at"`
+	ApprovedDate   *time.Time       `json:"approved_date"`
+	ApprovedByID   *string          `json:"approved_by_id"`
+	ApprovedBy     EmployeeModel    `gorm:"foreignKey:ApprovedByID"`
+	CompanyID      string           `json:"company_id"`
+	Company        CompanyModel     `gorm:"foreignKey:CompanyID"`
+	Pictures       []FileModel      `json:"pictures" gorm:"-"`
+	Check          WorkReportCheck  `json:"check" gorm:"foreignKey:WorkReportID"`
+	Remarks        string           `json:"remarks"`
 }
 
 func (WorkReport) TableName() string {

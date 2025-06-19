@@ -21,10 +21,10 @@ type ReimbursementModel struct {
 	Total            float64                  `json:"total"`
 	Balance          float64                  `json:"balance"`
 	Status           string                   `json:"status" gorm:"default:'DRAFT'"`
-	Items            []ReimbursementItemModel `json:"items" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	EmployeeID       string                   `json:"employee_id"`
-	Employee         EmployeeModel            `gorm:"foreignKey:EmployeeID" json:"-"`
-	Transactions     []TransactionModel       `json:"transactions" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Items            []ReimbursementItemModel `json:"items" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:ReimbursementID"`
+	EmployeeID       *string                  `json:"employee_id"`
+	Employee         *EmployeeModel           `gorm:"foreignKey:EmployeeID" json:"-"`
+	Transactions     []TransactionModel       `json:"transactions" gorm:"-"`
 	Attachment       string                   `json:"attachment"`
 	CompanyID        string                   `json:"company_id" gorm:"not null"`
 	Company          CompanyModel             `gorm:"foreignKey:CompanyID"`
