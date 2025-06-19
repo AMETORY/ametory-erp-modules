@@ -35,12 +35,46 @@ func loadTemplate(name string) (*template.Template, error) {
 }
 
 type ProjectConfig struct {
-	ModuleName   string
-	ProjectDir   string
-	CoreModules  []string
-	ThirdParties []string
+	ModuleName       string
+	ProjectDir       string
+	CoreModules      []string
+	ThirdParties     []string
+	ApiName          string
+	SnakeApiName     string
+	SnakeServiceName string
+	CamelApiName     string
 }
 
+func GenerateAPI(config map[string]any) error {
+	var moduleName = config["ModuleName"].(string)
+	var projectDir = config["ProjectDir"].(string)
+	var apiName = config["ApiName"].(string)
+	var SnakeServiceName = config["SnakeServiceName"].(string)
+	var snakeApiName = config["snakeApiName"].(string)
+	var camelApiName = config["camelApiName"].(string)
+
+	fmt.Printf("Module Name: %s\n", moduleName)
+	fmt.Printf("Project Directory: %s\n", projectDir)
+	fmt.Printf("API Name: %s\n", apiName)
+	fmt.Printf("Snake API Name: %s\n", snakeApiName)
+	fmt.Printf("Camel API Name: %s\n", camelApiName)
+
+	// 1. GENERATE ROUTE
+
+	if err := generateFromTemplate("crud/handler.go.tmpl",
+		filepath.Join(projectDir, "api", "handler", snakeApiName+".go"), ProjectConfig{
+			ModuleName:       moduleName,
+			ProjectDir:       projectDir,
+			ApiName:          apiName,
+			SnakeApiName:     snakeApiName,
+			SnakeServiceName: SnakeServiceName,
+			CamelApiName:     camelApiName,
+		}); err != nil {
+		return err
+	}
+
+	return nil
+}
 func GenerateProject(config ProjectConfig) error {
 	// Create project directory
 	if err := os.MkdirAll(config.ProjectDir, 0755); err != nil {
@@ -48,7 +82,7 @@ func GenerateProject(config ProjectConfig) error {
 	}
 
 	// Initialize progress bar
-	bar := progressbar.NewOptions(4,
+	bar := progressbar.NewOptions(10,
 		progressbar.OptionSetDescription("Generating project..."),
 	)
 

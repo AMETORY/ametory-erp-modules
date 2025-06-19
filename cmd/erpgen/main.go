@@ -6,16 +6,174 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
+	"strings"
+	"time"
+	"unicode"
 
 	"github.com/AMETORY/ametory-erp-modules/internal/generatorlib"
 	"github.com/AlecAivazis/survey/v2"
+	"gopkg.in/yaml.v3"
+)
+
+var (
+	coreModules = []string{
+		"Auth",
+		"AdminAuth",
+		"RBAC",
+		"Inventory",
+		"Manufacture",
+		"Company",
+		"Contact",
+		"Finance",
+		"Cooperative",
+		"Order",
+		"Logistic",
+		"AuditTrail",
+		"Distribution",
+		"CustomerRelationship",
+		"File",
+		"Medical",
+		"IndonesiaReg",
+		"User",
+		"ContentManagement",
+		"Tag",
+		"Message",
+		"ProjectManagement",
+		"CrowdFunding",
+		"Notification",
+		"HRIS",
+	}
+
+	subModules = map[string][]string{
+		"Inventory": {
+			"Brand",
+			"Discount",
+			"Product",
+			"ProductCategory",
+			"ProductAttribute",
+			"PriceCategory",
+			"MasterProduct",
+			"Purchase",
+			"PurchaseReturn",
+			"StockMovement",
+			"StockOpname",
+			"Unit",
+		},
+	}
+	thirdParty = []string{
+		"EmailSender",
+		"EmailAPIService",
+		"WatzapClient",
+		"WhatsmeowService",
+		"Firestore",
+		"FCMService",
+		"AppService",
+	}
 )
 
 func main() {
 	fmt.Println("Welcome to ametory-erp-modules code generator!")
 	fmt.Println("This program will help you generate a new ametory-erp-modules project.")
 	fmt.Println("Please answer the questions below to get started.")
+
+	var answer string
+	if err := survey.AskOne(&survey.Select{
+		Message: "What would you like to do?",
+		Options: []string{"1. Init Project", "2. Generate API"},
+		Default: "1. Init Project",
+	}, &answer); err != nil {
+		log.Fatal(err)
+	}
+
+	switch answer {
+	case "1. Init Project":
+		initProject()
+	case "2. Generate API":
+		generateAPI()
+	default:
+		fmt.Println("Invalid answer")
+	}
+}
+
+func generateAPI() {
+	projectData, err := readYamlFile()
+	if err != nil {
+		log.Fatalf("Failed to read project.yaml: %v", err)
+		return
+	}
+	parseCoreModules := projectData["core_modules"].([]any)
+	coreModules := make([]string, len(parseCoreModules))
+	for i, v := range parseCoreModules {
+		coreModules[i] = v.(string)
+	}
+	var apiName string
+	if err := survey.AskOne(&survey.Select{
+		Message: "Enter the API name to generate:",
+		Default: coreModules[0],
+		Options: coreModules,
+	}, &apiName); err != nil {
+		log.Fatal(err)
+	}
+
+	// fmt.Printf("Generating API: %s\n", apiName)
+	// fmt.Printf("Generating API: %s\n", toCamelCase(apiName))
+	// fmt.Printf("Generating API: %s\n", toSnakeCase(apiName))
+
+	moduleName := projectData["module_name"].(string)
+	projectDir := projectData["project_dir"].(string)
+
+	listSubModules, ok := subModules[apiName]
+	if ok {
+		var selectedSubModules []string
+		if err := survey.AskOne(&survey.MultiSelect{
+			Message: "Select sub-modules to generate:",
+			Options: listSubModules,
+		}, &selectedSubModules); err != nil {
+			log.Fatal(err)
+		}
+		if len(selectedSubModules) > 0 {
+			for _, subModule := range selectedSubModules {
+				subConfig := map[string]any{
+					"ModuleName":       moduleName,
+					"ProjectDir":       projectDir,
+					"ApiName":          subModule,
+					"SnakeServiceName": toSnakeCase(apiName),
+					"snakeApiName":     toSnakeCase(subModule),
+					"camelApiName":     toCamelCase(subModule),
+				}
+				// fmt.Printf("Generating sub-module: %s\n", subConfig)
+				if err := generatorlib.GenerateAPI(subConfig); err != nil {
+					log.Fatalf("Failed to generate sub-module %s: %v", subModule, err)
+				}
+			}
+		} else {
+			fmt.Println("No sub-modules selected, generating only the main API.")
+		}
+	} else {
+		fmt.Println("No sub-modules available for this API, generating only the main API.")
+	}
+	// Placeholder for future API generation logic
+}
+
+func readYamlFile() (map[string]any, error) {
+	f, err := os.ReadFile("project.yaml")
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	var data map[string]any
+	if err := yaml.Unmarshal(f, &data); err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func initProject() {
 	// Basic project info
 	qs := []*survey.Question{
 		{
@@ -46,33 +204,6 @@ func main() {
 	}
 
 	// Module selection
-	coreModules := []string{
-		"Auth",
-		"AdminAuth",
-		"RBAC",
-		"Inventory",
-		"Manufacture",
-		"Company",
-		"Contact",
-		"Finance",
-		"Cooperative",
-		"Order",
-		"Logistic",
-		"AuditTrail",
-		"Distribution",
-		"CustomerRelationship",
-		"File",
-		"Medical",
-		"IndonesiaReg",
-		"User",
-		"ContentManagement",
-		"Tag",
-		"Message",
-		"ProjectManagement",
-		"CrowdFunding",
-		"Notification",
-		"HRIS",
-	}
 
 	var selectedCore []string
 	if err := survey.AskOne(&survey.MultiSelect{
@@ -83,15 +214,6 @@ func main() {
 	}
 
 	// Third-party selection
-	thirdParty := []string{
-		"EmailSender",
-		"EmailAPIService",
-		"WatzapClient",
-		"WhatsmeowService",
-		"Firestore",
-		"FCMService",
-		"AppService",
-	}
 
 	var selectedThirdParty []string
 	if err := survey.AskOne(&survey.MultiSelect{
@@ -130,4 +252,74 @@ func main() {
 	fmt.Println("2. go mod tidy")
 	fmt.Println("3. go run main.go")
 	fmt.Println("4. check third parties parameters and Customize your application as needed. You can add more modules or third-party integrations later.")
+
+	writeYAMLFile(filepath.Join(answers.ProjectDir, "project.yaml"), map[string]any{
+		"generated_at":  time.Now().Format(time.RFC3339),
+		"generated_by":  "ametory-erp-modules",
+		"author":        "ametsuramet",
+		"author email":  "ametsuramet@gmail.com",
+		"version":       "1.0.0",
+		"module_name":   answers.ModuleName,
+		"project_dir":   absPath,
+		"core_modules":  selectedCore,
+		"third_parties": selectedThirdParty,
+	})
+	fmt.Println("Project configuration saved to project.yaml")
+	fmt.Println("You can now start building your ERP project!")
+
+}
+func writeYAMLFile(filePath string, data interface{}) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := yaml.NewEncoder(file)
+	defer encoder.Close()
+
+	return encoder.Encode(data)
+}
+
+func toSnakeCase(input string) string {
+	if input == "RBAC" || input == "HRIS" {
+		return strings.ToLower(input)
+	}
+	var result []rune
+	for i, r := range input {
+		if unicode.IsUpper(r) {
+			if i > 0 {
+				result = append(result, '_')
+			}
+			result = append(result, unicode.ToLower(r))
+		} else {
+			result = append(result, r)
+		}
+	}
+	return string(result)
+}
+
+func toCamelCase(input string) string {
+	if input == "RBAC" || input == "HRIS" {
+		return strings.ToLower(input)
+	}
+	var result []rune
+	nextUpper := false
+	for _, r := range input {
+		if r == '_' {
+			nextUpper = true
+		} else {
+			if nextUpper {
+				if len(result) == 0 {
+					result = append(result, unicode.ToLower(r))
+				} else {
+					result = append(result, unicode.ToUpper(r))
+				}
+				nextUpper = false
+			} else {
+				result = append(result, r)
+			}
+		}
+	}
+	return strings.ToLower(string(result[0])) + string(result[1:])
 }

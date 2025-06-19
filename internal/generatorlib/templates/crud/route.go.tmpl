@@ -1,0 +1,23 @@
+package router
+
+import (
+	"{{.ModuleName}}/api/handlers"
+	"{{.ModuleName}}/api/middlewares"
+
+	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/gin-gonic/gin"
+)
+
+func SetupTagRoutes(r *gin.RouterGroup, erpContext *context.ERPContext) {
+	handler := handlers.NewTagHandler(erpContext)
+
+	{{.CamelApiName}}Group := r.Group("/{{.SnakeApiName}")
+	{{.CamelApiName}}Group.Use(middlewares.AuthMiddleware(erpContext, true))
+	{
+		{{.CamelApiName}}Group.GET("/list", handler.GetTagsHandler)
+		{{.CamelApiName}}Group.GET("/:id",  handler.GetTagDetailHandler)
+		{{.CamelApiName}}Group.POST("/create",  handler.CreateTagHandler)
+		{{.CamelApiName}}Group.PUT("/:id",  handler.UpdateTagHandler)
+		{{.CamelApiName}}Group.DELETE("/:id",  handler.DeleteTagHandler)
+	}
+}

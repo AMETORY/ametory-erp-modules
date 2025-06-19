@@ -1,0 +1,89 @@
+package handler
+
+import (
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	_ "github.com/AMETORY/ametory-erp-modules/{{.SnakeServiceName}}/{{.SnakeApiName}}"
+	"github.com/AMETORY/ametory-erp-modules/app"
+	"github.com/gin-gonic/gin"
+	"net/http"
+	"github.com/google/uuid"
+)
+
+type {{.ApiName}}Handler struct {
+	appContainer *app.AppContainer
+}
+
+func New{{.ApiName}}Handler(appContainer *app.AppContainer) *{{.ApiName}}Handler {
+	return &{{.ApiName}}Handler{
+		appContainer: appContainer,
+	}
+}
+
+func (h *{{.ApiName}}Handler) Create{{.ApiName}}Handler(c *gin.Context) {
+	var {{.CamelApiName}} models.{{.ApiName}}Model
+	if err := c.BindJSON(&{{.CamelApiName}}); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	{{.CamelApiName}}.ID = uuid.New().String()
+
+	// LOOK AT the appContainer container to get right Create {{.ApiName}} method
+	
+
+	c.JSON(http.StatusOK, gin.H{
+        "message": "Created",
+        "id":      {{.CamelApiName}}.ID,
+        "data":    {{.CamelApiName}},
+    })
+}
+
+func (h *{{.ApiName}}Handler) Get{{.ApiName}}Handler(c *gin.Context) {
+	id := c.Param("id")
+	var {{.CamelApiName}} models.{{.ApiName}}Model
+
+	// LOOK AT the appContainer container to get right Update {{.ApiName}} method
+
+	c.JSON(http.StatusOK, gin.H{
+        "message": "Retrieved",
+        "data":    {{.CamelApiName}},
+    })
+}
+
+func (h *{{.ApiName}}Handler) Update{{.ApiName}}Handler(c *gin.Context) {
+	id := c.Param("id")
+
+
+	var {{.CamelApiName}}Params models.{{.ApiName}}Model
+	if err := c.BindJSON(&{{.CamelApiName}}Params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+
+	// LOOK AT the appContainer container to get right Update {{.ApiName}} method
+
+	c.JSON(http.StatusOK,  gin.H{
+        "message": "Retrieved",
+    })
+}
+
+func (h *{{.ApiName}}Handler) Delete{{.ApiName}}Handler(c *gin.Context) {
+	id := c.Param("id")
+
+
+	// LOOK AT the appContainer container to get right DELETE {{.ApiName}} method
+
+	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
+}
+
+func (h *{{.ApiName}}Handler) List{{.ApiName}}Handler(c *gin.Context) {
+	var {{.CamelApiName}}s []models.{{.ApiName}}Model
+
+	// LOOK AT the appContainer container to get right LIST {{.ApiName}} method
+
+	c.JSON(http.StatusOK,  gin.H{
+        "message": "Retrieved",
+        "data":    {{.CamelApiName}}s,
+    })
+}
