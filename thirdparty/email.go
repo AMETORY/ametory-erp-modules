@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/mail"
 	"net/smtp"
+	"os"
 
 	"github.com/jordan-wright/email"
 )
@@ -45,6 +46,13 @@ func (s *SMTPSender) SetTls(tls bool) {
 }
 
 func (s *SMTPSender) SetTemplate(layout string, template string) *SMTPSender {
+	if _, err := os.Stat(layout); os.IsNotExist(err) {
+		log.Printf("warning: layout template %s not found. using empty template", layout)
+	}
+	if _, err := os.Stat(template); os.IsNotExist(err) {
+		log.Printf("warning: body template %s not found. using empty template", template)
+	}
+
 	s.layoutTemplate = layout
 	s.bodyTemplate = template
 	return s

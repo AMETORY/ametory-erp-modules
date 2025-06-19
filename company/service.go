@@ -134,3 +134,9 @@ func (s *CompanyService) GetSectors() ([]models.CompanySector, error) {
 	err := s.ctx.DB.Preload("Categories").Find(&sectors).Error
 	return sectors, err
 }
+
+func (s *CompanyService) GetCompaniesByUserID(userID string) ([]models.CompanyModel, error) {
+	var companies []models.CompanyModel
+	err := s.ctx.DB.Joins("JOIN user_companies AS uc ON companies.id = uc.company_model_id").Where("uc.user_model_id = ?", userID).Find(&companies).Error
+	return companies, err
+}
