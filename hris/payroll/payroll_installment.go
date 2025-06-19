@@ -1,6 +1,12 @@
 package payroll
 
-import "github.com/AMETORY/ametory-erp-modules/shared/models"
+import (
+	"net/http"
+
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
+)
 
 func (s *PayrollService) CreatePayRollInstallment(installment *models.PayRollInstallment) error {
 	return s.db.Create(installment).Error
@@ -21,4 +27,13 @@ func (s *PayrollService) UpdatePayRollInstallment(installment *models.PayRollIns
 
 func (s *PayrollService) DeletePayRollInstallment(id string) error {
 	return s.db.Delete(&models.PayRollInstallment{}, "id = ?", id).Error
+}
+
+func (s *PayrollService) FindAll(request *http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Model(&models.PayRollInstallment{})
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.PayRollInstallment{})
+	page.Page = page.Page + 1
+	return page, nil
 }

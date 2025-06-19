@@ -1,8 +1,12 @@
 package payroll
 
 import (
+	"net/http"
+
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -56,4 +60,22 @@ func (s *PayrollService) UpdateItemByPayroll(payRollID string, item *models.Payr
 
 func (s *PayrollService) DeleteItemByPayroll(payRollID string, item *models.PayrollItemModel) error {
 	return s.db.Model(&models.PayRollModel{}).Where("id = ?", payRollID).Association("Items").Delete(item)
+}
+
+func (s *PayrollService) FindAllPayroll(request *http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Model(&models.PayRollModel{})
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.PayRollModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *PayrollService) GetItemsFromPayroll(payRollID string) ([]*models.PayrollItemModel, error) {
+	var items []*models.PayrollItemModel
+	err := s.db.Model(&models.PayRollModel{}).Where("id = ?", payRollID).Association("Items").Find(&items)
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
 }
