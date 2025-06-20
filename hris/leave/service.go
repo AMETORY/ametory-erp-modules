@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/hris/employee"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
@@ -12,12 +13,13 @@ import (
 )
 
 type LeaveService struct {
-	db  *gorm.DB
-	ctx *context.ERPContext
+	db              *gorm.DB
+	ctx             *context.ERPContext
+	employeeService *employee.EmployeeService
 }
 
-func NewLeaveService(ctx *context.ERPContext) *LeaveService {
-	return &LeaveService{db: ctx.DB, ctx: ctx}
+func NewLeaveService(ctx *context.ERPContext, employeeService *employee.EmployeeService) *LeaveService {
+	return &LeaveService{db: ctx.DB, ctx: ctx, employeeService: employeeService}
 }
 
 func Migrate(db *gorm.DB) error {

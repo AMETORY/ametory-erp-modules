@@ -21,6 +21,7 @@ type HRISservice struct {
 	EmployeeService         *employee.EmployeeService
 	EmployeeOvertimeService *employee_overtime.EmployeeOvertimeService
 	PayrollService          *payroll.PayrollService
+	LeaveService            *leave.LeaveService
 }
 
 func NewHRISservice(ctx *context.ERPContext) *HRISservice {
@@ -34,6 +35,7 @@ func NewHRISservice(ctx *context.ERPContext) *HRISservice {
 		EmployeeService:         employeeService,
 		EmployeeOvertimeService: employee_overtime.NewEmployeeOvertimeService(ctx),
 		PayrollService:          payroll.NewPayrollService(ctx, employeeService),
+		LeaveService:            leave.NewLeaveService(ctx, employeeService),
 	}
 	if !service.ctx.SkipMigration {
 		service.Migrate()
