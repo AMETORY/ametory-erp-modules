@@ -42,6 +42,7 @@ require (
 	github.com/google/s2a-go v0.1.8 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.0 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/compress v1.11.12 // indirect
@@ -102,6 +103,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/schollz/progressbar/v3 v3.14.1
+	gopkg.in/olahol/melody.v1 v1.0.0-20170518105555-d52139073376
 )
 
 // replace github.com/AMETORY/ametory-erp-modules/internal/generatorlib => ./internal/generatorlib

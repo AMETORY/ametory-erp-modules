@@ -148,6 +148,7 @@ var (
 		"Firestore",
 		"FCMService",
 		"RedisService",
+		"WebsocketService",
 		"AppService",
 	}
 )

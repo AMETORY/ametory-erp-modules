@@ -8,7 +8,7 @@ import (
 )
 
 type RedisService struct {
-	client *redis.Client
+	Client *redis.Client
 }
 
 func NewRedisService(ctx context.Context, address, password string, db int) *RedisService {
@@ -23,5 +23,5 @@ func NewRedisService(ctx context.Context, address, password string, db int) *Red
 		log.Fatal(err)
 	}
 
-	return &RedisService{client: rdb}
+	return &RedisService{Client: rdb}
 }

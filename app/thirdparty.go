@@ -10,6 +10,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
 )
 
@@ -100,6 +101,12 @@ func WithRedisService(ctx context.Context, address, password string, db int) App
 	return func(c *AppContainer) {
 		c.RedisService = redis.NewRedisService(ctx, address, password, db)
 		log.Println("RedisService initialized")
+	}
+}
+func WithWebsocketService() AppContainerOption {
+	return func(c *AppContainer) {
+		c.WebsocketService = websocket.NewWebsocketService()
+		log.Println("WebsocketService initialized")
 	}
 }
 

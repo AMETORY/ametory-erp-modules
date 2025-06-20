@@ -32,6 +32,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
 	"github.com/AMETORY/ametory-erp-modules/user"
 	"gorm.io/gorm"
@@ -40,6 +41,7 @@ import (
 type AppContainer struct {
 	erpContext                  *context.ERPContext // Context for the ERP application
 	DB                          *gorm.DB            // Database connection
+	Ctx                         ctx.Context         // Context
 	Request                     *http.Request       // HTTP request
 	InventoryService            *inventory.InventoryService
 	ManufactureService          *manufacture.ManufactureService
@@ -78,6 +80,7 @@ type AppContainer struct {
 	WhatsmeowService *whatsmeow_client.WhatsmeowService
 	FCMService       *google.FCMService
 	RedisService     *redis.RedisService
+	WebsocketService *websocket.WebsocketService
 	AppService       any    // This can be a specific service or a generic interface
 	baseURL          string // Base URL for the application
 }
@@ -91,6 +94,7 @@ func NewAppContainer(db *gorm.DB, req *http.Request, golangContext *ctx.Context,
 	container := &AppContainer{
 		erpContext:         context.NewERPContext(db, req, golangContext, skipMigrate),
 		DB:                 db,
+		Ctx:                *golangContext,
 		Request:            req,
 		SkipMigration:      skipMigrate,
 		baseURL:            baseURL,
