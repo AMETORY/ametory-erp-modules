@@ -31,6 +31,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
 	"github.com/AMETORY/ametory-erp-modules/user"
 	"gorm.io/gorm"
@@ -76,6 +77,7 @@ type AppContainer struct {
 	Firestore        *thirdparty.Firestore
 	WhatsmeowService *whatsmeow_client.WhatsmeowService
 	FCMService       *google.FCMService
+	RedisService     *redis.RedisService
 	AppService       any    // This can be a specific service or a generic interface
 	baseURL          string // Base URL for the application
 }

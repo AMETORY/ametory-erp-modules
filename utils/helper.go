@@ -228,7 +228,7 @@ func FileHeaderToBytes(fileHeader *multipart.FileHeader) ([]byte, error) {
 }
 
 func FilenameTrimSpace(filename string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(filename, " ", "-"), "%", "")
+	return strings.NewReplacer(" ", "-", "%", "", "/", "_", "\\", "_").Replace(filename)
 }
 
 func ReduceMap(data map[string]interface{}, keys []string) map[string]interface{} {

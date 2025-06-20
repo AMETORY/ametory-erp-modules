@@ -9,6 +9,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
 )
 
@@ -93,6 +94,12 @@ func WithFCMService(ctx *erpCtx.ERPContext, serverKey, credentialPath *string) A
 			credentialPath,
 		)
 		log.Println("FCMService initialized")
+	}
+}
+func WithRedisService(ctx context.Context, address, password string, db int) AppContainerOption {
+	return func(c *AppContainer) {
+		c.RedisService = redis.NewRedisService(ctx, address, password, db)
+		log.Println("RedisService initialized")
 	}
 }
 

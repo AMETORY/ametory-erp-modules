@@ -147,6 +147,7 @@ var (
 		"WhatsmeowService",
 		"Firestore",
 		"FCMService",
+		"RedisService",
 		"AppService",
 	}
 )
@@ -311,7 +312,7 @@ func initProject() {
 
 	var selectedThirdParty []string
 	if err := survey.AskOne(&survey.MultiSelect{
-		Message: "Select third-party integrations:",
+		Message: "Select third-party / others integrations:",
 		Options: thirdParty,
 	}, &selectedThirdParty); err != nil {
 		log.Fatal(err)
