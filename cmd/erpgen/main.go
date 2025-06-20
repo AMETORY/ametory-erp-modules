@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.7"
+var version = "1.0.8"
 
 var (
 	coreModules = []string{
@@ -108,6 +108,7 @@ var (
 		},
 		"HRIS": {
 			"Attendance",
+			"Leave",
 			"AttendancePolicy",
 			"DeductionSetting",
 			"Employee",

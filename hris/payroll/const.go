@@ -1,0 +1,28 @@
+package payroll
+
+const (
+	SALARY           = "SALARY"
+	ALLOWANCE        = "ALLOWANCE"
+	OVERTIME         = "OVERTIME"
+	DEDUCTION        = "DEDUCTION"
+	REIMBURSEMENT    = "REIMBURSEMENT"
+	DRAFT            = "DRAFT"
+	RUNNING          = "RUNNING"
+	FINISHED         = "FINISHED"
+	REQUEST          = "REQUEST"
+	APPROVED         = "APPROVED"
+	PAID             = "PAID"
+	PROCESSING       = "PROCESSING"
+	REJECTED         = "REJECTED"
+	CANCELED         = "CANCELED"
+	MONTH_MM         = "month-mm"
+	MONTH_MMM        = "month-mmm"
+	MONTH_MMMM       = "month-mmmm"
+	YEAR_YYYY        = "year-yyyy"
+	YEAR_YY          = "year-yy"
+	AUTO_NUMERIC     = "auto-numeric"
+	RANDOM_NUMERIC   = "random-numeric"
+	RANDOM_CHARACTER = "random-character"
+	STATIC_CHARACTER = "static-character"
+	MONTH_ROMAN      = "month-roman"
+)

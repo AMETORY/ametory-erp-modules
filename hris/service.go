@@ -8,6 +8,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/hris/employee"
 	"github.com/AMETORY/ametory-erp-modules/hris/employee_activity"
 	"github.com/AMETORY/ametory-erp-modules/hris/employee_overtime"
+	"github.com/AMETORY/ametory-erp-modules/hris/leave"
 	"github.com/AMETORY/ametory-erp-modules/hris/payroll"
 )
 
@@ -23,15 +24,16 @@ type HRISservice struct {
 }
 
 func NewHRISservice(ctx *context.ERPContext) *HRISservice {
+	employeeService := employee.NewEmployeeService(ctx)
 	service := HRISservice{
 		ctx:                     ctx,
 		AttendanceService:       attendance.NewAttendanceService(ctx),
 		AttendancePolicyService: attendance_policy.NewAttendancePolicyService(ctx),
 		DeductionSettingService: deduction_setting.NewDeductionSettingService(ctx),
 		EmployeeActivityService: employee_activity.NewEmployeeActivityService(ctx),
-		EmployeeService:         employee.NewEmployeeService(ctx),
+		EmployeeService:         employeeService,
 		EmployeeOvertimeService: employee_overtime.NewEmployeeOvertimeService(ctx),
-		PayrollService:          payroll.NewPayrollService(ctx),
+		PayrollService:          payroll.NewPayrollService(ctx, employeeService),
 	}
 	if !service.ctx.SkipMigration {
 		service.Migrate()
@@ -44,6 +46,9 @@ func (s *HRISservice) Migrate() error {
 		return nil
 	}
 	if err := attendance.Migrate(s.ctx.DB); err != nil {
+		return err
+	}
+	if err := leave.Migrate(s.ctx.DB); err != nil {
 		return err
 	}
 	if err := attendance_policy.Migrate(s.ctx.DB); err != nil {
