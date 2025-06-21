@@ -44,7 +44,7 @@ func (e *JobTitleService) FindAllJobTitles(request *http.Request) (paginate.Page
 	pg := paginate.New()
 	stmt := e.db.Model(&models.JobTitleModel{})
 	utils.FixRequest(request)
-	page := pg.With(stmt).Request(&request).Response(&[]models.JobTitleModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.JobTitleModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }

@@ -28,6 +28,7 @@ type HRISservice struct {
 	ReimbursementService    *reimbursement.ReimbursementService
 	ScheduleService         *schedule.ScheduleService
 	EmployeeLoanService     *employee_loan.EmployeeLoanService
+	JobTitleService         *employee.JobTitleService
 }
 
 func NewHRISservice(ctx *context.ERPContext) *HRISservice {
@@ -45,6 +46,7 @@ func NewHRISservice(ctx *context.ERPContext) *HRISservice {
 		ReimbursementService:    reimbursement.NewReimbursementService(ctx, employeeService),
 		ScheduleService:         schedule.NewScheduleService(ctx, employeeService),
 		EmployeeLoanService:     employee_loan.NewEmployeeLoanService(ctx, employeeService),
+		JobTitleService:         employee.NewJobTitleService(ctx),
 	}
 	if !service.ctx.SkipMigration {
 		service.Migrate()

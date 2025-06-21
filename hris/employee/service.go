@@ -48,9 +48,12 @@ func (e *EmployeeService) DeleteEmployee(id string) error {
 
 func (e *EmployeeService) FindAllEmployees(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := e.db.Model(&models.EmployeeModel{})
+	stmt := e.db.Model(&models.EmployeeModel{}).Preload("JobTitle")
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
-	page := pg.With(stmt).Request(&request).Response(&[]models.EmployeeModel{})
+	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeModel{})
 	page.Page = page.Page + 1
 	return page, nil
 }
