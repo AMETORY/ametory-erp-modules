@@ -14,7 +14,7 @@ import (
 
 //go:embed templates/*
 var templateFS embed.FS
-var version = "1.0.11"
+var version = "1.0.13"
 
 func loadTemplate(name string) (*template.Template, error) {
 	content, err := fs.ReadFile(templateFS, "templates/"+name)
@@ -58,8 +58,8 @@ func GenerateAPI(config map[string]any) error {
 	fmt.Printf("Module Name: %s\n", moduleName)
 	fmt.Printf("Project Directory: %s\n", projectDir)
 	fmt.Printf("API Name: %s\n", apiName)
-	fmt.Printf("Snake API Name: %s\n", snakeApiName)
-	fmt.Printf("Camel API Name: %s\n", camelApiName)
+	// fmt.Printf("Snake API Name: %s\n", snakeApiName)
+	// fmt.Printf("Camel API Name: %s\n", camelApiName)
 
 	// 1. GENERATE HANDLER
 

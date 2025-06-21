@@ -10,6 +10,8 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/hris/employee_overtime"
 	"github.com/AMETORY/ametory-erp-modules/hris/leave"
 	"github.com/AMETORY/ametory-erp-modules/hris/payroll"
+	"github.com/AMETORY/ametory-erp-modules/hris/reimbursement"
+	"github.com/AMETORY/ametory-erp-modules/hris/schedule"
 )
 
 type HRISservice struct {
@@ -22,6 +24,8 @@ type HRISservice struct {
 	EmployeeOvertimeService *employee_overtime.EmployeeOvertimeService
 	PayrollService          *payroll.PayrollService
 	LeaveService            *leave.LeaveService
+	ReimbursementService    *reimbursement.ReimbursementService
+	ScheduleService         *schedule.ScheduleService
 }
 
 func NewHRISservice(ctx *context.ERPContext) *HRISservice {
@@ -36,6 +40,8 @@ func NewHRISservice(ctx *context.ERPContext) *HRISservice {
 		EmployeeOvertimeService: employee_overtime.NewEmployeeOvertimeService(ctx),
 		PayrollService:          payroll.NewPayrollService(ctx, employeeService),
 		LeaveService:            leave.NewLeaveService(ctx, employeeService),
+		ReimbursementService:    reimbursement.NewReimbursementService(ctx, employeeService),
+		ScheduleService:         schedule.NewScheduleService(ctx, employeeService),
 	}
 	if !service.ctx.SkipMigration {
 		service.Migrate()
