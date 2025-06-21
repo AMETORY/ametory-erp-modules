@@ -26,8 +26,8 @@ type PayrollItemModel struct {
 	Bpjs               bool                `json:"bpjs"`
 	BpjsCounted        bool                `json:"bpjs_counted"`
 	Tariff             float64             `json:"tariff"`
-	CompanyID          string              `json:"company_id" gorm:"not null"`
-	Company            CompanyModel        `gorm:"foreignKey:CompanyID"`
+	CompanyID          *string             `json:"company_id" gorm:"not null"`
+	Company            *CompanyModel       `gorm:"foreignKey:CompanyID"`
 	Data               string              `gorm:"type:JSON" json:"data"`
 	EmployeeLoanID     *string             `json:"employee_loan_id,omitempty"`
 	EmployeeLoan       *LoanModel          `gorm:"foreignKey:EmployeeLoanID;constraint:OnDelete:CASCADE"`
