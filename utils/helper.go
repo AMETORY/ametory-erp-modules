@@ -12,6 +12,8 @@ import (
 	mathRand "math/rand"
 	"mime/multipart"
 	"net/http"
+	"net/mail"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -449,4 +451,61 @@ func GetMimeType(url string) string {
 
 	return mtype.String()
 
+}
+
+func ParseDate(dateStr string) (time.Time, error) {
+	var date time.Time
+	var err error
+
+	// List of formats to try
+	formats := []string{
+		"2006-01-02",  // yyyy-mm-dd
+		"02-01-2006",  // dd-mm-yyyy
+		"02-Jan-2006", // dd-mm-yyyy
+		"2-Jan-2006",  // dd-mm-yyyy
+		"Jan-02-2006", // mm-dd-yyyy
+		"02-01-06",    // dd-mm-yy
+		"01-02-06",    // mm-dd-yy
+		"2006-01",     // yyyy-mm
+		"01-2006",     // mm-yyyy
+		"2006",        // yyyy
+		"01-02T15:04:05Z07:00",
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02T15:04:05-07:00",
+		"2006-01-02T15:04:05",
+		"2006-01-02T15:04:05Z",
+		"01-02",      // mm-dd
+		"02-01",      // dd-mm
+		"02",         // dd
+		"01",         // mm
+		"06",         // yy
+		"06-01",      // yy-mm
+		"01-06",      // mm-yy
+		"06-01-2006", // yy-mm-yyyy
+		"01-06-2006", // mm-yy-yyyy
+		"06-01-06",   // yy-mm-yy
+		"01-06-06",   // mm-yy-yy
+
+	}
+
+	for _, format := range formats {
+		date, err = time.Parse(format, dateStr)
+		if err == nil {
+			return date, nil
+		}
+	}
+
+	// Return an error if no format matched
+	return time.Time{}, fmt.Errorf("unsupported date format: %s", dateStr)
+}
+
+func ValidateEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
+}
+
+func IsValidEmail(email string) bool {
+	// Simple regex for email validation
+	re := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+	return re.MatchString(email)
 }
