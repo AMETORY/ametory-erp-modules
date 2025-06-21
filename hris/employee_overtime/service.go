@@ -49,6 +49,9 @@ func (e *EmployeeOvertimeService) DeleteEmployeeOvertime(id string) error {
 func (e *EmployeeOvertimeService) FindAllEmployeeOvertimes(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := e.db.Model(&models.EmployeeActivityModel{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeActivityModel{})
 	page.Page = page.Page + 1

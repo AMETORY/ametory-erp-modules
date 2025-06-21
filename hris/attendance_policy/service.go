@@ -45,6 +45,9 @@ func (s *AttendancePolicyService) FindOne(id string) (*models.AttendancePolicy, 
 func (a *AttendancePolicyService) FindAll(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := a.db.Model(&models.AttendancePolicy{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.AttendancePolicy{})
 	page.Page = page.Page + 1

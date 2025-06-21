@@ -69,6 +69,9 @@ func (s *PayrollService) DeleteItemByPayroll(payRollID string, item *models.Payr
 func (s *PayrollService) FindAllPayroll(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Model(&models.PayRollModel{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.PayRollModel{})
 	page.Page = page.Page + 1

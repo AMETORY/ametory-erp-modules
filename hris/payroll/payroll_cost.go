@@ -32,6 +32,9 @@ func (s *PayrollService) DeletePayRollCost(id string) error {
 func (s *PayrollService) FindAllPayRollCosts(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Model(&models.PayRollCostModel{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.PayRollCostModel{})
 	page.Page = page.Page + 1

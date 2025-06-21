@@ -38,6 +38,9 @@ func (s *EmployeeLoanService) CreateEmployeeLoan(m *models.EmployeeLoan) error {
 func (s *EmployeeLoanService) FindAllEmployeeLoan(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Model(&models.EmployeeLoan{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeLoan{})
 	page.Page = page.Page + 1

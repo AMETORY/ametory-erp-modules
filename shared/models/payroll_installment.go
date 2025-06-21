@@ -8,13 +8,13 @@ import (
 
 type PayRollInstallment struct {
 	shared.BaseModel
-	CompanyID         string       `json:"company_id" binding:"required"`
-	Company           CompanyModel `gorm:"foreignKey:CompanyID"`
-	EmployeeLoanID    string       `json:"employee_loan_id"`
-	EmployeeLoan      LoanModel    `gorm:"foreignKey:EmployeeLoanID"`
-	InstallmentAmount float64      `json:"installment_amount"` // Jumlah cicilan yang dibayar di payroll ini
-	PayRollItemID     string       `json:"pay_roll_item_id" gorm:"type:char(36)"`
-	PayRoll           PayRollModel `gorm:"-"`
+	CompanyID         *string       `json:"company_id" binding:"required"`
+	Company           *CompanyModel `gorm:"foreignKey:CompanyID"`
+	EmployeeLoanID    string        `json:"employee_loan_id"`
+	EmployeeLoan      LoanModel     `gorm:"foreignKey:EmployeeLoanID"`
+	InstallmentAmount float64       `json:"installment_amount"` // Jumlah cicilan yang dibayar di payroll ini
+	PayRollItemID     string        `json:"pay_roll_item_id" gorm:"type:char(36)"`
+	PayRoll           PayRollModel  `gorm:"-"`
 }
 
 func (pi *PayRollInstallment) TableName() string {

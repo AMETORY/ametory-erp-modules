@@ -39,6 +39,9 @@ func (s *LeaveService) CreateLeave(m *models.LeaveModel) error {
 func (s *LeaveService) FindAllLeave(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("LeaveCategory").Model(&models.LeaveModel{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.LeaveModel{})
 	page.Page = page.Page + 1
@@ -72,6 +75,9 @@ func (s *LeaveService) CreateLeaveCategory(c *models.LeaveCategory) error {
 func (s *LeaveService) FindAllLeaveCategories(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Model(&models.LeaveCategory{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.LeaveCategory{})
 	page.Page = page.Page + 1
@@ -92,4 +98,47 @@ func (s *LeaveService) UpdateLeaveCategory(c *models.LeaveCategory) error {
 
 func (s *LeaveService) DeleteLeaveCategory(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.LeaveCategory{}).Error
+}
+
+func (s *LeaveService) GenLeaveCategories() {
+	cats := []string{
+		"Dinas Luar Kota",
+		"Cuti Menikah",
+		"Cuti Menikahkan Anak",
+		"Cuti Khitanan Anak",
+		"Cuti Baptis Anak",
+		"Cuti Istri Melahirkan atau Keguguran",
+		"Cuti Keluarga Meninggal",
+		"Cuti Anggota Keluarga Dalam Satu Rumah Meninggal",
+		"Cuti Ibadah Haji",
+		"Cuti Diluar Tanggungan",
+		"Pergantian Overtime",
+		"Pergantian Shift/Jadwal",
+		"Izin Lainnya",
+	}
+
+	for _, v := range cats {
+		if s.ctx.DB.Where("name = ?", v).First(&models.LeaveCategory{}).Error == nil {
+			continue
+		}
+		s.ctx.DB.Create(&models.LeaveCategory{
+			Name: v,
+		})
+	}
+
+	sicks := []string{
+		"Izin Sakit",
+		"Sakit dengan Surat Dokter",
+	}
+	for _, v := range sicks {
+		s.ctx.DB.Create(&models.LeaveCategory{
+			Name: v,
+			Sick: true,
+		})
+	}
+
+	s.ctx.DB.Create(&models.LeaveCategory{
+		Name:   "Absen",
+		Absent: true,
+	})
 }

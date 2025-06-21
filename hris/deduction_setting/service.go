@@ -32,6 +32,9 @@ func (s *DeductionSettingService) Create(deductionSetting *models.DeductionSetti
 func (a *DeductionSettingService) FindAll(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := a.db.Model(&models.DeductionSettingModel{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.DeductionSettingModel{})
 	page.Page = page.Page + 1

@@ -11,7 +11,7 @@ import (
 type LeaveModel struct {
 	shared.BaseModel
 	Name            string         `json:"name"`
-	RequestType     string         `json:"request_type" gorm:"type:enum('FULL_DAY', 'HALF_DAY', 'HOURLY');default:'FULL_DAY'"`
+	RequestType     string         `json:"request_type" gorm:"default:'FULL_DAY'"`
 	LeaveCategoryID *string        `json:"leave_category_id"`
 	LeaveCategory   LeaveCategory  `json:"leave_category" gorm:"foreignKey:LeaveCategoryID"`
 	StartDate       *time.Time     `json:"start_date" gorm:"type:DATE" sql:"TYPE:DATE"`
@@ -21,7 +21,7 @@ type LeaveModel struct {
 	EmployeeID      *string        `json:"employee_id"`
 	Employee        *EmployeeModel `json:"employee" gorm:"foreignKey:EmployeeID"`
 	Description     string         `json:"description" gorm:"type:TEXT"`
-	Status          string         `json:"status" gorm:"type:enum('DRAFT','REVIEWED','APPROVED','REJECTED') DEFAULT 'DRAFT'"`
+	Status          string         `json:"status" gorm:"default:'DRAFT'"`
 	Remarks         string         `json:"remarks" gorm:"type:TEXT"`
 	Attachment      *string        `json:"attachment" gorm:"type:TEXT"`
 	ApproverID      *string        `json:"approver_id"`
@@ -50,14 +50,14 @@ type LeaveCategory struct {
 	Description     string
 	Absent          bool          `gorm:"default:false; NOT NULL"`
 	Sick            bool          `gorm:"default:false; NOT NULL"`
-	CompanyID       *string       `json:"company_id" gorm:"not null"`
+	CompanyID       *string       `json:"company_id"`
 	Company         *CompanyModel `gorm:"foreignKey:CompanyID"`
 	IsYearlyQuota   bool          `json:"is_yearly_quota" gorm:"not null"`
 	IsShiftSchedule bool          `json:"is_shift_schedule" gorm:"not null"`
 }
 
 func (p *LeaveCategory) TableName() string {
-	return "leaves"
+	return "leave_categories"
 }
 
 func (p *LeaveCategory) BeforeCreate(tx *gorm.DB) (err error) {

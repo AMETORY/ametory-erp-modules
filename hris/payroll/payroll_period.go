@@ -32,6 +32,9 @@ func (s *PayrollService) DeletePayRollPeriode(id string) error {
 func (s *PayrollService) FindAllPayRollPeriodes(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Model(&models.PayRollPeriodeModel{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.PayRollPeriodeModel{})
 	page.Page = page.Page + 1
