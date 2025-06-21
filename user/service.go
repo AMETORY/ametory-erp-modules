@@ -35,6 +35,38 @@ func (service *UserService) GetUserByCode(code string) (*models.UserModel, error
 	return user, nil
 }
 
+func (service *UserService) GetCompanyUsers(companyID string, request http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := service.db.
+		Joins("JOIN user_companies ON users.id = user_companies.user_model_id").
+		Where("user_companies.company_model_id = ?", companyID)
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("users.full_name ILIKE ? OR users.email ILIKE ? OR users.phone_number ILIKE ?",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+		)
+	}
+
+	stmt = stmt.Model(&models.UserModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.UserModel{})
+	page.Page = page.Page + 1
+	items := page.Items.(*[]models.UserModel)
+	newItems := make([]models.UserModel, 0)
+
+	for _, v := range *items {
+		file := models.FileModel{}
+		service.db.Where("ref_id = ? and ref_type = ?", v.ID, "user").First(&file)
+		if file.ID != "" {
+			v.ProfilePicture = &file
+		}
+		newItems = append(newItems, v)
+	}
+	page.Items = &newItems
+	return page, nil
+}
+
 func (s *UserService) GetUsers(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db

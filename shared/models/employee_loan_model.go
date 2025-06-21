@@ -19,7 +19,7 @@ type EmployeeLoan struct {
 	RemainingAmount        float64              `json:"remaining_amount"`
 	InstallmentsPaid       float64              `json:"installments_paid"`
 	Description            string               `json:"description"`
-	Status                 string               `json:"status" gorm:"type:enum('APPROVED', 'ONGOING', 'PAID_OFF', 'CANCELLED');default:'APPROVED'"`
+	Status                 string               `json:"status" gorm:"default:'APPROVED'"`
 	PayRollInstallments    []PayRollInstallment `json:"pay_roll_installments" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relasi HasMany ke PayRollInstallment
 	ApprovedID             *string              `json:"approved_id"`
 	Approved               *UserModel           `gorm:"foreignKey:ApprovedID"`

@@ -1,4 +1,4 @@
-package leave
+package employee_loan
 
 import (
 	"errors"
