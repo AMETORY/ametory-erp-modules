@@ -15,8 +15,8 @@ type OrganizationModel struct {
 	Description      string              `gorm:"size:100" json:"description,omitempty"`
 	Employees        []EmployeeModel     `gorm:"foreignKey:organization_id;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	SubOrganizations []OrganizationModel `json:"sub_organizations,omitempty" gorm:"foreignKey:parent_id"`
-	CompanyID        string              `json:"company_id" gorm:"not null"`
-	Company          CompanyModel        `gorm:"foreignKey:CompanyID"`
+	CompanyID        *string             `json:"company_id" gorm:"not null"`
+	Company          *CompanyModel       `gorm:"foreignKey:CompanyID"`
 }
 
 func (o OrganizationModel) TableName() string {
