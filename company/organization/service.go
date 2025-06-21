@@ -5,8 +5,6 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
-	"github.com/AMETORY/ametory-erp-modules/utils"
-	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +26,7 @@ func (s *OrganizationService) UpdateOrganization(id string, data *models.Organiz
 }
 
 func (s *OrganizationService) DeleteOrganization(id string) error {
-	return s.db.Where("id = ?", id).Delete(&models.OrganizationModel{}).Error
+	return s.db.Where("id = ?", id).Unscoped().Delete(&models.OrganizationModel{}).Error
 }
 
 func (s *OrganizationService) GetOrganizationByID(id string) (*models.OrganizationModel, error) {
@@ -39,14 +37,36 @@ func (s *OrganizationService) GetOrganizationByID(id string) (*models.Organizati
 	return &branch, nil
 }
 
-func (s *OrganizationService) FindAllOrganizations(request *http.Request) (paginate.Page, error) {
-	pg := paginate.New()
+func (s *OrganizationService) FindAllOrganizations(request *http.Request) ([]models.OrganizationModel, error) {
+	orgs := []models.OrganizationModel{}
 	stmt := s.db.Model(&models.OrganizationModel{})
+	stmt = stmt.Where("parent_id is null")
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
-	utils.FixRequest(request)
-	page := pg.With(stmt).Request(request).Response(&[]models.OrganizationModel{})
-	page.Page = page.Page + 1
-	return page, nil
+	stmt.Find(&orgs)
+
+	// Get all recursive
+
+	for i, org := range orgs {
+		children, err := s.getChildren(org.ID)
+		if err != nil {
+			continue
+		}
+		org.SubOrganizations = children
+		orgs[i] = org
+	}
+	return orgs, nil
+}
+
+func (s *OrganizationService) getChildren(id string) ([]models.OrganizationModel, error) {
+	var children []models.OrganizationModel
+	if err := s.db.Where("parent_id = ?", id).Find(&children).Error; err != nil {
+		return nil, err
+	}
+	for i, child := range children {
+		child.SubOrganizations, _ = s.getChildren(child.ID)
+		children[i] = child
+	}
+	return children, nil
 }

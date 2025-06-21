@@ -48,9 +48,18 @@ func (e *EmployeeService) DeleteEmployee(id string) error {
 
 func (e *EmployeeService) FindAllEmployees(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := e.db.Model(&models.EmployeeModel{}).Preload("JobTitle")
+	stmt := e.db.Preload("User").Preload("Company").Model(&models.EmployeeModel{}).Preload("JobTitle")
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("full_name ilike ? or email ilike ? or employee_identity_number ilike ? or address ilike ? or phone ilike ?",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+		)
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeModel{})

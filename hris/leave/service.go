@@ -42,6 +42,13 @@ func (s *LeaveService) FindAllLeave(request *http.Request) (paginate.Page, error
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("name ilike ? or description ilike ?",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+		)
+
+	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.LeaveModel{})
 	page.Page = page.Page + 1
@@ -77,6 +84,9 @@ func (s *LeaveService) FindAllLeaveCategories(request *http.Request) (paginate.P
 	stmt := s.db.Model(&models.LeaveCategory{})
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("name ilike ?", "%"+request.URL.Query().Get("search")+"%")
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.LeaveCategory{})

@@ -46,14 +46,14 @@ func (p *LeaveModel) BeforeCreate(tx *gorm.DB) (err error) {
 
 type LeaveCategory struct {
 	shared.BaseModel
-	Name            string `gorm:"uniqueIndex;type:VARCHAR(255)"`
-	Description     string
-	Absent          bool          `gorm:"default:false; NOT NULL"`
-	Sick            bool          `gorm:"default:false; NOT NULL"`
-	CompanyID       *string       `json:"company_id"`
-	Company         *CompanyModel `gorm:"foreignKey:CompanyID"`
-	IsYearlyQuota   bool          `json:"is_yearly_quota" gorm:"not null"`
-	IsShiftSchedule bool          `json:"is_shift_schedule" gorm:"not null"`
+	Name            string        `gorm:"uniqueIndex;type:VARCHAR(255)" json:"name,omitempty"`
+	Description     string        `json:"description,omitempty"`
+	Absent          bool          `gorm:"default:false; NOT NULL" json:"absent,omitempty"`
+	Sick            bool          `gorm:"default:false; NOT NULL" json:"sick,omitempty"`
+	CompanyID       *string       `json:"company_id,omitempty"`
+	Company         *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	IsYearlyQuota   bool          `json:"is_yearly_quota,omitempty" gorm:"not null"`
+	IsShiftSchedule bool          `json:"is_shift_schedule,omitempty" gorm:"not null"`
 }
 
 func (p *LeaveCategory) TableName() string {

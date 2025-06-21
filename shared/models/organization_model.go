@@ -8,15 +8,15 @@ import (
 
 type OrganizationModel struct {
 	shared.BaseModel
-	Parent           *OrganizationModel
+	Parent           *OrganizationModel  `json:"parent,omitempty"`
 	ParentId         *string             `gorm:"REFERENCES organizations" json:"parent_id,omitempty"`
 	Name             string              `gorm:"size:36" json:"name,omitempty"`
 	Code             string              `gorm:"size:36" json:"code,omitempty"`
 	Description      string              `gorm:"size:100" json:"description,omitempty"`
-	Employees        []EmployeeModel     `gorm:"foreignKey:organization_id;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Employees        []EmployeeModel     `gorm:"foreignKey:organization_id;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"employees,omitempty"`
 	SubOrganizations []OrganizationModel `json:"sub_organizations,omitempty" gorm:"foreignKey:parent_id"`
-	CompanyID        *string             `json:"company_id" gorm:"not null"`
-	Company          *CompanyModel       `gorm:"foreignKey:CompanyID"`
+	CompanyID        *string             `gorm:"not null" json:"company_id,omitempty"`
+	Company          *CompanyModel       `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 }
 
 func (o OrganizationModel) TableName() string {
