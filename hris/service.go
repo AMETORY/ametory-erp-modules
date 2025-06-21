@@ -13,6 +13,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/hris/payroll"
 	"github.com/AMETORY/ametory-erp-modules/hris/reimbursement"
 	"github.com/AMETORY/ametory-erp-modules/hris/schedule"
+	"github.com/AMETORY/ametory-erp-modules/hris/work_shift"
 )
 
 type HRISservice struct {
@@ -29,6 +30,7 @@ type HRISservice struct {
 	ScheduleService         *schedule.ScheduleService
 	EmployeeLoanService     *employee_loan.EmployeeLoanService
 	JobTitleService         *employee.JobTitleService
+	WorkShiftService        *work_shift.WorkShiftService
 }
 
 func NewHRISservice(ctx *context.ERPContext) *HRISservice {
@@ -47,6 +49,7 @@ func NewHRISservice(ctx *context.ERPContext) *HRISservice {
 		ScheduleService:         schedule.NewScheduleService(ctx, employeeService),
 		EmployeeLoanService:     employee_loan.NewEmployeeLoanService(ctx, employeeService),
 		JobTitleService:         employee.NewJobTitleService(ctx),
+		WorkShiftService:        work_shift.NewWorkShiftService(ctx, employeeService),
 	}
 	if !service.ctx.SkipMigration {
 		service.Migrate()
