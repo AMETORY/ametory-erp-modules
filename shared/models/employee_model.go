@@ -55,13 +55,13 @@ type EmployeeModel struct {
 	BankAccountNumber             string                 `json:"bank_account_number,omitempty"`
 	BankID                        *string                `json:"bank_id,omitempty"`
 	Bank                          *BankModel             `gorm:"foreignKey:BankID;constraint:OnDelete:CASCADE" json:"bank,omitempty"`
-	CompanyID                     *string                `json:"company_id,omitempty" gorm:"not null"`
+	CompanyID                     *string                `json:"company_id,omitempty" gorm:"size:36;not null"`
 	Company                       *CompanyModel          `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
-	UserID                        *string                `json:"user_id,omitempty"`
+	UserID                        *string                `gorm:"size:36" json:"user_id,omitempty"`
+	User                          *UserModel             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 	Status                        string                 `gorm:"default:'ACTIVE'" json:"status,omitempty"`
 	EmployeePushNotifTokens       []PushTokenModel       `json:"push_notification_tokens,omitempty" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	AnnualLeaveDays               int                    `json:"annual_leave_days,omitempty"`
-	Tx                            *gorm.DB               `gorm:"-"`
 	LateDeductionSettingID        *string                `json:"late_deduction_setting_id,omitempty"`
 	LateDeductionSetting          *DeductionSettingModel `gorm:"foreignKey:LateDeductionSettingID" json:"late_deduction_setting,omitempty"`
 	NotPresenceDeductionSettingID *string                `json:"not_presence_deduction_setting_id,omitempty"`

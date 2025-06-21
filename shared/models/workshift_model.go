@@ -8,13 +8,13 @@ import (
 
 type WorkShiftModel struct {
 	shared.BaseModel
-	Name        string       `gorm:"type:varchar(255);not null" json:"name"`
-	Description string       `gorm:"type:text" json:"description"`
-	StartTime   string       `gorm:"type:varchar(255);not null" json:"start_time"`
-	EndTime     string       `gorm:"type:varchar(255);not null" json:"end_time"`
-	Day         string       `gorm:"type:varchar(255);not null" json:"day"`
-	CompanyID   string       `gorm:"type:char(36);index" json:"company_id"` // company id
-	Company     CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	Name        string        `gorm:"type:varchar(255);not null" json:"name"`
+	Description string        `gorm:"type:text" json:"description"`
+	StartTime   TimeOnly      `gorm:"type:varchar(255);not null" json:"start_time"`
+	EndTime     TimeOnly      `gorm:"type:varchar(255);not null" json:"end_time"`
+	Day         string        `gorm:"type:varchar(255);not null" json:"day"`
+	CompanyID   *string       `gorm:"type:char(36);index" json:"company_id"` // company id
+	Company     *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 }
 
 func (WorkShiftModel) TableName() string {
