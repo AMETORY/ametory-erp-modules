@@ -26,8 +26,8 @@ type ReimbursementModel struct {
 	Employee         *EmployeeModel           `gorm:"foreignKey:EmployeeID" json:"-"`
 	Transactions     []TransactionModel       `json:"transactions" gorm:"-"`
 	Attachment       string                   `json:"attachment"`
-	CompanyID        string                   `json:"company_id" gorm:"not null"`
-	Company          CompanyModel             `gorm:"foreignKey:CompanyID"`
+	CompanyID        *string                  `json:"company_id" gorm:"not null"`
+	Company          *CompanyModel            `gorm:"foreignKey:CompanyID"`
 }
 
 func (ReimbursementModel) TableName() string {

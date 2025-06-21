@@ -10,8 +10,8 @@ import (
 
 type EmployeeOvertimeModel struct {
 	shared.BaseModel
-	CompanyID                string           `json:"company_id" gorm:"not null"`
-	Company                  CompanyModel     `gorm:"foreignKey:CompanyID"`
+	CompanyID                *string          `json:"company_id" gorm:"not null"`
+	Company                  *CompanyModel    `gorm:"foreignKey:CompanyID"`
 	EmployeeID               string           `json:"employee_id"`
 	Employee                 EmployeeModel    `gorm:"foreignKey:EmployeeID"`
 	ApprovedID               *string          `json:"approved_id"`

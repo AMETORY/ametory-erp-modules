@@ -33,8 +33,8 @@ type ScheduleModel struct {
 	EmployeeIDs     []string            `json:"employee_ids" gorm:"type:varchar(255)"`
 	OrganizationIDs []string            `json:"organization_ids" gorm:"type:varchar(255)"`
 	BranchIDs       []string            `json:"branch_ids" gorm:"type:varchar(255)"`
-	CompanyID       string              `json:"company_id" gorm:"type:char(36);not null"`
-	Company         CompanyModel        `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	CompanyID       *string             `json:"company_id" gorm:"type:char(36);not null"`
+	Company         *CompanyModel       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	UserID          *string             `json:"user_id" gorm:"type:char(36)"`
 	User            *UserModel          `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
 	ExternalID      string              `json:"external_id" gorm:"type:varchar(255)"`

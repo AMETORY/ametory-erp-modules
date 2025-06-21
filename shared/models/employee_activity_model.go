@@ -24,8 +24,8 @@ type EmployeeActivityModel struct {
 	Status            string                `json:"status" gorm:"default:'DRAFT'"`
 	Remarks           string                `json:"remarks" gorm:"type:TEXT"`
 	Attachment        *string               `json:"attachment" gorm:"type:TEXT"`
-	CompanyID         string                `json:"company_id" gorm:"not null"`
-	Company           CompanyModel          `gorm:"foreignKey:CompanyID"`
+	CompanyID         *string               `json:"company_id" gorm:"not null"`
+	Company           *CompanyModel         `gorm:"foreignKey:CompanyID"`
 	Files             []FileModel           `json:"files" gorm:"-"`
 	Lat               *float64              `json:"lat" gorm:"type:DECIMAL(10,8)"`
 	Lng               *float64              `json:"lng" gorm:"type:DECIMAL(11,8)"`

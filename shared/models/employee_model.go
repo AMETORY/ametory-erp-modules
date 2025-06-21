@@ -55,8 +55,8 @@ type EmployeeModel struct {
 	BankAccountNumber             string                 `json:"bank_account_number"`
 	BankID                        *string                `json:"bank_id"`
 	Bank                          *BankModel             `gorm:"foreignKey:BankID;constraint:OnDelete:CASCADE;"`
-	CompanyID                     string                 `json:"company_id" gorm:"not null"`
-	Company                       CompanyModel           `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	CompanyID                     *string                `json:"company_id" gorm:"not null"`
+	Company                       *CompanyModel          `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	UserID                        *string                `json:"user_id" `
 	Status                        string                 `gorm:"default:'ACTIVE'" json:"status"`
 	EmployeePushNotifTokens       []PushTokenModel       `json:"push_notification_tokens" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`

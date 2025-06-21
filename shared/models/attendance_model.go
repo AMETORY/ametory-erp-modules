@@ -27,8 +27,8 @@ type AttendanceModel struct {
 	Overtime                   *time.Duration          `json:"overtime" `
 	LateIn                     *time.Duration          `json:"late_in" `
 	WorkingDuration            *time.Duration          `json:"working_duration" `
-	CompanyID                  string                  `json:"company_id" gorm:"not null"`
-	Company                    CompanyModel            `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	CompanyID                  *string                 `json:"company_id" gorm:"not null"`
+	Company                    *CompanyModel           `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	Activities                 []EmployeeActivityModel `json:"activities" gorm:"foreignKey:AttendanceID;constraint:OnDelete:CASCADE"`
 	WorkReports                []WorkReport            `json:"work_reports" gorm:"foreignKey:AttendanceID;constraint:OnDelete:CASCADE"`
 	Status                     string                  `json:"status" gorm:"default:'ACTIVE'"`
