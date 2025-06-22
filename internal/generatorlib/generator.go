@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"slices"
+
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -24,12 +26,7 @@ func loadTemplate(name string) (*template.Template, error) {
 
 	tmpl := template.New(name).Funcs(template.FuncMap{
 		"contains": func(list []string, item string) bool {
-			for _, s := range list {
-				if s == item {
-					return true
-				}
-			}
-			return false
+			return slices.Contains(list, item)
 		},
 	})
 

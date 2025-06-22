@@ -19,8 +19,8 @@ type ScheduleModel struct {
 	StartDate       *time.Time          `json:"start_date" gorm:"type:DATE" sql:"TYPE:DATE"`
 	Date            string              `json:"date" sql:"event_date"`
 	EndDate         *time.Time          `json:"end_date" gorm:"type:DATE" sql:"TYPE:DATE"`
-	StartTime       *time.Time          `json:"start_time" gorm:"type:TIME"`
-	EndTime         *time.Time          `json:"end_time" gorm:"type:TIME"`
+	StartTime       *string             `json:"start_time"`
+	EndTime         *string             `json:"end_time"`
 	RepeatType      string              `json:"repeat_type"` // "ONCE", "DAILY", "WEEKLY"
 	RepeatDays      pq.StringArray      `gorm:"type:text[]" json:"repeat_days"`
 	Employees       []EmployeeModel     `json:"-" gorm:"many2many:schedule_employees;constraint:OnDelete:CASCADE;"`

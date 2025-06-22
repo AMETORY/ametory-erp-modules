@@ -80,6 +80,8 @@ func (r *ScheduleService) FindApplicableSchedulesForEmployee(employee *models.Em
 			utils.StringOrEmpty(employee.OrganizationID),
 			utils.StringOrEmpty(employee.BranchID),
 		).
+		Where("(schedule_employees.effective_date IS NULL OR schedule_employees.effective_date <= ?) AND (schedule_employees.effective_until IS NULL OR schedule_employees.effective_until >= ?)",
+			time.Now(), time.Now()).
 		Group("schedules.id").
 		Find(&schedules).Error
 
