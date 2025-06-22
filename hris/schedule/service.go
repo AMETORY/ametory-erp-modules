@@ -37,7 +37,7 @@ func (s *ScheduleService) CreateSchedule(m *models.ScheduleModel) error {
 
 func (s *ScheduleService) FindAllSchedule(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Model(&models.ScheduleModel{})
+	stmt := s.db.Preload("Branches").Preload("Employees").Preload("Organizations").Model(&models.ScheduleModel{})
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ScheduleModel{})
 	page.Page = page.Page + 1

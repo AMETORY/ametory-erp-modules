@@ -12,7 +12,7 @@ type BranchModel struct {
 	Address   string          `json:"address,omitempty"`
 	Employees []EmployeeModel `gorm:"foreignKey:BranchID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"employees,omitempty"`
 	CompanyID *string         `json:"company_id,omitempty" gorm:"not null"`
-	Company   *CompanyModel   `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	Company   *CompanyModel   `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (b *BranchModel) TableName() string {

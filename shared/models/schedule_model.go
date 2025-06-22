@@ -11,38 +11,38 @@ import (
 
 type ScheduleModel struct {
 	shared.BaseModel
-	Name            string              `json:"name" gorm:"type:varchar(255)"`
-	Description     string              `json:"description" gorm:"type:text"`
-	Code            string              `json:"code" gorm:"type:varchar(255)"`
-	ScheduleType    string              `json:"schedule_type" gorm:"type:varchar(255)"`
-	WeekDay         *string             `json:"week_day" gorm:"type:varchar(255)"`
-	StartDate       *time.Time          `json:"start_date" gorm:"type:DATE" sql:"TYPE:DATE"`
-	Date            string              `json:"date" sql:"event_date"`
-	EndDate         *time.Time          `json:"end_date" gorm:"type:DATE" sql:"TYPE:DATE"`
-	StartTime       *string             `json:"start_time"`
-	EndTime         *string             `json:"end_time"`
-	RepeatType      string              `json:"repeat_type"` // "ONCE", "DAILY", "WEEKLY"
-	RepeatDays      pq.StringArray      `gorm:"type:text[]" json:"repeat_days"`
-	Employees       []EmployeeModel     `json:"-" gorm:"many2many:schedule_employees;constraint:OnDelete:CASCADE;"`
-	Organizations   []OrganizationModel `json:"-" gorm:"many2many:schedule_organizations;constraint:OnDelete:CASCADE;"`
-	Branches        []BranchModel       `json:"-" gorm:"many2many:schedule_branches;constraint:OnDelete:CASCADE;"`
-	IsActive        bool                `json:"is_active"`
-	CompanyID       *string             `json:"company_id" gorm:"type:char(36);not null"`
+	Name            string              `json:"name,omitempty" gorm:"type:varchar(255)"`
+	Description     string              `json:"description,omitempty" gorm:"type:text"`
+	Code            string              `json:"code,omitempty" gorm:"type:varchar(255)"`
+	ScheduleType    string              `json:"schedule_type,omitempty" gorm:"type:varchar(255)"`
+	WeekDay         *string             `json:"week_day,omitempty" gorm:"type:varchar(255)"`
+	StartDate       *time.Time          `json:"start_date,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
+	Date            string              `json:"date,omitempty" sql:"event_date"`
+	EndDate         *time.Time          `json:"end_date,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
+	StartTime       *string             `json:"start_time,omitempty"`
+	EndTime         *string             `json:"end_time,omitempty"`
+	RepeatType      string              `json:"repeat_type,omitempty"` // "ONCE", "DAILY", "WEEKLY"
+	RepeatDays      pq.StringArray      `gorm:"type:text[]" json:"repeat_days,omitempty"`
+	Employees       []EmployeeModel     `json:"employees" gorm:"many2many:schedule_employees;constraint:OnDelete:CASCADE;"`
+	Organizations   []OrganizationModel `json:"organizations" gorm:"many2many:schedule_organizations;constraint:OnDelete:CASCADE;"`
+	Branches        []BranchModel       `json:"branches" gorm:"many2many:schedule_branches;constraint:OnDelete:CASCADE;"`
+	IsActive        bool                `json:"is_active,omitempty"`
+	CompanyID       *string             `json:"company_id,omitempty" gorm:"type:char(36);not null"`
 	Company         *CompanyModel       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
-	UserID          *string             `json:"user_id" gorm:"type:char(36)"`
+	UserID          *string             `json:"user_id,omitempty" gorm:"type:char(36)"`
 	User            *UserModel          `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	ExternalID      string              `json:"external_id" gorm:"type:varchar(255)"`
-	Source          string              `json:"string" gorm:"type:varchar(255)"`
-	Data            string              `json:"data" gorm:"type:JSON"`
-	IsPolicyChecked bool                `json:"is_policy_checked"`
-	WorkShiftID     *string             `json:"work_shift_id" gorm:"type:varchar(255)"`
-	WorkShift       WorkShiftModel      `gorm:"foreignKey:WorkShiftID"`
-	EffectiveDate   *time.Time          `json:"effective_date" gorm:"type:DATE" sql:"TYPE:DATE"`
-	EffectiveUntil  *time.Time          `json:"effective_until" gorm:"type:DATE" sql:"TYPE:DATE"`
-	RepeatEvery     int64               `json:"repeat_every" gorm:"-"` // in a day
-	RepeatPause     int64               `json:"repeat_pause" gorm:"-"` // count repeat every and pause after repeat = pause or multiple
-	RepeatGap       int64               `json:"repeat_gap" gorm:"-"`   // pause gap in a day and start again if loop current date > repeat gap
-	RepeatUntil     *time.Time          `json:"repeat_until" gorm:"-"` //
+	ExternalID      string              `json:"external_id,omitempty" gorm:"type:varchar(255)"`
+	Source          string              `json:"string,omitempty" gorm:"type:varchar(255)"`
+	Data            string              `json:"data,omitempty" gorm:"type:JSON"`
+	IsPolicyChecked bool                `json:"is_policy_checked,omitempty"`
+	WorkShiftID     *string             `json:"work_shift_id,omitempty" gorm:"type:varchar(255)"`
+	WorkShift       WorkShiftModel      `gorm:"foreignKey:WorkShiftID" json:"work_shift,omitempty"`
+	EffectiveDate   *time.Time          `json:"effective_date,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
+	EffectiveUntil  *time.Time          `json:"effective_until,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
+	RepeatEvery     int64               `json:"repeat_every,omitempty" gorm:"-"` // in a day
+	RepeatPause     int64               `json:"repeat_pause,omitempty" gorm:"-"` // count repeat every and pause after repeat = pause or multiple
+	RepeatGap       int64               `json:"repeat_gap,omitempty" gorm:"-"`   // pause gap in a day and start again if loop current date > repeat gap
+	RepeatUntil     *time.Time          `json:"repeat_until,omitempty" gorm:"-"` //
 }
 
 func (ScheduleModel) TableName() string {
