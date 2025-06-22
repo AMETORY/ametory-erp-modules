@@ -40,6 +40,12 @@ type AttendanceModel struct {
 	ClockOutAttendancePolicy   AttendancePolicy        `gorm:"foreignKey:ClockOutAttendancePolicyID"`
 	ScheduleID                 *string                 `json:"schedule_id"`
 	Schedule                   *ScheduleModel          `gorm:"foreignKey:ScheduleID"`
+	BranchID                   *string                 `json:"branch_id"`
+	Branch                     *BranchModel            `gorm:"foreignKey:BranchID"`
+	OrganizationID             *string                 `json:"organization_id"`
+	Organization               *OrganizationModel      `gorm:"foreignKey:OrganizationID"`
+	WorkShiftID                *string                 `json:"work_shift_id"`
+	WorkShift                  *WorkShiftModel         `gorm:"foreignKey:WorkShiftID"`
 	Timezone                   string                  `gorm:"-"`
 	// AttendanceBulkImportID     *string              `json:"attendance_bulk_import_id"`
 	// AttendanceBulkImport       AttendanceBulkImport `gorm:"foreignKey:AttendanceBulkImportID"`
@@ -56,4 +62,16 @@ func (a *AttendanceModel) BeforeCreate(tx *gorm.DB) (err error) {
 		tx.Statement.SetColumn("id", uuid.New().String())
 	}
 	return
+}
+
+type AttendanceCheckInput struct {
+	Now               time.Time `json:"now"`
+	Lat               *float64  `json:"lat"`
+	Lng               *float64  `json:"lng"`
+	IsFaceDetected    bool      `json:"is_face_detected"`
+	IsClockIn         bool      `json:"is_clock_in"`
+	ScheduledClockIn  time.Time `json:"scheduled_clock_in"`
+	ScheduledClockOut time.Time `json:"scheduled_clock_out"`
+	AttendanceID      *string   `json:"attendance_id"`
+	EmployeeID        *string   `json:"employee_id"`
 }

@@ -2,6 +2,9 @@ package schedule
 
 import (
 	"net/http"
+	"time"
+
+	"slices"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/hris/employee"
@@ -59,4 +62,92 @@ func (s *ScheduleService) DeleteSchedule(id string) error {
 
 func (s *ScheduleService) Delete(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.ScheduleModel{}).Error
+}
+
+func (r *ScheduleService) FindApplicableSchedulesForEmployee(employee *models.EmployeeModel, now time.Time) ([]models.ScheduleModel, error) {
+	var schedules []models.ScheduleModel
+
+	err := r.db.
+		Joins("LEFT JOIN schedule_employees ON schedule_employees.schedule_model_id = schedules.id").
+		Joins("LEFT JOIN schedule_organizations ON schedule_organizations.schedule_model_id = schedules.id").
+		Joins("LEFT JOIN schedule_branches ON schedule_branches.schedule_model_id = schedules.id").
+		Where("schedules.is_active = true").
+		Where(`
+			schedule_employees.employee_model_id = ? OR
+			(schedule_organizations.organization_model_id = ? OR schedule_organizations.organization_model_id IS NULL) OR
+			(schedule_branches.branch_model_id = ? OR schedule_branches.branch_model_id IS NULL)`,
+			employee.ID,
+			utils.StringOrEmpty(employee.OrganizationID),
+			utils.StringOrEmpty(employee.BranchID),
+		).
+		Group("schedules.id").
+		Find(&schedules).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter ulang berdasarkan tanggal dan repeat type
+	var result []models.ScheduleModel
+	for _, sched := range schedules {
+		if r.IsScheduleApplicable(&sched, now, employee) {
+			result = append(result, sched)
+		}
+	}
+
+	return result, nil
+}
+
+func (r *ScheduleService) IsScheduleApplicable(s *models.ScheduleModel, t time.Time, employee *models.EmployeeModel) bool {
+	// 1. Validasi tanggal aktif
+	if t.Before(*s.StartDate) || (s.EndDate != nil && t.After(*s.EndDate)) {
+		return false
+	}
+
+	// 2. Cek apakah schedule ini memang berlaku untuk employee ini
+	if !r.isScheduleAssignedToEmployee(s, employee) {
+		return false
+	}
+
+	// 3. Validasi pola pengulangan
+	switch s.RepeatType {
+	case "ONCE":
+		return s.StartDate.Format("2006-01-02") == t.Format("2006-01-02")
+	case "DAILY":
+		return true
+	case "WEEKLY":
+		day := t.Weekday().String() // e.g. "Monday"
+		return slices.Contains(s.RepeatDays, day)
+	default:
+		return false
+	}
+}
+
+func (r *ScheduleService) isScheduleAssignedToEmployee(s *models.ScheduleModel, e *models.EmployeeModel) bool {
+	// Prioritas paling tinggi: langsung diassign ke employee
+	for _, emp := range s.Employees {
+		if emp.ID == e.ID {
+			return true
+		}
+	}
+
+	// Cek organisasi
+	if e.OrganizationID != nil {
+		for _, org := range s.Organizations {
+			if org.ID == *e.OrganizationID {
+				return true
+			}
+		}
+	}
+
+	// Cek branch
+	if e.BranchID != nil {
+		for _, branch := range s.Branches {
+			if branch.ID == *e.BranchID {
+				return true
+			}
+		}
+	}
+
+	return false
 }

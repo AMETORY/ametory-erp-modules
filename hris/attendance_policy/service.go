@@ -61,3 +61,41 @@ func (s *AttendancePolicyService) Update(input *models.AttendancePolicy) error {
 func (s *AttendancePolicyService) Delete(id string) error {
 	return s.db.Delete(&models.AttendancePolicy{}, "id = ?", id).Error
 }
+
+func (s *AttendancePolicyService) FindBestPolicy(
+	companyID string,
+	branchID, orgID, shiftID *string,
+) (*models.AttendancePolicy, error) {
+
+	var policy models.AttendancePolicy
+
+	query := s.db.Model(&models.AttendancePolicy{})
+
+	query = query.Where(`
+		company_id = ? AND
+		(branch_id IS NULL OR branch_id = ?) AND
+		(organization_id IS NULL OR organization_id = ?) AND
+		(work_shift_id IS NULL OR work_shift_id = ?)`,
+		companyID,
+		utils.StringOrEmpty(branchID),
+		utils.StringOrEmpty(orgID),
+		utils.StringOrEmpty(shiftID),
+	)
+
+	query = query.Order(`
+		CASE 
+			WHEN work_shift_id IS NOT NULL THEN 1
+			WHEN organization_id IS NOT NULL THEN 2
+			WHEN branch_id IS NOT NULL THEN 3
+			WHEN company_id IS NOT NULL THEN 4
+			ELSE 5
+		END ASC
+	`)
+
+	err := query.First(&policy).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &policy, nil
+}

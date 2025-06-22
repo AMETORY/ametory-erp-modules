@@ -35,10 +35,11 @@ type HRISservice struct {
 
 func NewHRISservice(ctx *context.ERPContext) *HRISservice {
 	employeeService := employee.NewEmployeeService(ctx)
+	attendancePolicyService := attendance_policy.NewAttendancePolicyService(ctx)
 	service := HRISservice{
 		ctx:                     ctx,
-		AttendanceService:       attendance.NewAttendanceService(ctx),
-		AttendancePolicyService: attendance_policy.NewAttendancePolicyService(ctx),
+		AttendanceService:       attendance.NewAttendanceService(ctx, employeeService, attendancePolicyService),
+		AttendancePolicyService: attendancePolicyService,
 		DeductionSettingService: deduction_setting.NewDeductionSettingService(ctx),
 		EmployeeActivityService: employee_activity.NewEmployeeActivityService(ctx),
 		EmployeeService:         employeeService,

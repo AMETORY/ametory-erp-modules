@@ -37,7 +37,7 @@ func (e *JobTitleService) UpdateJobTitle(jobTitle *models.JobTitleModel) error {
 }
 
 func (e *JobTitleService) DeleteJobTitle(id string) error {
-	return e.db.Delete(&models.JobTitleModel{}, id).Error
+	return e.db.Delete(&models.JobTitleModel{}, "id = ?", id).Error
 }
 
 func (e *JobTitleService) FindAllJobTitles(request *http.Request) (paginate.Page, error) {

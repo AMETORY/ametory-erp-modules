@@ -71,28 +71,31 @@ type AttendancePolicy struct {
 	Description             string             `json:"description"`
 	Priority                int                `json:"priority"`
 	CompanyID               *string            `json:"company_id"`
+	Company                 *CompanyModel      `gorm:"foreignKey:CompanyID"`
 	LocationEnabled         bool               `json:"location_enabled"`
 	Lat                     *float64           `json:"lat" gorm:"type:DECIMAL(10,8)"`
 	Lng                     *float64           `json:"lng" gorm:"type:DECIMAL(11,8)"`
 	MaxAttendanceRadius     *float64           `json:"max_attendance_radius"`
 	ScheduledCheck          bool               `json:"scheduled_check"`
-	OnPolicyFailure         AttendanceStatus   `json:"on_policy_failure"`
-	OnLocationFailure       AttendanceStatus   `json:"on_location_failure"`
-	OnScheduleFailure       AttendanceStatus   `json:"on_schedule_failure"`
-	OnClockInFailure        AttendanceStatus   `json:"on_clock_in_failure"`
-	OnEarlyInFailure        AttendanceStatus   `json:"on_early_in_failure"`
-	OnClockOutFailure       AttendanceStatus   `json:"on_clock_out_failure"`
-	OnEarlyOutFailure       AttendanceStatus   `json:"on_early_out_failure"`
-	OnFaceNotDetected       AttendanceStatus   `json:"on_face_not_detected"`
+	OnPolicyFailure         AttendanceStatus   `json:"on_policy_failure" gorm:"default:'REJECT'"`
+	OnLocationFailure       AttendanceStatus   `json:"on_location_failure" gorm:"default:'REJECT'"`
+	OnScheduleFailure       AttendanceStatus   `json:"on_schedule_failure" gorm:"default:'REJECT'"`
+	OnClockInFailure        AttendanceStatus   `json:"on_clock_in_failure" gorm:"default:'REJECT'"`
+	OnEarlyInFailure        AttendanceStatus   `json:"on_early_in_failure" gorm:"default:'REJECT'"`
+	OnClockOutFailure       AttendanceStatus   `json:"on_clock_out_failure" gorm:"default:'REJECT'"`
+	OnEarlyOutFailure       AttendanceStatus   `json:"on_early_out_failure" gorm:"default:'REJECT'"`
+	OnFaceNotDetected       AttendanceStatus   `json:"on_face_not_detected" gorm:"default:'REJECT'"`
 	CustomConditions        []CustomCondition  `gorm:"-"`
 	IsClockOut              bool               `gorm:"-"`
 	CustomConditionData     string             `gorm:"type:JSON" json:"custom_condition_data"`
 	Remarks                 Remarks            `gorm:"-"`
 	IsActive                bool               `json:"is_active"`
 	BranchID                *string            `json:"branch_id"`
-	OrganizationID          *string            `json:"organization_id"`
 	Branch                  *BranchModel       `gorm:"foreignKey:BranchID"`
+	OrganizationID          *string            `json:"organization_id"`
 	Organization            *OrganizationModel `gorm:"foreignKey:OrganizationID"`
+	WorkShiftID             *string            `json:"work_shift_id"`
+	WorkShift               *WorkShiftModel    `gorm:"foreignKey:WorkShiftID"`
 	EarlyInToleranceInTime  time.Duration      `json:"early_in_tolerance" gorm:"default:15"`
 	LateInToleranceInTime   time.Duration      `json:"late_in_tolerance" gorm:"default:15"`
 	EarlyOutToleranceInTime time.Duration      `json:"early_out_tolerance" gorm:"default:15"`

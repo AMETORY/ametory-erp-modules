@@ -102,6 +102,7 @@ require (
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/lib/pq v1.10.9
 	github.com/schollz/progressbar/v3 v3.14.1
 	gopkg.in/olahol/melody.v1 v1.0.0-20170518105555-d52139073376
 )

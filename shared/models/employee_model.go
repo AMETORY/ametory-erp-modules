@@ -59,6 +59,8 @@ type EmployeeModel struct {
 	Company                       *CompanyModel          `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 	UserID                        *string                `gorm:"size:36" json:"user_id,omitempty"`
 	User                          *UserModel             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	WorkShiftID                   *string                `json:"work_shift_id"`
+	WorkShift                     *WorkShiftModel        `gorm:"foreignKey:WorkShiftID"`
 	Status                        string                 `gorm:"default:'ACTIVE'" json:"status,omitempty"`
 	EmployeePushNotifTokens       []PushTokenModel       `json:"push_notification_tokens,omitempty" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	AnnualLeaveDays               int                    `json:"annual_leave_days,omitempty"`

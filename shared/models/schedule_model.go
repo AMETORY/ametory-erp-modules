@@ -5,6 +5,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -20,19 +21,12 @@ type ScheduleModel struct {
 	EndDate         *time.Time          `json:"end_date" gorm:"type:DATE" sql:"TYPE:DATE"`
 	StartTime       *time.Time          `json:"start_time" gorm:"type:TIME"`
 	EndTime         *time.Time          `json:"end_time" gorm:"type:TIME"`
+	RepeatType      string              `json:"repeat_type"` // "ONCE", "DAILY", "WEEKLY"
+	RepeatDays      pq.StringArray      `gorm:"type:text[]" json:"repeat_days"`
 	Employees       []EmployeeModel     `json:"-" gorm:"many2many:schedule_employees;constraint:OnDelete:CASCADE;"`
 	Organizations   []OrganizationModel `json:"-" gorm:"many2many:schedule_organizations;constraint:OnDelete:CASCADE;"`
-	Branchs         []BranchModel       `json:"-" gorm:"many2many:schedule_branchs;constraint:OnDelete:CASCADE;"`
-	Sunday          bool                `json:"sunday"`
-	Monday          bool                `json:"monday"`
-	Tuesday         bool                `json:"tuesday"`
-	Wednesday       bool                `json:"wednesday"`
-	Thursday        bool                `json:"thursday"`
-	Friday          bool                `json:"friday"`
-	Saturday        bool                `json:"saturday"`
-	EmployeeIDs     []string            `json:"employee_ids" gorm:"type:varchar(255)"`
-	OrganizationIDs []string            `json:"organization_ids" gorm:"type:varchar(255)"`
-	BranchIDs       []string            `json:"branch_ids" gorm:"type:varchar(255)"`
+	Branches        []BranchModel       `json:"-" gorm:"many2many:schedule_branches;constraint:OnDelete:CASCADE;"`
+	IsActive        bool                `json:"is_active"`
 	CompanyID       *string             `json:"company_id" gorm:"type:char(36);not null"`
 	Company         *CompanyModel       `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
 	UserID          *string             `json:"user_id" gorm:"type:char(36)"`

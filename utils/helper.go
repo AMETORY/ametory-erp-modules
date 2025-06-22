@@ -509,3 +509,32 @@ func IsValidEmail(email string) bool {
 	re := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
 	return re.MatchString(email)
 }
+
+func CalculateDistance(lat1, lng1, lat2, lng2 float64) float64 {
+	const R = 6371e3 // Earth radius in meters
+	latRad1 := lat1 * math.Pi / 180
+	latRad2 := lat2 * math.Pi / 180
+	deltaLat := (lat2 - lat1) * math.Pi / 180
+	deltaLng := (lng2 - lng1) * math.Pi / 180
+
+	a := math.Sin(deltaLat/2)*math.Sin(deltaLat/2) +
+		math.Cos(latRad1)*math.Cos(latRad2)*math.Sin(deltaLng/2)*math.Sin(deltaLng/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return R * c // in meters
+}
+
+func ParseTime(hm string) time.Time {
+	t, err := time.Parse("15:04", hm)
+	if err != nil {
+		panic(fmt.Sprintf("invalid time format: %v", err))
+	}
+	return t
+}
+
+func StringOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
