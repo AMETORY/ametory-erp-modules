@@ -32,6 +32,7 @@ const (
 	BranchProblem           Remarks = "BRANCH"
 	OrganizationProblem     Remarks = "ORGANIZATION"
 	NoPolicyProblem         Remarks = "NO_POLICY"
+	Empty                   Remarks = ""
 )
 
 type WorkingType string
@@ -67,39 +68,39 @@ type CustomCondition func(attendanceReq AttendancePolicyReq, policy AttendancePo
 
 type AttendancePolicy struct {
 	shared.BaseModel
-	PolicyName              string             `json:"policy_name"`
-	Description             string             `json:"description"`
-	Priority                int                `json:"priority"`
-	CompanyID               *string            `json:"company_id"`
-	Company                 *CompanyModel      `gorm:"foreignKey:CompanyID"`
-	LocationEnabled         bool               `json:"location_enabled"`
-	Lat                     *float64           `json:"lat" gorm:"type:DECIMAL(10,8)"`
-	Lng                     *float64           `json:"lng" gorm:"type:DECIMAL(11,8)"`
-	MaxAttendanceRadius     *float64           `json:"max_attendance_radius"`
-	ScheduledCheck          bool               `json:"scheduled_check"`
-	OnPolicyFailure         AttendanceStatus   `json:"on_policy_failure" gorm:"default:'REJECT'"`
-	OnLocationFailure       AttendanceStatus   `json:"on_location_failure" gorm:"default:'REJECT'"`
-	OnScheduleFailure       AttendanceStatus   `json:"on_schedule_failure" gorm:"default:'REJECT'"`
-	OnClockInFailure        AttendanceStatus   `json:"on_clock_in_failure" gorm:"default:'REJECT'"`
-	OnEarlyInFailure        AttendanceStatus   `json:"on_early_in_failure" gorm:"default:'REJECT'"`
-	OnClockOutFailure       AttendanceStatus   `json:"on_clock_out_failure" gorm:"default:'REJECT'"`
-	OnEarlyOutFailure       AttendanceStatus   `json:"on_early_out_failure" gorm:"default:'REJECT'"`
-	OnFaceNotDetected       AttendanceStatus   `json:"on_face_not_detected" gorm:"default:'REJECT'"`
+	PolicyName              string             `json:"policy_name,omitempty"`
+	Description             string             `json:"description,omitempty"`
+	Priority                int                `json:"priority,omitempty"`
+	CompanyID               *string            `json:"company_id,omitempty"`
+	Company                 *CompanyModel      `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
+	LocationEnabled         bool               `json:"location_enabled,omitempty"`
+	Lat                     *float64           `json:"lat,omitempty" gorm:"type:DECIMAL(10,8)"`
+	Lng                     *float64           `json:"lng,omitempty" gorm:"type:DECIMAL(11,8)"`
+	MaxAttendanceRadius     *float64           `json:"max_attendance_radius,omitempty"`
+	ScheduledCheck          bool               `json:"scheduled_check,omitempty"`
+	OnPolicyFailure         AttendanceStatus   `json:"on_policy_failure,omitempty" gorm:"default:'REJECT'"`
+	OnLocationFailure       AttendanceStatus   `json:"on_location_failure,omitempty" gorm:"default:'REJECT'"`
+	OnScheduleFailure       AttendanceStatus   `json:"on_schedule_failure,omitempty" gorm:"default:'REJECT'"`
+	OnClockInFailure        AttendanceStatus   `json:"on_clock_in_failure,omitempty" gorm:"default:'REJECT'"`
+	OnEarlyInFailure        AttendanceStatus   `json:"on_early_in_failure,omitempty" gorm:"default:'REJECT'"`
+	OnClockOutFailure       AttendanceStatus   `json:"on_clock_out_failure,omitempty" gorm:"default:'REJECT'"`
+	OnEarlyOutFailure       AttendanceStatus   `json:"on_early_out_failure,omitempty" gorm:"default:'REJECT'"`
+	OnFaceNotDetected       AttendanceStatus   `json:"on_face_not_detected,omitempty" gorm:"default:'REJECT'"`
 	CustomConditions        []CustomCondition  `gorm:"-"`
 	IsClockOut              bool               `gorm:"-"`
-	CustomConditionData     string             `gorm:"type:JSON" json:"custom_condition_data"`
+	CustomConditionData     string             `gorm:"type:JSON" json:"custom_condition_data,omitempty"`
 	Remarks                 Remarks            `gorm:"-"`
-	IsActive                bool               `json:"is_active"`
-	BranchID                *string            `json:"branch_id"`
-	Branch                  *BranchModel       `gorm:"foreignKey:BranchID"`
-	OrganizationID          *string            `json:"organization_id"`
-	Organization            *OrganizationModel `gorm:"foreignKey:OrganizationID"`
-	WorkShiftID             *string            `json:"work_shift_id"`
-	WorkShift               *WorkShiftModel    `gorm:"foreignKey:WorkShiftID"`
-	EarlyInToleranceInTime  time.Duration      `json:"early_in_tolerance" gorm:"default:15"`
-	LateInToleranceInTime   time.Duration      `json:"late_in_tolerance" gorm:"default:15"`
-	EarlyOutToleranceInTime time.Duration      `json:"early_out_tolerance" gorm:"default:15"`
-	LateOutToleranceInTime  time.Duration      `json:"late_out_tolerance" gorm:"default:60"`
+	IsActive                bool               `json:"is_active,omitempty"`
+	BranchID                *string            `json:"branch_id,omitempty"`
+	Branch                  *BranchModel       `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
+	OrganizationID          *string            `json:"organization_id,omitempty"`
+	Organization            *OrganizationModel `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	WorkShiftID             *string            `json:"work_shift_id,omitempty"`
+	WorkShift               *WorkShiftModel    `gorm:"foreignKey:WorkShiftID" json:"work_shift,omitempty"`
+	EarlyInToleranceInTime  time.Duration      `json:"early_in_tolerance,omitempty" gorm:"default:15"`
+	LateInToleranceInTime   time.Duration      `json:"late_in_tolerance,omitempty" gorm:"default:15"`
+	EarlyOutToleranceInTime time.Duration      `json:"early_out_tolerance,omitempty" gorm:"default:15"`
+	LateOutToleranceInTime  time.Duration      `json:"late_out_tolerance,omitempty" gorm:"default:60"`
 	EffectiveDate           *time.Time         `json:"effective_date,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
 	EffectiveUntil          *time.Time         `json:"effective_until,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
 	ScheduleID              *string            `gorm:"-"`

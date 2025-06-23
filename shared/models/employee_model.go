@@ -60,7 +60,7 @@ type EmployeeModel struct {
 	UserID                        *string                `gorm:"size:36" json:"user_id,omitempty"`
 	User                          *UserModel             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 	WorkShiftID                   *string                `json:"work_shift_id"`
-	WorkShift                     *WorkShiftModel        `gorm:"foreignKey:WorkShiftID"`
+	WorkShift                     *WorkShiftModel        `gorm:"foreignKey:WorkShiftID" json:"work_shift,omitempty"`
 	Status                        string                 `gorm:"default:'ACTIVE'" json:"status,omitempty"`
 	EmployeePushNotifTokens       []PushTokenModel       `json:"push_notification_tokens,omitempty" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	AnnualLeaveDays               int                    `json:"annual_leave_days,omitempty"`
@@ -69,6 +69,7 @@ type EmployeeModel struct {
 	NotPresenceDeductionSettingID *string                `json:"not_presence_deduction_setting_id,omitempty"`
 	NotPresenceDeductionSetting   *DeductionSettingModel `gorm:"foreignKey:NotPresenceDeductionSettingID" json:"not_presence_deduction_setting,omitempty"`
 	Loans                         []LoanModel            `json:"loans,omitempty" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	IsNewUser                     bool                   `json:"is_new_user,omitempty" gorm:"-"`
 }
 
 func (e EmployeeModel) TableName() string {

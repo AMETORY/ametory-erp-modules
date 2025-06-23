@@ -31,7 +31,14 @@ func (e *EmployeeService) CreateEmployee(employee *models.EmployeeModel) error {
 
 func (e *EmployeeService) GetEmployeeByID(id string) (*models.EmployeeModel, error) {
 	var employee models.EmployeeModel
-	err := e.db.First(&employee, id).Error
+	err := e.db.
+		Preload("User").
+		Preload("Company").
+		Preload("Bank").
+		Preload("JobTitle").
+		Preload("Branch").
+		Preload("WorkShift").
+		First(&employee, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +55,7 @@ func (e *EmployeeService) DeleteEmployee(id string) error {
 
 func (e *EmployeeService) FindAllEmployees(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := e.db.Preload("User").Preload("Company").Model(&models.EmployeeModel{}).Preload("JobTitle")
+	stmt := e.db.Preload("User").Preload("Company").Preload("JobTitle").Model(&models.EmployeeModel{})
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
@@ -65,4 +72,14 @@ func (e *EmployeeService) FindAllEmployees(request *http.Request) (paginate.Page
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeModel{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (e *EmployeeService) GetEmployeeFromUser(userID string, companyID string) (*models.EmployeeModel, error) {
+	var employee models.EmployeeModel
+	err := e.db.
+		First(&employee, "user_id = ? AND company_id = ?", userID, companyID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &employee, nil
 }

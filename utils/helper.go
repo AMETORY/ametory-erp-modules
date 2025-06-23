@@ -529,7 +529,8 @@ func ParseTime(hm string) time.Time {
 	if err != nil {
 		panic(fmt.Sprintf("invalid time format: %v", err))
 	}
-	return t
+
+	return time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), t.Hour(), t.Minute(), 0, 0, time.Now().Location())
 }
 
 func StringOrEmpty(s *string) string {

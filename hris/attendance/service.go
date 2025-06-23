@@ -2,7 +2,9 @@ package attendance
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/hris/attendance_policy"
@@ -41,7 +43,14 @@ func (a *AttendanceService) Create(m *models.AttendanceModel) error {
 
 func (a *AttendanceService) FindOne(id string) (*models.AttendanceModel, error) {
 	m := &models.AttendanceModel{}
-	if err := a.db.Where("id = ?", id).First(m).Error; err != nil {
+	if err := a.db.
+		Preload("Employee", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("User").Preload("Branch").Preload("Organization").Preload("WorkShift").Preload("JobTitle")
+		}).
+		Preload("AttendancePolicy").
+		Preload("ClockOutAttendancePolicy").
+		Preload("Schedule").
+		Where("id = ?", id).First(m).Error; err != nil {
 		return nil, err
 	}
 
@@ -50,7 +59,12 @@ func (a *AttendanceService) FindOne(id string) (*models.AttendanceModel, error) 
 
 func (a *AttendanceService) FindAll(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := a.db.Model(&models.AttendanceModel{})
+	stmt := a.db.
+		Preload("Employee.User").
+		Preload("AttendancePolicy").
+		Preload("ClockOutAttendancePolicy").
+		Preload("Schedule").
+		Model(&models.AttendanceModel{})
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
@@ -96,7 +110,12 @@ func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*mo
 		return nil, err
 	}
 
-	status := a.EvaluateAttendance(policy, m)
+	fmt.Println("ATTENDANCE POLICY", policy.PolicyName)
+
+	status, remarks := a.EvaluateAttendance(policy, m)
+	if status == models.Reject {
+		return nil, errors.New(string(remarks))
+	}
 	var attendance models.AttendanceModel
 
 	if m.IsClockIn {
@@ -110,15 +129,27 @@ func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*mo
 		attendance.ClockIn = m.Now
 		attendance.ClockInLat = m.Lat
 		attendance.ClockInLng = m.Lng
-
+		attendance.Remarks = string(remarks)
+		attendance.AttendancePolicyID = &policy.ID
+		attendance.ScheduleID = m.ScheduleID
+		attendance.ClockInNotes = m.Notes
 		err := a.Create(&attendance)
 		if err != nil {
 			return nil, err
 		}
 
+		if m.File != nil {
+			m.File.RefID = attendance.ID
+			m.File.RefType = "clockin"
+			a.db.Save(m.File)
+		}
+
 		// TODO: Check if employee is on leave
 
 	} else {
+		if m.AttendanceID == nil {
+			return nil, errors.New("attendance id is required")
+		}
 		att, err := a.FindOne(*m.AttendanceID)
 		if err != nil {
 			return nil, err
@@ -128,72 +159,83 @@ func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*mo
 		attendance.ClockOutLat = m.Lat
 		attendance.ClockOutLng = m.Lng
 		attendance.Status = string(status)
+		attendance.ClockOutRemarks = string(remarks)
+		attendance.ClockOutAttendancePolicyID = &policy.ID
+		attendance.ClockOutNotes = m.Notes
 		err = a.Update(attendance.ID, &attendance)
 		if err != nil {
 			return nil, err
+		}
+
+		if m.File != nil {
+			m.File.RefID = attendance.ID
+			m.File.RefType = "clockout"
+			a.db.Save(m.File)
 		}
 	}
 
 	return nil, nil
 }
 
-func (a *AttendanceService) EvaluateAttendance(policy *models.AttendancePolicy, input models.AttendanceCheckInput) models.AttendanceStatus {
+func (a *AttendanceService) EvaluateAttendance(policy *models.AttendancePolicy, input models.AttendanceCheckInput) (models.AttendanceStatus, models.Remarks) {
 	// Default to Accept
 	status := models.Active
-
+	remarks := models.Empty
 	// 1. Lokasi
 	if policy.LocationEnabled && policy.Lat != nil && policy.Lng != nil && policy.MaxAttendanceRadius != nil {
 		distance := utils.CalculateDistance(*policy.Lat, *policy.Lng, *input.Lat, *input.Lng)
 		if distance > *policy.MaxAttendanceRadius {
-			return policy.OnLocationFailure
+			return policy.OnLocationFailure, models.LocationDistanceProblem
 		}
 	}
 
 	// 2. Face detection
 	if policy.OnFaceNotDetected != "" && !input.IsFaceDetected {
-		return policy.OnFaceNotDetected
+		return policy.OnFaceNotDetected, models.FaceProblem
 	}
 
 	// 3. Waktu & Toleransi
 	if input.IsClockIn {
-		status = evaluateClockIn(policy, input)
+		status, remarks = evaluateClockIn(policy, input)
 	} else {
-		status = evaluateClockOut(policy, input)
+		status, remarks = evaluateClockOut(policy, input)
 	}
 
-	return status
+	return status, remarks
 }
 
-func evaluateClockIn(policy *models.AttendancePolicy, input models.AttendanceCheckInput) models.AttendanceStatus {
+func evaluateClockIn(policy *models.AttendancePolicy, input models.AttendanceCheckInput) (models.AttendanceStatus, models.Remarks) {
 	actual := input.Now
 	scheduled := input.ScheduledClockIn
 
-	early := scheduled.Add(-policy.EarlyInToleranceInTime)
-	late := scheduled.Add(policy.LateInToleranceInTime)
+	early := scheduled.Add(-policy.EarlyInToleranceInTime * time.Minute)
+	late := scheduled.Add(policy.LateInToleranceInTime * time.Minute)
 
+	fmt.Println("\nactual", actual, "\nearly", early, "\nlate", late, "\nscheduled", scheduled)
 	switch {
 	case actual.Before(early):
-		return policy.OnEarlyInFailure
+		return policy.OnEarlyInFailure, models.EarlyInProblem
 	case actual.After(late):
-		return policy.OnClockInFailure
+		return policy.OnClockInFailure, models.LateInProblem
 	default:
-		return models.Active
+		return models.Active, models.Empty
 	}
 }
 
-func evaluateClockOut(policy *models.AttendancePolicy, input models.AttendanceCheckInput) models.AttendanceStatus {
+func evaluateClockOut(policy *models.AttendancePolicy, input models.AttendanceCheckInput) (models.AttendanceStatus, models.Remarks) {
 	actual := input.Now
 	scheduled := input.ScheduledClockOut
 
-	early := scheduled.Add(-policy.EarlyOutToleranceInTime)
-	late := scheduled.Add(policy.LateOutToleranceInTime)
+	early := scheduled.Add(-policy.EarlyOutToleranceInTime * time.Minute)
+	late := scheduled.Add(policy.LateOutToleranceInTime * time.Minute)
 
+	fmt.Println("\nactual", actual, "\nearly", early, "\nlate", late, "\nscheduled", scheduled)
 	switch {
 	case actual.Before(early):
-		return policy.OnEarlyOutFailure
+		return policy.OnEarlyOutFailure, models.EarlyOutProblem
 	case actual.After(late):
-		return policy.OnClockOutFailure
+		return policy.OnClockOutFailure, models.LateOutProblem
 	default:
-		return models.Active
+		return models.Active, models.Empty
 	}
 }

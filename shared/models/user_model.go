@@ -44,6 +44,7 @@ type UserModel struct {
 	Upline                     *UserModel         `gorm:"foreignKey:ReferralCode;references:Code" json:"upline,omitempty"`
 	Downlines                  []UserModel        `gorm:"-" json:"downlines,omitempty"`
 	PhoneNumberVerifiedAt      *time.Time         `gorm:"index" json:"phone_number_verified_at,omitempty"`
+	Employee                   *EmployeeModel     `gorm:"-" json:"employee,omitempty"`
 }
 
 func (u *UserModel) BeforeCreate(tx *gorm.DB) (err error) {

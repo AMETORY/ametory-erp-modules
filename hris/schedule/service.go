@@ -1,7 +1,9 @@
 package schedule
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"slices"
@@ -67,7 +69,7 @@ func (s *ScheduleService) Delete(id string) error {
 func (r *ScheduleService) FindApplicableSchedulesForEmployee(employee *models.EmployeeModel, now time.Time) ([]models.ScheduleModel, error) {
 	var schedules []models.ScheduleModel
 
-	err := r.db.
+	err := r.db.Preload("Branches").Preload("Employees").Preload("Organizations").
 		Joins("LEFT JOIN schedule_employees ON schedule_employees.schedule_model_id = schedules.id").
 		Joins("LEFT JOIN schedule_organizations ON schedule_organizations.schedule_model_id = schedules.id").
 		Joins("LEFT JOIN schedule_branches ON schedule_branches.schedule_model_id = schedules.id").
@@ -80,7 +82,7 @@ func (r *ScheduleService) FindApplicableSchedulesForEmployee(employee *models.Em
 			utils.StringOrEmpty(employee.OrganizationID),
 			utils.StringOrEmpty(employee.BranchID),
 		).
-		Where("(schedule_employees.effective_date IS NULL OR schedule_employees.effective_date <= ?) AND (schedule_employees.effective_until IS NULL OR schedule_employees.effective_until >= ?)",
+		Where("(schedules.effective_date IS NULL OR schedules.effective_date <= ?) AND (schedules.effective_until IS NULL OR schedules.effective_until >= ?)",
 			time.Now(), time.Now()).
 		Group("schedules.id").
 		Find(&schedules).Error
@@ -102,9 +104,11 @@ func (r *ScheduleService) FindApplicableSchedulesForEmployee(employee *models.Em
 
 func (r *ScheduleService) IsScheduleApplicable(s *models.ScheduleModel, t time.Time, employee *models.EmployeeModel) bool {
 	// 1. Validasi tanggal aktif
-	if t.Before(*s.StartDate) || (s.EndDate != nil && t.After(*s.EndDate)) {
+	if (s.EffectiveDate != nil && t.Before(*s.EffectiveDate)) || (s.EffectiveUntil != nil && t.After(*s.EffectiveUntil)) {
 		return false
 	}
+
+	fmt.Println(s.RepeatType)
 
 	// 2. Cek apakah schedule ini memang berlaku untuk employee ini
 	if !r.isScheduleAssignedToEmployee(s, employee) {
@@ -119,7 +123,7 @@ func (r *ScheduleService) IsScheduleApplicable(s *models.ScheduleModel, t time.T
 		return true
 	case "WEEKLY":
 		day := t.Weekday().String() // e.g. "Monday"
-		return slices.Contains(s.RepeatDays, day)
+		return slices.Contains(s.RepeatDays, strings.ToUpper(day))
 	default:
 		return false
 	}
@@ -150,6 +154,15 @@ func (r *ScheduleService) isScheduleAssignedToEmployee(s *models.ScheduleModel, 
 			}
 		}
 	}
+
+	// // Cek workshift
+	// if e.WorkShiftID != nil {
+	// 	for _, ws := range s.WorkShifts {
+	// 		if ws.ID == *e.WorkShiftID {
+	// 			return true
+	// 		}
+	// 	}
+	// }
 
 	return false
 }
