@@ -73,6 +73,9 @@ func (a *AttendanceService) FindAll(request *http.Request) (paginate.Page, error
 	if request.URL.Query().Get("employee_ids") != "" {
 		stmt = stmt.Where("employee_id IN (?)", strings.Split(request.URL.Query().Get("employee_ids"), ","))
 	}
+	if request.URL.Query().Get("employee_id") != "" {
+		stmt = stmt.Where("employee_id IN (?)", strings.Split(request.URL.Query().Get("employee_id"), ","))
+	}
 	if request.URL.Query().Get("start_date") != "" {
 		stmt = stmt.Where("clock_in >= ?", request.URL.Query().Get("start_date"))
 	}
