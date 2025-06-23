@@ -116,3 +116,10 @@ func WithAppService(appService any) AppContainerOption {
 		log.Println("AppService initialized")
 	}
 }
+
+func WithGoogleAPIService(apiKey string) AppContainerOption {
+	return func(c *AppContainer) {
+		c.GoogleAPIService = google.NewGoogleAPIService(c.erpContext, apiKey)
+		log.Println("GoogleAPIService initialized")
+	}
+}

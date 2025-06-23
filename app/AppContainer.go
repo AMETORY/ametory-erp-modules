@@ -71,10 +71,10 @@ type AppContainer struct {
 
 	ThirdPartyServices map[string]any
 	// Add additional services here
-	EmailSender     *thirdparty.SMTPSender
-	EmailAPIService *email_api.EmailApiService
-	WatzapClient    *thirdparty.WatzapClient
-
+	EmailSender      *thirdparty.SMTPSender
+	EmailAPIService  *email_api.EmailApiService
+	WatzapClient     *thirdparty.WatzapClient
+	GoogleAPIService *google.GoogleAPIService
 	SkipMigration    bool
 	Firestore        *thirdparty.Firestore
 	WhatsmeowService *whatsmeow_client.WhatsmeowService

@@ -100,6 +100,8 @@ type AttendancePolicy struct {
 	LateInToleranceInTime   time.Duration      `json:"late_in_tolerance" gorm:"default:15"`
 	EarlyOutToleranceInTime time.Duration      `json:"early_out_tolerance" gorm:"default:15"`
 	LateOutToleranceInTime  time.Duration      `json:"late_out_tolerance" gorm:"default:60"`
+	EffectiveDate           *time.Time         `json:"effective_date,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
+	EffectiveUntil          *time.Time         `json:"effective_until,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
 	ScheduleID              *string            `gorm:"-"`
 	Schedule                *ScheduleModel     `gorm:"-"`
 }

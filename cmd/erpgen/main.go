@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.18"
+var version = "1.0.19"
 
 var (
 	coreModules = []string{
@@ -162,6 +162,7 @@ var (
 		"FCMService",
 		"RedisService",
 		"WebsocketService",
+		"GoogleAPIService",
 		"AppService",
 	}
 )
