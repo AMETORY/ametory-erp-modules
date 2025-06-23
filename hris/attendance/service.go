@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -58,6 +59,7 @@ func (a *AttendanceService) FindOne(id string) (*models.AttendanceModel, error) 
 }
 
 func (a *AttendanceService) FindAll(request *http.Request) (paginate.Page, error) {
+	fmt.Println("GET ATTENDANCES")
 	pg := paginate.New()
 	stmt := a.db.
 		Preload("Employee.User").
@@ -67,6 +69,15 @@ func (a *AttendanceService) FindAll(request *http.Request) (paginate.Page, error
 		Model(&models.AttendanceModel{})
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if request.URL.Query().Get("employee_ids") != "" {
+		stmt = stmt.Where("employee_id IN (?)", strings.Split(request.URL.Query().Get("employee_ids"), ","))
+	}
+	if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("clock_in >= ?", request.URL.Query().Get("start_date"))
+	}
+	if request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("clock_in <= ?", request.URL.Query().Get("end_date"))
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.AttendanceModel{})
@@ -94,6 +105,22 @@ func (a *AttendanceService) GetEligiblePolicy(employeeID string) (*models.Attend
 	}
 
 	return policy, nil
+}
+
+func (a *AttendanceService) GetFiles(attendance *models.AttendanceModel) {
+	var fileClockIn models.FileModel
+	a.db.Where("ref_id = ? AND ref_type = ?", attendance.ID, "clockin").Find(&fileClockIn)
+	if fileClockIn.ID != "" {
+		attendance.ClockInFile = &fileClockIn
+		attendance.ClockInPicture = fileClockIn.URL
+	}
+	var fileClockOut models.FileModel
+	a.db.Where("ref_id = ? AND ref_type = ?", attendance.ID, "clockout").Find(&fileClockOut)
+	if fileClockOut.ID != "" {
+		attendance.ClockInFile = &fileClockOut
+		attendance.ClockOutPicture = fileClockOut.URL
+	}
+
 }
 
 func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*models.AttendanceModel, error) {
@@ -154,14 +181,19 @@ func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*mo
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println("CLOCKIN", att.ClockIn)
+		fmt.Println("CLOCKOUT", m.Now)
+		workingDuration := int(m.Now.Sub(att.ClockIn).Seconds())
+		fmt.Println("DURATION", workingDuration)
 		attendance = *att
 		attendance.ClockOut = &m.Now
 		attendance.ClockOutLat = m.Lat
 		attendance.ClockOutLng = m.Lng
-		attendance.Status = string(status)
 		attendance.ClockOutRemarks = string(remarks)
 		attendance.ClockOutAttendancePolicyID = &policy.ID
 		attendance.ClockOutNotes = m.Notes
+		attendance.WorkingDuration = &workingDuration
+		attendance.Status = "DONE"
 		err = a.Update(attendance.ID, &attendance)
 		if err != nil {
 			return nil, err

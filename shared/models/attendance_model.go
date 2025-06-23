@@ -26,7 +26,7 @@ type AttendanceModel struct {
 	BreakEnd                   *time.Time              `json:"break_end,omitempty"`
 	Overtime                   *time.Duration          `json:"overtime,omitempty"`
 	LateIn                     *time.Duration          `json:"late_in,omitempty"`
-	WorkingDuration            *time.Duration          `json:"working_duration,omitempty"`
+	WorkingDuration            *int                    `json:"working_duration,omitempty"`
 	CompanyID                  *string                 `json:"company_id,omitempty" gorm:"not null"`
 	Company                    *CompanyModel           `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 	Activities                 []EmployeeActivityModel `json:"activities,omitempty" gorm:"foreignKey:AttendanceID;constraint:OnDelete:CASCADE"`
@@ -47,6 +47,8 @@ type AttendanceModel struct {
 	WorkShiftID                *string                 `json:"work_shift_id,omitempty"`
 	WorkShift                  *WorkShiftModel         `gorm:"foreignKey:WorkShiftID" json:"work_shift,omitempty"`
 	Timezone                   string                  `gorm:"-"`
+	ClockInFile                *FileModel              `json:"clock_in_file,omitempty" gorm:"-"`
+	ClockOutFile               *FileModel              `json:"clock_out_file,omitempty" gorm:"-"`
 	// AttendanceBulkImportID     *string              `json:"attendance_bulk_import_id"`
 	// AttendanceBulkImport       AttendanceBulkImport `gorm:"foreignKey:AttendanceBulkImportID"`
 	// AttendanceImportItemID     *string              `json:"attendance_import_item_id"`
