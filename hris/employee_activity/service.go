@@ -54,3 +54,12 @@ func (service *EmployeeActivityService) FindAll(request *http.Request) (paginate
 	page.Page = page.Page + 1
 	return page, nil
 }
+
+func (service *EmployeeActivityService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := service.db.Model(&models.EmployeeActivityModel{}).Where("employee_id = ?", employeeID)
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeActivityModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
