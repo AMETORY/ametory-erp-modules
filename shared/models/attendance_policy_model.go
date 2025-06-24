@@ -35,6 +35,65 @@ const (
 	Empty                   Remarks = ""
 )
 
+var ProblemDescriptions = map[Remarks]map[string]string{
+	FaceProblem: {
+		"EN": "Face not detected",
+		"ID": "Wajah tidak terdeteksi",
+	},
+	LocationProblem: {
+		"EN": "Location not detected",
+		"ID": "Lokasi tidak terdeteksi",
+	},
+	LocationNotFoundProblem: {
+		"EN": "Location not found",
+		"ID": "Lokasi tidak ditemukan",
+	},
+	LocationDistanceProblem: {
+		"EN": "Distance from location is too far",
+		"ID": "Jarak dari lokasi terlalu jauh",
+	},
+	ScheduleProblem: {
+		"EN": "Schedule not found",
+		"ID": "Jadwal tidak ditemukan",
+	},
+	EarlyInProblem: {
+		"EN": "Clock in too early",
+		"ID": "Clock In terlalu awal",
+	},
+	LateInProblem: {
+		"EN": "Clock in too late",
+		"ID": "Clock In terlambat",
+	},
+	EarlyOutProblem: {
+		"EN": "Clock out too early",
+		"ID": "Clock Out terlalu awal",
+	},
+	LateOutProblem: {
+		"EN": "Clock out too late",
+		"ID": "Clock Out terlambat",
+	},
+	CustomProblem: {
+		"EN": "Custom rules failed",
+		"ID": "Aturan khusus gagal",
+	},
+	BranchProblem: {
+		"EN": "Branch not found",
+		"ID": "Cabang tidak ditemukan",
+	},
+	OrganizationProblem: {
+		"EN": "Organization not found",
+		"ID": "Organisasi tidak ditemukan",
+	},
+	NoPolicyProblem: {
+		"EN": "No attendance policy found",
+		"ID": "Kebijakan kehadiran tidak ditemukan",
+	},
+	Empty: {
+		"EN": "Unknown error",
+		"ID": "Error tidak diketahui",
+	},
+}
+
 type WorkingType string
 
 const (

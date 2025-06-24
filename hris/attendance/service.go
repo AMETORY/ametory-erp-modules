@@ -209,7 +209,7 @@ func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*mo
 		}
 	}
 
-	return nil, nil
+	return &attendance, nil
 }
 
 func (a *AttendanceService) EvaluateAttendance(policy *models.AttendancePolicy, input models.AttendanceCheckInput) (models.AttendanceStatus, models.Remarks) {

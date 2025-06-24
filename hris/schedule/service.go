@@ -67,7 +67,7 @@ func (s *ScheduleService) Delete(id string) error {
 }
 
 func (r *ScheduleService) FindApplicableSchedulesForEmployee(employee *models.EmployeeModel, now time.Time) ([]models.ScheduleModel, error) {
-	var schedules []models.ScheduleModel
+	var schedules []models.ScheduleModel = []models.ScheduleModel{}
 
 	err := r.db.Preload("Branches").Preload("Employees").Preload("Organizations").
 		Joins("LEFT JOIN schedule_employees ON schedule_employees.schedule_model_id = schedules.id").
@@ -92,7 +92,7 @@ func (r *ScheduleService) FindApplicableSchedulesForEmployee(employee *models.Em
 	}
 
 	// Filter ulang berdasarkan tanggal dan repeat type
-	var result []models.ScheduleModel
+	var result []models.ScheduleModel = []models.ScheduleModel{}
 	for _, sched := range schedules {
 		if r.IsScheduleApplicable(&sched, now, employee) {
 			result = append(result, sched)

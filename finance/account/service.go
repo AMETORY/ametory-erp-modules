@@ -140,6 +140,14 @@ func (s *AccountService) GetAccountByCode(code string) (*models.AccountModel, er
 	return &account, err
 }
 
+func (s *AccountService) GetMasterAccounts(request *http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Model(&models.AccountModel{})
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.AccountModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
 func (s *AccountService) GetAccounts(request http.Request, search string) (paginate.Page, error) {
 	// GET COGS ACCOUNT
 	if request.Header.Get("ID-Company") != "" {

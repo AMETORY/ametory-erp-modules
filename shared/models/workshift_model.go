@@ -14,7 +14,7 @@ type WorkShiftModel struct {
 	EndTime     string        `gorm:"type:varchar(255);not null" json:"end_time,omitempty"`
 	Day         string        `gorm:"type:varchar(255);not null" json:"day,omitempty"`
 	CompanyID   *string       `gorm:"type:char(36);index" json:"company_id,omitempty"` // company id
-	Company     *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE"`
+	Company     *CompanyModel `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`
 }
 
 func (WorkShiftModel) TableName() string {
