@@ -45,6 +45,7 @@ func (s *CompanyService) Migrate() error {
 		&models.CompanyCategory{},
 		&models.BranchModel{},
 		&models.OrganizationModel{},
+		&models.WorkLocationModel{},
 	)
 }
 

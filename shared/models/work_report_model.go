@@ -23,8 +23,8 @@ type WorkReport struct {
 	ApprovedDate   *time.Time       `json:"approved_date"`
 	ApprovedByID   *string          `json:"approved_by_id"`
 	ApprovedBy     EmployeeModel    `gorm:"foreignKey:ApprovedByID"`
-	CompanyID      string           `json:"company_id"`
-	Company        CompanyModel     `gorm:"foreignKey:CompanyID"`
+	CompanyID      *string          `json:"company_id"`
+	Company        *CompanyModel    `gorm:"foreignKey:CompanyID"`
 	Pictures       []FileModel      `json:"pictures" gorm:"-"`
 	Check          WorkReportCheck  `json:"check" gorm:"foreignKey:WorkReportID"`
 	Remarks        string           `json:"remarks"`

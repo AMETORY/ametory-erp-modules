@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.20"
+var version = "1.0.21"
 
 var (
 	coreModules = []string{
@@ -67,6 +67,7 @@ var (
 			"Branch",
 			"Company",
 			"Organization",
+			"WorkLocation",
 		},
 		"RBAC": {
 			"Role",

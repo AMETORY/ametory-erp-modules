@@ -6,17 +6,24 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
+	"sync"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 )
 
 type GoogleAPIService struct {
-	ctx    *context.ERPContext
-	apiKey string
+	ctx        *context.ERPContext
+	apiKey     string
+	placePhoto bool
 }
 
 func NewGoogleAPIService(ctx *context.ERPContext, apiKey string) *GoogleAPIService {
 	return &GoogleAPIService{ctx: ctx, apiKey: apiKey}
+}
+
+func (s *GoogleAPIService) SetPlacePhoto(placePhoto bool) {
+	s.placePhoto = placePhoto
 }
 
 func (s *GoogleAPIService) SearchPlaceByCoordinate(latitude float64, longitude float64, maxResult int, radius float64) (*PlacesResponse, error) {
@@ -86,6 +93,7 @@ func (s *GoogleAPIService) SearchPlaceByCoordinate(latitude float64, longitude f
 	}
 	return &response, nil
 }
+
 func (s *GoogleAPIService) SearchPlace(keyword string) (*PlacesResponse, error) {
 	url := "https://places.googleapis.com/v1/places:searchText"
 
@@ -114,7 +122,11 @@ func (s *GoogleAPIService) SearchPlace(keyword string) (*PlacesResponse, error) 
 	// Menambahkan headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Goog-Api-Key", s.apiKey)
-	req.Header.Set("X-Goog-FieldMask", "places.displayName,places.formattedAddress,places.location")
+	if s.placePhoto {
+		req.Header.Set("X-Goog-FieldMask", "places.displayName,places.formattedAddress,places.location,places.photos,places.id")
+	} else {
+		req.Header.Set("X-Goog-FieldMask", "places.displayName,places.formattedAddress,places.location,places.id")
+	}
 
 	// Mengirim request menggunakan HTTP client
 	client := &http.Client{}
@@ -144,6 +156,30 @@ func (s *GoogleAPIService) SearchPlace(keyword string) (*PlacesResponse, error) 
 		fmt.Println("Error unmarshalling response:", err)
 		return nil, err
 	}
+
+	var wg sync.WaitGroup
+	for i, v := range response.Places {
+		if s.placePhoto && len(v.Photos) > 0 {
+			wg.Add(1)
+			go func(i int, v Place) {
+				defer wg.Done()
+				strResource := filepath.Base(v.Photos[0].Name)
+
+				photoUrl := fmt.Sprintf("https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=%s&key=%s", strResource, s.apiKey)
+				redirectURL, err := http.Get(photoUrl)
+				if err != nil {
+					fmt.Println("Error getting redirect URL:", err)
+				} else {
+					defer redirectURL.Body.Close()
+					finalURL := redirectURL.Request.URL.String()
+					v.PhotoURL = finalURL
+					v.Photos = nil
+					response.Places[i] = v
+				}
+			}(i, v)
+		}
+	}
+	wg.Wait()
 	return &response, nil
 }
 
@@ -152,14 +188,32 @@ type PlacesResponse struct {
 }
 
 type Place struct {
+	ID               string   `json:"id"`
 	FormattedAddress string   `json:"formattedAddress"`
 	Location         Location `json:"location"`
 	DisplayName      struct {
 		Text string `json:"text"`
 	} `json:"displayName"`
+	Photos   []Photo `json:"photos"`
+	PhotoURL string  `json:"photoUrl"`
 }
 
 type Location struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
+}
+
+type Photo struct {
+	Name               string   `json:"name"`
+	WidthPx            int      `json:"widthPx"`
+	HeightPx           int      `json:"heightPx"`
+	AuthorAttributions []Author `json:"authorAttributions"`
+	FlagContentUri     string   `json:"flagContentUri"`
+	GoogleMapsUri      string   `json:"googleMapsUri"`
+}
+
+type Author struct {
+	DisplayName string `json:"displayName"`
+	Uri         string `json:"uri"`
+	PhotoUri    string `json:"photoUri"`
 }
