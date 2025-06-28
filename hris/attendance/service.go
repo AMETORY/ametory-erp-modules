@@ -140,6 +140,12 @@ func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*mo
 		return nil, err
 	}
 
+	pol, err := a.attendancePolicyService.FindOne(policy.ID)
+	if err != nil {
+		return nil, err
+	}
+	policy = pol
+
 	fmt.Println("ATTENDANCE POLICY", policy.PolicyName)
 
 	status, remarks := a.EvaluateAttendance(policy, m)

@@ -1,6 +1,10 @@
 package models
 
-import "github.com/AMETORY/ametory-erp-modules/shared"
+import (
+	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type WorkLocationModel struct {
 	shared.BaseModel
@@ -12,4 +16,15 @@ type WorkLocationModel struct {
 	CompanyID   *string       `json:"company_id"`
 	Company     *CompanyModel `gorm:"foreignKey:CompanyID"`
 	IsActive    bool          `json:"is_active"`
+}
+
+func (WorkLocationModel) TableName() string {
+	return "work_locations"
+}
+
+func (m *WorkLocationModel) BeforeCreate(tx *gorm.DB) error {
+	if m.ID == "" {
+		m.ID = uuid.New().String()
+	}
+	return nil
 }

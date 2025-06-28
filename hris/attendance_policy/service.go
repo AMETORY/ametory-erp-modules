@@ -32,7 +32,7 @@ func (s *AttendancePolicyService) Create(input *models.AttendancePolicy) error {
 
 func (s *AttendancePolicyService) FindOne(id string) (*models.AttendancePolicy, error) {
 	var input models.AttendancePolicy
-	err := s.db.Where("id = ?", id).Preload("WorkShift").Preload("Organization").Preload("Branch").First(&input).Error
+	err := s.db.Where("id = ?", id).Preload("WorkShift").Preload("Organization").Preload("Branch").Preload("WorkLocation").First(&input).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
@@ -44,7 +44,7 @@ func (s *AttendancePolicyService) FindOne(id string) (*models.AttendancePolicy, 
 
 func (a *AttendancePolicyService) FindAll(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := a.db.Model(&models.AttendancePolicy{}).Preload("WorkShift").Preload("Organization").Preload("Branch")
+	stmt := a.db.Model(&models.AttendancePolicy{}).Preload("WorkShift").Preload("Organization").Preload("Branch").Preload("WorkLocation")
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}

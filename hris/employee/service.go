@@ -37,6 +37,7 @@ func (e *EmployeeService) GetEmployeeByID(id string) (*models.EmployeeModel, err
 		Preload("Bank").
 		Preload("JobTitle").
 		Preload("Branch").
+		Preload("WorkLocation").
 		Preload("WorkShift").
 		First(&employee, "id = ?", id).Error
 	if err != nil {

@@ -164,6 +164,8 @@ type AttendancePolicy struct {
 	EffectiveUntil          *time.Time         `json:"effective_until,omitempty" gorm:"type:DATE" sql:"TYPE:DATE"`
 	ScheduleID              *string            `gorm:"-"`
 	Schedule                *ScheduleModel     `gorm:"-"`
+	WorkLocationID          *string            `json:"work_location_id,omitempty"`
+	WorkLocation            *WorkLocationModel `gorm:"foreignKey:WorkLocationID" json:"work_location,omitempty"`
 }
 
 func (u *AttendancePolicy) BeforeCreate(tx *gorm.DB) (err error) {
@@ -176,4 +178,12 @@ func (u *AttendancePolicy) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (AttendancePolicy) TableName() string {
 	return "attendance_policies"
+}
+
+func (u *AttendancePolicy) BeforeSave(tx *gorm.DB) (err error) {
+	if u.WorkLocation != nil {
+		u.Lat = u.WorkLocation.Latitude
+		u.Lng = u.WorkLocation.Longitude
+	}
+	return
 }

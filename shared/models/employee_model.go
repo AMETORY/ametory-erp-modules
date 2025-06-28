@@ -19,7 +19,9 @@ type EmployeeModel struct {
 	JobTitleID                    *string                 `json:"job_title_id,omitempty"`
 	JobTitle                      *JobTitleModel          `gorm:"foreignKey:JobTitleID;constraint:OnDelete:CASCADE" json:"job_title,omitempty"`
 	BranchID                      *string                 `json:"branch_id,omitempty"`
-	Branch                        BranchModel             `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
+	Branch                        *BranchModel            `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
+	WorkLocationID                *string                 `json:"work_location_id,omitempty"`
+	WorkLocation                  *WorkLocationModel      `gorm:"foreignKey:WorkLocationID" json:"work_location,omitempty"`
 	Grade                         string                  `json:"grade,omitempty"`
 	Address                       string                  `json:"address,omitempty"`
 	Picture                       *string                 `json:"picture,omitempty"`

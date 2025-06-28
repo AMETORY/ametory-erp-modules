@@ -1,4 +1,4 @@
-package branch
+package work_location
 
 import (
 	"net/http"
