@@ -58,6 +58,24 @@ func (a *AttendanceService) FindOne(id string) (*models.AttendanceModel, error) 
 	return m, nil
 }
 
+func (a *AttendanceService) FindAttendanceByEmployeeAndDate(employeeID string, date time.Time) (*models.AttendanceModel, error) {
+	m := &models.AttendanceModel{}
+	if err := a.db.
+		Preload("Employee", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("User").Preload("Branch").Preload("Organization").Preload("WorkShift").Preload("JobTitle")
+		}).
+		Preload("AttendancePolicy").
+		Preload("ClockOutAttendancePolicy").
+		Preload("Schedule").
+		Where("employee_id = ? AND (clock_in BETWEEN ? AND ? OR clock_out BETWEEN ? AND ?)", employeeID, date.Add(-24*time.Hour).Format("2006-01-02 15:04:05"), date.Add(24*time.Hour).Format("2006-01-02 15:04:05"), date.Add(-24*time.Hour).Format("2006-01-02 15:04:05"), date.Add(24*time.Hour).Format("2006-01-02 15:04:05")).
+		Order("clock_in desc").
+		First(m).Error; err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
 func (a *AttendanceService) FindAll(request *http.Request) (paginate.Page, error) {
 	fmt.Println("GET ATTENDANCES")
 	pg := paginate.New()
@@ -81,6 +99,11 @@ func (a *AttendanceService) FindAll(request *http.Request) (paginate.Page, error
 	}
 	if request.URL.Query().Get("end_date") != "" {
 		stmt = stmt.Where("clock_in <= ?", request.URL.Query().Get("end_date"))
+	}
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("clock_in desc")
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.AttendanceModel{})
@@ -169,6 +192,13 @@ func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*mo
 		attendance.AttendancePolicyID = &policy.ID
 		attendance.ScheduleID = m.ScheduleID
 		attendance.ClockInNotes = m.Notes
+		if status == models.Pending && remarks == models.LateInProblem {
+			lateInDuration := int(m.Now.Sub(m.ScheduledClockIn).Seconds())
+			attendance.LateIn = &lateInDuration
+		}
+		if m.File.URL != "" {
+			attendance.ClockInPicture = m.File.URL
+		}
 		err := a.Create(&attendance)
 		if err != nil {
 			return nil, err
@@ -203,6 +233,9 @@ func (a *AttendanceService) CreateAttendance(m models.AttendanceCheckInput) (*mo
 		attendance.ClockOutNotes = m.Notes
 		attendance.WorkingDuration = &workingDuration
 		attendance.Status = "DONE"
+		if m.File.URL != "" {
+			attendance.ClockOutPicture = m.File.URL
+		}
 		err = a.Update(attendance.ID, &attendance)
 		if err != nil {
 			return nil, err

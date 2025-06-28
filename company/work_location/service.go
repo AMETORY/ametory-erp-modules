@@ -39,7 +39,7 @@ func (s *WorkLocationService) GetWorkLocationByID(id string) (*models.WorkLocati
 	return &branch, nil
 }
 
-func (s *WorkLocationService) FindAllWorkLocationes(request *http.Request) (paginate.Page, error) {
+func (s *WorkLocationService) FindAllWorkLocations(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Model(&models.WorkLocationModel{})
 	if request.Header.Get("ID-Company") != "" {
@@ -49,4 +49,15 @@ func (s *WorkLocationService) FindAllWorkLocationes(request *http.Request) (pagi
 	page := pg.With(stmt).Request(request).Response(&[]models.WorkLocationModel{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (s *WorkLocationService) GetWorkLocationByEmployee(employee *models.EmployeeModel) (*models.WorkLocationModel, error) {
+	if employee == nil {
+		return nil, nil
+	}
+
+	if err := s.db.Model(&employee).Preload("WorkLocation").Find(employee).Error; err != nil {
+		return nil, err
+	}
+	return employee.WorkLocation, nil
 }

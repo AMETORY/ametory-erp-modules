@@ -8,6 +8,17 @@ import (
 	"gorm.io/gorm"
 )
 
+type EmployeeActivityType string
+
+const (
+	TO_DO       EmployeeActivityType = "TO_DO"
+	TASK        EmployeeActivityType = "TASK"
+	VISIT       EmployeeActivityType = "VISIT"
+	BREAK_START EmployeeActivityType = "BREAK_START"
+	BREAK_END   EmployeeActivityType = "BREAK_END"
+	OVERTIME    EmployeeActivityType = "OVERTIME"
+)
+
 type EmployeeActivityModel struct {
 	shared.BaseModel
 	Name              string                `json:"name"`
@@ -27,6 +38,7 @@ type EmployeeActivityModel struct {
 	CompanyID         *string               `json:"company_id" gorm:"not null"`
 	Company           *CompanyModel         `gorm:"foreignKey:CompanyID"`
 	Files             []FileModel           `json:"files" gorm:"-"`
+	Pictures          []FileModel           `json:"pictures" gorm:"-"`
 	Lat               *float64              `json:"lat" gorm:"type:DECIMAL(10,8)"`
 	Lng               *float64              `json:"lng" gorm:"type:DECIMAL(11,8)"`
 	Location          *string               `json:"location" gorm:"type:TEXT"`
@@ -40,8 +52,8 @@ type EmployeeActivityModel struct {
 	IsNeedApproval    bool                  `json:"is_need_approval" gorm:"-"`
 	OvertimeRequestID *string               `json:"overtime_request_id"`
 	OvertimeRequest   EmployeeOvertimeModel `gorm:"foreignKey:OvertimeRequestID"`
-	StartTimePicture  string                `json:"start_time_picture"`
-	EndTimePicture    string                `json:"end_time_picture"`
+	StartTimePicture  *FileModel            `json:"start_time_picture" gorm:"-"`
+	EndTimePicture    *FileModel            `json:"end_time_picture" gorm:"-"`
 	VisitOutLat       *float64              `json:"visit_out_lat" gorm:"type:DECIMAL(10,8)"`
 	VisitOutLng       *float64              `json:"visit_out_lng" gorm:"type:DECIMAL(11,8)"`
 	VisitOutLocation  *string               `json:"visit_out_location" gorm:"type:TEXT"`

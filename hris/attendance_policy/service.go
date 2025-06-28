@@ -54,6 +54,17 @@ func (a *AttendancePolicyService) FindAll(request *http.Request) (paginate.Page,
 	return page, nil
 }
 
+func (a *AttendancePolicyService) UpdateAttedancePolicyByWorkLocation(workLocation *models.WorkLocationModel) error {
+	if workLocation == nil {
+		return errors.New("work location is null")
+	}
+	return a.db.Model(&models.AttendancePolicy{}).Where("work_location_id = ?", workLocation.ID).Updates(map[string]any{
+		"lat": workLocation.Latitude,
+		"lng": workLocation.Longitude,
+	}).Error
+
+}
+
 func (s *AttendancePolicyService) Update(input *models.AttendancePolicy) error {
 	return s.db.Save(input).Error
 }

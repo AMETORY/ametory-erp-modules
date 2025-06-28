@@ -24,8 +24,8 @@ type AttendanceModel struct {
 	Employee                   *EmployeeModel          `gorm:"foreignKey:EmployeeID;constraint:OnDelete:CASCADE" json:"employee,omitempty"`
 	BreakStart                 *time.Time              `json:"break_start,omitempty"`
 	BreakEnd                   *time.Time              `json:"break_end,omitempty"`
-	Overtime                   *time.Duration          `json:"overtime,omitempty"`
-	LateIn                     *time.Duration          `json:"late_in,omitempty"`
+	Overtime                   *int                    `json:"overtime,omitempty"`
+	LateIn                     *int                    `json:"late_in,omitempty"`
 	WorkingDuration            *int                    `json:"working_duration,omitempty"`
 	CompanyID                  *string                 `json:"company_id,omitempty" gorm:"not null"`
 	Company                    *CompanyModel           `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE" json:"company,omitempty"`

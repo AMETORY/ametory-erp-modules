@@ -103,6 +103,14 @@ func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *
 
 	return s.ctx.DB.Save(fileObj).Error
 }
+func (s *FileService) GetFileByID(id string) (*models.FileModel, error) {
+	file := &models.FileModel{}
+	err := s.ctx.DB.Where("id = ?", id).First(file).Error
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
 
 func (s *FileService) UpdateFileByID(id string, file *models.FileModel) error {
 	return s.ctx.DB.Model(&models.FileModel{}).Where("id = ?", id).Updates(file).Error

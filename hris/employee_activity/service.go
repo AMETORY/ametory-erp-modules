@@ -55,9 +55,23 @@ func (service *EmployeeActivityService) FindAll(request *http.Request) (paginate
 	return page, nil
 }
 
-func (service *EmployeeActivityService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
+func (service *EmployeeActivityService) FindAllByEmployeeID(request *http.Request, employeeID string, activityType string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := service.db.Model(&models.EmployeeActivityModel{}).Where("employee_id = ?", employeeID)
+	if activityType != "" {
+		stmt = stmt.Where("activity_type = ?", activityType)
+	}
+
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+
+	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("start_date >= ? AND end_date <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+	} else if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("start_date = ?", request.URL.Query().Get("start_date"))
+	}
+
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeActivityModel{})
 	page.Page = page.Page + 1
