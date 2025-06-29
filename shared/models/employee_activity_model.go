@@ -57,6 +57,7 @@ type EmployeeActivityModel struct {
 	VisitOutLat       *float64              `json:"visit_out_lat" gorm:"type:DECIMAL(10,8)"`
 	VisitOutLng       *float64              `json:"visit_out_lng" gorm:"type:DECIMAL(11,8)"`
 	VisitOutLocation  *string               `json:"visit_out_location" gorm:"type:TEXT"`
+	AssignedEmployees []EmployeeModel       `json:"assigned_employees" gorm:"many2many:activity_assigned_employees;constraint:OnDelete:CASCADE;"`
 }
 
 func (e EmployeeActivityModel) TableName() string {

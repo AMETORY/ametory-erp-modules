@@ -26,6 +26,7 @@ func Migrate(db *gorm.DB) error {
 }
 
 func (service *EmployeeActivityService) CreateEmployeeActivity(activity *models.EmployeeActivityModel) error {
+	// utils.LogJson(activity.AssignedEmployees)
 	return service.db.Create(activity).Error
 }
 
@@ -70,6 +71,10 @@ func (service *EmployeeActivityService) FindAllByEmployeeID(request *http.Reques
 		stmt = stmt.Where("start_date >= ? AND end_date <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
 	} else if request.URL.Query().Get("start_date") != "" {
 		stmt = stmt.Where("start_date = ?", request.URL.Query().Get("start_date"))
+	}
+
+	if request.URL.Query().Get("date") != "" {
+		stmt = stmt.Where("start_date = ?", request.URL.Query().Get("date"))
 	}
 
 	utils.FixRequest(request)

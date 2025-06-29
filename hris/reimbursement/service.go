@@ -3,6 +3,7 @@ package reimbursement
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/hris/employee"
@@ -25,6 +26,7 @@ func NewReimbursementService(ctx *context.ERPContext, employeeService *employee.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&models.ReimbursementModel{},
+		&models.ReimbursementItemModel{},
 	)
 }
 
@@ -35,9 +37,29 @@ func (s *ReimbursementService) CreateReimbursement(m *models.ReimbursementModel)
 	return s.db.Create(m).Error
 }
 
+func (s *ReimbursementService) FindAllReimbursementByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Preload("Approver").Where("employee_id = ?", employeeID).Model(&models.ReimbursementModel{})
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("date BETWEEN ? AND ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+	}
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("date DESC")
+	}
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.ReimbursementModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
 func (s *ReimbursementService) FindAllReimbursement(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Model(&models.ReimbursementModel{})
+	stmt := s.db.Preload("Approver").Model(&models.ReimbursementModel{})
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ReimbursementModel{})
 	page.Page = page.Page + 1
@@ -46,9 +68,16 @@ func (s *ReimbursementService) FindAllReimbursement(request *http.Request) (pagi
 
 func (s *ReimbursementService) FindReimbursementByID(id string) (*models.ReimbursementModel, error) {
 	var m models.ReimbursementModel
-	if err := s.db.Where("id = ?", id).First(&m).Error; err != nil {
+	if err := s.db.Preload("Approver").Preload("Items").Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, err
 	}
+	for i, v := range m.Items {
+		files := []models.FileModel{}
+		s.db.Find(&files, "ref_id = ? AND ref_type = ?", v.ID, "reimbursement_item")
+		v.Attachments = files
+		m.Items[i] = v
+	}
+
 	return &m, nil
 }
 
@@ -62,4 +91,35 @@ func (s *ReimbursementService) DeleteReimbursement(id string) error {
 
 func (s *ReimbursementService) Delete(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.ReimbursementModel{}).Error
+}
+
+func (s *ReimbursementService) CreateReimbursementItem(m *models.ReimbursementItemModel) error {
+	if m.ReimbursementID == nil {
+		return errors.New("reimbursement id is required")
+	}
+	return s.db.Create(m).Error
+}
+
+func (s *ReimbursementService) UpdateReimbursementItem(id string, m *models.ReimbursementItemModel) error {
+	return s.db.Where("id = ?", id).Save(m).Error
+}
+
+func (s *ReimbursementService) DeleteReimbursementItem(id string) error {
+	return s.db.Where("id = ?", id).Delete(&models.ReimbursementItemModel{}).Error
+}
+
+func (s *ReimbursementService) CountByStatusAndEmployeeID(status string, employeeID string, startDate *time.Time, endDate *time.Time) (int64, error) {
+	var count int64
+	stmt := s.db.Model(&models.ReimbursementModel{}).
+		Where("employee_id = ?", employeeID).
+		Where("status = ?", status)
+	if startDate != nil && endDate != nil {
+		stmt = stmt.Where("created_at BETWEEN ? AND ?", startDate, endDate)
+	}
+	err := stmt.
+		Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

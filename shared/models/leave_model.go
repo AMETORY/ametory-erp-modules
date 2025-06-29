@@ -25,11 +25,12 @@ type LeaveModel struct {
 	Remarks         string         `json:"remarks" gorm:"type:TEXT"`
 	Attachment      *string        `json:"attachment" gorm:"type:TEXT"`
 	ApproverID      *string        `json:"approver_id"`
-	Approver        *UserModel     `json:"approver" gorm:"foreignKey:ApproverID"`
+	Approver        *EmployeeModel `json:"approver" gorm:"foreignKey:ApproverID"`
 	CompanyID       *string        `json:"company_id" gorm:"not null"`
 	Company         *CompanyModel  `gorm:"foreignKey:CompanyID"`
 	ScheduleID      *string        `json:"schedule_id"`
 	Schedule        *ScheduleModel `json:"schedule" gorm:"foreignKey:ScheduleID"`
+	Files           []FileModel    `json:"files" gorm:"-"`
 }
 
 func (p *LeaveModel) TableName() string {

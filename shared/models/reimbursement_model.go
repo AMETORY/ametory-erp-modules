@@ -24,6 +24,8 @@ type ReimbursementModel struct {
 	Items            []ReimbursementItemModel `json:"items" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;foreignKey:ReimbursementID"`
 	EmployeeID       *string                  `json:"employee_id"`
 	Employee         *EmployeeModel           `gorm:"foreignKey:EmployeeID" json:"-"`
+	ApproverID       *string                  `json:"approver_id"`
+	Approver         *EmployeeModel           `gorm:"foreignKey:ApproverID" json:"-"`
 	Transactions     []TransactionModel       `json:"transactions" gorm:"-"`
 	Attachment       string                   `json:"attachment"`
 	CompanyID        *string                  `json:"company_id" gorm:"not null"`

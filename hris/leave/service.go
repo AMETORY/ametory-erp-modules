@@ -3,6 +3,7 @@ package leave
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/hris/employee"
@@ -55,11 +56,42 @@ func (s *LeaveService) FindAllLeave(request *http.Request) (paginate.Page, error
 	return page, nil
 }
 
+func (s *LeaveService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.Preload("LeaveCategory").Where("employee_id = ?", employeeID).Model(&models.LeaveModel{})
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("name ilike ? or description ilike ?",
+			"%"+request.URL.Query().Get("search")+"%",
+			"%"+request.URL.Query().Get("search")+"%",
+		)
+	}
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("start_date BETWEEN ? AND ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+	}
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("start_date DESC")
+	}
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.LeaveModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
 func (s *LeaveService) FindLeaveByID(id string) (*models.LeaveModel, error) {
 	var m models.LeaveModel
 	if err := s.db.Preload("LeaveCategory").Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, err
 	}
+
+	files := []models.FileModel{}
+	s.db.Find(&files, "ref_id = ? AND ref_type = ?", m.ID, "leave")
+	m.Files = files
+
 	return &m, nil
 }
 
@@ -151,4 +183,16 @@ func (s *LeaveService) GenLeaveCategories() {
 		Name:   "Absen",
 		Absent: true,
 	})
+}
+
+func (s *LeaveService) CountByEmployeeID(employeeID string, startDate *time.Time, endDate *time.Time) (int64, error) {
+	var countPending int64
+	err := s.ctx.DB.Model(&models.LeaveModel{}).
+		Where("status = ?", "APPROVED").
+		Where("employee_id = ?", employeeID).
+		Where("start_date >= ?", startDate).
+		Where("start_date <= ?", endDate).
+		Count(&countPending).Error
+
+	return countPending, err
 }

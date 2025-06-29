@@ -8,13 +8,13 @@ import (
 
 type ReimbursementItemModel struct {
 	shared.BaseModel
-	Amount          float64            `json:"amount" form:"amount"`
-	Notes           string             `json:"notes" form:"notes"`
-	ReimbursementID string             `json:"reimbursement_id"`
-	Reimbursement   ReimbursementModel `gorm:"foreignKey:ReimbursementID" json:"-"`
-	Attachments     []FileModel        `json:"attachments" gorm:"-"`
-	CompanyID       string             `json:"company_id" gorm:"not null"`
-	Company         CompanyModel       `gorm:"foreignKey:CompanyID"`
+	Amount          float64             `json:"amount" form:"amount"`
+	Notes           string              `json:"notes" form:"notes"`
+	ReimbursementID *string             `json:"reimbursement_id"`
+	Reimbursement   *ReimbursementModel `gorm:"foreignKey:ReimbursementID" json:"-"`
+	Attachments     []FileModel         `json:"attachments" gorm:"-"`
+	CompanyID       *string             `json:"company_id" gorm:"not null"`
+	Company         *CompanyModel       `gorm:"foreignKey:CompanyID"`
 }
 
 func (ReimbursementItemModel) TableName() string {

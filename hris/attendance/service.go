@@ -67,7 +67,9 @@ func (a *AttendanceService) FindAttendanceByEmployeeAndDate(employeeID string, d
 		Preload("AttendancePolicy").
 		Preload("ClockOutAttendancePolicy").
 		Preload("Schedule").
-		Where("employee_id = ? AND (clock_in BETWEEN ? AND ? OR clock_out BETWEEN ? AND ?)", employeeID, date.Add(-24*time.Hour).Format("2006-01-02 15:04:05"), date.Add(24*time.Hour).Format("2006-01-02 15:04:05"), date.Add(-24*time.Hour).Format("2006-01-02 15:04:05"), date.Add(24*time.Hour).Format("2006-01-02 15:04:05")).
+		Where("employee_id = ? AND DATE(clock_in) = ?",
+			employeeID,
+			date.Format("2006-01-02")).
 		Order("clock_in desc").
 		First(m).Error; err != nil {
 		return nil, err
