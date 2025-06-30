@@ -92,6 +92,9 @@ func (s *HRISservice) Migrate() error {
 	if err := employee_loan.Migrate(s.ctx.DB); err != nil {
 		return err
 	}
+	if err := employee_cash_advance.Migrate(s.ctx.DB); err != nil {
+		return err
+	}
 	if err := leave.Migrate(s.ctx.DB); err != nil {
 		return err
 	}
