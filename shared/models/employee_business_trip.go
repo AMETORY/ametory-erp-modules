@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type EmployeeBusinessTrip struct {
@@ -12,6 +14,7 @@ type EmployeeBusinessTrip struct {
 	Employee              *EmployeeModel  `gorm:"foreignKey:EmployeeID" json:"employee"`
 	CompanyID             *string         `json:"company_id,omitempty" gorm:"type:varchar(255)"`
 	Company               *CompanyModel   `gorm:"foreignKey:CompanyID" json:"company"`
+	Date                  time.Time       `json:"date,omitempty"`
 	DepartureDate         *time.Time      `json:"departure_date,omitempty"`
 	ArrivalDate           *time.Time      `json:"arrival_date,omitempty"`
 	Origin                string          `json:"origin,omitempty" gorm:"type:varchar(255)"`
@@ -20,8 +23,6 @@ type EmployeeBusinessTrip struct {
 	DestinationCityID     *string         `json:"destination_city_id,omitempty" gorm:"type:varchar(255)"`
 	BusinessTripNumber    string          `json:"business_trip_number,omitempty" gorm:"type:varchar(255)"`
 	BusinessTripPurpose   string          `json:"business_trip_purpose,omitempty" gorm:"type:varchar(255)"`
-	StartDate             time.Time       `json:"start_date,omitempty"`
-	EndDate               time.Time       `json:"end_date,omitempty"`
 	Status                string          `json:"status,omitempty" gorm:"default:'DRAFT';type:varchar(255)"`
 	Notes                 string          `json:"notes,omitempty" gorm:"type:text"`
 	Remarks               string          `json:"remarks,omitempty" gorm:"type:text"`
@@ -34,7 +35,17 @@ type EmployeeBusinessTrip struct {
 	HotelName             string          `json:"hotel_name,omitempty" gorm:"type:varchar(255)"`
 	HotelAddress          string          `json:"hotel_address,omitempty" gorm:"type:varchar(255)"`
 	HotelContact          string          `json:"hotel_contact,omitempty" gorm:"type:varchar(255)"`
+	HotelLat              *float64        `json:"hotel_lat,omitempty" gorm:"type:DECIMAL(10,8)"`
+	HotelLng              *float64        `json:"hotel_lng,omitempty" gorm:"type:DECIMAL(11,8)"`
 	TripParticipants      []EmployeeModel `json:"trip_participants" gorm:"many2many:trip_participants;constraint:OnDelete:CASCADE;"`
 	HotelBookingFiles     []FileModel     `json:"hotel_booking_files,omitempty" gorm:"-"`
 	TransportBookingFiles []FileModel     `json:"transport_booking_files,omitempty" gorm:"-"`
+}
+
+func (e *EmployeeBusinessTrip) BeforeCreate(tx *gorm.DB) error {
+
+	if e.ID == "" {
+		tx.Statement.SetColumn("id", uuid.New().String())
+	}
+	return nil
 }

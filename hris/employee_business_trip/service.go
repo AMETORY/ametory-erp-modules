@@ -37,8 +37,9 @@ func (e *EmployeeBusinessTripService) GetEmployeeBusinessTripByID(id string) (*m
 	err := e.db.
 		Preload("Employee").
 		Preload("Company").
-		Preload("BusinessTripUsages").
-		Preload("Refunds").
+		Preload("TripParticipants", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("User").Preload("JobTitle")
+		}).
 		Preload("Approver.User").
 		Where("id = ?", id).First(&employeeBusinessTrip).Error
 	if err != nil {
@@ -80,12 +81,12 @@ func (e *EmployeeBusinessTripService) FindAllByEmployeeID(request *http.Request,
 		stmt = stmt.Where("reason LIKE ?", "%"+request.URL.Query().Get("search")+"%")
 	}
 	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
-		stmt = stmt.Where("date_requested >= ? AND date_requested <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+		stmt = stmt.Where("date >= ? AND date <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
 	} else if request.URL.Query().Get("start_date") != "" {
-		stmt = stmt.Where("date_requested = ?", request.URL.Query().Get("start_date"))
+		stmt = stmt.Where("date = ?", request.URL.Query().Get("start_date"))
 	}
 	if request.URL.Query().Get("date") != "" {
-		stmt = stmt.Where("DATE(date_requested) = ?", request.URL.Query().Get("date"))
+		stmt = stmt.Where("DATE(date) = ?", request.URL.Query().Get("date"))
 	}
 	if request.URL.Query().Get("approver_id") != "" {
 		stmt = stmt.Where("approver_id = ?", request.URL.Query().Get("approver_id"))
@@ -94,7 +95,7 @@ func (e *EmployeeBusinessTripService) FindAllByEmployeeID(request *http.Request,
 	if request.URL.Query().Get("order") != "" {
 		stmt = stmt.Order(request.URL.Query().Get("order"))
 	} else {
-		stmt = stmt.Order("date_requested DESC")
+		stmt = stmt.Order("date DESC")
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeBusinessTrip{})
@@ -117,12 +118,12 @@ func (e *EmployeeBusinessTripService) FindAllEmployeeBusinessTrips(request *http
 		stmt = stmt.Where("reason LIKE ?", "%"+request.URL.Query().Get("search")+"%")
 	}
 	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
-		stmt = stmt.Where("date_requested >= ? AND date_requested <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+		stmt = stmt.Where("date >= ? AND date <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
 	} else if request.URL.Query().Get("start_date") != "" {
-		stmt = stmt.Where("date_requested = ?", request.URL.Query().Get("start_date"))
+		stmt = stmt.Where("date = ?", request.URL.Query().Get("start_date"))
 	}
 	if request.URL.Query().Get("date") != "" {
-		stmt = stmt.Where("DATE(date_requested) = ?", request.URL.Query().Get("date"))
+		stmt = stmt.Where("DATE(date) = ?", request.URL.Query().Get("date"))
 	}
 	if request.URL.Query().Get("approver_id") != "" {
 		stmt = stmt.Where("approver_id = ?", request.URL.Query().Get("approver_id"))
@@ -131,7 +132,7 @@ func (e *EmployeeBusinessTripService) FindAllEmployeeBusinessTrips(request *http
 	if request.URL.Query().Get("order") != "" {
 		stmt = stmt.Order(request.URL.Query().Get("order"))
 	} else {
-		stmt = stmt.Order("date_requested DESC")
+		stmt = stmt.Order("date DESC")
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeBusinessTrip{})
@@ -143,13 +144,13 @@ func (e *EmployeeBusinessTripService) CountByEmployeeID(employeeID string, start
 	var countREQUESTED, countAPPROVED, countREJECTED int64
 	counts := make(map[string]int64)
 	e.db.Model(&models.EmployeeBusinessTrip{}).
-		Where("employee_id = ? AND status = ? AND date_requested >= ? AND date_requested <= ?", employeeID, "REQUESTED", startDate, endDate).
+		Where("employee_id = ? AND status = ? AND date >= ? AND date <= ?", employeeID, "REQUESTED", startDate, endDate).
 		Count(&countREQUESTED)
 	e.db.Model(&models.EmployeeBusinessTrip{}).
-		Where("employee_id = ? AND status = ? AND date_requested >= ? AND date_requested <= ?", employeeID, "APPROVED", startDate, endDate).
+		Where("employee_id = ? AND status = ? AND date >= ? AND date <= ?", employeeID, "APPROVED", startDate, endDate).
 		Count(&countAPPROVED)
 	e.db.Model(&models.EmployeeBusinessTrip{}).
-		Where("employee_id = ? AND status = ? AND date_requested >= ? AND date_requested <= ?", employeeID, "REJECTED", startDate, endDate).
+		Where("employee_id = ? AND status = ? AND date >= ? AND date <= ?", employeeID, "REJECTED", startDate, endDate).
 		Count(&countREJECTED)
 
 	counts["REQUESTED"] = countREQUESTED

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/company/announcement"
 	"github.com/AMETORY/ametory-erp-modules/company/branch"
 	"github.com/AMETORY/ametory-erp-modules/company/organization"
 	"github.com/AMETORY/ametory-erp-modules/company/work_location"
@@ -20,6 +21,7 @@ type CompanyService struct {
 	BranchService       *branch.BranchService
 	OrganizationService *organization.OrganizationService
 	WorkLocationService *work_location.WorkLocationService
+	AnnouncementService *announcement.AnnoucementService
 }
 
 func NewCompanyService(ctx *context.ERPContext) *CompanyService {
@@ -28,6 +30,7 @@ func NewCompanyService(ctx *context.ERPContext) *CompanyService {
 		OrganizationService: organization.NewOrganizationService(ctx.DB, ctx),
 		BranchService:       branch.NewBranchService(ctx.DB, ctx),
 		WorkLocationService: work_location.NewWorkLocationService(ctx.DB, ctx),
+		AnnouncementService: announcement.NewAnnoucementService(ctx.DB, ctx),
 	}
 	err := service.Migrate()
 	if err != nil {
@@ -49,6 +52,7 @@ func (s *CompanyService) Migrate() error {
 		&models.BranchModel{},
 		&models.OrganizationModel{},
 		&models.WorkLocationModel{},
+		&models.AnnoucementModel{},
 	)
 }
 

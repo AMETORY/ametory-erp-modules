@@ -18,7 +18,7 @@ func (ir *IndonesiaRegService) GetProvinces(search string) ([]RegProvince, error
 	var provinces []RegProvince
 	db := ir.ctx.DB
 	if search != "" {
-		db = db.Where("name like ?", "%"+search+"%")
+		db = db.Where("name ilike ?", "%"+search+"%")
 	}
 	err := db.Find(&provinces).Error
 	return provinces, err
@@ -31,7 +31,7 @@ func (ir *IndonesiaRegService) GetRegencies(provinceID *string, search string) (
 		db = db.Where("province_id = ?", *provinceID)
 	}
 	if search != "" {
-		db = db.Where("name like ?", "%"+search+"%")
+		db = db.Where("name ilike ?", "%"+search+"%")
 	}
 	err := db.Find(&regencies).Error
 	return regencies, err
@@ -44,7 +44,7 @@ func (ir *IndonesiaRegService) GetDistricts(regencyID *string, search string) ([
 		db = db.Where("regency_id = ?", regencyID)
 	}
 	if search != "" {
-		db = db.Where("name like ?", "%"+search+"%")
+		db = db.Where("name ilike ?", "%"+search+"%")
 	}
 	err := db.Find(&districts).Error
 	return districts, err
@@ -57,7 +57,7 @@ func (ir *IndonesiaRegService) GetVillages(districtID *string, search string) ([
 		db = db.Where("district_id = ?", districtID)
 	}
 	if search != "" {
-		db = db.Where("name like ?", "%"+search+"%")
+		db = db.Where("name ilike ?", "%"+search+"%")
 	}
 	err := db.Find(&villages).Error
 	return villages, err

@@ -123,9 +123,9 @@ func (s *GoogleAPIService) SearchPlace(keyword string) (*PlacesResponse, error) 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Goog-Api-Key", s.apiKey)
 	if s.placePhoto {
-		req.Header.Set("X-Goog-FieldMask", "places.displayName,places.formattedAddress,places.location,places.photos,places.id")
+		req.Header.Set("X-Goog-FieldMask", "places.displayName,places.formattedAddress,places.location,places.photos,places.id,places.internationalPhoneNumber")
 	} else {
-		req.Header.Set("X-Goog-FieldMask", "places.displayName,places.formattedAddress,places.location,places.id")
+		req.Header.Set("X-Goog-FieldMask", "places.displayName,places.formattedAddress,places.location,places.id,places.internationalPhoneNumber")
 	}
 
 	// Mengirim request menggunakan HTTP client
@@ -188,10 +188,11 @@ type PlacesResponse struct {
 }
 
 type Place struct {
-	ID               string   `json:"id"`
-	FormattedAddress string   `json:"formattedAddress"`
-	Location         Location `json:"location"`
-	DisplayName      struct {
+	ID                       string   `json:"id"`
+	FormattedAddress         string   `json:"formattedAddress"`
+	InternationalPhoneNumber string   `json:"internationalPhoneNumber"`
+	Location                 Location `json:"location"`
+	DisplayName              struct {
 		Text string `json:"text"`
 	} `json:"displayName"`
 	Photos   []Photo `json:"photos"`
