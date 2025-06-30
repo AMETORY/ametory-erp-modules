@@ -3,6 +3,7 @@ package employee_loan
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/hris/employee"
@@ -35,11 +36,68 @@ func (s *EmployeeLoanService) CreateEmployeeLoan(m *models.EmployeeLoan) error {
 	return s.db.Create(m).Error
 }
 
-func (s *EmployeeLoanService) FindAllEmployeeLoan(request *http.Request) (paginate.Page, error) {
+func (s *EmployeeLoanService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Model(&models.EmployeeLoan{})
+	stmt := s.db.Preload("Employee").
+		Preload("Company").
+		Preload("Approver").
+		Model(&models.EmployeeLoan{}).Where("employee_id = ?", employeeID)
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("reason LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("date >= ? AND date <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+	} else if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("date = ?", request.URL.Query().Get("start_date"))
+	}
+	if request.URL.Query().Get("date") != "" {
+		stmt = stmt.Where("DATE(date) = ?", request.URL.Query().Get("date"))
+	}
+	if request.URL.Query().Get("approver_id") != "" {
+		stmt = stmt.Where("approver_id = ?", request.URL.Query().Get("approver_id"))
+	}
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("date DESC")
+	}
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeLoan{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (s *EmployeeLoanService) FindAllEmployeeLoan(request *http.Request) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db.
+		Preload("Employee").
+		Preload("Company").
+		Preload("Approver.User").
+		Model(&models.EmployeeLoan{})
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("reason LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("date >= ? AND date <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+	} else if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("date = ?", request.URL.Query().Get("start_date"))
+	}
+	if request.URL.Query().Get("date") != "" {
+		stmt = stmt.Where("DATE(date) = ?", request.URL.Query().Get("date"))
+	}
+	if request.URL.Query().Get("approver_id") != "" {
+		stmt = stmt.Where("approver_id = ?", request.URL.Query().Get("approver_id"))
+	}
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("date DESC")
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeLoan{})
@@ -49,7 +107,11 @@ func (s *EmployeeLoanService) FindAllEmployeeLoan(request *http.Request) (pagina
 
 func (s *EmployeeLoanService) FindEmployeeLoanByID(id string) (*models.EmployeeLoan, error) {
 	var m models.EmployeeLoan
-	if err := s.db.Where("id = ?", id).First(&m).Error; err != nil {
+	if err := s.db.
+		Preload("Employee").
+		Preload("Company").
+		Preload("Approver.User").
+		Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, err
 	}
 	return &m, nil
@@ -61,4 +123,24 @@ func (s *EmployeeLoanService) UpdateEmployeeLoan(m *models.EmployeeLoan) error {
 
 func (s *EmployeeLoanService) DeleteEmployeeLoan(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.EmployeeLoan{}).Error
+}
+
+func (e *EmployeeLoanService) CountByEmployeeID(employeeID string, startDate *time.Time, endDate *time.Time) (map[string]int64, error) {
+	var countREQUESTED, countAPPROVED, countREJECTED int64
+	counts := make(map[string]int64)
+	e.db.Model(&models.EmployeeLoan{}).
+		Where("employee_id = ? AND status = ? AND date >= ? AND date <= ?", employeeID, "REQUESTED", startDate, endDate).
+		Count(&countREQUESTED)
+	e.db.Model(&models.EmployeeLoan{}).
+		Where("employee_id = ? AND status = ? AND date >= ? AND date <= ?", employeeID, "APPROVED", startDate, endDate).
+		Count(&countAPPROVED)
+	e.db.Model(&models.EmployeeLoan{}).
+		Where("employee_id = ? AND status = ? AND date >= ? AND date <= ?", employeeID, "REJECTED", startDate, endDate).
+		Count(&countREJECTED)
+
+	counts["REQUESTED"] = countREQUESTED
+	counts["APPROVED"] = countAPPROVED
+	counts["REJECTED"] = countREJECTED
+
+	return counts, nil
 }

@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.22"
+var version = "1.0.23"
 
 var (
 	coreModules = []string{
@@ -122,6 +122,7 @@ var (
 			"Employee",
 			"EmployeeActivity",
 			"EmployeeOvertime",
+			"EmployeeCashAdvance",
 			"Payroll",
 			"JobTitle",
 			"Schedule",

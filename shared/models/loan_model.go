@@ -11,8 +11,8 @@ import (
 type LoanModel struct {
 	shared.BaseModel
 	LoanNumber             string               `json:"loan_number"`
-	CompanyID              string               `json:"company_id"`
-	Company                CompanyModel         `gorm:"foreignKey:CompanyID"`
+	CompanyID              *string              `json:"company_id"`
+	Company                *CompanyModel        `gorm:"foreignKey:CompanyID"`
 	EmployeeID             *string              `json:"employee_id"`
 	Employee               *EmployeeModel       `gorm:"foreignKey:EmployeeID"`
 	TotalAmount            float64              `json:"total_amount"`

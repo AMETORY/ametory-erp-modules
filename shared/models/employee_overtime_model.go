@@ -14,10 +14,10 @@ type EmployeeOvertimeModel struct {
 	Company                  *CompanyModel    `gorm:"foreignKey:CompanyID"`
 	EmployeeID               string           `json:"employee_id"`
 	Employee                 EmployeeModel    `gorm:"foreignKey:EmployeeID"`
-	ApprovedID               *string          `json:"approved_id"`
-	Approved                 *UserModel       `gorm:"foreignKey:ApprovedID"`
+	ApproverID               *string          `json:"approver_id"`
+	Approver                 *EmployeeModel   `gorm:"foreignKey:ApproverID"`
 	ReviewerID               *string          `json:"reviewer_id"`
-	Reviewer                 *UserModel       `gorm:"foreignKey:ReviewerID"`
+	Reviewer                 *EmployeeModel   `gorm:"foreignKey:ReviewerID"`
 	StartTimeRequest         time.Time        `json:"start_time_request"`
 	EndTimeRequest           time.Time        `json:"end_time_request"`
 	Reason                   string           `json:"reason"`
@@ -35,7 +35,7 @@ type EmployeeOvertimeModel struct {
 	ClockOutLat              *float64         `json:"clock_out_lat" gorm:"type:DECIMAL(10,8)"`
 	ClockOutLng              *float64         `json:"clock_out_lng" gorm:"type:DECIMAL(11,8)"`
 	Remarks                  string           `json:"remarks"`
-	OvertimeDurationApproved *time.Duration   `json:"overtime_duration_approved" gorm:"type:TIME"`
+	OvertimeDurationApproved *int             `json:"overtime_duration_approved"`
 	AttendanceID             *string          `json:"attendance_id"`
 	Attendance               *AttendanceModel `gorm:"foreignKey:AttendanceID"`
 	EmployeeApproverID       *string          `json:"employee_approver_id"`

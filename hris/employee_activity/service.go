@@ -2,6 +2,7 @@ package employee_activity
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
@@ -77,8 +78,112 @@ func (service *EmployeeActivityService) FindAllByEmployeeID(request *http.Reques
 		stmt = stmt.Where("start_date = ?", request.URL.Query().Get("date"))
 	}
 
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("start_time DESC")
+	}
+
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeActivityModel{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (service *EmployeeActivityService) FindAssignmentByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := service.db.Model(&models.EmployeeActivityModel{}).
+		Joins("JOIN activity_assigned_employees ON activity_assigned_employees.employee_activity_model_id = employee_activities.id").
+		Where("activity_assigned_employees.employee_model_id = ?", employeeID)
+	stmt = stmt.Where("activity_type = ?", "TASK")
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+
+	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("start_date >= ? AND end_date <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+	} else if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("start_date = ?", request.URL.Query().Get("start_date"))
+	}
+
+	if request.URL.Query().Get("date") != "" {
+		stmt = stmt.Where("start_date = ?", request.URL.Query().Get("date"))
+	}
+
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("start_time DESC")
+	}
+
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeActivityModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (service *EmployeeActivityService) FindApprovalByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := service.db.Model(&models.EmployeeActivityModel{})
+
+	stmt = stmt.Where("approver_id = ?", employeeID)
+
+	if request.URL.Query().Get("search") != "" {
+		stmt = stmt.Where("name LIKE ?", "%"+request.URL.Query().Get("search")+"%")
+	}
+
+	if request.URL.Query().Get("start_date") != "" && request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("start_date >= ? AND end_date <= ?", request.URL.Query().Get("start_date"), request.URL.Query().Get("end_date"))
+	} else if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("start_date = ?", request.URL.Query().Get("start_date"))
+	}
+
+	if request.URL.Query().Get("date") != "" {
+		stmt = stmt.Where("start_date = ?", request.URL.Query().Get("date"))
+	}
+
+	if request.URL.Query().Get("order") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("order"))
+	} else {
+		stmt = stmt.Order("start_time DESC")
+	}
+
+	utils.FixRequest(request)
+	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeActivityModel{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+func (service *EmployeeActivityService) GetActivitySummaryByEmployeeID(employeeID string, date time.Time) (map[string]int64, error) {
+	var summary = make(map[string]int64)
+	taskCount := int64(0)
+	taskAssignmentCount := int64(0)
+	taskApprovalCount := int64(0)
+	taskVisitCount := int64(0)
+	service.db.Model(&models.EmployeeActivityModel{}).
+		Where("employee_id = ?", employeeID).
+		Where("activity_type = ?", "TASK").
+		Where("DATE(start_date) = ?", date).
+		Count(&taskCount)
+	service.db.Model(&models.EmployeeActivityModel{}).
+		Where("employee_id = ?", employeeID).
+		Where("activity_type = ?", "VISIT").
+		Where("DATE(start_date) = ?", date).
+		Count(&taskVisitCount)
+	service.db.Model(&models.EmployeeActivityModel{}).
+		Where("approver_id = ?", employeeID).
+		Where("activity_type = ?", "TASK").
+		Where("DATE(start_date) = ?", date).
+		Count(&taskApprovalCount)
+	service.db.Model(&models.EmployeeActivityModel{}).
+		Joins("JOIN activity_assigned_employees ON activity_assigned_employees.employee_activity_model_id = employee_activities.id").
+		Where("activity_assigned_employees.employee_model_id = ?", employeeID).
+		Where("activity_type = ?", "TASK").
+		Where("DATE(start_date) = ?", date).
+		Count(&taskAssignmentCount)
+	summary["ASSIGNMENT"] = taskAssignmentCount
+	summary["TASK"] = taskCount
+	summary["APPROVAL"] = taskApprovalCount
+	summary["VISIT"] = taskApprovalCount
+	return summary, nil
 }
