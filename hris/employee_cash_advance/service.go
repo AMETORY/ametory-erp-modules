@@ -37,11 +37,27 @@ func (e *EmployeeCashAdvanceService) GetEmployeeCashAdvanceByID(id string) (*mod
 	err := e.db.
 		Preload("Employee").
 		Preload("Company").
+		Preload("CashAdvanceUsages").
+		Preload("Refunds").
 		Preload("Approver.User").
 		Where("id = ?", id).First(&employeeCashAdvance).Error
 	if err != nil {
 		return nil, err
 	}
+
+	for i, v := range employeeCashAdvance.CashAdvanceUsages {
+		files := []models.FileModel{}
+		e.db.Find(&files, "ref_id = ? AND ref_type = ?", v.ID, "cash_advance_usage")
+		v.Files = files
+		employeeCashAdvance.CashAdvanceUsages[i] = v
+	}
+	for i, v := range employeeCashAdvance.Refunds {
+		files := []models.FileModel{}
+		e.db.Find(&files, "ref_id = ? AND ref_type = ?", v.ID, "cash_advance_refund")
+		v.Files = files
+		employeeCashAdvance.Refunds[i] = v
+	}
+
 	return &employeeCashAdvance, nil
 }
 
@@ -146,4 +162,26 @@ func (e *EmployeeCashAdvanceService) CountByEmployeeID(employeeID string, startD
 	counts["REJECTED"] = countREJECTED
 
 	return counts, nil
+}
+
+func (e *EmployeeCashAdvanceService) CreateCashAdvanceUsage(cashAdvanceUsage *models.CashAdvanceUsage) error {
+	return e.db.Create(cashAdvanceUsage).Error
+}
+
+func (e *EmployeeCashAdvanceService) UpdateEmployeeCashAdvanceUsage(id string, input *models.CashAdvanceUsage) error {
+	return e.db.Model(&models.CashAdvanceUsage{}).
+		Where("id = ?", id).
+		Updates(input).Error
+}
+
+func (e *EmployeeCashAdvanceService) DeleteCashAdvanceUsage(id string) error {
+	return e.db.Where("id = ?", id).Delete(&models.CashAdvanceUsage{}).Error
+}
+
+func (e *EmployeeCashAdvanceService) CreateCashAdvanceRefund(cashAdvanceRefund *models.CashAdvanceRefund) error {
+	return e.db.Create(cashAdvanceRefund).Error
+}
+
+func (e *EmployeeCashAdvanceService) DeleteCashAdvanceRefund(id string) error {
+	return e.db.Where("id = ?", id).Delete(&models.CashAdvanceRefund{}).Error
 }
