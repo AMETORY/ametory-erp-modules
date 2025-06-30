@@ -79,7 +79,6 @@ require (
 	google.golang.org/grpc v1.68.0 // indirect
 	google.golang.org/grpc/stats/opentelemetry v0.0.0-20241028142157-ada6787961b3 // indirect
 	google.golang.org/protobuf v1.35.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
@@ -105,6 +104,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/schollz/progressbar/v3 v3.14.1
 	gopkg.in/olahol/melody.v1 v1.0.0-20170518105555-d52139073376
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 // replace github.com/AMETORY/ametory-erp-modules/internal/generatorlib => ./internal/generatorlib
