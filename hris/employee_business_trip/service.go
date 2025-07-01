@@ -35,7 +35,15 @@ func (e *EmployeeBusinessTripService) CreateEmployeeBusinessTrip(employeeBusines
 func (e *EmployeeBusinessTripService) GetEmployeeBusinessTripByID(id string) (*models.EmployeeBusinessTrip, error) {
 	var employeeBusinessTrip models.EmployeeBusinessTrip
 	err := e.db.
-		Preload("Employee").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Preload("ApprovalByAdmin").
 		Preload("Company").
 		Preload("TripParticipants", func(db *gorm.DB) *gorm.DB {
 			return db.Preload("User").Preload("JobTitle")
@@ -68,9 +76,16 @@ func (e *EmployeeBusinessTripService) DeleteEmployeeBusinessTrip(id string) erro
 func (e *EmployeeBusinessTripService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := e.db.
-		Preload("Employee").
 		Preload("Company").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
 		Preload("Approver.User").
+		Preload("ApprovalByAdmin").
 		Where("employee_id = ?", employeeID).
 		Model(&models.EmployeeBusinessTrip{})
 	if request.Header.Get("ID-Company") != "" {
@@ -105,9 +120,16 @@ func (e *EmployeeBusinessTripService) FindAllByEmployeeID(request *http.Request,
 func (e *EmployeeBusinessTripService) FindAllEmployeeBusinessTrips(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := e.db.
-		Preload("Employee").
 		Preload("Company").
-		Preload("Approver").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Preload("ApprovalByAdmin").
 		Preload("Reviewer").
 		Model(&models.EmployeeBusinessTrip{})
 	if request.Header.Get("ID-Company") != "" {

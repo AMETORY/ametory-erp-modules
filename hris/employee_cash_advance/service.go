@@ -2,6 +2,7 @@ package employee_cash_advance
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -35,11 +36,18 @@ func (e *EmployeeCashAdvanceService) CreateEmployeeCashAdvance(employeeCashAdvan
 func (e *EmployeeCashAdvanceService) GetEmployeeCashAdvanceByID(id string) (*models.EmployeeCashAdvance, error) {
 	var employeeCashAdvance models.EmployeeCashAdvance
 	err := e.db.
-		Preload("Employee").
-		Preload("Company").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Preload("ApprovalByAdmin").
+		Preload("RefundApprovalByAdmin").
 		Preload("CashAdvanceUsages").
 		Preload("Refunds").
-		Preload("Approver.User").
 		Where("id = ?", id).First(&employeeCashAdvance).Error
 	if err != nil {
 		return nil, err
@@ -72,9 +80,15 @@ func (e *EmployeeCashAdvanceService) DeleteEmployeeCashAdvance(id string) error 
 func (e *EmployeeCashAdvanceService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := e.db.
-		Preload("Employee").
-		Preload("Company").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
 		Preload("Approver.User").
+		Preload("ApprovalByAdmin").
 		Where("employee_id = ?", employeeID).
 		Model(&models.EmployeeCashAdvance{})
 	if request.Header.Get("ID-Company") != "" {
@@ -109,10 +123,15 @@ func (e *EmployeeCashAdvanceService) FindAllByEmployeeID(request *http.Request, 
 func (e *EmployeeCashAdvanceService) FindAllEmployeeCashAdvances(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := e.db.
-		Preload("Employee").
-		Preload("Company").
-		Preload("Approver").
-		Preload("Reviewer").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Preload("ApprovalByAdmin").
 		Model(&models.EmployeeCashAdvance{})
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
@@ -137,6 +156,18 @@ func (e *EmployeeCashAdvanceService) FindAllEmployeeCashAdvances(request *http.R
 		stmt = stmt.Order(request.URL.Query().Get("order"))
 	} else {
 		stmt = stmt.Order("date_requested DESC")
+	}
+
+	if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("start_date >= ?", request.URL.Query().Get("start_date"))
+	}
+
+	if request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("end_date <= ?", request.URL.Query().Get("end_date"))
+	}
+
+	if request.URL.Query().Get("employee_ids") != "" {
+		stmt = stmt.Where("employee_id in (?)", strings.Split(request.URL.Query().Get("employee_ids"), ","))
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeCashAdvance{})
