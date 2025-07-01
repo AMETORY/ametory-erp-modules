@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/mail"
 
-	erpCtx "github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
@@ -87,11 +86,10 @@ func WithFirestore(ctx context.Context, firebaseCredentialFile, bucket string) A
 }
 
 // WithFCMService WithFCMService
-func WithFCMService(ctx *erpCtx.ERPContext, serverKey, credentialPath *string) AppContainerOption {
+func WithFCMService(ctx *context.Context, credentialPath *string) AppContainerOption {
 	return func(c *AppContainer) {
-		c.FCMService = google.NewFCMService(
+		c.FCMService = google.NewFCMServiceV2(
 			ctx,
-			serverKey,
 			credentialPath,
 		)
 		log.Println("FCMService initialized")

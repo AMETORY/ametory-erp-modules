@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -23,6 +24,7 @@ type NotificationModel struct {
 	CompanyID     *string           `gorm:"type:char(36);index" json:"company_id,omitempty"`
 	Company       *CompanyModel     `gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;" json:"company,omitempty"`
 	IsRead        bool              `gorm:"type:boolean;default:false" json:"is_read,omitempty"`
+	Data          *json.RawMessage  `json:"data,omitempty"`
 	Date          *time.Time        `json:"date,omitempty"`
 }
 

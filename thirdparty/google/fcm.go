@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 
+	golangCtx "context"
+
 	"github.com/AMETORY/ametory-erp-modules/context"
 
 	"firebase.google.com/go/v4/messaging"
@@ -43,6 +45,21 @@ func NewFCMService(ctx *context.ERPContext, serverKey, credentialPath *string) *
 	return &FCMService{serverKey: serverKey, ctx: ctx, client: client}
 }
 
+func NewFCMServiceV2(ctx *golangCtx.Context, credentialPath *string) *FCMService {
+	var client *fcm.Client
+	// fmt.Println("LOAD CONFIG", *serverKey, *credentialPath)
+	if credentialPath != nil {
+		cl, err := fcm.NewClient(
+			*ctx,
+			fcm.WithCredentialsFile(*credentialPath),
+		)
+		if err == nil {
+			client = cl
+		}
+	}
+	return &FCMService{client: client}
+}
+
 func (s *FCMService) SendFCMV2MessageByUserID(userID, title, body string, data map[string]string) error {
 	var user = models.UserModel{}
 	err := s.ctx.DB.Model(&user).Where("id = ? or email = ?", userID, userID).First(&user).Error
@@ -59,7 +76,7 @@ func (s *FCMService) SendFCMV2MessageByUserID(userID, title, body string, data m
 	}
 
 	for _, pushToken := range pushTokens {
-		err = s.SendFCMV2Message(pushToken.Token, title, body, map[string]string{})
+		err = s.SendFCMV2Message(pushToken.Token, title, body, data)
 		if err != nil {
 			log.Println("Error sending fcm message", err)
 			return err

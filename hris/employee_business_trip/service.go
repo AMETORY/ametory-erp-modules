@@ -54,13 +54,15 @@ func (e *EmployeeBusinessTripService) GetEmployeeBusinessTripByID(id string) (*m
 		return nil, err
 	}
 
-	hotelBookings := []models.FileModel{}
-	e.db.Find(&hotelBookings, "ref_id = ? AND ref_type = ?", employeeBusinessTrip.ID, "hotel_booking_receipt")
-	employeeBusinessTrip.HotelBookingFiles = hotelBookings
+	ticketFiles := []models.FileModel{}
+	e.ctx.DB.Find(&ticketFiles, "ref_id = ? AND ref_type = ?", id, "employee_business_trip_transport_ticket")
 
-	transportReceipt := []models.FileModel{}
-	e.db.Find(&transportReceipt, "ref_id = ? AND ref_type = ?", employeeBusinessTrip.ID, "transport_receipt")
-	employeeBusinessTrip.HotelBookingFiles = transportReceipt
+	employeeBusinessTrip.TransportBookingFiles = ticketFiles
+
+	hotelFiles := []models.FileModel{}
+	e.ctx.DB.Find(&hotelFiles, "ref_id = ? AND ref_type = ?", id, "employee_business_trip_hotel_ticket")
+
+	employeeBusinessTrip.HotelBookingFiles = hotelFiles
 
 	return &employeeBusinessTrip, nil
 }

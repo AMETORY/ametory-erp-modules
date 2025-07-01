@@ -46,7 +46,7 @@ type EmployeeActivityModel struct {
 	Attendance        *AttendanceModel      `json:"attendance" gorm:"foreignKey:AttendanceID"`
 	IsAssignment      bool                  `gorm:"-"`
 	ApproverID        *string               `json:"approver_id"`
-	Approver          EmployeeModel         `json:"approver" gorm:"foreignKey:ApproverID"`
+	Approver          *EmployeeModel        `json:"approver" gorm:"foreignKey:ApproverID"`
 	ApprovalDate      *time.Time            `json:"approval_date"`
 	ApprovalRemarks   *string               `json:"approval_remarks"`
 	ApprovalStatus    string                `json:"approval_status" gorm:"default:'PENDING'"`
