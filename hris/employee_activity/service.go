@@ -2,6 +2,7 @@ package employee_activity
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -33,7 +34,18 @@ func (service *EmployeeActivityService) CreateEmployeeActivity(activity *models.
 
 func (service *EmployeeActivityService) GetEmployeeActivityByID(id string) (*models.EmployeeActivityModel, error) {
 	var activity models.EmployeeActivityModel
-	err := service.db.First(&activity, "id = ?", id).Error
+	err := service.db.
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Preload("AssignedEmployees.User").
+		Preload("Attendance").
+		First(&activity, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +62,30 @@ func (service *EmployeeActivityService) DeleteEmployeeActivity(id string) error 
 
 func (service *EmployeeActivityService) FindAll(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := service.db.Model(&models.EmployeeActivityModel{})
+	stmt := service.db.
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").Preload("JobTitle")
+		}).
+		Preload("Approver.User").
+		Preload("AssignedEmployees.User").
+		Model(&models.EmployeeActivityModel{})
+
+	if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("start_date >= ?", request.URL.Query().Get("start_date"))
+	}
+
+	if request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("start_date <= ?", request.URL.Query().Get("end_date"))
+	}
+
+	if request.URL.Query().Get("employee_ids") != "" {
+		stmt = stmt.Where("employee_id in (?)", strings.Split(request.URL.Query().Get("employee_ids"), ","))
+	}
+
+	if request.URL.Query().Get("types") != "" {
+		stmt = stmt.Where("activity_type in (?)", strings.Split(request.URL.Query().Get("types"), ","))
+	}
+
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.EmployeeActivityModel{})
 	page.Page = page.Page + 1

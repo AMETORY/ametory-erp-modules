@@ -59,7 +59,16 @@ func (s *ReimbursementService) FindAllReimbursementByEmployeeID(request *http.Re
 
 func (s *ReimbursementService) FindAllReimbursement(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Approver").Model(&models.ReimbursementModel{})
+	stmt := s.db.
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Model(&models.ReimbursementModel{})
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ReimbursementModel{})
 	page.Page = page.Page + 1
@@ -68,7 +77,16 @@ func (s *ReimbursementService) FindAllReimbursement(request *http.Request) (pagi
 
 func (s *ReimbursementService) FindReimbursementByID(id string) (*models.ReimbursementModel, error) {
 	var m models.ReimbursementModel
-	if err := s.db.Preload("Approver").Preload("Items").Where("id = ?", id).First(&m).Error; err != nil {
+	if err := s.db.
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Preload("Items").Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, err
 	}
 	for i, v := range m.Items {
@@ -77,6 +95,10 @@ func (s *ReimbursementService) FindReimbursementByID(id string) (*models.Reimbur
 		v.Attachments = files
 		m.Items[i] = v
 	}
+
+	var files []models.FileModel
+	s.db.Find(&files, "ref_id = ? AND ref_type = ?", m.ID, "reimbursement")
+	m.Files = files
 
 	return &m, nil
 }

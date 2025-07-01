@@ -43,6 +43,7 @@ type EmployeeActivityModel struct {
 	Lng               *float64              `json:"lng" gorm:"type:DECIMAL(11,8)"`
 	Location          *string               `json:"location" gorm:"type:TEXT"`
 	AttendanceID      *string               `json:"attendance_id" gorm:"type:char(36)"`
+	Attendance        *AttendanceModel      `json:"attendance" gorm:"foreignKey:AttendanceID"`
 	IsAssignment      bool                  `gorm:"-"`
 	ApproverID        *string               `json:"approver_id"`
 	Approver          EmployeeModel         `json:"approver" gorm:"foreignKey:ApproverID"`

@@ -27,6 +27,8 @@ type EmployeeLoan struct {
 	DateApprovedOrRejected *time.Time           `json:"date_approved_or_rejected"`
 	Remarks                string               `json:"remarks"`
 	File                   *FileModel           `json:"file" gorm:"-"`
+	ApprovalByAdminID      *string              `json:"approval_by_admin_id"`
+	ApprovalByAdmin        *UserModel           `json:"approval_by_admin" gorm:"foreignKey:ApprovalByAdminID"`
 }
 
 func (u *EmployeeLoan) BeforeCreate(tx *gorm.DB) (err error) {

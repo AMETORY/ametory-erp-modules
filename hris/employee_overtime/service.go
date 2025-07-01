@@ -33,10 +33,16 @@ func (e *EmployeeOvertimeService) CreateEmployeeOvertime(employeeOvertime *model
 func (e *EmployeeOvertimeService) GetEmployeeOvertimeByID(id string) (*models.EmployeeOvertimeModel, error) {
 	var employeeOvertime models.EmployeeOvertimeModel
 	err := e.db.
-		Preload("Employee").
-		Preload("Company").
-		Preload("Approver").
-		Preload("Reviewer").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Preload("Attendance").
+		Preload("ApprovalByAdmin").
 		Where("id = ?", id).First(&employeeOvertime).Error
 	if err != nil {
 		return nil, err
@@ -55,10 +61,14 @@ func (e *EmployeeOvertimeService) DeleteEmployeeOvertime(id string) error {
 func (e *EmployeeOvertimeService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := e.db.
-		Preload("Employee").
-		Preload("Company").
-		Preload("Approver").
-		Preload("Reviewer").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
 		Where("employee_id = ?", employeeID).
 		Model(&models.EmployeeOvertimeModel{})
 	if request.Header.Get("ID-Company") != "" {
@@ -95,10 +105,14 @@ func (e *EmployeeOvertimeService) FindAllByEmployeeID(request *http.Request, emp
 func (e *EmployeeOvertimeService) FindAllEmployeeOvertimes(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := e.db.
-		Preload("Employee").
-		Preload("Company").
-		Preload("Approver").
-		Preload("Reviewer").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
 		Model(&models.EmployeeOvertimeModel{})
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))

@@ -38,7 +38,14 @@ func (s *EmployeeLoanService) CreateEmployeeLoan(m *models.EmployeeLoan) error {
 
 func (s *EmployeeLoanService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("Employee").
+	stmt := s.db.
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
 		Preload("Company").
 		Preload("Approver").
 		Model(&models.EmployeeLoan{}).Where("employee_id = ?", employeeID)
@@ -73,7 +80,13 @@ func (s *EmployeeLoanService) FindAllByEmployeeID(request *http.Request, employe
 func (s *EmployeeLoanService) FindAllEmployeeLoan(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.
-		Preload("Employee").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
 		Preload("Company").
 		Preload("Approver.User").
 		Model(&models.EmployeeLoan{})
@@ -108,9 +121,15 @@ func (s *EmployeeLoanService) FindAllEmployeeLoan(request *http.Request) (pagina
 func (s *EmployeeLoanService) FindEmployeeLoanByID(id string) (*models.EmployeeLoan, error) {
 	var m models.EmployeeLoan
 	if err := s.db.
-		Preload("Employee").
-		Preload("Company").
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
 		Preload("Approver.User").
+		Preload("ApprovalByAdmin").
 		Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, err
 	}

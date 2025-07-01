@@ -20,6 +20,7 @@ type FileModel struct {
 	SkipSave bool       `gorm:"-" json:"-"`
 	UserID   *string    `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	User     *UserModel `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;" json:"user,omitempty"`
+	Caption  *string    `gorm:"type:varchar(255)" json:"caption,omitempty"`
 }
 
 func (FileModel) TableName() string {

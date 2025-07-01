@@ -3,6 +3,7 @@ package leave
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -39,7 +40,13 @@ func (s *LeaveService) CreateLeave(m *models.LeaveModel) error {
 
 func (s *LeaveService) FindAllLeave(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("LeaveCategory").Model(&models.LeaveModel{})
+	stmt := s.db.
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").Preload("JobTitle")
+		}).
+		Preload("Approver.User").
+		Preload("LeaveCategory").
+		Model(&models.LeaveModel{})
 	if request.Header.Get("ID-Company") != "" {
 		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
 	}
@@ -50,6 +57,18 @@ func (s *LeaveService) FindAllLeave(request *http.Request) (paginate.Page, error
 		)
 
 	}
+	if request.URL.Query().Get("start_date") != "" {
+		stmt = stmt.Where("start_date >= ?", request.URL.Query().Get("start_date"))
+	}
+
+	if request.URL.Query().Get("end_date") != "" {
+		stmt = stmt.Where("end_date <= ?", request.URL.Query().Get("end_date"))
+	}
+
+	if request.URL.Query().Get("employee_ids") != "" {
+		stmt = stmt.Where("employee_id in (?)", strings.Split(request.URL.Query().Get("employee_ids"), ","))
+	}
+
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.LeaveModel{})
 	page.Page = page.Page + 1
@@ -58,7 +77,13 @@ func (s *LeaveService) FindAllLeave(request *http.Request) (paginate.Page, error
 
 func (s *LeaveService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.db.Preload("LeaveCategory").Where("employee_id = ?", employeeID).Model(&models.LeaveModel{})
+	stmt := s.db.
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").Preload("JobTitle")
+
+		}).
+		Preload("Approver.User").
+		Preload("LeaveCategory").Where("employee_id = ?", employeeID).Model(&models.LeaveModel{})
 	if request.URL.Query().Get("search") != "" {
 		stmt = stmt.Where("name ilike ? or description ilike ?",
 			"%"+request.URL.Query().Get("search")+"%",
@@ -84,7 +109,17 @@ func (s *LeaveService) FindAllByEmployeeID(request *http.Request, employeeID str
 
 func (s *LeaveService) FindLeaveByID(id string) (*models.LeaveModel, error) {
 	var m models.LeaveModel
-	if err := s.db.Preload("LeaveCategory").Where("id = ?", id).First(&m).Error; err != nil {
+	if err := s.db.
+		Preload("Employee", func(tx *gorm.DB) *gorm.DB {
+			return tx.Preload("User").
+				Preload("JobTitle").
+				Preload("WorkLocation").
+				Preload("WorkShift").
+				Preload("Branch")
+		}).
+		Preload("Approver.User").
+		Preload("ApprovalByAdmin").
+		Preload("LeaveCategory").Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, err
 	}
 
@@ -93,6 +128,19 @@ func (s *LeaveService) FindLeaveByID(id string) (*models.LeaveModel, error) {
 	m.Files = files
 
 	return &m, nil
+}
+
+func (s *LeaveService) CountLeaveSummary(employee *models.EmployeeModel, startDate time.Time, endDate time.Time) (int64, error) {
+	var count int64
+	err := s.db.Model(&models.LeaveModel{}).
+		Where("employee_id = ? AND start_date >= ? AND start_date <= ? and status in (?)", employee.ID, startDate.Format(time.RFC3339), endDate.Format(time.RFC3339), []string{"APPROVED", "FINISHED", "DONE"}).
+		Count(&count).Error
+
+	if err != nil {
+		return int64(employee.AnnualLeaveDays), err
+	}
+
+	return int64(employee.AnnualLeaveDays) - count, nil
 }
 
 func (s *LeaveService) UpdateLeave(m *models.LeaveModel) error {

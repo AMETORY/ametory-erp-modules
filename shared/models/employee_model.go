@@ -73,6 +73,7 @@ type EmployeeModel struct {
 	Loans                         []LoanModel             `json:"loans,omitempty" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	IsNewUser                     bool                    `json:"is_new_user,omitempty" gorm:"-"`
 	Activities                    []EmployeeActivityModel `json:"activities,omitempty" gorm:"foreignKey:EmployeeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	AnnualLeaveRemain             int                     `json:"annual_leave_remain,omitempty" gorm:"-"`
 }
 
 func (e EmployeeModel) TableName() string {
