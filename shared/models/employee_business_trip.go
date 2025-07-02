@@ -35,6 +35,7 @@ type EmployeeBusinessTrip struct {
 	HotelName              string          `json:"hotel_name,omitempty" gorm:"type:varchar(255)"`
 	HotelAddress           string          `json:"hotel_address,omitempty" gorm:"type:varchar(255)"`
 	HotelContact           string          `json:"hotel_contact,omitempty" gorm:"type:varchar(255)"`
+	HotelPhotoURL          *string         `json:"hotel_photo_url,omitempty" gorm:"type:varchar(255)"`
 	HotelLat               *float64        `json:"hotel_lat,omitempty" gorm:"type:DECIMAL(10,8)"`
 	HotelLng               *float64        `json:"hotel_lng,omitempty" gorm:"type:DECIMAL(11,8)"`
 	TripParticipants       []EmployeeModel `json:"trip_participants" gorm:"many2many:trip_participants;constraint:OnDelete:CASCADE;"`

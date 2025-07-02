@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -538,4 +539,24 @@ func StringOrEmpty(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func HandleDBError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	// Cek jika error mengandung "too many clients already"
+	if strings.Contains(err.Error(), "too many clients already") {
+		return errors.New("database is currently busy, please try again later")
+	}
+
+	// Untuk error database lainnya
+	if strings.Contains(err.Error(), "failed to connect") ||
+		strings.Contains(err.Error(), "SQLSTATE") {
+		return errors.New("database connection error")
+	}
+
+	// Untuk error lainnya, return aslinya atau custom message
+	return err
 }
