@@ -92,6 +92,10 @@ func (s *NotificationService) GetNotifications(request http.Request, search stri
 	} else {
 		stmt = stmt.Order("date DESC")
 	}
+
+	if request.URL.Query().Get("is_unread") != "" {
+		stmt = stmt.Where("is_read = ?", request.URL.Query().Get("is_unread") != "1")
+	}
 	request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.NotificationModel{})
 	utils.FixRequest(&request)
