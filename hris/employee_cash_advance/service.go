@@ -53,6 +53,12 @@ func (e *EmployeeCashAdvanceService) GetEmployeeCashAdvanceByID(id string) (*mod
 		return nil, err
 	}
 
+	file := models.FileModel{}
+	e.ctx.DB.Find(&file, "ref_id = ? AND ref_type = ?", id, "employee_cash_advance")
+	if file.ID != "" {
+		employeeCashAdvance.File = &file
+	}
+
 	for i, v := range employeeCashAdvance.CashAdvanceUsages {
 		files := []models.FileModel{}
 		e.db.Find(&files, "ref_id = ? AND ref_type = ?", v.ID, "cash_advance_usage")

@@ -133,6 +133,12 @@ func (s *EmployeeLoanService) FindEmployeeLoanByID(id string) (*models.EmployeeL
 		Where("id = ?", id).First(&m).Error; err != nil {
 		return nil, err
 	}
+
+	file := models.FileModel{}
+	s.ctx.DB.Find(&file, "ref_id = ? AND ref_type = ?", id, "employee_loan")
+	if file.ID != "" {
+		m.File = &file
+	}
 	return &m, nil
 }
 
