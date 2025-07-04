@@ -16,7 +16,7 @@ import (
 
 //go:embed templates/*
 var templateFS embed.FS
-var version = "1.0.26"
+var version = "1.0.28"
 
 func loadTemplate(name string) (*template.Template, error) {
 	content, err := fs.ReadFile(templateFS, "templates/"+name)
@@ -194,7 +194,7 @@ func createGoMod(config ProjectConfig) error {
 go 1.21
 
 require (
-	github.com/AMETORY/ametory-erp-modules %s
+	github.com/AMETORY/ametory-erp-modules v%s
 )`, config.ModuleName, version)
 
 	return os.WriteFile(

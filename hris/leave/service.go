@@ -132,9 +132,13 @@ func (s *LeaveService) FindLeaveByID(id string) (*models.LeaveModel, error) {
 
 func (s *LeaveService) CountLeaveSummary(employee *models.EmployeeModel, startDate time.Time, endDate time.Time) (int64, error) {
 	var count int64
-	err := s.db.Model(&models.LeaveModel{}).
-		Where("employee_id = ? AND start_date >= ? AND start_date <= ? and status in (?)", employee.ID, startDate.Format(time.RFC3339), endDate.Format(time.RFC3339), []string{"APPROVED", "FINISHED", "DONE"}).
-		Count(&count).Error
+	err := s.db.
+		Select("sum(diff)").
+		Table("(?) as t", s.db.Model(&models.LeaveModel{}).
+			Select("DATE_PART('Day', end_date::timestamp - start_date::timestamp) + 1 as diff").
+			Where("employee_id = ? AND start_date >= ? AND start_date <= ? and status in (?)", employee.ID, startDate.Format(time.RFC3339), endDate.Format(time.RFC3339), []string{"APPROVED", "FINISHED", "DONE"}).
+			Where("deleted_at IS NULL")).
+		Scan(&count).Error
 
 	if err != nil {
 		return int64(employee.AnnualLeaveDays), err

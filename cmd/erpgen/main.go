@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.26"
+var version = "1.0.28"
 
 var (
 	coreModules = []string{
@@ -46,6 +46,7 @@ var (
 		"CrowdFunding",
 		"Notification",
 		"HRIS",
+		"PermitHub",
 	}
 	// TODO: please complete this
 	subModules = map[string][]string{
@@ -157,6 +158,16 @@ var (
 		},
 		"Tag":  {},
 		"User": {},
+		"PermitHub": {
+			"Citizen",
+			"PermitDynamicRequestData",
+			"PermitUploadedDocument",
+			"PermitRequest",
+			"PermitApprovalLog",
+			"PermitFieldDefinition",
+			"PermitType",
+			"PermitApprovalFlow",
+		},
 	}
 	thirdParty = []string{
 		"EmailSender",

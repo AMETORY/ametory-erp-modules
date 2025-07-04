@@ -79,7 +79,7 @@ func (a *AttendanceService) FindAttendanceByEmployeeAndDate(employeeID string, d
 }
 
 func (a *AttendanceService) FindAll(request *http.Request) (paginate.Page, error) {
-	fmt.Println("GET ATTENDANCES")
+	// fmt.Println("GET ATTENDANCES")
 	pg := paginate.New()
 	stmt := a.db.
 		Preload("Employee.User").
