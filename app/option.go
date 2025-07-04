@@ -21,6 +21,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/message"
 	"github.com/AMETORY/ametory-erp-modules/notification"
 	"github.com/AMETORY/ametory-erp-modules/order"
+	"github.com/AMETORY/ametory-erp-modules/permit_hub"
 	"github.com/AMETORY/ametory-erp-modules/project_management/project"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
 	"github.com/AMETORY/ametory-erp-modules/shared/indonesia_regional"
@@ -277,5 +278,15 @@ func WithHRIS() AppContainerOption {
 	return func(c *AppContainer) {
 		c.HRISService = hris.NewHRISservice(c.erpContext)
 		log.Println("HRISService initialized")
+	}
+}
+
+// WithPermitHub adds the PermitHubService to the AppContainer.
+//
+// It is an optional option.
+func WithPermitHub() AppContainerOption {
+	return func(c *AppContainer) {
+		c.PermitHubService = permit_hub.NewPermitHubService(c.erpContext)
+		log.Println("PermitHubService initialized")
 	}
 }

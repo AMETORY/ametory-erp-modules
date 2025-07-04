@@ -24,6 +24,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/message"
 	"github.com/AMETORY/ametory-erp-modules/notification"
 	"github.com/AMETORY/ametory-erp-modules/order"
+	"github.com/AMETORY/ametory-erp-modules/permit_hub"
 	"github.com/AMETORY/ametory-erp-modules/project_management/project"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
 	"github.com/AMETORY/ametory-erp-modules/shared/indonesia_regional"
@@ -68,6 +69,7 @@ type AppContainer struct {
 	NotificationService         *notification.NotificationService
 	HRISService                 *hris.HRISservice
 	AuditTrailService           *audit_trail.AuditTrailService
+	PermitHubService            *permit_hub.PermitHubService
 
 	ThirdPartyServices map[string]any
 	// Add additional services here
@@ -83,6 +85,7 @@ type AppContainer struct {
 	WebsocketService *websocket.WebsocketService
 	AppService       any    // This can be a specific service or a generic interface
 	baseURL          string // Base URL for the application
+
 }
 
 type AppContainerOption func(*AppContainer)

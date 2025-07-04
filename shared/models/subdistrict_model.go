@@ -6,9 +6,9 @@ import (
 	"gorm.io/gorm"
 )
 
-type Subdistrict struct {
+type SubDistrict struct {
 	shared.BaseModel
-	Name       string `gorm:"type:varchar(255);not null;unique" json:"name"`
+	Name       string `gorm:"type:varchar(255)" json:"name"`
 	DistrictID string `gorm:"size:36" json:"district_id"`
 	District   District
 	Code       string `gorm:"type:varchar(255);unique" json:"code"`
@@ -17,8 +17,16 @@ type Subdistrict struct {
 
 type District struct {
 	shared.BaseModel
-	Name       string `gorm:"type:varchar(255);not null;unique" json:"name"`
-	Address    string `json:"address"`
+	Name    string `gorm:"type:varchar(255)" json:"name"`
+	Address string `json:"address"`
+	CityID  string `gorm:"size:36" json:"city_id"`
+	City    City
+	Code    string `gorm:"type:varchar(255);unique" json:"code"`
+}
+
+type City struct {
+	shared.BaseModel
+	Name       string `gorm:"type:varchar(255)" json:"name"`
 	ProvinceID string `gorm:"size:36" json:"province_id"`
 	Province   Province
 	Code       string `gorm:"type:varchar(255);unique" json:"code"`
@@ -26,12 +34,12 @@ type District struct {
 
 type Province struct {
 	shared.BaseModel
-	Name    string `gorm:"type:varchar(255);not null;unique" json:"name"`
+	Name    string `gorm:"type:varchar(255)" json:"name"`
 	Address string `json:"address"`
 	Code    string `gorm:"type:varchar(255);unique" json:"code"`
 }
 
-func (s *Subdistrict) BeforeCreate(tx *gorm.DB) (err error) {
+func (s *SubDistrict) BeforeCreate(tx *gorm.DB) (err error) {
 	if s.ID == "" {
 		s.ID = uuid.New().String()
 	}

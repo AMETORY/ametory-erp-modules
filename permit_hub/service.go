@@ -34,10 +34,10 @@ func NewPermitHubService(ctx *context.ERPContext) *PermitHubService {
 func (s *PermitHubService) Migrate() error {
 	return s.ctx.DB.AutoMigrate(
 		&models.Citizen{},
+		&models.PermitRequest{},
 		&models.PermitDynamicRequestData{},
 		&models.PermitRequirement{},
 		&models.PermitUploadedDocument{},
-		&models.PermitRequest{},
 		&models.FinalPermitDocument{},
 		&models.PermitApprovalLog{},
 		// MASTER DATA
@@ -45,8 +45,9 @@ func (s *PermitHubService) Migrate() error {
 		&models.PermitType{},
 		&models.PermitApprovalFlow{},
 		&models.PermitApprovalDecision{},
-		&models.Subdistrict{},
+		&models.SubDistrict{},
 		&models.District{},
+		&models.City{},
 		&models.Province{},
 	)
 }

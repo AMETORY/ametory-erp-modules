@@ -34,8 +34,8 @@ type PermitType struct {
 	FieldDefinitions   []PermitFieldDefinition `gorm:"foreignKey:PermitTypeID" json:"field_definitions"`
 	ApprovalFlow       []PermitApprovalFlow    `gorm:"foreignKey:PermitTypeID" json:"approval_flow"`
 	PermitRequirements []PermitRequirement     `gorm:"foreignKey:PermitTypeID" json:"permit_requirements"`
-	SubdistrictID      *string                 `gorm:"size:36" json:"subdistrict_id"`
-	Subdistrict        *Subdistrict            `gorm:"foreignKey:SubdistrictID" json:"subdistrict"`
+	SubDistrictID      *string                 `gorm:"size:36" json:"subdistrict_id"`
+	SubDistrict        *SubDistrict            `gorm:"foreignKey:SubDistrictID" json:"subdistrict"`
 }
 
 func (p *PermitType) BeforeCreate(tx *gorm.DB) (err error) {
@@ -171,8 +171,8 @@ type PermitRequest struct {
 	CurrentStepRoles     []RoleModel               `gorm:"many2many:permit_request_current_step_roles;constraint:OnDelete:CASCADE;" json:"current_step_roles,omitempty"`
 	ApprovalLogs         []PermitApprovalLog       `gorm:"foreignKey:PermitRequestID" json:"approval_logs,omitempty"`
 	Documents            []PermitUploadedDocument  `gorm:"foreignKey:PermitRequestID" json:"documents,omitempty"`
-	SubdistrictID        string                    `json:"subdistrict_id,omitempty"`
-	Subdistrict          Subdistrict               `gorm:"foreignKey:SubdistrictID" json:"subdistrict,omitempty"`
+	SubDistrictID        string                    `json:"subdistrict_id,omitempty"`
+	SubDistrict          SubDistrict               `gorm:"foreignKey:SubDistrictID" json:"subdistrict,omitempty"`
 	DynamicRequestData   *PermitDynamicRequestData `gorm:"foreignKey:PermitRequestID;constraint:OnDelete:CASCADE;" json:"dynamic_request_data,omitempty"`
 	FinalPermitDocuments []FinalPermitDocument     `gorm:"foreignKey:PermitRequestID;constraint:OnDelete:CASCADE;" json:"final_permit_documents,omitempty"`
 }
