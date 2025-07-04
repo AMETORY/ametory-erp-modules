@@ -35,6 +35,7 @@ func (s *PermitHubService) Migrate() error {
 	return s.ctx.DB.AutoMigrate(
 		&models.Citizen{},
 		&models.PermitDynamicRequestData{},
+		&models.PermitRequirement{},
 		&models.PermitUploadedDocument{},
 		&models.PermitRequest{},
 		&models.FinalPermitDocument{},
@@ -52,7 +53,10 @@ func (s *PermitHubService) Migrate() error {
 
 func (s *PermitHubService) GetPermitTypeBySlug(slug string) (*models.PermitType, error) {
 	var permitType models.PermitType
-	if err := s.ctx.DB.Preload("FieldDefinitions").Where("slug = ?", slug).First(&permitType).Error; err != nil {
+	if err := s.ctx.DB.Preload("FieldDefinitions").
+		Preload("ApprovalFlow").
+		Preload("PermitRequirements").
+		Where("slug = ?", slug).First(&permitType).Error; err != nil {
 		return nil, err
 	}
 	return &permitType, nil
@@ -73,13 +77,31 @@ func (s *PermitHubService) CreateCitizenIfNotExists(citizen *models.Citizen) err
 
 // CreatePermitRequest initiates a new permit request for a given citizen and permit type.
 // It validates dynamic request data against the required field definitions of the permit type.
-func (s *PermitHubService) CreatePermitRequest(citizenID, permitTypeSlug string, dyn *models.PermitDynamicRequestData) (*models.PermitRequest, error) {
+func (s *PermitHubService) CreatePermitRequest(citizenID, permitTypeSlug string, dyn *models.PermitDynamicRequestData, uploadedDocuments []models.PermitUploadedDocument) (*models.PermitRequest, error) {
 	// Retrieve permit type by slug
 	permitType, err := s.GetPermitTypeBySlug(permitTypeSlug)
 	if err != nil {
 		return nil, err
 	}
 	permitTypeID := permitType.ID
+
+	for _, v := range permitType.PermitRequirements {
+		if v.IsMandatory {
+			var found bool
+			for _, d := range uploadedDocuments {
+				if d.PermitRequirementID == nil {
+					continue
+				}
+				if *d.PermitRequirementID == v.ID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, errors.New("mandatory document : " + v.Name + " not uploaded")
+			}
+		}
+	}
 
 	// Initialize dynamic data if not provided
 	if dyn == nil {
@@ -88,6 +110,7 @@ func (s *PermitHubService) CreatePermitRequest(citizenID, permitTypeSlug string,
 
 	// Create a new permit request
 	req := &models.PermitRequest{
+		Code:         utils.RandString(8, true),
 		PermitTypeID: permitTypeID,
 		CitizenID:    citizenID,
 		Status:       "SUBMITTED",

@@ -9,24 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type PermitType struct {
-	shared.BaseModel
-	Name             string                  `json:"name"`
-	Slug             string                  `gorm:"uniqueIndex" json:"slug"`
-	Description      string                  `json:"description"`
-	FieldDefinitions []PermitFieldDefinition `gorm:"foreignKey:PermitTypeID" json:"field_definitions"`
-	ApprovalFlow     []PermitApprovalFlow    `gorm:"foreignKey:PermitTypeID" json:"approval_flow"`
-	SubdistrictID    *string                 `gorm:"size:36" json:"subdistrict_id"`
-	Subdistrict      *Subdistrict            `gorm:"foreignKey:SubdistrictID" json:"subdistrict"`
-}
-
-func (p *PermitType) BeforeCreate(tx *gorm.DB) (err error) {
-	if p.ID == "" {
-		p.ID = uuid.New().String()
-	}
-	return
-}
-
 type FieldType string
 
 var (
@@ -43,6 +25,41 @@ var (
 	FILE       FieldType = "FILE"
 	CHECKBOXES FieldType = "CHECKBOXES"
 )
+
+type PermitType struct {
+	shared.BaseModel
+	Name               string                  `json:"name"`
+	Slug               string                  `gorm:"uniqueIndex" json:"slug"`
+	Description        string                  `json:"description"`
+	FieldDefinitions   []PermitFieldDefinition `gorm:"foreignKey:PermitTypeID" json:"field_definitions"`
+	ApprovalFlow       []PermitApprovalFlow    `gorm:"foreignKey:PermitTypeID" json:"approval_flow"`
+	PermitRequirements []PermitRequirement     `gorm:"foreignKey:PermitTypeID" json:"permit_requirements"`
+	SubdistrictID      *string                 `gorm:"size:36" json:"subdistrict_id"`
+	Subdistrict        *Subdistrict            `gorm:"foreignKey:SubdistrictID" json:"subdistrict"`
+}
+
+func (p *PermitType) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == "" {
+		p.ID = uuid.New().String()
+	}
+	return
+}
+
+type PermitRequirement struct {
+	shared.BaseModel
+	PermitTypeID string     `gorm:"index" json:"permit_type_id"`
+	PermitType   PermitType `gorm:"foreignKey:PermitTypeID" json:"permit_type"`
+	Name         string     `gorm:"type:varchar(255)" json:"name"`
+	Description  string     `json:"description"`
+	IsMandatory  bool       `json:"is_mandatory"`
+}
+
+func (p *PermitRequirement) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == "" {
+		p.ID = uuid.New().String()
+	}
+	return
+}
 
 type PermitFieldDefinition struct {
 	shared.BaseModel
@@ -123,12 +140,14 @@ func (p *PermitApprovalDecision) BeforeCreate(tx *gorm.DB) (err error) {
 
 type PermitUploadedDocument struct {
 	shared.BaseModel
-	PermitRequestID string        `gorm:"index" json:"permit_request_id,omitempty"`
-	PermitRequest   PermitRequest `gorm:"foreignKey:PermitRequestID" json:"permit_request,omitempty"`
-	FileName        string        `json:"file_name,omitempty"`
-	FileURL         string        `json:"file_url,omitempty"`
-	UploadedByID    *string       `gorm:"type:char(36);index" json:"uploaded_by_id,omitempty"`
-	UploadedBy      *UserModel    `gorm:"foreignKey:UploadedByID;constraint:OnDelete:CASCADE;" json:"uploaded_by,omitempty"`
+	PermitRequestID     *string            `gorm:"index" json:"permit_request_id,omitempty"`
+	PermitRequest       *PermitRequest     `gorm:"foreignKey:PermitRequestID" json:"permit_request,omitempty"`
+	FileName            string             `json:"file_name,omitempty"`
+	FileURL             string             `json:"file_url,omitempty"`
+	UploadedByID        *string            `gorm:"type:char(36);index" json:"uploaded_by_id,omitempty"`
+	UploadedBy          *UserModel         `gorm:"foreignKey:UploadedByID;constraint:OnDelete:CASCADE;" json:"uploaded_by,omitempty"`
+	PermitRequirementID *string            `gorm:"index" json:"permit_requirement_id,omitempty"`
+	PermitRequirement   *PermitRequirement `gorm:"foreignKey:PermitRequirementID" json:"permit_requirement,omitempty"`
 }
 
 func (p *PermitUploadedDocument) BeforeCreate(tx *gorm.DB) (err error) {
