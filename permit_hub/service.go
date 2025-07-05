@@ -37,17 +37,17 @@ func NewPermitHubService(ctx *context.ERPContext) *PermitHubService {
 func (s *PermitHubService) Migrate() error {
 	return s.ctx.DB.AutoMigrate(
 		&models.Citizen{},
+		&models.PermitType{},
+		&models.PermitRequirement{},
+		&models.PermitApprovalFlow{},
+		&models.PermitFieldDefinition{},
 		&models.PermitRequest{},
 		&models.PermitDynamicRequestData{},
-		&models.PermitRequirement{},
 		&models.PermitUploadedDocument{},
 		&models.FinalPermitDocument{},
 		&models.PermitApprovalLog{},
-		// MASTER DATA
-		&models.PermitFieldDefinition{},
-		&models.PermitType{},
-		&models.PermitApprovalFlow{},
 		&models.PermitApprovalDecision{},
+		&models.PermitTypeRequirement{},
 		&models.SubDistrict{},
 		&models.District{},
 		&models.City{},
@@ -90,13 +90,17 @@ func (s *PermitHubService) CreatePermitRequest(citizenID, subdistrictID, permitT
 	permitTypeID := permitType.ID
 
 	for _, v := range permitType.PermitRequirements {
-		if v.IsMandatory {
+		var typeRequirement models.PermitTypeRequirement
+		if err := s.ctx.DB.Where("permit_type_id = ? AND permit_requirement_id = ?", permitType.ID, v.ID).First(&typeRequirement).Error; err != nil {
+			return nil, err
+		}
+		if typeRequirement.IsMandatory {
 			var found bool
 			for _, d := range uploadedDocuments {
-				if d.PermitRequirementID == nil {
+				if d.PermitRequirementCode == nil {
 					continue
 				}
-				if *d.PermitRequirementID == v.ID {
+				if *d.PermitRequirementCode == v.Code {
 					found = true
 					break
 				}

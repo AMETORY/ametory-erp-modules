@@ -33,9 +33,17 @@ type PermitType struct {
 	Description        string                  `json:"description"`
 	FieldDefinitions   []PermitFieldDefinition `gorm:"foreignKey:PermitTypeID" json:"field_definitions"`
 	ApprovalFlow       []PermitApprovalFlow    `gorm:"foreignKey:PermitTypeID" json:"approval_flow"`
-	PermitRequirements []PermitRequirement     `gorm:"foreignKey:PermitTypeID" json:"permit_requirements"`
+	PermitRequirements []PermitRequirement     `gorm:"many2many:permit_type_requirements;constraint:OnDelete:CASCADE;" json:"permit_requirements"`
 	SubDistrictID      *string                 `gorm:"size:36;uniqueIndex:slug_district" json:"subdistrict_id"`
 	SubDistrict        *SubDistrict            `gorm:"foreignKey:SubDistrictID" json:"subdistrict"`
+}
+
+type PermitTypeRequirement struct {
+	PermitTypeID        string            `gorm:"type:varchar(36);not null" json:"permit_type_id"`
+	PermitType          PermitType        `gorm:"foreignKey:PermitTypeID" json:"permit_type"`
+	PermitRequirementID string            `gorm:"type:varchar(36);not null" json:"permit_requirement_id"`
+	PermitRequirement   PermitRequirement `gorm:"foreignKey:PermitRequirementID" json:"permit_requirement"`
+	IsMandatory         bool              `json:"is_mandatory" gorm:"default:false"`
 }
 
 func (p *PermitType) BeforeCreate(tx *gorm.DB) (err error) {
@@ -47,11 +55,12 @@ func (p *PermitType) BeforeCreate(tx *gorm.DB) (err error) {
 
 type PermitRequirement struct {
 	shared.BaseModel
-	PermitTypeID string     `gorm:"index" json:"permit_type_id"`
-	PermitType   PermitType `gorm:"foreignKey:PermitTypeID" json:"permit_type"`
-	Name         string     `gorm:"type:varchar(255)" json:"name"`
-	Description  string     `json:"description"`
-	IsMandatory  bool       `json:"is_mandatory"`
+	Name          string       `gorm:"type:varchar(255)" json:"name"`
+	Description   string       `json:"description"`
+	Code          string       `gorm:"type:varchar(255);uniqueIndex:code_district" json:"code"`
+	SubDistrictID *string      `gorm:"size:36;uniqueIndex:code_district" json:"subdistrict_id"`
+	SubDistrict   *SubDistrict `gorm:"foreignKey:SubDistrictID" json:"subdistrict"`
+	IsMandatory   bool         `json:"is_mandatory" gorm:"-"`
 }
 
 func (p *PermitRequirement) BeforeCreate(tx *gorm.DB) (err error) {
@@ -140,14 +149,14 @@ func (p *PermitApprovalDecision) BeforeCreate(tx *gorm.DB) (err error) {
 
 type PermitUploadedDocument struct {
 	shared.BaseModel
-	PermitRequestID     *string            `gorm:"index" json:"permit_request_id,omitempty"`
-	PermitRequest       *PermitRequest     `gorm:"foreignKey:PermitRequestID" json:"permit_request,omitempty"`
-	FileName            string             `json:"file_name,omitempty"`
-	FileURL             string             `json:"file_url,omitempty"`
-	UploadedByID        *string            `gorm:"type:char(36);index" json:"uploaded_by_id,omitempty"`
-	UploadedBy          *UserModel         `gorm:"foreignKey:UploadedByID;constraint:OnDelete:CASCADE;" json:"uploaded_by,omitempty"`
-	PermitRequirementID *string            `gorm:"index" json:"permit_requirement_id,omitempty"`
-	PermitRequirement   *PermitRequirement `gorm:"foreignKey:PermitRequirementID" json:"permit_requirement,omitempty"`
+	PermitRequestID       *string            `gorm:"index" json:"permit_request_id,omitempty"`
+	PermitRequest         *PermitRequest     `gorm:"foreignKey:PermitRequestID" json:"permit_request,omitempty"`
+	FileName              string             `json:"file_name,omitempty"`
+	FileURL               string             `json:"file_url,omitempty"`
+	UploadedByID          *string            `gorm:"type:char(36);index" json:"uploaded_by_id,omitempty"`
+	UploadedBy            *UserModel         `gorm:"foreignKey:UploadedByID;constraint:OnDelete:CASCADE;" json:"uploaded_by,omitempty"`
+	PermitRequirementCode *string            `gorm:"index" json:"permit_requirement_code,omitempty"`
+	PermitRequirement     *PermitRequirement `gorm:"foreignKey:PermitRequirementCode" json:"permit_requirement,omitempty"`
 }
 
 func (p *PermitUploadedDocument) BeforeCreate(tx *gorm.DB) (err error) {
