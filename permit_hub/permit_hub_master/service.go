@@ -34,8 +34,8 @@ func (s *MasterPermitHubService) GetPermitFieldDefinitionByID(id string) (*model
 	return &pfd, nil
 }
 
-func (s *MasterPermitHubService) UpdatePermitFieldDefinition(pfd *models.PermitFieldDefinition) error {
-	return s.ctx.DB.Save(pfd).Error
+func (s *MasterPermitHubService) UpdatePermitFieldDefinition(id string, pfd *models.PermitFieldDefinition) error {
+	return s.ctx.DB.Model(&models.PermitFieldDefinition{}).Where("id = ?", id).Save(pfd).Error
 }
 
 func (s *MasterPermitHubService) DeletePermitFieldDefinition(id string) error {
@@ -48,7 +48,7 @@ func (s *MasterPermitHubService) CreatePermitType(pt *models.PermitType) error {
 
 func (s *MasterPermitHubService) GetPermitTypeByID(id string) (*models.PermitType, error) {
 	var pt models.PermitType
-	if err := s.ctx.DB.Preload("FieldDefinitions").Preload("PermitApprovalFlow").Where("id = ?", id).First(&pt).Error; err != nil {
+	if err := s.ctx.DB.Preload("FieldDefinitions").Preload("ApprovalFlow").Where("id = ?", id).First(&pt).Error; err != nil {
 		return nil, err
 	}
 	return &pt, nil
@@ -56,7 +56,7 @@ func (s *MasterPermitHubService) GetPermitTypeByID(id string) (*models.PermitTyp
 
 func (s *MasterPermitHubService) GetPermitTypes(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.ctx.DB.Preload("FieldDefinitions").Preload("PermitApprovalFlow")
+	stmt := s.ctx.DB.Model(&models.PermitType{}).Preload("FieldDefinitions").Preload("ApprovalFlow")
 	if request.URL.Query().Get("order") != "" {
 		stmt = stmt.Order(request.URL.Query().Get("order"))
 	} else {
@@ -68,8 +68,8 @@ func (s *MasterPermitHubService) GetPermitTypes(request *http.Request) (paginate
 	return page, nil
 }
 
-func (s *MasterPermitHubService) UpdatePermitType(pt *models.PermitType) error {
-	return s.ctx.DB.Save(pt).Error
+func (s *MasterPermitHubService) UpdatePermitType(id string, pt *models.PermitType) error {
+	return s.ctx.DB.Model(&models.PermitType{}).Where("id = ?", id).Save(pt).Error
 }
 
 func (s *MasterPermitHubService) DeletePermitType(id string) error {
@@ -88,8 +88,8 @@ func (s *MasterPermitHubService) GetPermitApprovalFlowByID(id string) (*models.P
 	return &flow, nil
 }
 
-func (s *MasterPermitHubService) UpdatePermitApprovalFlow(flow *models.PermitApprovalFlow) error {
-	return s.ctx.DB.Save(flow).Error
+func (s *MasterPermitHubService) UpdatePermitApprovalFlow(id string, flow *models.PermitApprovalFlow) error {
+	return s.ctx.DB.Model(&models.PermitApprovalFlow{}).Where("id = ?", id).Save(flow).Error
 }
 
 func (s *MasterPermitHubService) DeletePermitApprovalFlow(id string) error {

@@ -22,7 +22,7 @@ type UserModel struct {
 	VerifiedAt                 *time.Time         `gorm:"index" json:"verified_at,omitempty"`
 	VerificationToken          string             `json:"verification_token,omitempty"`
 	VerificationTokenExpiredAt *time.Time         `gorm:"index" json:"verification_token_expired_at,omitempty"`
-	Roles                      []RoleModel        `gorm:"many2many:user_roles;constraint:OnDelete:CASCADE;-:migration" json:"roles,omitempty"`
+	Roles                      []RoleModel        `gorm:"many2many:user_roles;constraint:OnDelete:CASCADE;" json:"roles,omitempty"`
 	Role                       *RoleModel         `gorm:"-" json:"role,omitempty"`
 	Companies                  []CompanyModel     `gorm:"many2many:user_companies;constraint:OnDelete:CASCADE;-:migration" json:"companies,omitempty"`
 	Distributors               []DistributorModel `gorm:"many2many:user_distributors;constraint:OnDelete:CASCADE;-:migration" json:"distributors,omitempty"`

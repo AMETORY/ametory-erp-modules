@@ -560,3 +560,14 @@ func HandleDBError(err error) error {
 	// Untuk error lainnya, return aslinya atau custom message
 	return err
 }
+
+func CreateSlugFromTitle(title string) string {
+	slug := strings.ToLower(title)
+	slug = strings.Replace(slug, " ", "-", -1)
+	slug = strings.Replace(slug, "--", "-", -1)
+	slug = strings.Replace(slug, "--", "-", -1)
+	slug = strings.Replace(slug, "--", "-", -1)
+	slug = strings.Replace(slug, "--", "-", -1)
+	slug = strings.Trim(slug, "-")
+	return slug
+}

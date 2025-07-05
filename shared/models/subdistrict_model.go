@@ -8,11 +8,11 @@ import (
 
 type SubDistrict struct {
 	shared.BaseModel
-	Name       string `gorm:"type:varchar(255)" json:"name"`
-	DistrictID string `gorm:"size:36" json:"district_id"`
-	District   District
-	Code       string `gorm:"type:varchar(255);unique" json:"code"`
-	Address    string `json:"address"`
+	Name       string   `gorm:"type:varchar(255)" json:"name"`
+	DistrictID string   `gorm:"size:36" json:"district_id"`
+	District   District `gorm:"foreignKey:DistrictID;references:id" json:"district"`
+	Code       string   `gorm:"type:varchar(255);unique" json:"code"`
+	Address    string   `json:"address"`
 }
 
 type District struct {
@@ -20,16 +20,16 @@ type District struct {
 	Name    string `gorm:"type:varchar(255)" json:"name"`
 	Address string `json:"address"`
 	CityID  string `gorm:"size:36" json:"city_id"`
-	City    City
+	City    City   `gorm:"foreignKey:CityID;references:id" json:"city"`
 	Code    string `gorm:"type:varchar(255);unique" json:"code"`
 }
 
 type City struct {
 	shared.BaseModel
-	Name       string `gorm:"type:varchar(255)" json:"name"`
-	ProvinceID string `gorm:"size:36" json:"province_id"`
-	Province   Province
-	Code       string `gorm:"type:varchar(255);unique" json:"code"`
+	Name       string   `gorm:"type:varchar(255)" json:"name"`
+	ProvinceID string   `gorm:"size:36" json:"province_id"`
+	Province   Province `gorm:"foreignKey:ProvinceID;references:id" json:"province"`
+	Code       string   `gorm:"type:varchar(255);unique" json:"code"`
 }
 
 type Province struct {

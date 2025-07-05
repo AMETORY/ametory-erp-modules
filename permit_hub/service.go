@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
+	"github.com/AMETORY/ametory-erp-modules/permit_hub/citizen"
 	"github.com/AMETORY/ametory-erp-modules/permit_hub/permit_hub_master"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
@@ -18,12 +19,14 @@ import (
 type PermitHubService struct {
 	ctx                    *context.ERPContext
 	MasterPermitHubService *permit_hub_master.MasterPermitHubService
+	CitizenService         *citizen.CitizenService
 }
 
 func NewPermitHubService(ctx *context.ERPContext) *PermitHubService {
 	service := PermitHubService{
 		ctx:                    ctx,
 		MasterPermitHubService: permit_hub_master.NewMasterPermitHubService(ctx),
+		CitizenService:         citizen.NewCitizenService(ctx),
 	}
 	if !service.ctx.SkipMigration {
 		service.Migrate()
@@ -78,7 +81,7 @@ func (s *PermitHubService) CreateCitizenIfNotExists(citizen *models.Citizen) err
 
 // CreatePermitRequest initiates a new permit request for a given citizen and permit type.
 // It validates dynamic request data against the required field definitions of the permit type.
-func (s *PermitHubService) CreatePermitRequest(citizenID, permitTypeSlug string, dyn *models.PermitDynamicRequestData, uploadedDocuments []models.PermitUploadedDocument) (*models.PermitRequest, error) {
+func (s *PermitHubService) CreatePermitRequest(citizenID, subdistrictID, permitTypeSlug string, dyn *models.PermitDynamicRequestData, uploadedDocuments []models.PermitUploadedDocument) (*models.PermitRequest, error) {
 	// Retrieve permit type by slug
 	permitType, err := s.GetPermitTypeBySlug(permitTypeSlug)
 	if err != nil {
@@ -111,11 +114,12 @@ func (s *PermitHubService) CreatePermitRequest(citizenID, permitTypeSlug string,
 
 	// Create a new permit request
 	req := &models.PermitRequest{
-		Code:         utils.RandString(8, true),
-		PermitTypeID: permitTypeID,
-		CitizenID:    citizenID,
-		Status:       "SUBMITTED",
-		SubmittedAt:  time.Now(),
+		Code:          utils.RandString(8, true),
+		PermitTypeID:  permitTypeID,
+		CitizenID:     citizenID,
+		Status:        "SUBMITTED",
+		SubmittedAt:   time.Now(),
+		SubDistrictID: subdistrictID,
 	}
 	if err := s.ctx.DB.Create(req).Error; err != nil {
 		return nil, err

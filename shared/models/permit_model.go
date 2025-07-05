@@ -29,12 +29,12 @@ var (
 type PermitType struct {
 	shared.BaseModel
 	Name               string                  `json:"name"`
-	Slug               string                  `gorm:"uniqueIndex" json:"slug"`
+	Slug               string                  `gorm:"type:varchar(255);uniqueIndex:slug_district" json:"slug"`
 	Description        string                  `json:"description"`
 	FieldDefinitions   []PermitFieldDefinition `gorm:"foreignKey:PermitTypeID" json:"field_definitions"`
 	ApprovalFlow       []PermitApprovalFlow    `gorm:"foreignKey:PermitTypeID" json:"approval_flow"`
 	PermitRequirements []PermitRequirement     `gorm:"foreignKey:PermitTypeID" json:"permit_requirements"`
-	SubDistrictID      *string                 `gorm:"size:36" json:"subdistrict_id"`
+	SubDistrictID      *string                 `gorm:"size:36;uniqueIndex:slug_district" json:"subdistrict_id"`
 	SubDistrict        *SubDistrict            `gorm:"foreignKey:SubDistrictID" json:"subdistrict"`
 }
 
