@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.29"
+var version = "1.0.30"
 
 var (
 	coreModules = []string{
@@ -167,6 +167,7 @@ var (
 			"PermitFieldDefinition",
 			"PermitType",
 			"PermitApprovalFlow",
+			"PermitRequirement",
 		},
 	}
 	thirdParty = []string{
