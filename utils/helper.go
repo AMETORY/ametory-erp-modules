@@ -623,10 +623,10 @@ func GenerateHTMLPDF(dataHtml string, footer string) ([]byte, error) {
 
 	pdfg.Dpi.Set(300)
 	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
-	pdfg.MarginLeft.Set(5)
-	pdfg.MarginRight.Set(5)
-	pdfg.MarginBottom.Set(5)
-	pdfg.MarginTop.Set(5)
+	pdfg.MarginLeft.Set(15)
+	pdfg.MarginRight.Set(15)
+	pdfg.MarginBottom.Set(15)
+	pdfg.MarginTop.Set(15)
 
 	if err := pdfg.Create(); err != nil {
 		return nil, err
