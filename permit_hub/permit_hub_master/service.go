@@ -7,6 +7,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
+	"gorm.io/gorm"
 )
 
 type MasterPermitHubService struct {
@@ -33,12 +34,85 @@ func (s *MasterPermitHubService) GetPermitFieldDefinitionByID(id string) (*model
 	return &pfd, nil
 }
 
+func (s *MasterPermitHubService) GetLastFieldByPermitTypeID(permitTypeID string) *models.PermitFieldDefinition {
+	var field models.PermitFieldDefinition
+	if err := s.ctx.DB.Where("permit_type_id = ?", permitTypeID).Order(`"order" DESC`).First(&field).Error; err != nil {
+		return nil
+	}
+	return &field
+}
+
+func (s *MasterPermitHubService) SetOrderUp(id string) error {
+	activeField := models.PermitFieldDefinition{}
+	if err := s.ctx.DB.Where("id = ?", id).First(&activeField).Error; err != nil {
+		return err
+	}
+
+	replaced := models.PermitFieldDefinition{}
+	if err := s.ctx.DB.Where(`"order" = ? and permit_type_id =?`, activeField.Order-1, activeField.PermitTypeID).First(&replaced).Error; err != nil {
+		return err
+	}
+
+	activeField.Order--
+	err := s.ctx.DB.Save(&activeField).Error
+	if err != nil {
+		return err
+	}
+
+	replaced.Order++
+
+	return s.ctx.DB.Save(&replaced).Error
+}
+
+func (s *MasterPermitHubService) SetOrderDown(id string) error {
+	activeField := models.PermitFieldDefinition{}
+	if err := s.ctx.DB.Where("id = ?", id).First(&activeField).Error; err != nil {
+		return err
+	}
+
+	replaced := models.PermitFieldDefinition{}
+	if err := s.ctx.DB.Where(`"order" = ? and permit_type_id =?`, activeField.Order+1, activeField.PermitTypeID).First(&replaced).Error; err != nil {
+		return err
+	}
+
+	activeField.Order++
+	err := s.ctx.DB.Save(&activeField).Error
+	if err != nil {
+		return err
+	}
+
+	replaced.Order--
+
+	return s.ctx.DB.Save(&replaced).Error
+}
+
 func (s *MasterPermitHubService) UpdatePermitFieldDefinition(id string, pfd *models.PermitFieldDefinition) error {
 	return s.ctx.DB.Model(&models.PermitFieldDefinition{}).Where("id = ?", id).Save(pfd).Error
 }
 
 func (s *MasterPermitHubService) DeletePermitFieldDefinition(id string) error {
-	return s.ctx.DB.Where("id = ?", id).Delete(&models.PermitFieldDefinition{}).Error
+	pfd, err := s.GetPermitFieldDefinitionByID(id)
+	if err != nil {
+		return err
+	}
+	err = s.ctx.DB.Where("id = ?", id).Unscoped().Delete(&models.PermitFieldDefinition{}).Error
+	if err != nil {
+		return err
+	}
+
+	// reorder all
+	fields := []models.PermitFieldDefinition{}
+	if err := s.ctx.DB.Where("permit_type_id = ?", pfd.PermitTypeID).Order(`"order" ASC`).Find(&fields).Error; err != nil {
+		return err
+	}
+
+	for i, v := range fields {
+		v.Order = i + 1
+		if err := s.ctx.DB.Save(&v).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *MasterPermitHubService) CreatePermitType(pt *models.PermitType) error {
@@ -48,7 +122,7 @@ func (s *MasterPermitHubService) CreatePermitType(pt *models.PermitType) error {
 func (s *MasterPermitHubService) GetPermitTypeByID(id string) (*models.PermitType, error) {
 	var pt models.PermitType
 	if err := s.ctx.DB.
-		Preload("FieldDefinitions").
+		Preload("FieldDefinitions", func(db *gorm.DB) *gorm.DB { return db.Order(`"order" ASC`) }).
 		Preload("ApprovalFlow.Roles").
 		Preload("PermitRequirements").
 		Where("id = ?", id).First(&pt).Error; err != nil {

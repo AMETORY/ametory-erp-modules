@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -81,76 +82,117 @@ func (s *PermitHubService) CreateCitizenIfNotExists(citizen *models.Citizen) err
 
 // CreatePermitRequest initiates a new permit request for a given citizen and permit type.
 // It validates dynamic request data against the required field definitions of the permit type.
-func (s *PermitHubService) CreatePermitRequest(citizenID, subdistrictID, permitTypeSlug string, dyn *models.PermitDynamicRequestData, uploadedDocuments []models.PermitUploadedDocument) (*models.PermitRequest, error) {
-	// Retrieve permit type by slug
-	permitType, err := s.GetPermitTypeBySlug(permitTypeSlug)
-	if err != nil {
+func (s *PermitHubService) CreatePermitRequest(citizenID, subDistrictID, permitTypeSlug string, dyn *models.PermitDynamicRequestData, uploadedDocuments []models.PermitUploadedDocument) (*models.PermitRequest, error) {
+	var permitType models.PermitType
+	if err := s.ctx.DB.Preload("FieldDefinitions").
+		Preload("ApprovalFlow").
+		Preload("PermitRequirements").
+		Where("slug = ?", permitTypeSlug).First(&permitType).Error; err != nil {
 		return nil, err
 	}
+	// Retrieve permit type by slug
+
 	permitTypeID := permitType.ID
-
-	for _, v := range permitType.PermitRequirements {
-		var typeRequirement models.PermitTypeRequirement
-		if err := s.ctx.DB.Where("permit_type_id = ? AND permit_requirement_id = ?", permitType.ID, v.ID).First(&typeRequirement).Error; err != nil {
-			return nil, err
-		}
-		if typeRequirement.IsMandatory {
-			var found bool
-			for _, d := range uploadedDocuments {
-				if d.PermitRequirementCode == nil {
-					continue
-				}
-				if *d.PermitRequirementCode == v.Code {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return nil, errors.New("mandatory document : " + v.Name + " not uploaded")
-			}
-		}
-	}
-
-	// Initialize dynamic data if not provided
-	if dyn == nil {
-		dyn = &models.PermitDynamicRequestData{}
-	}
-
-	// Create a new permit request
 	req := &models.PermitRequest{
 		Code:          utils.RandString(8, true),
 		PermitTypeID:  permitTypeID,
 		CitizenID:     citizenID,
 		Status:        "SUBMITTED",
 		SubmittedAt:   time.Now(),
-		SubDistrictID: subdistrictID,
+		SubDistrictID: &subDistrictID,
+		Documents:     uploadedDocuments,
 	}
-	if err := s.ctx.DB.Create(req).Error; err != nil {
-		return nil, err
-	}
+	err := s.ctx.DB.Transaction(func(tx *gorm.DB) error {
 
-	// Validate dynamic request data against required fields
-	for _, field := range permitType.FieldDefinitions {
-		dynData := map[string]any{}
-		json.Unmarshal(*dyn.Data, &dynData)
-		if field.IsRequired && dynData[field.FieldKey] == nil {
-			return nil, errors.New("field " + field.FieldLabel + " is required")
+		reqID := utils.Uuid()
+		for _, v := range permitType.PermitRequirements {
+			var typeRequirement models.PermitTypeRequirement
+			if err := tx.Where("permit_type_id = ? AND permit_requirement_id = ?", permitType.ID, v.ID).First(&typeRequirement).Error; err != nil {
+				return err
+			}
+			if typeRequirement.IsMandatory {
+				var found bool
+				for _, d := range uploadedDocuments {
+					if d.PermitRequirementCode == nil {
+						continue
+					}
+					if *d.PermitRequirementCode == v.Code {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					return errors.New("mandatory document : " + v.Name + " not uploaded")
+				}
+
+			}
 		}
-	}
 
-	// Save dynamic request data
-	if err := s.ctx.DB.Create(dyn).Error; err != nil {
+		// Initialize dynamic data if not provided
+		if dyn == nil {
+			dyn = &models.PermitDynamicRequestData{}
+		}
+
+		for i, v := range uploadedDocuments {
+			v.PermitRequestID = &reqID
+			uploadedDocuments[i] = v
+		}
+		// Create a new permit request
+
+		req.ID = reqID
+		if err := tx.Create(req).Error; err != nil {
+			return err
+		}
+
+		// Validate dynamic request data against required fields
+		for _, field := range permitType.FieldDefinitions {
+			dynData := map[string]any{}
+			json.Unmarshal(*dyn.Data, &dynData)
+			if field.IsRequired && dynData[field.FieldKey] == nil {
+				return errors.New("field " + field.FieldLabel + " is required")
+			}
+
+			if field.FieldType == models.CHECKBOX || field.FieldType == models.SELECT {
+				var options []string
+				err := json.Unmarshal(*field.Options, &options)
+				if err != nil {
+					return err
+				}
+				dataValue, ok := dynData[field.FieldKey].(string)
+				if !ok {
+					return errors.New("field " + field.FieldLabel + " no value")
+				}
+
+				if !slices.Contains(options, dataValue) {
+					return errors.New("field " + field.FieldLabel + " invalid value")
+				}
+			}
+		}
+
+		dyn.PermitRequestID = req.ID
+
+		// Save dynamic request data
+		if err := tx.Create(dyn).Error; err != nil {
+			return err
+		}
+
+		// Retrieve the first approval step
+		var firstStep models.PermitApprovalFlow
+		tx.Where("permit_type_id = ?", permitTypeID).Preload("Roles").Order(`"step_order" ASC`).First(&firstStep)
+		if len(firstStep.Roles) == 0 {
+			return errors.New("no approval roles found")
+		}
+
+		// Set the initial approval step and role for the permit request
+		req.CurrentStepRoles = firstStep.Roles
+		req.CurrentStep = 0
+		tx.Save(req)
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
-
-	// Retrieve the first approval step
-	var firstStep models.PermitApprovalFlow
-	s.ctx.DB.Where("permit_type_id = ?", permitTypeID).Preload("Roles").Order("order ASC").First(&firstStep)
-
-	// Set the initial approval step and role for the permit request
-	req.CurrentStepRoles = firstStep.Roles
-	req.CurrentStep = 0
-	s.ctx.DB.Save(req)
 
 	return req, nil
 }
@@ -255,8 +297,10 @@ func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy
 
 	if err == nil {
 		// Masih ada step berikutnya
+		s.ctx.DB.Model(&request).Association("CurrentStepRoles").Clear()
 		request.CurrentStepRoles = nextStep.Roles
 		request.CurrentStep = nextStep.StepOrder
+		request.Status = "PROCESSING"
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
 		// Tidak ada step lagi, final approval
 		now := time.Now()
@@ -277,12 +321,15 @@ func (s *PermitHubService) GetAllRequests(request *http.Request) (paginate.Page,
 			return db.Preload("FieldDefinitions").Preload("ApprovalFlow")
 		}).
 		Preload("Citizen").
-		Preload("RoleModel").
-		Preload("PermitApprovalLog.StepRole").
-		Preload("PermitUploadedDocument").
+		Preload("CurrentStepRoles").
+		// Preload("ApprovalLogs").
+		// Preload("Documents").
+		// Preload("SubDistrict.District.City.Province").
+		// Preload("FinalPermitDocuments").
 		Model(&models.PermitRequest{})
-	if request.Header.Get("ID-Company") != "" {
-		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+
+	if request.Header.Get("ID-SubDistrict") != "" {
+		stmt = stmt.Where("sub_district_id = ?", request.Header.Get("ID-SubDistrict"))
 	}
 	if request.URL.Query().Get("citized_ids") != "" {
 		stmt = stmt.Where("citizen_id IN (?)", strings.Split(request.URL.Query().Get("citized_ids"), ","))
@@ -291,15 +338,15 @@ func (s *PermitHubService) GetAllRequests(request *http.Request) (paginate.Page,
 		stmt = stmt.Where("citizen_id IN (?)", strings.Split(request.URL.Query().Get("citizen_id"), ","))
 	}
 	if request.URL.Query().Get("start_date") != "" {
-		stmt = stmt.Where("clock_in >= ?", request.URL.Query().Get("start_date"))
+		stmt = stmt.Where("submitted_at >= ?", request.URL.Query().Get("start_date"))
 	}
 	if request.URL.Query().Get("end_date") != "" {
-		stmt = stmt.Where("clock_in <= ?", request.URL.Query().Get("end_date"))
+		stmt = stmt.Where("submitted_at <= ?", request.URL.Query().Get("end_date"))
 	}
 	if request.URL.Query().Get("order") != "" {
 		stmt = stmt.Order(request.URL.Query().Get("order"))
 	} else {
-		stmt = stmt.Order("created_at desc")
+		stmt = stmt.Order("submitted_at desc")
 	}
 	utils.FixRequest(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.PermitRequest{})
@@ -312,13 +359,37 @@ func (s *PermitHubService) GetRequestByID(requestID string) (*models.PermitReque
 	var request models.PermitRequest
 	err := s.ctx.DB.
 		Preload("PermitType", func(db *gorm.DB) *gorm.DB {
-			return db.Preload("FieldDefinitions").Preload("ApprovalFlow")
+			return db.Preload("FieldDefinitions").Preload("PermitRequirements").Preload("ApprovalFlow.Roles")
 		}).
 		Preload("Citizen").
-		Preload("RoleModel").
-		Preload("PermitApprovalLog.StepRole").
-		Preload("PermitUploadedDocument").
+		Preload("CurrentStepRoles").
+		Preload("ApprovalLogs").
+		Preload("Documents").
+		Preload("SubDistrict.District.City.Province").
+		Preload("FinalPermitDocuments").
+		Preload("DynamicRequestData").
 		Where("id = ?", requestID).
+		First(&request).Error
+	if err != nil {
+		return nil, err
+	}
+	return &request, nil
+}
+
+func (s *PermitHubService) GetPermitRequestByCode(code string) (*models.PermitRequest, error) {
+	var request models.PermitRequest
+	err := s.ctx.DB.
+		Preload("PermitType", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("FieldDefinitions").Preload("PermitRequirements").Preload("ApprovalFlow.Roles")
+		}).
+		Preload("Citizen").
+		Preload("CurrentStepRoles").
+		Preload("ApprovalLogs").
+		Preload("Documents").
+		Preload("SubDistrict.District.City.Province").
+		Preload("FinalPermitDocuments").
+		Preload("DynamicRequestData").
+		Where("code = ?", code).
 		First(&request).Error
 	if err != nil {
 		return nil, err

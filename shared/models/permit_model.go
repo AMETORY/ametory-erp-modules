@@ -57,13 +57,31 @@ type PermitRequirement struct {
 	shared.BaseModel
 	Name          string       `gorm:"type:varchar(255)" json:"name"`
 	Description   string       `json:"description"`
-	Code          string       `gorm:"type:varchar(255);uniqueIndex:code_district" json:"code"`
-	SubDistrictID *string      `gorm:"size:36;uniqueIndex:code_district" json:"subdistrict_id"`
+	Code          string       `gorm:"type:varchar(255);index" json:"code"`
+	SubDistrictID *string      `gorm:"size:36" json:"subdistrict_id"`
 	SubDistrict   *SubDistrict `gorm:"foreignKey:SubDistrictID" json:"subdistrict"`
 	IsMandatory   bool         `json:"is_mandatory" gorm:"-"`
 }
 
 func (p *PermitRequirement) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == "" {
+		p.ID = uuid.New().String()
+	}
+	return
+}
+
+type PermitUploadedDocument struct {
+	shared.BaseModel
+	PermitRequestID       *string        `gorm:"index" json:"permit_request_id,omitempty"`
+	PermitRequest         *PermitRequest `gorm:"foreignKey:PermitRequestID" json:"permit_request,omitempty"`
+	FileName              string         `json:"file_name,omitempty"`
+	FileURL               string         `json:"file_url,omitempty"`
+	UploadedByID          *string        `gorm:"type:char(36);index" json:"uploaded_by_id,omitempty"`
+	UploadedBy            *UserModel     `gorm:"foreignKey:UploadedByID;constraint:OnDelete:CASCADE;" json:"uploaded_by,omitempty"`
+	PermitRequirementCode *string        `gorm:"type:varchar(255);index" json:"permit_requirement_code,omitempty"`
+}
+
+func (p *PermitUploadedDocument) BeforeCreate(tx *gorm.DB) (err error) {
 	if p.ID == "" {
 		p.ID = uuid.New().String()
 	}
@@ -114,7 +132,7 @@ func (p *PermitDynamicRequestData) BeforeCreate(tx *gorm.DB) (err error) {
 type PermitApprovalFlow struct {
 	shared.BaseModel
 	PermitTypeID string      `gorm:"index" json:"permit_type_id,omitempty"`
-	PermitType   PermitType  `gorm:"foreignKey:PermitTypeID" json:"permit_type,omitempty"`
+	PermitType   *PermitType `gorm:"foreignKey:PermitTypeID" json:"permit_type,omitempty"`
 	StepOrder    int         `json:"step_order,omitempty"`
 	Roles        []RoleModel `gorm:"many2many:permit_approval_flow_roles;constraint:OnDelete:CASCADE;" json:"roles,omitempty"`
 	Description  string      `json:"description,omitempty"`
@@ -147,41 +165,22 @@ func (p *PermitApprovalDecision) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-type PermitUploadedDocument struct {
-	shared.BaseModel
-	PermitRequestID       *string            `gorm:"index" json:"permit_request_id,omitempty"`
-	PermitRequest         *PermitRequest     `gorm:"foreignKey:PermitRequestID" json:"permit_request,omitempty"`
-	FileName              string             `json:"file_name,omitempty"`
-	FileURL               string             `json:"file_url,omitempty"`
-	UploadedByID          *string            `gorm:"type:char(36);index" json:"uploaded_by_id,omitempty"`
-	UploadedBy            *UserModel         `gorm:"foreignKey:UploadedByID;constraint:OnDelete:CASCADE;" json:"uploaded_by,omitempty"`
-	PermitRequirementCode *string            `gorm:"index" json:"permit_requirement_code,omitempty"`
-	PermitRequirement     *PermitRequirement `gorm:"foreignKey:PermitRequirementCode" json:"permit_requirement,omitempty"`
-}
-
-func (p *PermitUploadedDocument) BeforeCreate(tx *gorm.DB) (err error) {
-	if p.ID == "" {
-		p.ID = uuid.New().String()
-	}
-	return
-}
-
 type PermitRequest struct {
 	shared.BaseModel
 	Code                 string                    `gorm:"uniqueIndex" json:"code,omitempty"`
 	PermitTypeID         string                    `json:"permit_type_id,omitempty"`
-	PermitType           PermitType                `gorm:"foreignKey:PermitTypeID" json:"permit_type,omitempty"`
+	PermitType           PermitType                `gorm:"foreignKey:PermitTypeID;constraint:OnDelete:CASCADE;" json:"permit_type,omitempty"`
 	CitizenID            string                    `json:"citizen_id,omitempty"`
-	Citizen              Citizen                   `gorm:"foreignKey:CitizenID" json:"citizen,omitempty"`
+	Citizen              Citizen                   `gorm:"foreignKey:CitizenID;constraint:OnDelete:CASCADE;" json:"citizen,omitempty"`
 	Status               string                    `json:"status,omitempty"`
 	SubmittedAt          time.Time                 `json:"submitted_at,omitempty"`
 	ApprovedAt           *time.Time                `json:"approved_at,omitempty"`
-	CurrentStep          int                       `json:"current_step,omitempty"`
+	CurrentStep          int                       `json:"current_step"`
 	CurrentStepRoles     []RoleModel               `gorm:"many2many:permit_request_current_step_roles;constraint:OnDelete:CASCADE;" json:"current_step_roles,omitempty"`
-	ApprovalLogs         []PermitApprovalLog       `gorm:"foreignKey:PermitRequestID" json:"approval_logs,omitempty"`
-	Documents            []PermitUploadedDocument  `gorm:"foreignKey:PermitRequestID" json:"documents,omitempty"`
-	SubDistrictID        string                    `json:"subdistrict_id,omitempty"`
-	SubDistrict          SubDistrict               `gorm:"foreignKey:SubDistrictID" json:"subdistrict,omitempty"`
+	ApprovalLogs         []PermitApprovalLog       `gorm:"foreignKey:PermitRequestID;constraint:OnDelete:CASCADE;" json:"approval_logs,omitempty"`
+	Documents            []PermitUploadedDocument  `gorm:"foreignKey:PermitRequestID;constraint:OnDelete:CASCADE;" json:"documents,omitempty"`
+	SubDistrictID        *string                   `json:"sub_district_id,omitempty"`
+	SubDistrict          *SubDistrict              `gorm:"foreignKey:SubDistrictID;constraint:OnDelete:CASCADE;" json:"sub_district,omitempty"`
 	DynamicRequestData   *PermitDynamicRequestData `gorm:"foreignKey:PermitRequestID;constraint:OnDelete:CASCADE;" json:"dynamic_request_data,omitempty"`
 	FinalPermitDocuments []FinalPermitDocument     `gorm:"foreignKey:PermitRequestID;constraint:OnDelete:CASCADE;" json:"final_permit_documents,omitempty"`
 }
