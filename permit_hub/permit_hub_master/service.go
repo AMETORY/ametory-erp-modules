@@ -125,6 +125,7 @@ func (s *MasterPermitHubService) GetPermitTypeByID(id string) (*models.PermitTyp
 		Preload("FieldDefinitions", func(db *gorm.DB) *gorm.DB { return db.Order(`"order" ASC`) }).
 		Preload("ApprovalFlow.Roles").
 		Preload("PermitRequirements").
+		Preload("PermitTemplate").
 		Where("id = ?", id).First(&pt).Error; err != nil {
 		return nil, err
 	}
@@ -155,6 +156,14 @@ func (s *MasterPermitHubService) GetPermitTypes(request *http.Request) (paginate
 	page := pg.With(stmt).Request(request).Response(&[]models.PermitType{})
 	page.Page = page.Page + 1
 	return page, nil
+}
+
+func (s *MasterPermitHubService) GetTemplatesByPermitType() ([]models.PermitTemplate, error) {
+	var templates []models.PermitTemplate
+	if err := s.ctx.DB.Find(&templates).Error; err != nil {
+		return nil, err
+	}
+	return templates, nil
 }
 
 func (s *MasterPermitHubService) UpdatePermitType(id string, pt *models.PermitType) error {

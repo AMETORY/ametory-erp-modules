@@ -36,6 +36,9 @@ type PermitType struct {
 	PermitRequirements []PermitRequirement     `gorm:"many2many:permit_type_requirements;constraint:OnDelete:CASCADE;" json:"permit_requirements"`
 	SubDistrictID      *string                 `gorm:"size:36;uniqueIndex:slug_district" json:"subdistrict_id"`
 	SubDistrict        *SubDistrict            `gorm:"foreignKey:SubDistrictID" json:"subdistrict"`
+	PermitTemplateID   *string                 `gorm:"type:varchar(36);index" json:"permit_template_id"`
+	PermitTemplate     *PermitTemplate         `gorm:"foreignKey:PermitTemplateID" json:"permit_template"`
+	TemplateConfig     *json.RawMessage        `json:"template_config"`
 }
 
 type PermitTypeRequirement struct {
@@ -101,12 +104,14 @@ type PermitFieldDefinition struct {
 }
 
 type PermitTemplateConfig struct {
-	TemplateName string     `json:"template_name"`
-	IncludeLogo  bool       `json:"include_logo"`
-	LogoPosition string     `json:"logo_position"`
-	Logo         *FileModel `json:"logo"`
-	HeaderText   string     `json:"header_text"`
-	FooterText   string     `json:"footer_text"`
+	TemplateName  string `json:"template_name"`
+	IncludeLogo   bool   `json:"include_logo"`
+	LogoPosition  string `json:"logo_position"`
+	Logo          string `json:"logo"`
+	HeaderText    string `json:"header_text"`
+	HeaderAddress string `json:"header_address"`
+	SignatureText string `json:"signature_text"`
+	FooterText    string `json:"footer_text"`
 }
 
 func (p *PermitFieldDefinition) BeforeCreate(tx *gorm.DB) (err error) {
@@ -176,6 +181,7 @@ type PermitRequest struct {
 	SubmittedAt          time.Time                 `json:"submitted_at,omitempty"`
 	ApprovedAt           *time.Time                `json:"approved_at,omitempty"`
 	CurrentStep          int                       `json:"current_step"`
+	RegisterNumber       string                    `gorm:"type:varchar(255)" json:"register_number,omitempty"`
 	CurrentStepRoles     []RoleModel               `gorm:"many2many:permit_request_current_step_roles;constraint:OnDelete:CASCADE;" json:"current_step_roles,omitempty"`
 	ApprovalLogs         []PermitApprovalLog       `gorm:"foreignKey:PermitRequestID;constraint:OnDelete:CASCADE;" json:"approval_logs,omitempty"`
 	Documents            []PermitUploadedDocument  `gorm:"foreignKey:PermitRequestID;constraint:OnDelete:CASCADE;" json:"documents,omitempty"`

@@ -563,11 +563,75 @@ func HandleDBError(err error) error {
 
 func CreateSlugFromTitle(title string) string {
 	slug := strings.ToLower(title)
-	slug = strings.Replace(slug, " ", "-", -1)
-	slug = strings.Replace(slug, "--", "-", -1)
-	slug = strings.Replace(slug, "--", "-", -1)
-	slug = strings.Replace(slug, "--", "-", -1)
-	slug = strings.Replace(slug, "--", "-", -1)
-	slug = strings.Trim(slug, "-")
+	slug = strings.ReplaceAll(slug, " ", "_")
+	slug = strings.ReplaceAll(slug, "__", "_")
+	slug = strings.ReplaceAll(slug, "__", "_")
+	slug = strings.ReplaceAll(slug, "__", "_")
+	slug = strings.ReplaceAll(slug, "__", "_")
+	slug = strings.Trim(slug, "_")
 	return slug
+}
+
+func safeGet(data map[string]any, key string) string {
+	if val, ok := data[key]; ok && val != nil {
+		return fmt.Sprintf("%v", val)
+	}
+	return ""
+}
+
+func getHTML(data map[string]any, key string) template.HTML {
+	if val, ok := data[key]; ok && val != nil {
+		return template.HTML(fmt.Sprintf("%v", val)) // ⚠️ Pastikan data bersih dari input user berbahaya
+	}
+	return ""
+}
+
+func GenTemplate(layout, body string, data any) (string, error) {
+	t := template.New("layout").Funcs(template.FuncMap{
+		"get":     safeGet,
+		"getHTML": getHTML,
+	})
+	t, err := t.ParseFiles(layout, body)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := t.ExecuteTemplate(&buf, "layout", data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func GenerateHTMLPDF(dataHtml string, footer string) ([]byte, error) {
+
+	// 2. Generate PDF dari HTML string
+	pdfg, err := wkhtmltopdf.NewPDFGenerator()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(dataHtml)
+	page := wkhtmltopdf.NewPageReader(strings.NewReader(dataHtml))
+	page.EnableLocalFileAccess.Set(true)
+	pdfg.AddPage(page)
+	page.DisableSmartShrinking.Set(true)
+	// page.FooterRight.Set("[page]")
+	// if footer != "" {
+	// 	page.FooterLeft.Set(footer)
+	// }
+	// page.FooterFontSize.Set(8)
+
+	pdfg.Dpi.Set(300)
+	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
+	pdfg.MarginLeft.Set(5)
+	pdfg.MarginRight.Set(5)
+	pdfg.MarginBottom.Set(5)
+	pdfg.MarginTop.Set(5)
+
+	if err := pdfg.Create(); err != nil {
+		return nil, err
+	}
+
+	// 3. Return PDF sebagai []byte
+	return pdfg.Bytes(), nil
 }

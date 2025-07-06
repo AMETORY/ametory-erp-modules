@@ -53,6 +53,7 @@ func (s *PermitHubService) Migrate() error {
 		&models.District{},
 		&models.City{},
 		&models.Province{},
+		&models.PermitTemplate{},
 	)
 }
 
@@ -359,7 +360,7 @@ func (s *PermitHubService) GetRequestByID(requestID string) (*models.PermitReque
 	var request models.PermitRequest
 	err := s.ctx.DB.
 		Preload("PermitType", func(db *gorm.DB) *gorm.DB {
-			return db.Preload("FieldDefinitions").Preload("PermitRequirements").Preload("ApprovalFlow.Roles")
+			return db.Preload("FieldDefinitions").Preload("PermitRequirements").Preload("ApprovalFlow.Roles").Preload("PermitTemplate").Preload("SubDistrict.District.City.Province")
 		}).
 		Preload("Citizen").
 		Preload("CurrentStepRoles").
@@ -380,7 +381,7 @@ func (s *PermitHubService) GetPermitRequestByCode(code string) (*models.PermitRe
 	var request models.PermitRequest
 	err := s.ctx.DB.
 		Preload("PermitType", func(db *gorm.DB) *gorm.DB {
-			return db.Preload("FieldDefinitions").Preload("PermitRequirements").Preload("ApprovalFlow.Roles")
+			return db.Preload("FieldDefinitions").Preload("PermitRequirements").Preload("ApprovalFlow.Roles").Preload("PermitTemplate").Preload("SubDistrict.District.City.Province")
 		}).
 		Preload("Citizen").
 		Preload("CurrentStepRoles").
