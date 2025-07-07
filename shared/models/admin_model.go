@@ -33,3 +33,14 @@ func (u *AdminModel) BeforeCreate(tx *gorm.DB) (err error) {
 func (AdminModel) TableName() string {
 	return "admins"
 }
+
+func (u *AdminModel) AfterFind(tx *gorm.DB) error {
+
+	file := FileModel{}
+	err := tx.Where("ref_id = ? and ref_type = ?", u.ID, "admin").Order("created_at desc").First(&file).Error
+	if err == nil {
+		u.ProfilePicture = &file
+	}
+
+	return nil
+}
