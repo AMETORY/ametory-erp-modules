@@ -3,16 +3,16 @@
 VERSION ?= $(shell git describe --tags --abbrev=0)
 
 tag:
-	git tag $(VERSION)
+	sed -i '' "s|version = \".*\"|version = \"$(VERSION)\"|g" cmd/erpgen/main.go
+	sed -i '' "s|version = \".*\"|version = \"$(VERSION)\"|g" internal/generatorlib/generator.go
+	git add .
+	git commit -m "release v$(VERSION)"
+	git push origin main
+	git tag v$(VERSION)
 
 
 # example: make release VERSION=1.0.1
 release: tag
-	sed -i '' "s|version = \".*\"|version = \"v$(VERSION)\"|g" cmd/erpgen/main.go
-	sed -i '' "s|version = \".*\"|version = \"v$(VERSION)\"|g" internal/generatorlib/generator.go
-	git add cmd/erpgen/main.go
-	git add internal/generatorlib/generator.go
-	git commit -m "release $(VERSION)"
-	git push origin $(VERSION)
+	git push origin v$(VERSION)
 
 
