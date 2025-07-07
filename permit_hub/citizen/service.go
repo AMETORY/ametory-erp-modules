@@ -52,7 +52,7 @@ func (s *CitizenService) GetCitizenByNIK(nik string) (*models.Citizen, error) {
 }
 
 func (s *CitizenService) UpdateCitizen(id string, citizen *models.Citizen) error {
-	return s.ctx.DB.Model(&models.Citizen{}).Where("id = ?", id).Save(citizen).Error
+	return s.ctx.DB.Model(&models.Citizen{}).Where("id = ?", id).Updates(citizen).Error
 }
 
 func (s *CitizenService) DeleteCitizen(id string) error {

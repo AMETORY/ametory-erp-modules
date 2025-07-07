@@ -460,16 +460,20 @@ func ParseDate(dateStr string) (time.Time, error) {
 
 	// List of formats to try
 	formats := []string{
-		"2006-01-02",  // yyyy-mm-dd
-		"02-01-2006",  // dd-mm-yyyy
-		"02-Jan-2006", // dd-mm-yyyy
-		"2-Jan-2006",  // dd-mm-yyyy
-		"Jan-02-2006", // mm-dd-yyyy
-		"02-01-06",    // dd-mm-yy
-		"01-02-06",    // mm-dd-yy
-		"2006-01",     // yyyy-mm
-		"01-2006",     // mm-yyyy
-		"2006",        // yyyy
+		"2006-01-02",      // yyyy-mm-dd
+		"02-01-2006",      // dd-mm-yyyy
+		"02-Jan-2006",     // dd-mm-yyyy
+		"2-Jan-2006",      // dd-mm-yyyy
+		"Jan-02-2006",     // mm-dd-yyyy
+		"02-01-06",        // dd-mm-yy
+		"02-January-2006", // dd-mm-yyyy
+		"02 January 2006", // dd-mm-yyyy
+		"02 Januari 2006",
+		"01-02-06", // mm-dd-yy
+		"2006-01",  // yyyy-mm
+		"2006-01-02 15:04:05",
+		"01-2006", // mm-yyyy
+		"2006",    // yyyy
 		"01-02T15:04:05Z07:00",
 		"2006-01-02T15:04:05Z07:00",
 		"2006-01-02T15:04:05-07:00",
