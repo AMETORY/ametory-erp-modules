@@ -87,7 +87,7 @@ func (s *UserService) GetUsers(request http.Request, search string) (paginate.Pa
 
 	for _, v := range *items {
 		file := models.FileModel{}
-		s.db.Where("ref_id = ? and ref_type = ?", v.ID, "user").First(&file)
+		s.db.Order("created_at DESC").Where("ref_id = ? and ref_type = ?", v.ID, "user").First(&file)
 		if file.ID != "" {
 			v.ProfilePicture = &file
 		}
