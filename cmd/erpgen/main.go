@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.30"
+var version = "1.0.31"
 
 var (
 	coreModules = []string{
