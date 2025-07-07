@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -8,14 +10,15 @@ import (
 
 type SubDistrict struct {
 	shared.BaseModel
-	Name         string   `gorm:"type:varchar(255)" json:"name"`
-	DistrictID   string   `gorm:"size:36" json:"district_id"`
-	District     District `gorm:"foreignKey:DistrictID;references:id" json:"district"`
-	Code         string   `gorm:"type:varchar(255);unique" json:"code"`
-	Address      string   `json:"address"`
-	HeaderLetter string   `json:"header_letter"`
-	Logo         string   `json:"logo"`
-	Footer       string   `json:"footer"`
+	Name         string           `gorm:"type:varchar(255)" json:"name"`
+	DistrictID   string           `gorm:"size:36" json:"district_id"`
+	District     District         `gorm:"foreignKey:DistrictID;references:id" json:"district"`
+	Code         string           `gorm:"type:varchar(255);unique" json:"code"`
+	Address      string           `json:"address"`
+	HeaderLetter string           `json:"header_letter"`
+	Logo         string           `json:"logo"`
+	Footer       string           `json:"footer"`
+	Data         *json.RawMessage `json:"data"`
 }
 
 type District struct {
