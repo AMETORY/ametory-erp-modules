@@ -17,7 +17,40 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.37"
+var logo = `
+MMMMMMMMMMMMMMMMWXOxoc;,............';coxOXWMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMWXOo:'............'...........':oOXWMMMMMMMMMMMM
+MMMMMMMMMWNOl,........,'.;:'.:oc'.;,.',.......,lkXWMMMMMMMMM
+MMMMMMMWXx;.....''....;,.,;'.,:;..,.'c:'':,......;dKWMMMMMMM
+MMMMMMXx;....',.';;..................'..;c,.,,.....,dXMMMMMM
+MMMMWO:....'..;;...........................,c,.......;kNMMMM
+MMMXd'.....;,'..................................''.....oXMMM
+MMXl....';;,'.........;looooooollcccc;'.........,,,,....cKMM
+MXl....'',;'.........ckOOOOOOOOOkdooool,.........;:,.....cKM
+No....';:;..........:xOOOkdxkOkOOxdooool'..........,;;....oX
+k'...',,'..........,dOOOko,;oOOOOkxoooooc..........,,'....'k
+c....';;'.........'okOOOkl.'oOOOOOkdooooo;.........'::,....:
+'...',;,..........ckOOOxdl:lkOOOOOOkdooool,.........',''...'
+.....,,'.........;xOOOxccoxkOOOOkOOkxdooooc'.........'''....
+................'dOOOOkdlloxkOOOOOOOkxooooo:................
+................lkOOOOOxl::ccldxOOOOOkdooool;...............
+....,:,........:xOOOOOd;.,::,..;dOOOOkxdooool'.......,:,....
+;....'........,dOOOOOkl..,::;...lOOOOOkxooooo:........,....;
+d.............ckOOOOOOo;,;cl;,,;okOOOOkxdooool,............o
+K:............,okkkkkko,.......'okkkkkkxdoool:............:K
+WO,.............,;;;;;'.........';;;;;,,,,,''............,kW
+MWk,....................................................,kWM
+MMWO;..........'............................',.........;kWMM
+MMMWKl.......,:,.............................,,.......c0WMMM
+MMMMMNk;.....''...,;,'..................;:'.........;xNMMMMM
+MMMMMMWXx;........,;;'..,;...';,...;;'..';,.......;dXWMMMMMM
+MMMMMMMMWXkc'...........,,...':,...';,.........'ckXWMMMMMMMM
+MMMMMMMMMMMWKxc,............................'cxKWMMMMMMMMMMM
+MMMMMMMMMMMMMMWXOdc;'..................';cdOXWMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMWX0xl:,'........',:lx0XWMMMMMMMMMMMMMMMMMM
+                                                                                          
+`
+var version = "1.0.38"
 
 var (
 	coreModules = []string{
@@ -185,7 +218,10 @@ var (
 )
 
 func main() {
-	fmt.Println("Welcome to ametory-erp-modules code generator!")
+	fmt.Println(logo)
+	fmt.Printf("Welcome to ametory-erp-modules code generator! (Version: %s)\n", version)
+	fmt.Println(strings.Repeat("=", 75))
+	fmt.Println("Before you start, we encourage you to visit and contribute to our main repository at https://github.com/AMETORY/ametory-erp-modules")
 	fmt.Println("This program will help you generate a new ametory-erp-modules project.")
 	fmt.Println("Please answer the questions below to get started.")
 
