@@ -39,6 +39,7 @@ type PermitType struct {
 	PermitTemplateID   *string                 `gorm:"type:varchar(36);index" json:"permit_template_id"`
 	PermitTemplate     *PermitTemplate         `gorm:"foreignKey:PermitTemplateID" json:"permit_template"`
 	TemplateConfig     *json.RawMessage        `json:"template_config"`
+	BodyTemplate       string                  `json:"body_template"`
 }
 
 type PermitTypeRequirement struct {

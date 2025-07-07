@@ -586,6 +586,20 @@ func getHTML(data map[string]any, key string) template.HTML {
 	return ""
 }
 
+func RenderFromDBTemplate(tmplString string, data any) (string, error) {
+	tmpl, err := template.New("doc").Funcs(template.FuncMap{
+		"get":     safeGet,
+		"getHTML": getHTML,
+	}).Parse(tmplString)
+
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, data)
+	return buf.String(), err
+}
 func GenTemplate(layout, body string, data any) (string, error) {
 	t := template.New("layout").Funcs(template.FuncMap{
 		"get":     safeGet,
@@ -634,4 +648,12 @@ func GenerateHTMLPDF(dataHtml string, footer string) ([]byte, error) {
 
 	// 3. Return PDF sebagai []byte
 	return pdfg.Bytes(), nil
+}
+
+func FormatDateIndonesian(date time.Time) string {
+	months := []string{
+		"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+		"Juli", "Agustus", "September", "Oktober", "November", "Desember",
+	}
+	return fmt.Sprintf("%02d %s %d", date.Day(), months[date.Month()-1], date.Year())
 }
