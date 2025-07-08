@@ -8,14 +8,15 @@ import (
 
 type GeminiHistoryModel struct {
 	shared.BaseModel
-	Input     string        `json:"input"`
-	Output    string        `json:"output"`
-	FileURL   string        `gorm:"type:varchar(255)" json:"file_url"`
-	MimeType  string        `gorm:"type:varchar(255)" json:"mime_type"`
-	AgentID   *string       `gorm:"type:char(36)" json:"agent_id"`
-	CompanyID *string       `gorm:"type:char(36)" json:"company_id"`
-	Company   *CompanyModel `gorm:"foreignKey:CompanyID;references:ID"`
-	IsModel   bool          `json:"is_model"`
+	Input       string        `json:"input"`
+	Output      string        `json:"output"`
+	FileURL     string        `gorm:"type:varchar(255)" json:"file_url"`
+	MimeType    string        `gorm:"type:varchar(255)" json:"mime_type"`
+	AgentID     *string       `gorm:"type:char(36)" json:"agent_id"`
+	CompanyID   *string       `gorm:"type:char(36)" json:"company_id"`
+	Company     *CompanyModel `gorm:"foreignKey:CompanyID;references:ID"`
+	IsModel     bool          `json:"is_model"`
+	SessionCode *string       `gorm:"type:varchar(255)" json:"session_code"`
 }
 
 func (m *GeminiHistoryModel) TableName() string {

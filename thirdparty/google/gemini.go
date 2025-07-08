@@ -31,6 +31,7 @@ type GeminiService struct {
 	model              string
 	systemInstruction  string
 	agentID            *string
+	sessionCode        *string
 }
 
 func NewGeminiService(ctx *erpContext.ERPContext, apiKey string) *GeminiService {
@@ -61,6 +62,10 @@ func NewGeminiService(ctx *erpContext.ERPContext, apiKey string) *GeminiService 
 
 func (s *GeminiService) SetupAgentID(agentID string) {
 	s.agentID = &agentID
+}
+
+func (s *GeminiService) SetupSessionCode(sessionCode string) {
+	s.sessionCode = &sessionCode
 }
 
 func (s *GeminiService) SetupAPIKey(apiKey string, skipHistory bool) {
@@ -95,6 +100,9 @@ func getHistories(ctx context.Context, service *GeminiService) {
 	db := service.ctx.DB.Model(&models.GeminiHistoryModel{})
 	if service.agentID != nil {
 		db = db.Where("agent_id = ?", *service.agentID)
+	}
+	if service.sessionCode != nil {
+		db = db.Where("session_code = ?", *service.sessionCode)
 	}
 	db.Find(&historyModels)
 	// parts := []genai.Part{}
