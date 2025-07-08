@@ -103,6 +103,10 @@ run migrate with
 go run main.go migrate
 ```
 
+
+https://github.com/user-attachments/assets/bde4f52e-efe8-45bf-a343-8e8637145ea6
+
+
 ### Use CLI Generator
 ```bash
 go install github.com/AMETORY/ametory-erp-modules/cmd/erpgen@latest
