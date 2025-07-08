@@ -50,7 +50,7 @@ MMMMMMMMMMMMMMWXOdc;'..................';cdOXWMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMMWX0xl:,'........',:lx0XWMMMMMMMMMMMMMMMMMM
                                                                                           
 `
-var version = "1.0.38"
+var version = "1.0.39"
 
 var (
 	coreModules = []string{

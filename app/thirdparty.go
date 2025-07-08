@@ -121,3 +121,10 @@ func WithGoogleAPIService(apiKey string) AppContainerOption {
 		log.Println("GoogleAPIService initialized")
 	}
 }
+
+func WithGeminiService(apiKey string) AppContainerOption {
+	return func(c *AppContainer) {
+		c.GeminiService = google.NewGeminiService(c.erpContext, apiKey)
+		log.Println("GeminiService initialized")
+	}
+}

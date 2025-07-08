@@ -77,6 +77,7 @@ type AppContainer struct {
 	EmailAPIService  *email_api.EmailApiService
 	WatzapClient     *thirdparty.WatzapClient
 	GoogleAPIService *google.GoogleAPIService
+	GeminiService    *google.GeminiService
 	SkipMigration    bool
 	Firestore        *thirdparty.Firestore
 	WhatsmeowService *whatsmeow_client.WhatsmeowService

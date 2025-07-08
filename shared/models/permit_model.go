@@ -24,6 +24,8 @@ var (
 	DATEPICKER FieldType = "DATEPICKER"
 	FILE       FieldType = "FILE"
 	CHECKBOXES FieldType = "CHECKBOXES"
+	ANY        FieldType = "ANY"
+	ARRAY      FieldType = "ARRAY"
 )
 
 type PermitType struct {
@@ -76,8 +78,8 @@ func (p *PermitRequirement) BeforeCreate(tx *gorm.DB) (err error) {
 
 type PermitFieldDefinition struct {
 	shared.BaseModel
-	PermitTypeID string           `gorm:"index" json:"permit_type_id"`
-	PermitType   PermitType       `gorm:"foreignKey:PermitTypeID" json:"permit_type"`
+	PermitTypeID *string          `gorm:"index;constraint:OnDelete:CASCADE" json:"permit_type_id,omitempty"`
+	PermitType   *PermitType      `gorm:"foreignKey:PermitTypeID" json:"permit_type,omitempty"`
 	FieldKey     string           `gorm:"index" json:"field_key"`
 	FieldLabel   string           `json:"field_label"`
 	FieldType    FieldType        `json:"field_type"`
