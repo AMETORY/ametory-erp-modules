@@ -115,7 +115,7 @@ func (p *ProductModel) GetPriceAndDiscount(tx *gorm.DB) (err error) {
 		if err == nil {
 			p.AdjustmentPrice = productMerchant.AdjustmentPrice
 			p.Price += productMerchant.AdjustmentPrice
-			// fmt.Println("MERCHANT PRICE 2", p.Price)
+			fmt.Println("MERCHANT PRICE 2", p.Price)
 			// p.OriginalPrice = productMerchant.Price
 		}
 	} else {
