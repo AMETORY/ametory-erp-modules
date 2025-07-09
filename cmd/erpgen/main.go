@@ -13,12 +13,11 @@ import (
 	"unicode"
 
 	"github.com/AMETORY/ametory-erp-modules/internal/generatorlib"
-	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/AlecAivazis/survey/v2"
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.40"
+var version = "1.0.41"
 
 var logo = `
 MMMMMMMMMMMMMMMMWXOxoc;,............';coxOXWMMMMMMMMMMMMMMMM
@@ -291,7 +290,10 @@ func generateAPI() {
 		// 	log.Fatalf("Failed to generate module %s: %v", apiName, err)
 		// }
 		fmt.Println("Generating API: " + customApiName)
-		utils.LogJson(subConfig)
+		// utils.LogJson(subConfig)
+		if err := generatorlib.GenerateAPI(subConfig); err != nil {
+			log.Fatalf("Failed to generate module %s: %v", apiName, err)
+		}
 		return
 	}
 
