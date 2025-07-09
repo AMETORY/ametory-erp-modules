@@ -13,9 +13,12 @@ import (
 	"unicode"
 
 	"github.com/AMETORY/ametory-erp-modules/internal/generatorlib"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/AlecAivazis/survey/v2"
 	"gopkg.in/yaml.v3"
 )
+
+var version = "1.0.40"
 
 var logo = `
 MMMMMMMMMMMMMMMMWXOxoc;,............';coxOXWMMMMMMMMMMMMMMMM
@@ -50,7 +53,6 @@ MMMMMMMMMMMMMMWXOdc;'..................';cdOXWMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMMWX0xl:,'........',:lx0XWMMMMMMMMMMMMMMMMMM
                                                                                           
 `
-var version = "1.0.39"
 
 var (
 	coreModules = []string{
@@ -255,6 +257,7 @@ func generateAPI() {
 	for i, v := range parseCoreModules {
 		coreModules[i] = v.(string)
 	}
+	coreModules = append(coreModules, "CUSTOM API ENDPOINT")
 	var apiName string
 	if err := survey.AskOne(&survey.Select{
 		Message: "Enter the API name to generate:",
@@ -264,12 +267,37 @@ func generateAPI() {
 		log.Fatal(err)
 	}
 
+	moduleName := projectData["module_name"].(string)
+	projectDir := projectData["project_dir"].(string)
+
+	if apiName == "CUSTOM API ENDPOINT" {
+		customApiName := ""
+		if err := survey.AskOne(&survey.Input{
+			Message: "Enter the API name to generate:",
+		}, &customApiName); err != nil {
+			log.Fatal(err)
+		}
+
+		subConfig := map[string]any{
+			"ModuleName":       moduleName,
+			"ProjectDir":       projectDir,
+			"ApiName":          strings.ReplaceAll(toTitleCase(customApiName), " ", ""),
+			"SnakeServiceName": strings.ReplaceAll(toSnakeCase(customApiName), " ", ""),
+			"snakeApiName":     strings.ReplaceAll(toSnakeCase(customApiName), " ", ""),
+			"camelApiName":     strings.ReplaceAll(toCamelCase(customApiName), " ", ""),
+		}
+		// fmt.Printf("Generating sub-module: %s\n", subConfig)
+		// if err := generatorlib.GenerateAPI(subConfig); err != nil {
+		// 	log.Fatalf("Failed to generate module %s: %v", apiName, err)
+		// }
+		fmt.Println("Generating API: " + customApiName)
+		utils.LogJson(subConfig)
+		return
+	}
+
 	// fmt.Printf("Generating API: %s\n", apiName)
 	// fmt.Printf("Generating API: %s\n", toCamelCase(apiName))
 	// fmt.Printf("Generating API: %s\n", toSnakeCase(apiName))
-
-	moduleName := projectData["module_name"].(string)
-	projectDir := projectData["project_dir"].(string)
 
 	listSubModules, ok := subModules[apiName]
 	if ok {
@@ -462,6 +490,18 @@ func toSnakeCase(input string) string {
 	return string(result)
 }
 
+func toTitleCase(input string) string {
+
+	var result []rune
+	for i, r := range input {
+		if i == 0 || input[i-1] == '_' {
+			result = append(result, unicode.ToUpper(r))
+		} else {
+			result = append(result, r)
+		}
+	}
+	return string(result)
+}
 func toCamelCase(input string) string {
 	if input == "RBAC" || input == "HRIS" {
 		return strings.ToLower(input)
