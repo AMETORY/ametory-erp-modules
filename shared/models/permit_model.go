@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
@@ -30,18 +29,19 @@ var (
 
 type PermitType struct {
 	shared.BaseModel
-	Name               string                  `json:"name"`
-	Slug               string                  `gorm:"type:varchar(255);uniqueIndex:slug_district" json:"slug"`
-	Description        string                  `json:"description"`
-	FieldDefinitions   []PermitFieldDefinition `gorm:"foreignKey:PermitTypeID" json:"field_definitions"`
-	ApprovalFlow       []PermitApprovalFlow    `gorm:"foreignKey:PermitTypeID" json:"approval_flow"`
-	PermitRequirements []PermitRequirement     `gorm:"many2many:permit_type_requirements;constraint:OnDelete:CASCADE;" json:"permit_requirements"`
-	SubDistrictID      *string                 `gorm:"size:36;uniqueIndex:slug_district" json:"subdistrict_id"`
-	SubDistrict        *SubDistrict            `gorm:"foreignKey:SubDistrictID" json:"subdistrict"`
-	PermitTemplateID   *string                 `gorm:"type:varchar(36);index" json:"permit_template_id"`
-	PermitTemplate     *PermitTemplate         `gorm:"foreignKey:PermitTemplateID" json:"permit_template"`
-	TemplateConfig     *json.RawMessage        `json:"template_config"`
-	BodyTemplate       string                  `json:"body_template"`
+	Name                  string                  `json:"name"`
+	Slug                  string                  `gorm:"type:varchar(255);uniqueIndex:slug_district" json:"slug"`
+	Description           string                  `json:"description"`
+	FieldDefinitions      []PermitFieldDefinition `gorm:"foreignKey:PermitTypeID" json:"field_definitions"`
+	ApprovalFlow          []PermitApprovalFlow    `gorm:"foreignKey:PermitTypeID" json:"approval_flow"`
+	PermitRequirements    []PermitRequirement     `gorm:"many2many:permit_type_requirements;constraint:OnDelete:CASCADE;" json:"permit_requirements"`
+	SubDistrictID         *string                 `gorm:"size:36;uniqueIndex:slug_district" json:"subdistrict_id"`
+	SubDistrict           *SubDistrict            `gorm:"foreignKey:SubDistrictID" json:"subdistrict"`
+	PermitTemplateID      *string                 `gorm:"type:varchar(36);index" json:"permit_template_id"`
+	PermitTemplate        *PermitTemplate         `gorm:"foreignKey:PermitTemplateID" json:"permit_template"`
+	TemplateConfig        *json.RawMessage        `json:"template_config"`
+	BodyTemplate          string                  `json:"body_template"`
+	SignaturePlaceholders []SignaturePlaceholder  `gorm:"foreignKey:PermitTypeID" json:"signature_placeholders"`
 }
 
 type PermitTypeRequirement struct {
@@ -108,13 +108,22 @@ func (p *PermitFieldDefinition) BeforeCreate(tx *gorm.DB) (err error) {
 
 type PermitApprovalFlow struct {
 	shared.BaseModel
-	PermitTypeID string      `gorm:"index" json:"permit_type_id,omitempty"`
-	PermitType   *PermitType `gorm:"foreignKey:PermitTypeID" json:"permit_type,omitempty"`
-	StepOrder    int         `json:"step_order,omitempty"`
-	Roles        []RoleModel `gorm:"many2many:permit_approval_flow_roles;constraint:OnDelete:CASCADE;" json:"roles,omitempty"`
-	Description  string      `json:"description,omitempty"`
-	ApprovalMode string      `gorm:"type:varchar(50);default:SINGLE" json:"approval_mode,omitempty"` // SINGLE, ALL
+	PermitTypeID       string              `gorm:"index" json:"permit_type_id,omitempty"`
+	PermitType         *PermitType         `gorm:"foreignKey:PermitTypeID" json:"permit_type,omitempty"`
+	StepOrder          int                 `json:"step_order,omitempty"`
+	Roles              []RoleModel         `gorm:"many2many:permit_approval_flow_roles;constraint:OnDelete:CASCADE;" json:"roles,omitempty"`
+	Description        string              `json:"description,omitempty"`
+	ApprovalMode       string              `gorm:"type:varchar(50);default:SINGLE" json:"approval_mode,omitempty"` // SINGLE, ALL
+	PermitRequirements []PermitRequirement `gorm:"many2many:permit_approval_flow_permit_requirements;constraint:OnDelete:CASCADE;" json:"permit_requirements"`
 }
+
+// type PermitApprovalFlowPermitRequirement struct {
+// 	PermitApprovalFlowID string             `gorm:"type:varchar(36);not null" json:"permit_approval_flow_id"`
+// 	PermitApprovalFlow   PermitApprovalFlow `gorm:"foreignKey:PermitApprovalFlowID" json:"permit_approval_flow"`
+// 	PermitRequirementID  string             `gorm:"type:varchar(36);not null" json:"permit_requirement_id"`
+// 	PermitRequirement    PermitRequirement  `gorm:"foreignKey:PermitRequirementID" json:"permit_requirement"`
+// 	IsMandatory          bool               `json:"is_mandatory" gorm:"default:false"`
+// }
 
 func (p *PermitApprovalFlow) BeforeCreate(tx *gorm.DB) (err error) {
 	if p.ID == "" {
@@ -123,19 +132,16 @@ func (p *PermitApprovalFlow) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-type PermitApprovalDecision struct {
+type SignaturePlaceholder struct {
 	shared.BaseModel
-	PermitRequestID string        `gorm:"index" json:"permit_request_id,omitempty"`
-	PermitRequest   PermitRequest `gorm:"foreignKey:PermitRequestID" json:"permit_request,omitempty"`
-	StepOrder       int           `json:"step_order,omitempty"`
-	ApprovedBy      *string       `json:"approved_by,omitempty"`
-	ApprovedByUser  *UserModel    `gorm:"foreignKey:ApprovedBy;constraint:OnDelete:CASCADE;" json:"approved_by_user,omitempty"`
-	ApprovedAt      time.Time     `json:"approved_at,omitempty"`
-	Note            string        `json:"note,omitempty"`
-	Decision        string        `gorm:"type:varchar(20);default:APPROVED" json:"decision,omitempty"` // APPROVED, REJECTED
+	PermitTypeID    *string     `gorm:"index;constraint:OnDelete:CASCADE" json:"permit_type_id,omitempty"`
+	PermitType      *PermitType `gorm:"foreignKey:PermitTypeID" json:"permit_type,omitempty"`
+	PlaceholderName string      `json:"placeholder_name,omitempty"`
+	StepOrder       int         `json:"step_order,omitempty"`
+	Code            string      `gorm:"type:varchar(50)" json:"code,omitempty"`
 }
 
-func (p *PermitApprovalDecision) BeforeCreate(tx *gorm.DB) (err error) {
+func (p *SignaturePlaceholder) BeforeCreate(tx *gorm.DB) (err error) {
 	if p.ID == "" {
 		p.ID = uuid.New().String()
 	}

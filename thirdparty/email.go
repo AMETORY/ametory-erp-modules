@@ -42,6 +42,14 @@ func NewSMTPSender(smtpServer string, smtpPort int, smtpUsername, smtpPassword s
 }
 
 func (s *SMTPSender) SetTls(tls bool) {
+	fmt.Printf(`
+	init email With TLS
+	servername: %s
+	port: %d
+	tls: %t
+	username : %s
+	password: %s
+	`, s.smtpServer, s.smtpPort, tls, s.smtpUsername, s.smtpPassword)
 	s.Tls = tls
 }
 

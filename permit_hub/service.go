@@ -3,6 +3,7 @@ package permit_hub
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -54,6 +55,7 @@ func (s *PermitHubService) Migrate() error {
 		&models.City{},
 		&models.Province{},
 		&models.PermitTemplate{},
+		&models.SignaturePlaceholder{},
 	)
 }
 
@@ -187,7 +189,7 @@ func (s *PermitHubService) CreatePermitRequest(citizenID, subDistrictID, permitT
 
 		// Set the initial approval step and role for the permit request
 		req.CurrentStepRoles = firstStep.Roles
-		req.CurrentStep = 0
+		req.CurrentStep = 1
 		tx.Save(req)
 		return nil
 	})
@@ -209,12 +211,20 @@ func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy
 		return errors.New("permit request not found")
 	}
 
+	// utils.LogJson(request)
+
 	// 3. Get current approval step
 	var currentStep models.PermitApprovalFlow
 	if err := s.ctx.DB.Where("permit_type_id = ? AND step_order = ?", request.PermitTypeID, request.CurrentStep).Preload("Roles").First(&currentStep).Error; err != nil {
 		return errors.New("approval step not found")
 	}
+	var currentRoles []string
+	for _, v := range currentStep.Roles {
+		currentRoles = append(currentRoles, v.Name)
 
+	}
+
+	// utils.LogJson(approvedBy.Role)
 	// 4. Validate role
 	authorized := false
 	var approvedByRole *models.RoleModel
@@ -226,11 +236,16 @@ func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy
 		}
 	}
 	if !authorized {
-		return errors.New("unauthorized: user role not allowed for this step")
+		return fmt.Errorf("unauthorized: user role %s not authorized for step %d, need permission from %s", approvedBy.Role.Name, request.CurrentStep, strings.Join(currentRoles, ", "))
 	}
 
+	// 5. Check log approval
+	var log models.PermitApprovalLog
+	if err := s.ctx.DB.Where("permit_request_id = ? AND step_role_id = ? AND approved_by = ?", requestID, approvedByRole.ID, approvedBy.ID).First(&log).Error; err == nil {
+		return fmt.Errorf("you've already approved this request")
+	}
 	// 5. Log approval
-	log := models.PermitApprovalLog{
+	log = models.PermitApprovalLog{
 		PermitRequestID: requestID,
 		Step:            approvedByRole.Name,
 		StepRoleID:      &approvedByRole.ID,
@@ -240,6 +255,7 @@ func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy
 		ApprovedByUser:  approvedBy,
 		ApprovedAt:      time.Now(),
 		Note:            note,
+		StepOrder:       currentStep.StepOrder,
 	}
 	if approved {
 		log.Status = "APPROVED"
@@ -251,6 +267,9 @@ func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy
 	// 6. If rejected, mark request as rejected
 	if !approved {
 		request.Status = "REJECTED"
+		now := time.Now()
+		request.ApprovedAt = &now
+		s.ctx.DB.Model(&request).Association("CurrentStepRoles").Clear()
 		return s.ctx.DB.Save(&request).Error
 	}
 
@@ -293,8 +312,8 @@ func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy
 
 	// 7. Check for next step
 	var nextStep models.PermitApprovalFlow
-	err := s.ctx.DB.Where("permit_type_id = ? AND `order` > ?", request.PermitTypeID, currentStep.StepOrder).
-		Order("order ASC").First(&nextStep).Error
+	err := s.ctx.DB.Preload("Roles").Where(`permit_type_id = ? AND "step_order" > ?`, request.PermitTypeID, currentStep.StepOrder).
+		Order("step_order ASC").First(&nextStep).Error
 
 	if err == nil {
 		// Masih ada step berikutnya
@@ -304,9 +323,10 @@ func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy
 		request.Status = "PROCESSING"
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
 		// Tidak ada step lagi, final approval
-		now := time.Now()
 		request.Status = "APPROVED"
+		now := time.Now()
 		request.ApprovedAt = &now
+		s.ctx.DB.Model(&request).Association("CurrentStepRoles").Clear()
 	} else {
 		return err
 	}
@@ -360,7 +380,13 @@ func (s *PermitHubService) GetRequestByID(requestID string) (*models.PermitReque
 	var request models.PermitRequest
 	err := s.ctx.DB.
 		Preload("PermitType", func(db *gorm.DB) *gorm.DB {
-			return db.Preload("FieldDefinitions").Preload("PermitRequirements").Preload("ApprovalFlow.Roles").Preload("PermitTemplate").Preload("SubDistrict.District.City.Province")
+			return db.
+				Preload("FieldDefinitions").
+				Preload("PermitRequirements").
+				Preload("ApprovalFlow.Roles").
+				Preload("PermitTemplate").
+				Preload("SignaturePlaceholders").
+				Preload("SubDistrict.District.City.Province")
 		}).
 		Preload("Citizen").
 		Preload("CurrentStepRoles").
@@ -377,6 +403,17 @@ func (s *PermitHubService) GetRequestByID(requestID string) (*models.PermitReque
 	return &request, nil
 }
 
+func (s *PermitHubService) GetPermitRequestListByRefID(request *http.Request, refID string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.ctx.DB.Model(&models.PermitRequest{}).
+		Preload("PermitType").
+		Preload("Citizen").
+		Preload("CurrentStepRoles").
+		Where("ref_id = ?", refID)
+	page := pg.With(stmt).Request(request).Response(&[]models.PermitRequest{})
+	page.Page = page.Page + 1
+	return page, nil
+}
 func (s *PermitHubService) GetPermitRequestByCode(code string) (*models.PermitRequest, error) {
 	var request models.PermitRequest
 	err := s.ctx.DB.

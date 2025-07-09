@@ -119,12 +119,35 @@ func (s *MasterPermitHubService) CreatePermitType(pt *models.PermitType) error {
 	return s.ctx.DB.Create(pt).Error
 }
 
+func (s *MasterPermitHubService) GetPermitTypeBySlug(slug string) (*models.PermitType, error) {
+	var pt models.PermitType
+	if err := s.ctx.DB.
+		Preload("FieldDefinitions", func(db *gorm.DB) *gorm.DB { return db.Order(`"order" ASC`) }).
+		Preload("ApprovalFlow.Roles").
+		Preload("PermitRequirements").
+		Preload("PermitTemplate").
+		Where("slug = ?", slug).First(&pt).Error; err != nil {
+		return nil, err
+	}
+
+	for i, v := range pt.PermitRequirements {
+		typeReq := models.PermitTypeRequirement{}
+		if err := s.ctx.DB.Where("permit_type_id = ? AND permit_requirement_id = ?", pt.ID, v.ID).First(&typeReq).Error; err != nil {
+			return nil, err
+		}
+		v.IsMandatory = typeReq.IsMandatory
+		pt.PermitRequirements[i] = v
+	}
+	return &pt, nil
+}
+
 func (s *MasterPermitHubService) GetPermitTypeByID(id string) (*models.PermitType, error) {
 	var pt models.PermitType
 	if err := s.ctx.DB.
 		Preload("FieldDefinitions", func(db *gorm.DB) *gorm.DB { return db.Order(`"order" ASC`) }).
 		Preload("ApprovalFlow.Roles").
 		Preload("PermitRequirements").
+		Preload("SignaturePlaceholders", func(db *gorm.DB) *gorm.DB { return db.Order(`"step_order" ASC`) }).
 		Preload("PermitTemplate").
 		Where("id = ?", id).First(&pt).Error; err != nil {
 		return nil, err
@@ -144,7 +167,6 @@ func (s *MasterPermitHubService) GetPermitTypeByID(id string) (*models.PermitTyp
 func (s *MasterPermitHubService) GetPermitTypes(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.ctx.DB.Model(&models.PermitType{}).
-		Preload("FieldDefinitions").
 		Preload("ApprovalFlow").
 		Preload("PermitRequirements")
 	if request.URL.Query().Get("order") != "" {

@@ -50,6 +50,7 @@ type PermitApprovalLog struct {
 	ApprovedByUser  *UserModel    `gorm:"foreignKey:ApprovedBy" json:"approved_by_user,omitempty"`
 	ApprovedAt      time.Time     `json:"approved_at,omitempty"`
 	Note            string        `json:"note,omitempty"`
+	StepOrder       int           `json:"step_order,omitempty"`
 }
 
 func (p *PermitApprovalLog) BeforeCreate(tx *gorm.DB) (err error) {
@@ -102,6 +103,25 @@ type PermitDynamicRequestData struct {
 }
 
 func (p *PermitDynamicRequestData) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID == "" {
+		p.ID = uuid.New().String()
+	}
+	return
+}
+
+type PermitApprovalDecision struct {
+	shared.BaseModel
+	PermitRequestID string        `gorm:"index" json:"permit_request_id,omitempty"`
+	PermitRequest   PermitRequest `gorm:"foreignKey:PermitRequestID" json:"permit_request,omitempty"`
+	StepOrder       int           `json:"step_order,omitempty"`
+	ApprovedBy      *string       `json:"approved_by,omitempty"`
+	ApprovedByUser  *UserModel    `gorm:"foreignKey:ApprovedBy;constraint:OnDelete:CASCADE;" json:"approved_by_user,omitempty"`
+	ApprovedAt      time.Time     `json:"approved_at,omitempty"`
+	Note            string        `json:"note,omitempty"`
+	Decision        string        `gorm:"type:varchar(20);default:APPROVED" json:"decision,omitempty"` // APPROVED, REJECTED
+}
+
+func (p *PermitApprovalDecision) BeforeCreate(tx *gorm.DB) (err error) {
 	if p.ID == "" {
 		p.ID = uuid.New().String()
 	}
