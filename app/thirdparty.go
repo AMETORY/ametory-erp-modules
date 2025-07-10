@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/mail"
 
+	"github.com/AMETORY/ametory-erp-modules/app/flow_engine"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
@@ -129,5 +130,12 @@ func WithGeminiService(apiKey string) AppContainerOption {
 		}
 		c.GeminiService = google.NewGeminiService(c.erpContext, apiKey)
 		log.Println("GeminiService initialized")
+	}
+}
+func WithFlowEngine() AppContainerOption {
+	return func(c *AppContainer) {
+
+		c.FlowEngine = flow_engine.NewFlowEngine()
+		log.Println("FlowEngine initialized")
 	}
 }

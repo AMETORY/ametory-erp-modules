@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/app/flow_engine"
 	"github.com/AMETORY/ametory-erp-modules/auth"
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/contact"
@@ -87,6 +88,8 @@ type AppContainer struct {
 	AppService       any    // This can be a specific service or a generic interface
 	baseURL          string // Base URL for the application
 
+	// FLOW ENGINE
+	FlowEngine *flow_engine.FlowEngine
 }
 
 type AppContainerOption func(*AppContainer)

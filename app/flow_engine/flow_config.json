@@ -1,0 +1,205 @@
+[
+  {
+    "name": "initialize_session",
+    "description": "Initialize API session",
+    "type": "api_call",
+    "params": {
+      "url": "https://api.example.com/sessions",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer ${api_key}"
+      },
+      "body": {
+        "user_id": "${user_id}",
+        "device_info": "mobile"
+      },
+      "_store_result": "session_data"
+    },
+    "next_on_error": "handle_api_error"
+  },
+  {
+    "name": "validate_input",
+    "description": "Validate user input data",
+    "type": "function",
+    "function": "validate_input",
+    "params": {
+      "arg0": "${user_data}",
+      "arg1": {
+        "required_fields": [
+          "name",
+          "nik",
+          "address"
+        ],
+        "min_name_length": 3
+      }
+    },
+    "next_on_error": "handle_validation_error"
+  },
+  {
+    "name": "check_approval_status",
+    "description": "Check if document needs approval",
+    "type": "conditional",
+    "params": {
+      "condition": "${document_type} == 'legal' && ${user_age} < 18",
+      "true_step": "request_guardian_approval",
+      "false_step": "generate_document"
+    }
+  },
+  {
+    "name": "request_guardian_approval",
+    "description": "Send approval request to guardian",
+    "type": "api_call",
+    "params": {
+      "url": "https://api.example.com/approvals",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Session-ID": "${session_data.session_id}"
+      },
+      "body": {
+        "document_type": "${document_type}",
+        "user_id": "${user_id}",
+        "guardian_email": "${guardian_email}"
+      },
+      "_store_result": "approval_request"
+    },
+    "next_on_success": "wait_for_approval"
+  },
+  {
+    "name": "generate_document",
+    "description": "Generate the requested document",
+    "type": "api_call",
+    "params": {
+      "url": "https://api.example.com/documents",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Session-ID": "${session_data.session_id}"
+      },
+      "body": {
+        "template_id": "sktm_template_01",
+        "data": {
+          "user": "${user_data}",
+          "timestamp": "${current_timestamp}"
+        }
+      },
+      "_store_result": "generated_document"
+    }
+  },
+  {
+    "name": "wait_for_approval",
+    "description": "Poll for approval status",
+    "type": "conditional",
+    "params": {
+      "condition": "${approval_request.status} == 'pending' && ${approval_attempts} < 5",
+      "true_step": "check_approval_status",
+      "false_step": "process_after_approval"
+    }
+  },
+  {
+    "name": "process_after_approval",
+    "description": "Continue after approval is received",
+    "type": "conditional",
+    "params": {
+      "condition": "${approval_request.status} == 'approved'",
+      "true_step": "generate_document",
+      "false_step": "handle_approval_rejection"
+    }
+  },
+  {
+    "name": "send_notification",
+    "description": "Send notification to user",
+    "type": "api_call",
+    "params": {
+      "url": "https://api.example.com/notifications",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "recipient": "${user_email}",
+        "message": "Your document is ready",
+        "document_url": "${generated_document.download_url}"
+      }
+    }
+  },
+  {
+    "name": "handle_api_error",
+    "description": "Handle API call errors",
+    "type": "function",
+    "function": "log_error",
+    "params": {
+      "arg0": "API Error",
+      "arg1": "${error_message}",
+      "arg2": "${last_api_response}"
+    }
+  },
+  {
+    "name": "handle_validation_error",
+    "description": "Handle validation errors",
+    "type": "function",
+    "function": "log_error",
+    "params": {
+      "arg0": "Validation Error",
+      "arg1": "${validation_errors}"
+    }
+  },
+  {
+    "name": "handle_approval_rejection",
+    "description": "Handle approval rejection",
+    "type": "function",
+    "function": "notify_rejection",
+    "params": {
+      "arg0": "${user_id}",
+      "arg1": "${approval_request.rejection_reason}"
+    }
+  },
+  {
+    "name": "initialize_session",
+    "description": "Initialize API session",
+    "type": "api_call",
+    "params": {
+      "url": "https://api.example.com/sessions",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer ${api_key}"
+      },
+      "body": {
+        "user_id": "${user_id}",
+        "device_info": "mobile"
+      },
+      "_store_result": "session_data"
+    },
+    "next_on_error": "handle_api_error"
+  },
+  {
+    "name": "check_approval_status",
+    "description": "Check if document needs approval",
+    "type": "conditional",
+    "params": {
+      "condition": "${document_type} == 'legal' && ${user_age} < 18",
+      "true_step": "request_guardian_approval",
+      "false_step": "generate_document"
+    }
+  },
+  {
+    "name": "wait_before_retry",
+    "type": "delay",
+    "params": {
+      "duration": "5s"
+    }
+  },
+  {
+    "name": "parallel_checks",
+    "type": "parallel",
+    "params": {
+      "steps": [
+        "check_user_profile",
+        "validate_identity",
+        "check_credit_score"
+      ]
+    }
+  }
+]
