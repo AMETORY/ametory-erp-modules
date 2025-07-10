@@ -140,23 +140,33 @@ func (service *GeminiService) SetUpSystemInstruction(systemInstruction string) {
 	service.systemInstruction = systemInstruction
 }
 
+func (s *GeminiService) UploadToGemini(path, mimeType string) (string, error) {
+	response := uploadToGemini(*s.ctx.Ctx, s.client, path, mimeType)
+	if response == "" {
+		return "", fmt.Errorf("Error uploading file")
+	}
+	return response, nil
+}
 func uploadToGemini(ctx context.Context, client *genai.Client, path, mimeType string) string {
 	if strings.HasPrefix(path, "http") {
 		resp, err := http.Get(path)
 		if err != nil {
 			log.Fatalf("Error downloading file: %v", err)
+			return ""
 		}
 		defer resp.Body.Close()
 
 		file, err := os.CreateTemp("tmp", "gemini-")
 		if err != nil {
 			log.Fatalf("Error creating temporary file: %v", err)
+			return ""
 		}
 		defer os.Remove(file.Name())
 
 		_, err = io.Copy(file, resp.Body)
 		if err != nil {
 			log.Fatalf("Error copying file: %v", err)
+			return ""
 		}
 
 		path = file.Name()
@@ -164,6 +174,7 @@ func uploadToGemini(ctx context.Context, client *genai.Client, path, mimeType st
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatalf("Error opening file: %v", err)
+		return ""
 	}
 	defer file.Close()
 
@@ -174,6 +185,7 @@ func uploadToGemini(ctx context.Context, client *genai.Client, path, mimeType st
 	fileData, err := client.UploadFile(ctx, "", file, &options)
 	if err != nil {
 		log.Fatalf("Error uploading file: %v", err)
+		return ""
 	}
 
 	log.Printf("Uploaded file %s as: %s", fileData.DisplayName, fileData.URI)
@@ -206,7 +218,7 @@ func (service *GeminiService) SetupModel(
 	service.model = model
 
 }
-func (service *GeminiService) GenerateContent(ctx context.Context, input string, userHistories []map[string]interface{}, fileURL, mimeType string) (string, error) {
+func (service *GeminiService) GenerateContent(ctx context.Context, input string, userHistories []map[string]any, fileURL, mimeType string) (string, error) {
 	if service.client == nil {
 		return "", fmt.Errorf("client is not initialized")
 	}
@@ -223,6 +235,15 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 	session := model.StartChat()
 
 	histories := service.histories
+	if fileURL != "" {
+		upload := uploadToGemini(ctx, service.client, fileURL, mimeType)
+		histories = append(histories, &genai.Content{
+			Role: "model",
+			Parts: []genai.Part{
+				genai.FileData{URI: upload, MIMEType: mimeType},
+			},
+		})
+	}
 	for _, v := range userHistories {
 		role, ok := v["role"].(string)
 		if !ok {
@@ -232,22 +253,25 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 		if !ok {
 			continue
 		}
-		if fileURL != "" {
-			upload := uploadToGemini(ctx, service.client, fileURL, mimeType)
+
+		fileURL, ok := v["file_url"].(string)
+		if ok {
+			mType, _ := v["mime_type"].(string)
+			upload := uploadToGemini(ctx, service.client, fileURL, mType)
 			histories = append(histories, &genai.Content{
 				Role: role,
 				Parts: []genai.Part{
-					genai.FileData{URI: upload, MIMEType: mimeType},
-				},
-			})
-		} else {
-			histories = append(histories, &genai.Content{
-				Role: role,
-				Parts: []genai.Part{
-					genai.Text(content + "\n"),
+					genai.FileData{URI: upload, MIMEType: mType},
 				},
 			})
 		}
+
+		histories = append(histories, &genai.Content{
+			Role: role,
+			Parts: []genai.Part{
+				genai.Text(content + "\n"),
+			},
+		})
 
 	}
 	if service.systemInstruction != "" {
