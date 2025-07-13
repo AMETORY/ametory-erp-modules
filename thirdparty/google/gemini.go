@@ -354,7 +354,9 @@ func (s *GeminiService) UpdateHistory(id string, history models.GeminiHistoryMod
 }
 
 func (s *GeminiService) AddHistory(history models.GeminiHistoryModel) error {
-
+	if s.sessionCode != nil {
+		history.SessionCode = s.sessionCode
+	}
 	if err := s.ctx.DB.Create(&history).Error; err != nil {
 		return fmt.Errorf("error creating history: %v", err)
 	}

@@ -38,6 +38,44 @@ func (s *WhatsmeowService) SendChatMessage() (any, error) {
 	}
 	return s.SendMessage(*s.chatData)
 }
+
+func (s *WhatsmeowService) SendTyping(msg WaMessage) (any, error) {
+	if s.IsMock && s.MockNumber != "" {
+		msg.To = s.MockNumber
+		msg.IsGroup = false
+	}
+	jsonBytes, err := json.Marshal(msg)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", s.BaseURL+"/v1/send-typing", bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
+
+	var response map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return response, nil
+}
 func (s *WhatsmeowService) SendMessage(msg WaMessage) (any, error) {
 	if s.IsMock && s.MockNumber != "" {
 		msg.To = s.MockNumber
