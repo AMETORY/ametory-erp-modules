@@ -243,6 +243,12 @@ func (e *FlowEngine) ExecuteSingleStep(step FlowStep) error {
 	e.State["last_executed_step"] = step.Name
 	e.State["last_execution_time"] = time.Now().Format(time.RFC3339)
 
+	if step.NextOnSuccess != "" {
+		if nextStep := e.FindStepByName(step.NextOnSuccess); nextStep != nil {
+			return e.ExecuteSingleStep(*nextStep)
+		}
+	}
+
 	return nil
 }
 
