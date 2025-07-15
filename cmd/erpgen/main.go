@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.43"
+var version = "1.0.44"
 
 var logo = `
 MMMMMMMMMMMMMMMMWXOxoc;,............';coxOXWMMMMMMMMMMMMMMMM
