@@ -29,6 +29,14 @@ type FinanceReportService struct {
 	contactService     *contact.ContactService
 }
 
+// NewFinanceReportService returns a new instance of FinanceReportService.
+//
+// The service is created by providing a GORM database instance, an ERP context,
+// an AccountService, and a TransactionService.
+//
+// The ERP context is used for authentication and authorization purposes, while the
+// database instance is used for CRUD (Create, Read, Update, Delete) operations.
+// The AccountService and TransactionService are used to fetch related data.
 func NewFinanceReportService(db *gorm.DB, ctx *context.ERPContext, accountService *account.AccountService, transactionService *transaction.TransactionService) *FinanceReportService {
 	return &FinanceReportService{
 		db:                 db,
@@ -38,17 +46,58 @@ func NewFinanceReportService(db *gorm.DB, ctx *context.ERPContext, accountServic
 	}
 }
 
+// Migrate runs the database migration for the models in the finance/report package.
+//
+// The migration is done by using the AutoMigrate method of the GORM database
+// instance. This method automatically creates the necessary tables in the
+// database if they do not exist, and migrates the existing tables to the latest
+// version.
+//
+// The function returns an error if the migration fails.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.ClosingBook{})
 }
 
+// SetContactService sets the contact service for the FinanceReportService.
+//
+// This method assigns a given ContactService instance to the FinanceReportService.
+// The ContactService is used to fetch and manage contact-related data within
+// finance reports. It is essential to set this service before attempting to
+// generate reports that require contact information.
+
 func (s *FinanceReportService) SetContactService(contactService *contact.ContactService) {
 	s.contactService = contactService
 }
+
+// GenerateProfitLoss generates a profit loss report for a given period.
+//
+// The function takes a `models.ProfitLoss` struct as an argument, which contains
+// the start and end date of the period for which the report should be generated.
+//
+// The function returns an error if the report cannot be generated.
 func (s *FinanceReportService) GenerateProfitLoss(report *models.ProfitLoss) error {
 
 	return nil
 }
+
+// GenerateAccountReport generates an account report for a specified account and period.
+//
+// The function retrieves account details based on the provided accountID and
+// generates a report for the transactions within the specified date range.
+// It validates the presence of start and end dates in the request query parameters.
+// The report includes the balance before the period, the balance within the period,
+// and the balance after the period, taking into account the account type for
+// balance calculations. The function returns a populated AccountReport and an error
+// if the operation fails.
+//
+// Parameters:
+//   - accountID: the ID of the account for which the report is generated.
+//   - companyID: a pointer to the company ID associated with the account.
+//   - request: an HTTP request containing the query parameters for the report.
+//
+// Returns:
+//   - A pointer to AccountReport containing the report details.
+//   - An error if the report generation fails or required parameters are missing.
 
 func (s *FinanceReportService) GenerateAccountReport(accountID string, companyID *string, request http.Request) (*models.AccountReport, error) {
 	account, err := s.accountService.GetAccountByID(accountID)
@@ -123,6 +172,10 @@ func (s *FinanceReportService) GenerateAccountReport(accountID string, companyID
 		Transactions:   pageCurrent,
 	}, nil
 }
+
+// getBalance takes a page of transactions and the current balance of an account,
+// and returns the new balance, total credit and total debit after applying the
+// transactions to the account.
 func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, currentBalance *float64, companyID *string) (float64, float64, float64) {
 
 	newItems := make([]models.TransactionModel, 0)
@@ -195,6 +248,12 @@ func (s *FinanceReportService) getBalance(page *[]models.TransactionModel, curre
 	return balance, credit, debit
 }
 
+// GetAccountBalance retrieves the total debit and credit amounts for a given account,
+// for a given period of time. The period of time is specified by the start and end
+// date parameters. If the start date is not provided, it will default to the beginning
+// of time. If the end date is not provided, it will default to the present time.
+// The company ID is also an optional parameter, and if it is not provided, the
+// function will return the total debit and credit amounts for all companies.
 func (s *FinanceReportService) GetAccountBalance(accountID string, companyID *string, startDate *time.Time, endDate *time.Time) (float64, float64, error) {
 	amount := struct {
 		Credit float64 `sql:"credit"`
@@ -218,6 +277,17 @@ func (s *FinanceReportService) GetAccountBalance(accountID string, companyID *st
 	return amount.Debit, amount.Credit, nil
 }
 
+// GetAccountTransactions retrieves a list of transactions for a given account,
+// for a given period of time. The period of time is specified by the start and
+// end date parameters. If the start date is not provided, it will default to the
+// beginning of time. If the end date is not provided, it will default to the
+// present time.
+//
+// The company ID is also an optional parameter, and if it is not provided, the
+// function will return the total debit and credit amounts for all companies.
+//
+// The function returns a list of TransactionModel and an error if the
+// operation fails. Otherwise, the error is nil.
 func (s *FinanceReportService) GetAccountTransactions(accountID string, companyID *string, startDate *time.Time, endDate *time.Time) ([]models.TransactionModel, error) {
 	var transactions []models.TransactionModel
 	db := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id")
@@ -242,6 +312,14 @@ func (s *FinanceReportService) GetAccountTransactions(accountID string, companyI
 
 }
 
+// getBalanceAmount calculates the balance amount for a given transaction
+// based on the account type. For EXPENSE, COST, CONTRA_LIABILITY,
+// CONTRA_EQUITY, CONTRA_REVENUE, and RECEIVABLE types, it returns the
+// difference between Debit and Credit. For LIABILITY, EQUITY, REVENUE,
+// INCOME, CONTRA_ASSET, and CONTRA_EXPENSE types, it returns the difference
+// between Credit and Debit. For ASSET types, it returns the difference
+// between Debit and Credit. Returns 0 if the account type is unrecognized.
+
 func (s *FinanceReportService) getBalanceAmount(transaction models.TransactionModel) float64 {
 	switch transaction.Account.Type {
 	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
@@ -254,6 +332,22 @@ func (s *FinanceReportService) getBalanceAmount(transaction models.TransactionMo
 	return 0
 }
 
+// GenerateCogsReport generates a Cost of Goods Sold (COGS) report for the given company and date range.
+//
+// The report includes the following data:
+// - Beginning Inventory: the opening balance of the inventory account
+// - Purchases: the total of all purchase transactions
+// - Freight In and Other Cost: the total of all freight-in and other costs
+// - Total Purchases: the total of purchases and freight-in and other costs
+// - Purchase Returns: the total of all purchase return transactions
+// - Purchase Discounts: the total of all purchase discount transactions
+// - Total Purchase Discounts: the total of purchase returns and purchase discounts
+// - Net Purchases: the total purchases minus total purchase discounts
+// - Goods Available: the beginning inventory plus net purchases
+// - Ending Inventory: the closing balance of the inventory account
+// - COGS: the Cost of Goods Sold, which is the goods available minus ending inventory
+// - Inventory Account: the inventory account used in the report
+// - Stock Opname: the difference between the beginning inventory and ending inventory, which is the stock opname amount
 func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (*models.COGSReport, error) {
 	var inventoryAccount models.AccountModel
 	err := s.db.Where("is_inventory_account = ? and company_id = ?", true, report.CompanyID).First(&inventoryAccount).Error
@@ -390,9 +484,20 @@ func (s *FinanceReportService) GenerateCogsReport(report models.GeneralReport) (
 	return &cogsData, nil
 }
 
+// CreateClosingBook creates a new closing book record in the database.
+//
+// The function takes a pointer to a models.ClosingBook struct as an argument.
+// The function returns an error if the record cannot be created.
 func (s *FinanceReportService) CreateClosingBook(closingBook *models.ClosingBook) error {
 	return s.db.Create(closingBook).Error
 }
+
+// GetClosingBookByID retrieves a closing book by its ID.
+//
+// It takes a string closingBookID as a parameter and returns a pointer to a ClosingBook
+// and an error. The function uses GORM to query the database for the closing book
+// with the specified ID. If the closing book is found, it is returned with a nil error.
+// If the operation fails, an error is returned.
 
 func (s *FinanceReportService) GetClosingBookByID(closingBookID string) (*models.ClosingBook, error) {
 	var closingBook models.ClosingBook
@@ -403,6 +508,16 @@ func (s *FinanceReportService) GetClosingBookByID(closingBookID string) (*models
 	return &closingBook, nil
 }
 
+// GetClosingBook retrieves a paginated list of closing books from the database.
+//
+// It takes an HTTP request and a search query string as input. The search query
+// is applied to the closing book notes field. If a company ID is present in the
+// request header, the result is filtered by the company ID. The function utilizes
+// pagination to manage the result set and applies any necessary request modifications
+// using the utils.FixRequest utility.
+//
+// The function returns a paginated page of ClosingBook and an error if the
+// operation fails.
 func (s *FinanceReportService) GetClosingBook(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -426,6 +541,11 @@ func (s *FinanceReportService) GetClosingBook(request http.Request, search strin
 	return page, nil
 }
 
+// DeleteClosingBook deletes a closing book record from the database and its associated transactions.
+//
+// The function takes the ID of the closing book as an argument and returns an error if the deletion operation fails.
+// The function first deletes all associated transactions by setting the deleted_at field on the transactions to the current time.
+// Then, it deletes the closing book record from the database.
 func (s *FinanceReportService) DeleteClosingBook(closingBookID string) error {
 	err := s.db.Where("transaction_secondary_ref_id = ?", closingBookID).Unscoped().Delete(&models.TransactionModel{}).Error
 	if err != nil {
@@ -438,6 +558,20 @@ func (s *FinanceReportService) DeleteClosingBook(closingBookID string) error {
 	return nil
 }
 
+// GenerateClosingBook generates a closing book report.
+//
+// The function takes a closing book record and its associated settings as arguments.
+// It generates a closing book report based on the settings.
+// The report is stored in the closing book record.
+//
+// The function creates transactions to close the profit and loss account.
+// It creates transactions to close the retained earnings account.
+// It generates a cash flow report and stores it in the closing book record.
+// It generates a balance sheet report and stores it in the closing book record.
+// It generates a trial balance report and stores it in the closing book record.
+// It generates a capital change report and stores it in the closing book record.
+//
+// The function returns an error if the operation fails.
 func (s *FinanceReportService) GenerateClosingBook(
 	closingBook *models.ClosingBook,
 	cashflowGroupSetting *models.CashflowGroupSetting,
@@ -943,6 +1077,11 @@ func (s *FinanceReportService) GenerateClosingBook(
 
 	return nil
 }
+
+// TrialBalanceReport generates a trial balance report for a given company within a specified date range.
+// It calculates the trial balance, adjustments, and balance sheet for various account types,
+// including ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE, COST, RECEIVABLE, and CONTRA_REVENUE.
+// The function returns a populated TrialBalanceReport and any error encountered during the process.
 func (s *FinanceReportService) TrialBalanceReport(report models.GeneralReport) (*models.TrialBalanceReport, error) {
 	var trialBalanceReport models.TrialBalanceReport = models.TrialBalanceReport{
 		CompanyID: &report.CompanyID,
@@ -1018,6 +1157,11 @@ func (s *FinanceReportService) TrialBalanceReport(report models.GeneralReport) (
 	}
 	return &trialBalanceReport, nil
 }
+
+// GenerateProfitLossReport generates a profit and loss report for a given company
+// within a specified date range. It calculates the revenue, cost of goods sold (COGS),
+// gross profit, expenses, and net profit. The function returns a populated ProfitLossReport
+// and any error encountered during the process.
 func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralReport) (*models.ProfitLossReport, error) {
 	profitLoss := models.ProfitLossReport{}
 	cogsReport, err := s.GenerateCogsReport(report)
@@ -1132,6 +1276,13 @@ func (s *FinanceReportService) GenerateProfitLossReport(report models.GeneralRep
 	return &profitLoss, nil
 }
 
+// GenerateBalanceSheet creates a balance sheet report for a specified company
+// within a given date range. It calculates and summarizes the company's assets,
+// liabilities, and equity, including fixed assets, current assets, liabilities,
+// and equity accounts. The function also incorporates inventory data and profit
+// and loss information to provide a comprehensive view of the financial position.
+// It returns a populated BalanceSheet struct and any error encountered during the
+// process.
 func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport) (*models.BalanceSheet, error) {
 	balanceSheet := models.BalanceSheet{}
 	balanceSheet.StartDate = report.StartDate
@@ -1335,6 +1486,16 @@ func (s *FinanceReportService) GenerateBalanceSheet(report models.GeneralReport)
 	return &balanceSheet, nil
 }
 
+// GenerateCapitalChangeReport generates a capital change report, which is a financial statement that shows the changes in a company's capital accounts over a particular period of time.
+//
+// The report includes the following components:
+// - Opening Balance: the capital account balance as of the beginning of the period.
+// - Profit/Loss: the net profit or loss of the company during the period.
+// - Prived Balance: the changes in capital accounts that are not related to profit/loss, such as capital injections or withdrawals.
+// - Capital Change Balance: the total changes in capital accounts during the period.
+// - Ending Balance: the capital account balance as of the end of the period.
+//
+// The report is generated by querying the database for transactions that affect the capital accounts and summarizing the results.
 func (s *FinanceReportService) GenerateCapitalChangeReport(report models.GeneralReport) (*models.CapitalChangeReport, error) {
 	capitalChange := models.CapitalChangeReport{}
 	equityAccounts := []models.AccountModel{}
@@ -1430,6 +1591,9 @@ func (s *FinanceReportService) GenerateCapitalChangeReport(report models.General
 	return &capitalChange, nil
 }
 
+// GenerateCashFlowReport generates a cash flow report based on the given company ID and date range.
+// It will calculate the total of each cash flow category and return the result as a models.CashFlowReport.
+// The result will contain the total of each category and the total of all categories.
 func (s *FinanceReportService) GenerateCashFlowReport(cashFlow models.CashFlowReport) (*models.CashFlowReport, error) {
 
 	// utils.LogJson(cashFlow)
@@ -1457,6 +1621,13 @@ func (s *FinanceReportService) GenerateCashFlowReport(cashFlow models.CashFlowRe
 
 	return &cashFlow, nil
 }
+
+// getCashFlowAmount calculates the total cash flow amount for each cash flow subgroup
+// in the given list, and returns the updated list along with the total amount.
+// It retrieves distinct transactions from the database, joining with accounts
+// and transaction references to filter by cash flow subgroup and company ID.
+// Each transaction's amount is calculated as the difference between debit and credit,
+// and the total for each subgroup is accumulated and assigned to the subgroup.
 
 func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGroup, companyID *string) ([]models.CashflowSubGroup, float64) {
 
@@ -1486,6 +1657,11 @@ func (s *FinanceReportService) getCashFlowAmount(groups []models.CashflowSubGrou
 	return groups, total
 }
 
+// getTransBalance calculates the balance of a transaction for a given account
+// based on its type. It considers the debit and credit values to compute the
+// balance, which varies depending on whether the account type is an asset,
+// liability, equity, expense, revenue, or other classification.
+
 func (s *FinanceReportService) getTransBalance(account *models.AccountModel, debit, credit float64) float64 {
 	switch account.Type {
 	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
@@ -1498,6 +1674,13 @@ func (s *FinanceReportService) getTransBalance(account *models.AccountModel, deb
 	return 0
 }
 
+// GetMonthlySalesReport retrieves a list of monthly sales reports from the database,
+// filtered by the given year and company ID.
+//
+// Each report contains the total sales amount for the given month, with the month
+// name represented as a string.
+//
+// The method returns a slice of MonthlySalesReport and an error, if any.
 func (s *FinanceReportService) GetMonthlySalesReport(companyID string, year int) ([]models.MonthlySalesReport, error) {
 	var reports []models.MonthlySalesReport
 	for month := 1; month <= 12; month++ {
@@ -1528,6 +1711,13 @@ func (s *FinanceReportService) GetMonthlySalesReport(companyID string, year int)
 	}
 	return reports, nil
 }
+
+// GetWeeklySalesReport retrieves a list of weekly sales reports for a specified company,
+// year, and month. Each report contains the total sales amount for each week within
+// the given month, identified by week number. The function queries the sales
+// records from the database, filtering by document type 'INVOICE', the specified
+// year, month, and company ID. It returns a slice of MonthlySalesReport with the
+// total sales and week name for each week, or an error if the operation fails.
 func (s *FinanceReportService) GetWeeklySalesReport(companyID string, year, month int) ([]models.MonthlySalesReport, error) {
 	var reports []models.MonthlySalesReport
 	firstDay := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
@@ -1566,6 +1756,12 @@ func (s *FinanceReportService) GetWeeklySalesReport(companyID string, year, mont
 	return reports, nil
 }
 
+// GetWeeklyPurchaseReport retrieves a list of weekly purchase reports for a specified company,
+// year, and month. Each report contains the total purchase amount for each week within
+// the given month, identified by week number. The function queries the purchase orders
+// records from the database, filtering by document type 'BILL', the specified year,
+// month, and company ID. It returns a slice of MonthlySalesReport with the total purchase
+// and week name for each week, or an error if the operation fails.
 func (s *FinanceReportService) GetWeeklyPurchaseReport(companyID string, year, month int) ([]models.MonthlySalesReport, error) {
 	var reports []models.MonthlySalesReport
 	firstDay := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
@@ -1603,6 +1799,14 @@ func (s *FinanceReportService) GetWeeklyPurchaseReport(companyID string, year, m
 
 	return reports, nil
 }
+
+// GetMonthlyPurchaseReport retrieves a list of monthly purchase reports from the database,
+// filtered by the given year and company ID.
+//
+// Each report contains the total purchase amount for the given month, with the month
+// name represented as a string.
+//
+// The method returns a slice of MonthlySalesReport and an error, if any.
 func (s *FinanceReportService) GetMonthlyPurchaseReport(companyID string, year int) ([]models.MonthlySalesReport, error) {
 	var reports []models.MonthlySalesReport
 	for month := 1; month <= 12; month++ {
@@ -1634,6 +1838,19 @@ func (s *FinanceReportService) GetMonthlyPurchaseReport(companyID string, year i
 	return reports, nil
 }
 
+// CalculateSalesByTimeRange calculates the total sales for the given company ID and
+// document type (e.g. INVOICE, SALES_ORDER, etc.) within the given time range.
+//
+// The time range can be one of the following:
+//   - Q1: first quarter of the current year
+//   - Q2: second quarter of the current year
+//   - Q3: third quarter of the current year
+//   - Q4: fourth quarter of the current year
+//   - THIS_MONTH: the current month
+//   - THIS_WEEK: the current week
+//   - THIS_YEAR: the current year
+//
+// The method returns the total sales amount as a float64 and an error, if any.
 func (s *FinanceReportService) CalculateSalesByTimeRange(
 	companyID string,
 	documentType string,
@@ -1740,6 +1957,11 @@ func (s *FinanceReportService) CalculateSalesByTimeRange(
 	return total, nil
 }
 
+// CalculatePurchaseByTimeRange calculates the total purchase by time range.
+//
+// The time range can be Q1, Q2, Q3, Q4, THIS_MONTH, THIS_WEEK, THIS_YEAR.
+//
+// The document type can be BILL, PURCHASE_ORDER, PROCUREMENT.
 func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 	companyID string,
 	documentType string,
@@ -1846,6 +2068,13 @@ func (s *FinanceReportService) CalculatePurchaseByTimeRange(
 	return total, nil
 }
 
+// GetSumCashBank calculates the net sum of cash and bank transactions for a given company.
+//
+// It takes the company ID as input and returns the total sum of debits minus credits
+// for accounts of type ASSET and with a cashflow sub-group of CASH_BANK. The function
+// queries the database for all transactions associated with these accounts that have
+// not been deleted. If successful, it returns the computed total; otherwise, it returns
+// an error.
 func (s *FinanceReportService) GetSumCashBank(companyID string) (float64, error) {
 	var total float64
 	err := s.db.Raw(`
@@ -1865,6 +2094,13 @@ func (s *FinanceReportService) GetSumCashBank(companyID string) (float64, error)
 	return total, nil
 }
 
+// GetAlmostDueSales retrieves a list of sales that are almost due for a given company and time interval.
+//
+// It takes the company ID and time interval as input and returns a list of SalesList. The list includes
+// the sales ID, sales number, contact name, total, balance, and due date. The function queries the database
+// for sales with a due date that is within the given time interval or has not been set. It also filters out
+// sales that have been fully paid and sales that have been deleted. The result is sorted by due date in ascending
+// order. If the operation fails, the function returns an error.
 func (s *FinanceReportService) GetAlmostDueSales(companyID string, interval int) ([]models.SalesList, error) {
 	reports := []models.SalesList{}
 	err := s.db.Raw(fmt.Sprintf(`
@@ -1892,6 +2128,14 @@ func (s *FinanceReportService) GetAlmostDueSales(companyID string, interval int)
 	}
 	return reports, nil
 }
+
+// GetAlmostDuePurchase retrieves a list of purchase orders that are almost due for a given company and time interval.
+//
+// It takes the company ID and time interval as input and returns a list of SalesList containing details of purchase orders.
+// The list includes purchase order ID, purchase number, contact name, total amount, balance, and due date.
+// The function queries the database for purchase orders with a due date that is within the given time interval or has not been set.
+// It also filters out purchase orders that have been fully paid and those that have been deleted.
+// The results are sorted by due date in ascending order. If the operation fails, the function returns an error.
 func (s *FinanceReportService) GetAlmostDuePurchase(companyID string, interval int) ([]models.SalesList, error) {
 	reports := []models.SalesList{}
 	err := s.db.Raw(fmt.Sprintf(`
@@ -1920,6 +2164,14 @@ func (s *FinanceReportService) GetAlmostDuePurchase(companyID string, interval i
 	return reports, nil
 }
 
+// GetProductSalesCustomers retrieves a list of sales grouped by product and customer.
+//
+// It takes the company ID, start date, end date, product IDs, and customer IDs as input and returns a list of ProductSalesCustomer.
+// The list includes product ID, product code, contact ID, contact code, product name, contact name, quantity, unit name, unit code,
+// total quantity, and total price. The function queries the database for sales with the given company ID, document type, and dates.
+// It also filters out sales that have been deleted, and those that have not been posted or finished. The results are grouped by product
+// and customer, and sorted by product name and ID in ascending order, and by contact name and ID in ascending order. If the operation
+// fails, the function returns an error.
 func (s *FinanceReportService) GetProductSalesCustomers(companyID string, startDate, endDate time.Time, productIDs []string, customerIDs []string) ([]models.ProductSalesCustomer, error) {
 	reports := []models.ProductSalesCustomer{}
 	conditions := []string{
@@ -1992,6 +2244,13 @@ func (s *FinanceReportService) GetProductSalesCustomers(companyID string, startD
 	return reports, nil
 }
 
+// GetAccountReceivableLedger retrieves the account receivable ledger report for a given company and contact.
+//
+// It takes the company ID, contact ID, start date, and end date as input and returns a detailed account receivable ledger report.
+// The report includes ledger entries with distinct transaction details, debit and credit amounts, reference numbers, and types.
+// It also calculates the total debit, credit, and balance before the start date, within the date range, and after the end date.
+// Additionally, it fetches contact details, updating the debt and receivables limits if applicable.
+// The function returns an AccountReceivableLedgerReport and an error if the operation fails.
 func (s *FinanceReportService) GetAccountReceivableLedger(companyID string, contactID string, startDate, endDate time.Time) (*models.AccountReceivableLedgerReport, error) {
 	if s.contactService == nil {
 		return nil, errors.New("contact service is not initialized")

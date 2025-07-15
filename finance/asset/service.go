@@ -22,23 +22,35 @@ type AssetService struct {
 	ctx *context.ERPContext
 }
 
+// NewAssetService creates a new AssetService instance.
+//
+// AssetService provides methods for accessing and manipulating asset data.
+// It requires a pointer to a gorm.DB instance and a pointer to an ERPContext instance.
 func NewAssetService(db *gorm.DB, ctx *context.ERPContext) *AssetService {
 	return &AssetService{ctx: ctx, db: db}
 }
 
+// Migrate migrates the asset model. It will create the tables if they do not exist
+// and migrate the schema if there are any changes.
 func Migrate(db *gorm.DB) error {
 	fmt.Println("Migrating account model...")
 	return db.AutoMigrate(&models.AssetModel{}, &models.DepreciationCostModel{})
 }
 
+// CreateAsset creates a new asset. It will return an error if the asset already exists
+// or if the database operation fails.
 func (s *AssetService) CreateAsset(data *models.AssetModel) error {
 	return s.db.Create(data).Error
 }
 
+// UpdateAsset updates an existing asset. It will return an error if the asset does not exist
+// or if the database operation fails.
 func (s *AssetService) UpdateAsset(id string, data *models.AssetModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
+// DeleteAsset deletes an asset and its associated transactions and depreciation costs.
+// It will return an error if the asset does not exist or if the database operation fails.
 func (s *AssetService) DeleteAsset(id string) error {
 	err := s.db.Where("transaction_secondary_ref_id = ?", id).Unscoped().Delete(&models.TransactionModel{}).Error
 	if err != nil {
@@ -51,6 +63,8 @@ func (s *AssetService) DeleteAsset(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.AssetModel{}).Error
 }
 
+// GetAssetByID returns an asset by its ID. It will return an error if the asset does not exist.
+// It will preload the associated accounts.
 func (s *AssetService) GetAssetByID(id string) (*models.AssetModel, error) {
 	var invoice models.AssetModel
 	err := s.db.
@@ -62,6 +76,17 @@ func (s *AssetService) GetAssetByID(id string) (*models.AssetModel, error) {
 	return &invoice, err
 }
 
+// GetAssets retrieves a paginated list of assets from the database.
+//
+// It takes an HTTP request and a search query string as input. The method uses
+// GORM to query the database for assets, applying the search query to the
+// asset name, asset number and description fields. If the request contains a
+// company ID header, the method also filters the result by the company ID.
+// The function utilizes pagination to manage the result set and applies any
+// necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of AssetModel and an error if the
+// operation fails.
 func (s *AssetService) GetAssets(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -83,11 +108,16 @@ func (s *AssetService) GetAssets(request http.Request, search string) (paginate.
 	return page, nil
 }
 
+// CountDepreciation counts the depreciation of an asset, given its depreciation method and its parameters.
+//
+// The function takes an AssetModel as an argument and returns a slice of float64 and an error.
+// If the asset is not set to be depreciated, the function returns an error.
+// The function supports the following methods of depreciation:
+// - SLN: Straight Line Method
+// - DB: Declining Balance Method
+// - SYD: Sum of the Years' Digits Method
+// Any other method will return an error.
 func (s *AssetService) CountDepreciation(asset *models.AssetModel) ([]float64, error) {
-	// db := db
-	// if m.Tx != nil {
-	// 	db = m.Tx
-	// }
 
 	if !asset.IsDepreciationAsset {
 		return []float64{}, errors.New("please set to depreciation asset")
@@ -116,6 +146,10 @@ func (s *AssetService) CountDepreciation(asset *models.AssetModel) ([]float64, e
 	return costs, nil
 }
 
+// PreviewCosts takes an AssetModel and returns a slice of DepreciationCostModel and an error.
+// It uses the CountDepreciation function to get the costs of the asset and then create a slice of DepreciationCostModel.
+// The costs are divided into either 12 months or 1 year, depending on the asset's period.
+// The function returns an error if the CountDepreciation function returns an error.
 func (s *AssetService) PreviewCosts(asset *models.AssetModel) ([]models.DepreciationCostModel, error) {
 	costs, err := s.CountDepreciation(asset)
 	if err != nil {

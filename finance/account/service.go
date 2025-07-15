@@ -108,31 +108,78 @@ var defaultAccountGroups = []map[string]any{
 	},
 }
 
+// NewAccountService returns a new instance of AccountService.
+//
+// The service is created by providing a GORM database instance and an ERP context.
+// The ERP context is used for authentication and authorization purposes, while the
+// database instance is used for CRUD (Create, Read, Update, Delete) operations.
 func NewAccountService(db *gorm.DB, ctx *context.ERPContext) *AccountService {
 	return &AccountService{db: db, ctx: ctx}
 }
 
+// Migrate runs database migrations for the account module.
+//
+// This function is used to create the database schema for the account model.
+// It is called once during the application startup process.
+//
+// The function takes a GORM database instance as its argument and returns an
+// error if the migration fails.
 func Migrate(db *gorm.DB) error {
 	fmt.Println("Migrating account model...")
 	return db.AutoMigrate(&models.AccountModel{})
 }
+
+// CreateAccount creates a new account in the database.
+//
+// The function takes a pointer to AccountModel as its argument and returns an
+// error if the creation fails.
+//
+// The function is idempotent, meaning that if the account already exists, no error
+// is returned.
 func (s *AccountService) CreateAccount(data *models.AccountModel) error {
 	return s.db.Create(data).Error
 }
 
+// UpdateAccount updates an existing account in the database.
+//
+// The function takes an ID of the account to be updated and a pointer to
+// AccountModel as its arguments. The AccountModel instance contains the new values
+// to be updated in the database.
+//
+// The function returns an error if the update fails.
 func (s *AccountService) UpdateAccount(id string, data *models.AccountModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
+
+// DeleteAccount deletes an existing account from the database.
+//
+// The function takes an ID of the account to be deleted as its argument.
+// It returns an error if the deletion operation fails.
+//
+// The function uses GORM to delete the account data from the accounts table.
+// If the deletion is successful, the error is nil. Otherwise, the error contains
+// information about what went wrong.
 
 func (s *AccountService) DeleteAccount(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.AccountModel{}).Error
 }
 
+// GetAccountByID retrieves an account record from the database by ID.
+//
+// It takes an ID as input and returns a pointer to a AccountModel and an error.
+// The function uses GORM to retrieve the account data from the accounts table.
+// If the operation fails, an error is returned.
 func (s *AccountService) GetAccountByID(id string) (*models.AccountModel, error) {
 	var account models.AccountModel
 	err := s.db.Where("id = ?", id).First(&account).Error
 	return &account, err
 }
+
+// GetAccountByCode retrieves an account record from the database by code.
+//
+// It takes a code as input and returns a pointer to an AccountModel and an error.
+// The function uses GORM to retrieve the account data from the accounts table.
+// If the operation fails, an error is returned. Otherwise, the error is nil.
 
 func (s *AccountService) GetAccountByCode(code string) (*models.AccountModel, error) {
 	var account models.AccountModel
@@ -140,6 +187,14 @@ func (s *AccountService) GetAccountByCode(code string) (*models.AccountModel, er
 	return &account, err
 }
 
+// GetMasterAccounts retrieves a paginated list of master accounts from the database.
+//
+// It takes an HTTP request as its argument. The function uses pagination to manage
+// the result set and includes any necessary request modifications using the
+// utils.FixRequest utility.
+//
+// The function returns a paginated page of AccountModel and an error if the
+// operation fails. Otherwise, the error is nil.
 func (s *AccountService) GetMasterAccounts(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Model(&models.AccountModel{})
@@ -148,6 +203,22 @@ func (s *AccountService) GetMasterAccounts(request *http.Request) (paginate.Page
 	page.Page = page.Page + 1
 	return page, nil
 }
+
+// GetAccounts retrieves a paginated list of accounts based on various filters.
+//
+// It takes an HTTP request and a search query string as input. The method uses
+// GORM to query the database for accounts, applying the search query to the
+// account name and code fields. If the request contains a company ID header,
+// the method filters the result by the company ID and ensures necessary accounts
+// are created if they don't exist. Additional filters can be applied based on
+// account type, cashflow subgroups, cashflow groups, categories, and specific
+// account flags such as profit/loss, COGS, inventory, and tax accounts.
+// The function utilizes pagination to manage the result set and includes any
+// necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of AccountModel and an error if the
+// operation fails. Otherwise, the error is nil.
+
 func (s *AccountService) GetAccounts(request http.Request, search string) (paginate.Page, error) {
 	// GET COGS ACCOUNT
 	if request.Header.Get("ID-Company") != "" {
@@ -342,6 +413,7 @@ func (s *AccountService) GetAccounts(request http.Request, search string) (pagin
 	return page, nil
 }
 
+// GetTypes returns a map of all account types, their categories, and cashflow groups.
 func (s *AccountService) GetTypes() map[string]any {
 
 	return map[string]any{
