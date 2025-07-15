@@ -101,8 +101,8 @@ func (m *WhatsappMessageModel) AfterFind(tx *gorm.DB) error {
 
 type WhatsappMessageSession struct {
 	shared.BaseModel
-	JID          string        `gorm:"type:varchar(255)" json:"jid"`
-	Session      string        `gorm:"type:varchar(255)" json:"session"`
+	JID          string        `gorm:"type:varchar(255);index" json:"jid"`
+	Session      string        `gorm:"type:varchar(255);index" json:"session"`
 	SessionName  string        `gorm:"type:varchar(255)" json:"session_name"`
 	LastOnlineAt *time.Time    `json:"last_online_at"`
 	LastMessage  string        `json:"last_message"`
@@ -110,7 +110,7 @@ type WhatsappMessageSession struct {
 	Company      *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
 	ContactID    *string       `json:"contact_id,omitempty" gorm:"column:contact_id"`
 	Contact      *ContactModel `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
-	RefID        *string       `json:"ref_id,omitempty"`
+	RefID        *string       `json:"ref_id,omitempty" gorm:"index"`
 	RefType      *string       `json:"ref_type,omitempty"`
 	Ref          any           `json:"ref,omitempty" gorm:"-"`
 	IsHumanAgent bool          `json:"is_human_agent"`

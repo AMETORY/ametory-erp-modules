@@ -46,6 +46,7 @@ func (cs *CustomerRelationshipService) Migrate() error {
 	if cs.ctx.SkipMigration {
 		return nil
 	}
+
 	return cs.ctx.DB.AutoMigrate(
 		&models.WhatsappMessageModel{},
 		&models.WhatsappMessageReaction{},

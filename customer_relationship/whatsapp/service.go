@@ -293,6 +293,14 @@ func (ws *WhatsappService) GetMessageSessionChatBySessionName(sessionName string
 	return page, nil
 }
 
+func (ws *WhatsappService) ReadAllMessages(session string) error {
+	stmt := ws.db.Model(&models.WhatsappMessageModel{}).Where("session = ?", session).Update("is_read", true)
+	if stmt.Error != nil {
+		return stmt.Error
+	}
+	return nil
+}
+
 func (ws *WhatsappService) MarkMessageAsRead(messageId string) error {
 	stmt := ws.db.Model(&models.WhatsappMessageModel{}).Where("id= ?", messageId).Update("is_read", true)
 	if stmt.RowsAffected == 0 {
