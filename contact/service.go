@@ -28,7 +28,12 @@ func NewContactService(ctx *context.ERPContext, companyService *company.CompanyS
 	return &contactService
 }
 
-// CreateContact membuat contact baru
+// CreateContact creates a new contact.
+//
+// It checks if a contact with the same phone number already exists in the same company.
+// If it does, it returns an error.
+//
+// If the contact does not exist, it creates a new contact with the given data.
 func (s *ContactService) CreateContact(data *models.ContactModel) error {
 	if data.Phone != nil {
 		var existingContact models.ContactModel
@@ -47,7 +52,10 @@ func (s *ContactService) CreateContact(data *models.ContactModel) error {
 	return s.ctx.DB.Create(data).Error
 }
 
-// CreateContactFromUser membuat contact baru dari user jika tidak ada contact yang sama dengan email user
+// CreateContactFromUser creates a new contact from a user if no contact with the same email exists.
+//
+// If the contact does not exist, it creates a new contact with the given data.
+// If the contact does exist, it returns the existing contact.
 func (s *ContactService) CreateContactFromUser(user *models.UserModel, code string, isCustomer, isVendor, isSupplier bool, companyID *string) (*models.ContactModel, error) {
 	var contact models.ContactModel
 	if err := s.ctx.DB.Where("user_id = ?", user.ID).First(&contact).Error; err != nil {
@@ -73,7 +81,9 @@ func (s *ContactService) CreateContactFromUser(user *models.UserModel, code stri
 	return &contact, nil
 }
 
-// GetContactByPhone mengambil contact berdasarkan phone
+// GetContactByPhone retrieves a contact by phone number.
+//
+// It returns an error if the contact is not found.
 func (s *ContactService) GetContactByPhone(phone string, companyID string) (*models.ContactModel, error) {
 	var contact models.ContactModel
 	if err := s.ctx.DB.Where("phone = ? and company_id = ?", phone, companyID).First(&contact).Error; err != nil {
@@ -85,7 +95,9 @@ func (s *ContactService) GetContactByPhone(phone string, companyID string) (*mod
 	return &contact, nil
 }
 
-// GetContactByID mengambil contact berdasarkan ID
+// GetContactByID retrieves a contact by ID.
+//
+// It returns an error if the contact is not found.
 func (s *ContactService) GetContactByID(id string) (*models.ContactModel, error) {
 	var contact models.ContactModel
 	if err := s.ctx.DB.First(&contact, "id = ?", id).Error; err != nil {
@@ -104,7 +116,7 @@ func (s *ContactService) GetContactByID(id string) (*models.ContactModel, error)
 	return &contact, nil
 }
 
-// UpdateContactRoles mengupdate roles (is_customer, is_vendor, is_supplier) dari contact
+// UpdateContactRoles updates the roles (is_customer, is_vendor, is_supplier) of a contact.
 func (s *ContactService) UpdateContactRoles(id string, isCustomer, isVendor, isSupplier bool) (*models.ContactModel, error) {
 	var contact models.ContactModel
 	if err := s.ctx.DB.First(&contact, id).Error; err != nil {
@@ -122,7 +134,7 @@ func (s *ContactService) UpdateContactRoles(id string, isCustomer, isVendor, isS
 	return &contact, nil
 }
 
-// GetContactsByRole mengambil semua contact berdasarkan role (customer, vendor, supplier)
+// GetContactsByRole retrieves all contacts based on the specified roles (customer, vendor, supplier).
 func (s *ContactService) GetContactsByRole(isCustomer, isVendor, isSupplier bool) ([]models.ContactModel, error) {
 	var contacts []models.ContactModel
 	query := s.ctx.DB.Where("is_customer = ? AND is_vendor = ? AND is_supplier = ?", isCustomer, isVendor, isSupplier)
@@ -132,7 +144,7 @@ func (s *ContactService) GetContactsByRole(isCustomer, isVendor, isSupplier bool
 	return contacts, nil
 }
 
-// DeleteContact menghapus contact berdasarkan ID
+// DeleteContact removes a contact based on the given ID.
 func (s *ContactService) DeleteContact(id string) error {
 	if err := s.ctx.DB.Delete(&models.ContactModel{}, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -143,7 +155,7 @@ func (s *ContactService) DeleteContact(id string) error {
 	return nil
 }
 
-// UpdateContact mengupdate informasi contact
+// UpdateContact updates the information of a contact.
 func (s *ContactService) UpdateContact(id string, data *models.ContactModel) (*models.ContactModel, error) {
 	if err := s.ctx.DB.Where("id = ?", id).Updates(&data).Error; err != nil {
 		return nil, err
@@ -228,7 +240,11 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 	return page, nil
 }
 
-// getTotalDebt menghitung total debt dari contact
+// GetTotalDebt returns the total debt that a contact has.
+//
+// It takes in a contact and returns the total debt that the contact has.
+// The total debt is calculated by summing up all the unpaid invoices of the contact.
+// If the contact does not have any unpaid invoices, it returns 0.
 func (s *ContactService) GetTotalDebt(contact *models.ContactModel) float64 {
 	var total float64
 	if err := s.ctx.DB.Model(&models.SalesModel{}).
@@ -241,6 +257,16 @@ func (s *ContactService) GetTotalDebt(contact *models.ContactModel) float64 {
 	}
 	return total
 }
+
+// GetTotalReceivable calculates the total receivables for a contact.
+//
+// It takes a contact model as input and returns the sum of all unpaid bills
+// associated with the contact. The function queries the database for purchase
+// orders with the document type 'BILL', belonging to the specified contact, and
+// with a status of either 'POSTED' or 'FINISHED'. The total receivable amount
+// is computed by summing up the difference between the total and paid amounts
+// of these purchase orders. If no such records are found, it returns 0.
+
 func (s *ContactService) GetTotalReceivable(contact *models.ContactModel) float64 {
 	var total float64
 	if err := s.ctx.DB.Model(&models.PurchaseOrderModel{}).
@@ -254,6 +280,14 @@ func (s *ContactService) GetTotalReceivable(contact *models.ContactModel) float6
 	return total
 }
 
+// Migrate migrates the database schema for the ContactService.
+//
+// If the SkipMigration flag is set to true in the context, this method
+// will not perform any migration and will return nil. Otherwise, it will
+// attempt to auto-migrate the database to include the ContactModel schema.
+// If the migration process encounters an error, it will return that error.
+// Otherwise, it will return nil upon successful migration.
+
 func (s *ContactService) Migrate() error {
 	if s.ctx.SkipMigration {
 		return nil
@@ -261,11 +295,22 @@ func (s *ContactService) Migrate() error {
 	return s.ctx.DB.AutoMigrate(&models.ContactModel{})
 }
 
+// DB returns the underlying database connection.
+//
+// The method returns the GORM database connection that is used by the service
+// for CRUD (Create, Read, Update, Delete) operations.
 func (s *ContactService) DB() *gorm.DB {
 	return s.ctx.DB
 }
 
-// CountContactByTagID menghitung jumlah contact berdasarkan ID tag
+// CountContactByTag returns a list of tags with the number of contacts associated
+// with each tag, filtered by the given company ID.
+//
+// The returned list is grouped by tag ID, name, and color. The count of contacts
+// associated with each tag is included in the response.
+//
+// If the query encounters an error, it will return that error. Otherwise, it will
+// return the list of tags with contact counts.
 func (s *ContactService) CountContactByTag(companyID string) ([]models.CountByTag, error) {
 	var tag []models.CountByTag
 	if err := s.ctx.DB.Model(&models.ContactModel{}).
@@ -280,7 +325,10 @@ func (s *ContactService) CountContactByTag(companyID string) ([]models.CountByTa
 	return tag, nil
 }
 
-// GetContactByTagIDs mengambil semua contact berdasarkan ID tag
+// GetContactByTagIDs returns a list of contacts associated with the given tag IDs.
+//
+// The returned list is filtered by the given tag IDs. If the query encounters an
+// error, it will return that error. Otherwise, it will return the list of contacts.
 func (s *ContactService) GetContactByTagIDs(tagIDs []string) ([]models.ContactModel, error) {
 	var contacts []models.ContactModel
 	if err := s.ctx.DB.Model(&models.ContactModel{}).
