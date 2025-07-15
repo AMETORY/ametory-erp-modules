@@ -30,6 +30,10 @@ type DistributionService struct {
 	StorageService      *storage.StorageService
 }
 
+// NewDistributionService creates a new instance of DistributionService with the given ERP context, audit trail service,
+// inventory service, and order service.
+//
+// It also migrates the database according to the latest schema, and creates all the necessary subservices.
 func NewDistributionService(ctx *context.ERPContext, auditTrailService *audit_trail.AuditTrailService, inventoryService *inventory.InventoryService, orderService *order.OrderService) *DistributionService {
 	fmt.Println("INIT DISTRIBUTION SERVICE")
 
@@ -51,6 +55,14 @@ func NewDistributionService(ctx *context.ERPContext, auditTrailService *audit_tr
 
 	return &service
 }
+
+// Migrate performs the database migration for the DistributionService.
+//
+// This method migrates the database tables for various distribution-related
+// services, including logistic, storage, distributor, order request, offering,
+// shipping, and cart. If the SkipMigration flag is set to true in the context,
+// the migration process is skipped. It returns an error if any of the migration
+// tasks fail, logging the error for each failed migration.
 
 func (s *DistributionService) Migrate() error {
 	if s.ctx.SkipMigration {

@@ -18,13 +18,46 @@ type OfferingService struct {
 	// productService    *product.ProductService
 }
 
+// NewOfferingService creates a new instance of OfferingService.
+//
+// The service provides methods for managing offerings, requiring a GORM
+// database instance for CRUD operations, an ERP context for authentication
+// and request handling, and an AuditTrailService for tracking changes.
+
 func NewOfferingService(db *gorm.DB, ctx *context.ERPContext, auditTrailSrv *audit_trail.AuditTrailService) *OfferingService {
 	return &OfferingService{db: db, ctx: ctx, auditTrailService: auditTrailSrv}
 }
 
+// Migrate performs the auto-migration for the OfferModel schema.
+//
+// This function uses the provided GORM database transaction to
+// automatically migrate the database schema for the OfferModel.
+// It ensures that the database table structure is up-to-date
+// with the current model definition.
+//
+// Params:
+// - tx (*gorm.DB): The database transaction to be used for the migration.
+//
+// Returns:
+// - error: An error object if the migration fails, otherwise nil.
+
 func Migrate(tx *gorm.DB) error {
 	return tx.AutoMigrate(&models.OfferModel{})
 }
+
+// GetOffersForByIDs retrieves a list of offers for a specified user and offer IDs.
+//
+// This method queries the database to find all offers associated with the
+// provided user ID and a list of offer IDs. It returns a slice of OfferModel
+// and an error if the operation fails.
+//
+// Params:
+// - userID (string): The ID of the user whose offers are to be retrieved.
+// - offerIds ([]string): A slice of offer IDs to filter the offers.
+//
+// Returns:
+// - ([]models.OfferModel): A slice of offer models that match the criteria.
+// - (error): An error object if the database query fails, otherwise nil.
 
 func (s *OfferingService) GetOffersForByIDs(userID string, offerIds []string) ([]models.OfferModel, error) {
 	var offers []models.OfferModel
@@ -32,6 +65,19 @@ func (s *OfferingService) GetOffersForByIDs(userID string, offerIds []string) ([
 	return offers, err
 }
 
+// GetOffersForUser retrieves a list of offers for a specified user ID, status, and order request ID.
+//
+// This method queries the database to find all offers associated with the provided user ID,
+// status, and order request ID. It returns a slice of OfferModel and an error if the operation fails.
+//
+// Params:
+// - userID (string): The ID of the user whose offers are to be retrieved.
+// - status (string): The status of the offers to be retrieved.
+// - orderRequestID (*string): An optional order request ID to filter the offers.
+//
+// Returns:
+// - ([]models.OfferModel): A slice of offer models that match the criteria.
+// - (error): An error object if the database query fails, otherwise nil.
 func (s *OfferingService) GetOffersForUser(userID, status string, orderRequestID *string) ([]models.OfferModel, error) {
 	var offers []models.OfferModel
 	db := s.db.Model(&models.OfferModel{})
@@ -41,6 +87,22 @@ func (s *OfferingService) GetOffersForUser(userID, status string, orderRequestID
 	err := db.Find(&offers, "user_id = ? AND status = ?", userID, status).Error
 	return offers, err
 }
+
+// CreateOffer creates a new offer in the system.
+//
+// This method takes a MerchantAvailableProduct and a user ID as parameters,
+// constructs an OfferModel with the provided information, and persists it to
+// the database. The offer's status is initially set to "PENDING". The method
+// also logs the action using the audit trail service.
+//
+// Params:
+// - merchant (models.MerchantAvailableProduct): The merchant information
+//   and product details for the offer.
+// - userID (string): The ID of the user for whom the offer is being created.
+//
+// Returns:
+// - (*models.OfferModel): The created offer model, or nil if an error occurs.
+// - (error): An error object if the creation fails, or nil if the operation is successful.
 
 func (s *OfferingService) CreateOffer(merchant models.MerchantAvailableProduct, userID string) (*models.OfferModel, error) {
 	if s.auditTrailService == nil {
@@ -78,6 +140,22 @@ func (s *OfferingService) CreateOffer(merchant models.MerchantAvailableProduct, 
 	return &offer, nil
 }
 
+// CreateOffers creates offers for an order request from a list of available merchants.
+//
+// This method takes an OrderRequestModel and a slice of MerchantAvailableProduct
+// as parameters, constructs an OfferModel for each merchant, and persists them to
+// the database. The offer's status is initially set to "PENDING". The method
+// also logs the action using the audit trail service.
+//
+// If the order request is already accepted, the method returns an error.
+//
+// Params:
+//   - orderRequest (models.OrderRequestModel): The order request for which offers will be created.
+//   - availableMerchants ([]models.MerchantAvailableProduct): A slice of merchant information
+//     and product details for the offers.
+//
+// Returns:
+// - (error): An error object if the creation fails, or nil if the operation is successful.
 func (s *OfferingService) CreateOffers(orderRequest models.OrderRequestModel, availableMerchants []models.MerchantAvailableProduct) error {
 	if s.auditTrailService == nil {
 		return fmt.Errorf("audit trail service is not initialized")
@@ -112,6 +190,24 @@ func (s *OfferingService) CreateOffers(orderRequest models.OrderRequestModel, av
 	})
 }
 
+// TakeOffer takes an offer and updates the order request status to Accepted.
+//
+// This method takes an offer ID, total price, shipping fee, and distance as parameters.
+// It first checks if the offer is already taken, and returns an error if it is.
+// Then it verifies the order request status and returns an error if the order request
+// is not in the pending status.
+//
+// If the offer is taken successfully, the method also updates the order request status
+// to Accepted and sets the merchant ID.
+//
+// Params:
+// - offerID (string): The ID of the offer to be taken.
+// - totalPrice (float64): The total price of the offer.
+// - shippingFee (float64): The shipping fee of the offer.
+// - distance (float64): The distance of the offer.
+//
+// Returns:
+// - (error): An error object if the taking fails, or nil if the operation is successful.
 func (s *OfferingService) TakeOffer(offerID string, totalPrice, shippingFee, distance float64) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		offer := models.OfferModel{}

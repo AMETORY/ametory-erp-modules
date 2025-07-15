@@ -19,10 +19,12 @@ type LogisticService struct {
 	inventoryService *inventory.InventoryService
 }
 
+// NewLogisticService creates a new instance of LogisticService with the given database connection, context and inventory service.
 func NewLogisticService(db *gorm.DB, ctx *context.ERPContext, inventoryService *inventory.InventoryService) *LogisticService {
 	return &LogisticService{db: db, ctx: ctx, inventoryService: inventoryService}
 }
 
+// Migrate runs database migrations for the logistic module.
 func Migrate(db *gorm.DB) error {
 	err := db.AutoMigrate(
 		&models.ShipmentModel{},
@@ -52,6 +54,19 @@ func Migrate(db *gorm.DB) error {
 	return nil
 }
 
+// GetAllShipments retrieves a paginated list of shipments from the database.
+//
+// It takes an HTTP request and a search query string as input. The method
+// preloads relationships for the shipment's origin and destination warehouses
+// as well as distribution events. The search query is applied to the notes
+// and code fields of the shipment. If the request contains a company ID
+// header, the method filters results by company ID. Pagination is applied
+// to manage the result set, and any necessary request modifications are made
+// using the utils.FixRequest utility.
+//
+// The function returns a paginated page of ShipmentModel and an error if the
+// operation fails.
+
 func (s *LogisticService) GetAllShipments(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.
@@ -76,6 +91,17 @@ func (s *LogisticService) GetAllShipments(request http.Request, search string) (
 	return page, nil
 
 }
+
+// ListDistributionEvents retrieves a paginated list of distribution events from the database.
+//
+// It takes an HTTP request and a search query string as input. The search query
+// is applied to the notes and name fields of the distribution events. If the
+// request contains a company ID header, the method filters results by company
+// ID. Pagination is applied to manage the result set, and any necessary request
+// modifications are made using the utils.FixRequest utility.
+//
+// The function returns a paginated page of DistributionEventModel and an error
+// if the operation fails.
 func (s *LogisticService) ListDistributionEvents(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -95,6 +121,18 @@ func (s *LogisticService) ListDistributionEvents(request http.Request, search st
 	page.Page = page.Page + 1
 	return page, nil
 }
+
+// ListShipments retrieves a paginated list of shipments from the database.
+//
+// It takes an HTTP request and a search query string as input. The search query
+// is applied to the notes and code fields of the shipments. If the request
+// contains a company ID header, the method filters results by company ID.
+// Pagination is applied to manage the result set, and any necessary request
+// modifications are made using the utils.FixRequest utility.
+//
+// The function returns a paginated page of ShipmentModel and an error if the
+// operation fails.
+
 func (s *LogisticService) ListShipments(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -115,12 +153,22 @@ func (s *LogisticService) ListShipments(request http.Request, search string) (pa
 	return page, nil
 }
 
+// CreateDistributionEvent creates a new distribution event record in the database.
+//
+// It takes a DistributionEventModel as input and attempts to save it to the database.
+// The function returns an error if the operation fails, otherwise it returns nil.
+
 func (s *LogisticService) CreateDistributionEvent(data *models.DistributionEventModel) error {
 	if err := s.db.Create(data).Error; err != nil {
 		return err
 	}
 	return nil
 }
+
+// CreateShipment creates a new shipment record in the database.
+//
+// It takes a ShipmentModel as input and attempts to save it to the database.
+// The function returns an error if the operation fails, otherwise it returns nil.
 func (s *LogisticService) CreateShipment(data *models.ShipmentModel) error {
 	if err := s.db.Create(&data).Error; err != nil {
 		return err
@@ -129,10 +177,19 @@ func (s *LogisticService) CreateShipment(data *models.ShipmentModel) error {
 	return nil
 }
 
+// DeleteItemShipment deletes an item from the shipment record in the database.
+//
+// It takes a shipment ID and an item ID as input and attempts to delete the
+// item from the shipment. The function returns an error if the operation fails,
+// otherwise it returns nil.
 func (s *LogisticService) DeleteItemShipment(shipmentID string, itemID string) error {
 	return s.db.Delete(&models.ShipmentItem{}, "shipment_id = ? AND id = ?", shipmentID, itemID).Error
 }
 
+// DeleteShipment deletes a shipment record in the database.
+//
+// It takes a shipment ID as input and attempts to delete the shipment and its associated records.
+// The function returns an error if the operation fails, otherwise it returns nil.
 func (s *LogisticService) DeleteShipment(shipmentID string) error {
 	if err := s.db.Delete(&models.ShipmentItem{}, "shipment_id = ?", shipmentID).Error; err != nil {
 		return err
@@ -145,6 +202,11 @@ func (s *LogisticService) DeleteShipment(shipmentID string) error {
 	return s.db.Delete(&models.ShipmentModel{}, "id = ?", shipmentID).Error
 }
 
+// ReadyToShip marks a shipment as READY_TO_SHIP. It takes a shipment ID, a
+// date, and an optional notes string as input. It first checks if the shipment
+// status is PENDING. If not, it returns an error. If the notes string is not
+// nil, it appends the string to the shipment notes. Finally, it saves the
+// shipment with the new status and returns an error if the operation fails.
 func (s *LogisticService) ReadyToShip(shipmentID string, date time.Time, notes *string) error {
 	shipment := models.ShipmentModel{}
 	if err := s.db.First(&shipment, "id = ?", shipmentID).Error; err != nil {
@@ -166,6 +228,14 @@ func (s *LogisticService) ReadyToShip(shipmentID string, date time.Time, notes *
 	return nil
 }
 
+// ProcessShipment updates a shipment's status to IN_DELIVERY.
+//
+// It requires a shipment ID, a date, and notes as input. The function first
+// checks if the shipment's status is READY_TO_SHIP. If not, it returns an
+// error. If the status is correct, it updates the status to IN_DELIVERY and
+// saves the changes to the database. The function returns an error if any
+// operation fails, otherwise it returns nil.
+
 func (s *LogisticService) ProcessShipment(shipmentID string, date time.Time, notes string) error {
 	shipment := models.ShipmentModel{}
 	if err := s.db.First(&shipment, "id = ?", shipmentID).Error; err != nil {
@@ -179,12 +249,19 @@ func (s *LogisticService) ProcessShipment(shipmentID string, date time.Time, not
 	return s.db.Save(&shipment).Error
 }
 
+// UpdateIsDelayedForShipment updates the shipment's is_delayed flag to true
+// if its expected_finish_at is less than the current time and the flag is
+// currently false.
 func (s *LogisticService) UpdateIsDelayedForShipment(shipmentID string) error {
 	return s.db.Model(&models.ShipmentModel{}).Where("id = ?", shipmentID).
 		Where("expected_finish_at < ? AND is_delayed = ? and expected_finish_at is not null", time.Now(), false).
 		Update("is_delayed", true).Error
 }
 
+// CreateShipmentLeg creates a new shipment leg record in the database.
+//
+// It takes a ShipmentLegModel as input and attempts to save it to the database.
+// The function returns an error if the operation fails, otherwise it returns nil.
 func (s *LogisticService) CreateShipmentLeg(data *models.ShipmentLegModel) error {
 	if err := s.db.Create(&data).Error; err != nil {
 		return err
@@ -192,6 +269,12 @@ func (s *LogisticService) CreateShipmentLeg(data *models.ShipmentLegModel) error
 
 	return nil
 }
+
+// DeleteDistributionEvent deletes a distribution event and its associated shipments from the database.
+//
+// It takes an event ID as input and attempts to first retrieve the distribution event with its shipments preloaded.
+// The function deletes the associated shipments and then the distribution event itself.
+// It returns an error if any operation fails, otherwise it returns nil.
 
 func (s *LogisticService) DeleteDistributionEvent(eventID string) error {
 	distributionEvent := models.DistributionEventModel{}
@@ -208,6 +291,14 @@ func (s *LogisticService) DeleteDistributionEvent(eventID string) error {
 	return nil
 }
 
+// GetDistributionEvent retrieves a distribution event and its associated shipments
+// from the database.
+//
+// It takes an event ID as input and returns a pointer to a DistributionEventModel
+// and an error. The function preloads the associated shipments, items, shipment
+// legs, and from/to locations. If the distribution event is found, it is
+// returned along with a nil error. If not found, or in case of a query error,
+// the function returns a non-nil error.
 func (s *LogisticService) GetDistributionEvent(eventID string) (*models.DistributionEventModel, error) {
 	distributionEvent := models.DistributionEventModel{}
 	if err := s.db.
@@ -223,6 +314,11 @@ func (s *LogisticService) GetDistributionEvent(eventID string) (*models.Distribu
 	return &distributionEvent, nil
 }
 
+// UpdateStatusShipment updates the status of a shipment in the database.
+//
+// It takes a shipment ID and a status string as input and attempts to
+// update the shipment record with the new status. If the shipment is found,
+// the function returns a nil error. Otherwise, it returns a non-nil error.
 func (s *LogisticService) UpdateStatusShipment(shipmentID string, status string) error {
 	shipment := models.ShipmentModel{}
 	if err := s.db.First(&shipment, "id = ?", shipmentID).Error; err != nil {
@@ -233,6 +329,14 @@ func (s *LogisticService) UpdateStatusShipment(shipmentID string, status string)
 	return s.db.Save(&shipment).Error
 }
 
+// GetShipment retrieves a shipment and its associated shipment legs, items, and
+// distribution event from the database.
+//
+// It takes a shipment ID as input and returns a pointer to a ShipmentModel and
+// an error. The function preloads the associated shipment legs, items, and
+// distribution event. If the shipment is found, it is returned along with a nil
+// error. If not found, or in case of a query error, the function returns a
+// non-nil error.
 func (s *LogisticService) GetShipment(shipmentID string) (*models.ShipmentModel, error) {
 	shipment := models.ShipmentModel{}
 	if err := s.db.
@@ -258,6 +362,12 @@ func (s *LogisticService) GetShipment(shipmentID string) (*models.ShipmentModel,
 	return &shipment, nil
 }
 
+// AddItemShipment adds a new item to a shipment in the database.
+//
+// It takes a shipment ID and a pointer to a ShipmentItem as input and attempts
+// to create a new record in the database. The function returns an error if the
+// operation fails, otherwise it returns nil.
+
 func (s *LogisticService) AddItemShipment(shipmentID string, item *models.ShipmentItem) error {
 	if err := s.db.Create(item).Error; err != nil {
 		return err
@@ -265,6 +375,14 @@ func (s *LogisticService) AddItemShipment(shipmentID string, item *models.Shipme
 
 	return nil
 }
+
+// StartShipmentLegDelivery marks a shipment leg as IN_DELIVERY. It takes a shipment
+// leg ID, a date, and an optional notes string as input. It first checks if the
+// shipment leg status is PENDING. If not, it returns an error. If the notes string is
+// not nil, it appends the string to the shipment leg notes. Finally, it saves the
+// shipment leg with the new status and updates the current shipment leg ID of the
+// associated shipment. The function returns an error if the operation fails,
+// otherwise it returns nil.
 func (s *LogisticService) StartShipmentLegDelivery(shipmentLegID string, date time.Time, notes string) error {
 	shipmentLeg := models.ShipmentLegModel{}
 	if err := s.db.
@@ -317,6 +435,14 @@ func (s *LogisticService) StartShipmentLegDelivery(shipmentLegID string, date ti
 	return s.UpdateIsDelayedForShipment(*shipmentLeg.ShipmentID)
 }
 
+// ArrivedShipmentLegDelivery marks a shipment leg as ARRIVED. It takes a shipment
+// leg ID, a date, and an optional notes string as input. It first checks if the
+// shipment leg status is IN_DELIVERY. If not, it returns an error. If the notes string is
+// not nil, it appends the string to the shipment leg notes. If the to location ID is nil,
+// it returns an error. If the to location warehouse ID is not nil, it adds a movement
+// for each item in the shipment leg for the same quantity as the shipment leg quantity.
+// Finally, it saves the shipment leg with the new status and updates the current shipment leg ID of the associated shipment. The function returns an error if the operation fails,
+// otherwise it returns nil.
 func (s *LogisticService) ArrivedShipmentLegDelivery(shipmentLegID string, date time.Time, notes string) error {
 	shipmentLeg := models.ShipmentLegModel{}
 	if err := s.db.
@@ -371,6 +497,12 @@ func (s *LogisticService) ArrivedShipmentLegDelivery(shipmentLegID string, date 
 	return s.UpdateIsDelayedForShipment(*shipmentLeg.ShipmentID)
 }
 
+// AddTrackingEvent adds a new tracking event to a shipment leg in the database.
+//
+// It takes a shipment leg ID and a TrackingEventModel as input and attempts to
+// save the tracking event record. If the operation is successful, it returns nil.
+// Otherwise, it returns an error.
+
 func (s *LogisticService) AddTrackingEvent(shipmentLegID string, data *models.TrackingEventModel) error {
 
 	if err := s.db.Create(&data).Error; err != nil {
@@ -380,11 +512,23 @@ func (s *LogisticService) AddTrackingEvent(shipmentLegID string, data *models.Tr
 	return nil
 }
 
+// CreateShipmentFeedback creates a new shipment feedback record in the database.
+//
+// It takes a ShipmentFeedback as input and attempts to save it to the database.
+// The function returns an error if the operation fails, otherwise it returns nil.
 func (s *LogisticService) CreateShipmentFeedback(data *models.ShipmentFeedback) error {
 	return s.db.Create(data).Error
 }
 
+// GenerateShipmentReport generates a shipment report based on the shipment ID.
+//
+// It takes a shipment ID as input and retrieves the shipment and its associated
+// shipment legs, items, and incident events from the database. The function
+// returns a pointer to a ShipmentModel and an error. If the shipment is found, it
+// is returned along with a nil error. If not found, or in case of a query error,
+// the function returns a non-nil error.
 func (s *LogisticService) GenerateShipmentReport(shipmentID string) (*models.ShipmentModel, error) {
+
 	shipment := models.ShipmentModel{}
 	if err := s.db.
 		Preload("ShipmentLegs.TrackingEvents").
@@ -399,10 +543,25 @@ func (s *LogisticService) GenerateShipmentReport(shipmentID string) (*models.Shi
 	return &shipment, nil
 }
 
+// GetDistributionEventReport retrieves a distribution event report from the database.
+//
+// It takes a distribution event ID as input and returns a pointer to a DistributionEventReport
+// and an error. The function preloads the associated shipments, items, shipment legs,
+// tracking events, and incident events. If the distribution event is found, it is
+// returned along with a nil error. If not found, or in case of a query error,
+// the function returns a non-nil error.
 func (s *LogisticService) GetDistributionEventReport(distributionEventID string) (*models.DistributionEventReport, error) {
 
 	return s.GenerateDistributionEventReport(distributionEventID)
 }
+
+// GenerateDistributionEventReport generates a distribution event report based on the distribution event ID.
+//
+// It takes a distribution event ID as input and retrieves the distribution event and its associated
+// shipments, items, shipment legs, tracking events, incident events, and feedbacks from the database.
+// The function returns a pointer to a DistributionEventReport and an error. If the distribution event
+// is found, it is returned along with a nil error. If not found, or in case of a query error,
+// the function returns a non-nil error.
 func (s *LogisticService) GenerateDistributionEventReport(distributionEventID string) (*models.DistributionEventReport, error) {
 	distributionEvent := models.DistributionEventModel{}
 	if err := s.db.
@@ -440,18 +599,20 @@ func (s *LogisticService) GenerateDistributionEventReport(distributionEventID st
 		if shipment.IsDelayed {
 			report.DelayedShipments += 1
 		}
-		if shipment.Status == "DELIVERED" {
+		switch shipment.Status {
+		case "DELIVERED":
 			report.FinishedShipments += 1
-		} else if shipment.Status == "IN_DELIVERY" || shipment.Status == "PROCESSING" {
+		case "IN_DELIVERY", "PROCESSING":
 			report.ProcessingShipments += 1
-		} else if shipment.Status == "READY_TO_SHIP" {
+		case "READY_TO_SHIP":
 			report.ReadyToShip += 1
 		}
 
 		for _, incidentEvent := range shipment.IncidentEvents {
-			if incidentEvent.EventType == "LOST" {
+			switch incidentEvent.EventType {
+			case "LOST":
 				report.LostItems += (len(incidentEvent.Items))
-			} else if incidentEvent.EventType == "DAMAGE" {
+			case "DAMAGE":
 				report.DamagedItems += (len(incidentEvent.Items))
 			}
 		}
@@ -462,6 +623,14 @@ func (s *LogisticService) GenerateDistributionEventReport(distributionEventID st
 
 	return &report, err
 }
+
+// ReportLostOrDamage records an incident event of lost or damaged items for a given shipment leg.
+//
+// It takes a shipment ID, shipment leg ID, date, incident event data, movement type, and an optional
+// waste warehouse ID as input. The function retrieves the shipment and shipment leg from the database,
+// creates the incident event record, and updates the stock movements for the affected items. If a waste
+// warehouse ID is provided, it adds a stock movement for the waste warehouse. The function returns an
+// error if any operation fails, otherwise it returns nil.
 
 func (s *LogisticService) ReportLostOrDamage(shipmentID string,
 	shipmentLegID string,
