@@ -28,6 +28,21 @@ type LoanApplicationService struct {
 	financeService            *finance.FinanceService
 }
 
+// NewLoanApplicationService creates a new instance of LoanApplicationService.
+//
+// The LoanApplicationService is used to manage loan applications, which are
+// requests for loans made by members of a cooperative.
+//
+// It takes as parameters:
+//   - db: a pointer to a GORM database instance
+//   - ctx: a pointer to an ERPContext, which contains the user's HTTP request
+//     context and other relevant information
+//   - cooperativeSettingService: a pointer to a CooperativeSettingService,
+//     which is used to look up the settings for the cooperative
+//   - savingService: a pointer to a SavingService, which is used to manage
+//     savings accounts
+//   - financeService: a pointer to a FinanceService, which is used to manage
+//     financial transactions
 func NewLoanApplicationService(db *gorm.DB,
 	ctx *context.ERPContext,
 	cooperativeSettingService *cooperative_setting.CooperativeSettingService,
@@ -43,6 +58,14 @@ func NewLoanApplicationService(db *gorm.DB,
 	}
 }
 
+// CreatePayment is used to create a new payment for a loan application.
+//
+// It takes as parameters:
+//   - input: a pointer to an InstallmentPayment, which contains the details of the payment
+//   - loan: a pointer to a LoanApplicationModel, which contains the details of the loan
+//   - userID: a pointer to a string, which is the ID of the user making the payment
+//
+// It returns an error if the payment cannot be created.
 func (l *LoanApplicationService) CreatePayment(input *models.InstallmentPayment, loan *models.LoanApplicationModel, userID *string) error {
 
 	// Cek apakah status pinjaman sudah approved
@@ -276,6 +299,11 @@ func (l *LoanApplicationService) CreatePayment(input *models.InstallmentPayment,
 	return nil
 }
 
+// DisburseLoan mencairkan pinjaman yang telah diapproved dan mengganti status pinjaman menjadi "DISBURSED".
+// Fungsi ini juga membuat transaksi debet dan kredit yang terkait dengan pinjaman.
+// Parameter accountAssetID harus diisi dengan ID account asset yang digunakan untuk mencairkan pinjaman.
+// Parameter user harus diisi dengan user yang melakukan pencairan pinjaman.
+// Parameter remarks harus diisi dengan keterangan pencairan pinjaman.
 func (l *LoanApplicationService) DisburseLoan(loan *models.LoanApplicationModel, accountAssetID *string, user *models.UserModel, remarks string) error {
 	if accountAssetID == nil {
 		return errors.New("account asset id is required")
@@ -346,6 +374,14 @@ func (l *LoanApplicationService) DisburseLoan(loan *models.LoanApplicationModel,
 
 }
 
+// GetLoans digunakan untuk mengambil data pinjaman yang ada di database yang sesuai dengan kriteria yang diberikan.
+// Fungsi ini akan mengembalikan data pinjaman dalam bentuk paginate.Page.
+//
+// Parameter request digunakan untuk mengatur halaman dan per halaman berapa data yang akan diambil.
+// Parameter search digunakan untuk mencari data pinjaman yang sesuai dengan kata kunci yang diberikan.
+// Parameter memberID digunakan untuk mengambil data pinjaman yang sesuai dengan ID anggota yang diberikan.
+//
+// Fungsi ini akan mengembalikan error jika terjadi kesalahan saat mengambil data dari database.
 func (s *LoanApplicationService) GetLoans(request http.Request, search string, memberID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Member")
@@ -368,6 +404,10 @@ func (s *LoanApplicationService) GetLoans(request http.Request, search string, m
 	return page, nil
 }
 
+// GetLoanByID mengambil data pinjaman berdasarkan ID yang diberikan.
+// Jika parameter memberID diisi maka akan mengambil data pinjaman yang sesuai dengan ID anggota yang diberikan.
+//
+// Fungsi ini akan mengembalikan error jika terjadi kesalahan saat mengambil data dari database.
 func (s *LoanApplicationService) GetLoanByID(id string, memberID *string) (*models.LoanApplicationModel, error) {
 	var loan models.LoanApplicationModel
 	db := s.db.Preload(clause.Associations)
@@ -391,6 +431,10 @@ func (s *LoanApplicationService) GetLoanByID(id string, memberID *string) (*mode
 	}
 	return &loan, err
 }
+
+// CreateLoan digunakan untuk membuat pinjaman baru. Fungsi ini akan mengembalikan error jika terjadi kesalahan saat membuat pinjaman.
+// Fungsi ini akan mengatur tipe pinjaman dan tingkat bunga/profit rate pinjaman berdasarkan setting perusahaan yang diberikan.
+// Fungsi ini juga akan mengatur nomor pinjaman berdasarkan setting perusahaan yang diberikan.
 func (c *LoanApplicationService) CreateLoan(loan *models.LoanApplicationModel) error {
 	loan.Data = "[]"
 	loan.Status = "DRAFT"
@@ -419,6 +463,9 @@ func (c *LoanApplicationService) CreateLoan(loan *models.LoanApplicationModel) e
 	return c.db.Create(loan).Error
 }
 
+// UpdateLoan digunakan untuk mengupdate pinjaman yang sudah ada. Fungsi ini akan mengembalikan error jika terjadi kesalahan saat mengupdate pinjaman.
+// Fungsi ini akan mengatur tipe pinjaman dan tingkat bunga/profit rate pinjaman berdasarkan setting perusahaan yang diberikan.
+// Fungsi ini juga akan mengatur nomor pinjaman berdasarkan setting perusahaan yang diberikan.
 func (c *LoanApplicationService) UpdateLoan(id string, loan *models.LoanApplicationModel) error {
 
 	err := c.db.Where("id = ?", id).Save(loan).Error
@@ -443,6 +490,9 @@ func (c *LoanApplicationService) UpdateLoan(id string, loan *models.LoanApplicat
 	return nil
 }
 
+// DeleteLoan menghapus pinjaman yang sesuai dengan ID yang diberikan.
+// Fungsi ini akan mengembalikan error jika terjadi kesalahan saat menghapus pinjaman.
+// Fungsi ini juga akan menghapus transaksi yang terkait dengan pinjaman yang dihapus.
 func (s *LoanApplicationService) DeleteLoan(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		err := tx.Where("loan_application_id = ?", id).Delete(&models.TransactionModel{}).Error
@@ -453,6 +503,11 @@ func (s *LoanApplicationService) DeleteLoan(id string) error {
 	})
 }
 
+// ApprovalLoan digunakan untuk menyetujui atau menolak pinjaman yang sesuai dengan ID yang diberikan.
+// Fungsi ini akan mengembalikan error jika terjadi kesalahan saat menyetujui atau menolak pinjaman.
+// Fungsi ini juga akan mengatur status pinjaman menjadi "APPROVED" atau "REJECTED".
+// Jika status yang diberikan adalah "APPROVED" maka akan mengenerate tabel cicilan dan mengisi kolom "data" di pinjaman dengan hasil generate tabel cicilan.
+// Jika status yang diberikan adalah "REJECTED" maka akan mengisi kolom "remarks" di pinjaman dengan keterangan penolakan pinjaman.
 func (c *LoanApplicationService) ApprovalLoan(id, userID, status, remarks string) error {
 
 	var user models.UserModel
@@ -497,6 +552,13 @@ func (c *LoanApplicationService) ApprovalLoan(id, userID, status, remarks string
 	loan.Status = status
 	return c.db.Where("id =?", id).Save(loan).Error
 }
+
+// GenerateInstallmentTable generates installment table based on loan application model.
+// It supports MUDHARABAH, QARDH_HASAN, and CONVENTIONAL loan types.
+// CONVENTIONAL loan type supports ANUITY, FIXED, and DECLINING profit type.
+// It returns an array of models.InstallmentDetail and error.
+// The installment detail contains installment number, principal amount, interest amount, admin fee, total paid, and remaining loan.
+// The function will calculate the installment table based on the loan application model and return the result.
 func (c *LoanApplicationService) GenerateInstallmentTable(loan *models.LoanApplicationModel) ([]models.InstallmentDetail, error) {
 	table := []models.InstallmentDetail{}
 	remainingLoan := loan.LoanAmount
@@ -573,6 +635,9 @@ func (c *LoanApplicationService) GenerateInstallmentTable(loan *models.LoanAppli
 	return table, nil
 }
 
+// GetPreview returns a map of string to []InstallmentDetail containing the preview of
+// the installment table for each type of loan (ANUITY, DECLINING, FIXED, QARDH_HASAN, MUDHARABAH).
+// The map key is the type of loan, and the value is the preview of the installment table.
 func (c *LoanApplicationService) GetPreview(loan *models.LoanApplicationModel) map[string][]models.InstallmentDetail {
 
 	if loan.LoanType == "CONVENTIONAL" {
@@ -613,6 +678,10 @@ func (c *LoanApplicationService) GetPreview(loan *models.LoanApplicationModel) m
 	}
 }
 
+// GenNumber generates the next number for a new loan. It queries the database to get the latest
+// loan number for the given company, and then uses the invoice bill setting to generate the next
+// number. If the query fails, it falls back to generating the number from the invoice bill setting
+// with a prefix of "00".
 func (c *LoanApplicationService) GenNumber(loan *models.LoanApplicationModel, companyID *string) error {
 	setting, err := c.cooperativeSettingService.GetSetting(companyID)
 	if err != nil {
@@ -636,11 +705,20 @@ func (c *LoanApplicationService) GenNumber(loan *models.LoanApplicationModel, co
 	loan.LoanNumber = nextNumber
 	return nil
 }
+
+// GetMember retrieves a cooperative member by its ID and stores it in the
+// LoanApplicationModel under the Member field. It does not return an error.
 func (c *LoanApplicationService) GetMember(loan *models.LoanApplicationModel) {
 	member := models.CooperativeMemberModel{}
 	c.db.First(&member, "id = ?", loan.MemberID)
 	loan.Member = &member
 }
+
+// GetTransactions retrieves the transactions and payments for a loan
+// and stores them in the LoanApplicationModel under the Transactions and
+// Payments fields respectively. If the loan has payments, it also retrieves
+// the last payment and stores it in the LoanApplicationModel under the
+// LastPayment field. It returns an error if the query fails.
 func (c *LoanApplicationService) GetTransactions(loan *models.LoanApplicationModel) error {
 	transactions := []models.TransactionModel{}
 	err := c.db.Find(&transactions, "loan_application_id = ?", loan.ID).Error

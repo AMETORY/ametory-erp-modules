@@ -27,6 +27,21 @@ type NetSurplusService struct {
 	savingService             *saving.SavingService
 }
 
+// NewNetSurplusService creates a new instance of NetSurplusService.
+//
+// The NetSurplusService is used to manage net surpluses, which are
+// distributions of profits made by a cooperative.
+//
+// It takes as parameters:
+//   - db: a pointer to a GORM database instance
+//   - ctx: a pointer to an ERPContext, which contains the user's HTTP request
+//     context and other relevant information
+//   - cooperativeSettingService: a pointer to a CooperativeSettingService,
+//     which is used to look up the settings for the cooperative
+//   - financeService: a pointer to a FinanceService, which is used to manage
+//     financial transactions
+//   - savingService: a pointer to a SavingService, which is used to manage
+//     savings accounts
 func NewNetSurplusService(
 	db *gorm.DB,
 	ctx *context.ERPContext,
@@ -43,9 +58,23 @@ func NewNetSurplusService(
 	}
 }
 
+// SetDB sets the underlying database connection for the NetSurplusService.
+//
+// This function should be used with caution, as it can potentially lead to
+// unexpected behavior if the underlying database connection is changed
+// unexpectedly.
 func (s *NetSurplusService) SetDB(db *gorm.DB) {
 	s.db = db
 }
+
+// GetTransactions retrieves a list of transactions associated with a specific net surplus ID.
+// The transactions are preloaded with their related account information and sorted by date in ascending order.
+//
+// Parameters:
+//   - netSurplusID: A string representing the unique identifier of the net surplus.
+//
+// Returns:
+//   - A slice of TransactionModel objects containing the transactions linked to the specified net surplus ID.
 
 func (n *NetSurplusService) GetTransactions(netSurplusID string) []models.TransactionModel {
 	var transactions []models.TransactionModel
@@ -57,6 +86,19 @@ func (n *NetSurplusService) GetTransactions(netSurplusID string) []models.Transa
 
 	return transactions
 }
+
+// GetNetSurplusTotal calculates and updates the net surplus total for a given NetSurplusModel.
+//
+// This function retrieves the closing book associated with the provided net surplus using the ClosingBookID,
+// and calculates the total savings, loans, and transactions within the specified date range. It updates the
+// net surplus model with these calculated totals and the net income from the closing book's closing summary.
+//
+// Parameters:
+//   - tx: A pointer to the GORM database transaction.
+//   - netSurplus: A pointer to the NetSurplusModel for which the net surplus total is being calculated.
+//
+// Returns:
+//   - An error if any database operation fails or if required data is missing.
 
 func (n *NetSurplusService) GetNetSurplusTotal(tx *gorm.DB, netSurplus *models.NetSurplusModel) error {
 	if netSurplus.ClosingBookID == nil {
@@ -123,6 +165,20 @@ func (n *NetSurplusService) GetNetSurplusTotal(tx *gorm.DB, netSurplus *models.N
 	return tx.Save(&netSurplus).Error
 }
 
+// CreateDistribution create distribution of net surplus based on company setting
+//
+// Net surplus distribution is divided into 6 categories:
+// 1. Jasa Modal (Mandatory Savings)
+// 2. Dana Cadangan (Reserve)
+// 3. Jasa Usaha (Business Profit)
+// 4. Dana Sosial (Social Fund)
+// 5. Dana Pendidikan (Education Fund)
+// 6. Dana Pengurus (Management)
+// 7. Dana Lainnya (Other Funds)
+//
+// The percentage of each category is based on the company setting
+// The amount of each category is calculated based on the net surplus total
+// and the percentage of each category
 func (n *NetSurplusService) CreateDistribution(tx *gorm.DB, netSurplus *models.NetSurplusModel) error {
 
 	setting, err := n.cooperativeSettingService.GetSetting(netSurplus.CompanyID)
@@ -191,6 +247,17 @@ func (n *NetSurplusService) CreateDistribution(tx *gorm.DB, netSurplus *models.N
 	return nil
 }
 
+// GetNetSurplusList retrieves a paginated list of net surplus records.
+//
+// It accepts an HTTP request, a search query string, and an optional member ID. The search
+// query is applied to the description field of the net surplus records. If a company ID is
+// present in the request header, results are filtered by the company ID or if the company ID
+// is null. Additionally, if a member ID is provided, results are further filtered by the member ID.
+// Pagination is applied to manage the result set, and any necessary request modifications are
+// handled using the utils.FixRequest utility.
+//
+// The function returns a paginated page of NetSurplusModel and an error if the operation fails.
+
 func (s *NetSurplusService) GetNetSurplusList(request http.Request, search string, memberID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -213,6 +280,12 @@ func (s *NetSurplusService) GetNetSurplusList(request http.Request, search strin
 	return page, nil
 }
 
+// GetNetSurplusByID retrieves a net surplus record by ID.
+//
+// It accepts an ID and an optional member ID. If a company ID is present in the request
+// header, results are filtered by the company ID or if the company ID is null. Additionally,
+// if a member ID is provided, results are further filtered by the member ID. The function
+// returns a NetSurplusModel and an error if the operation fails.
 func (s *NetSurplusService) GetNetSurplusByID(id string, memberID *string) (*models.NetSurplusModel, error) {
 	var netSurplus models.NetSurplusModel
 	db := s.db.Preload(clause.Associations)
@@ -227,6 +300,22 @@ func (s *NetSurplusService) GetNetSurplusByID(id string, memberID *string) (*mod
 
 	return &netSurplus, nil
 }
+
+// CreateNetSurplus creates a new net surplus record in the database.
+//
+// This function initiates a database transaction to ensure atomicity.
+// It first creates the net surplus record, and then calculates and updates
+// the net surplus total. It also creates the distribution of net surplus
+// based on company settings, retrieves the members associated with the net surplus,
+// and generates a unique net surplus number. If any operation fails, the transaction
+// is rolled back and an error is returned.
+//
+// Parameters:
+//   - netSurplus: A pointer to the NetSurplusModel to be created.
+//
+// Returns:
+//   - An error if any operation within the transaction fails.
+
 func (c *NetSurplusService) CreateNetSurplus(netSurplus *models.NetSurplusModel) error {
 	err := c.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(netSurplus).Error; err != nil {
@@ -257,6 +346,17 @@ func (c *NetSurplusService) CreateNetSurplus(netSurplus *models.NetSurplusModel)
 
 }
 
+// UpdateNetSurplus updates an existing net surplus record in the database.
+//
+// This function updates the net surplus record with the provided NetSurplusModel.
+// If the operation fails, an error is returned.
+//
+// Parameters:
+//   - id: The ID of the net surplus record to be updated.
+//   - netSurplus: A pointer to the NetSurplusModel that contains the updated values.
+//
+// Returns:
+//   - An error if the operation fails.
 func (c *NetSurplusService) UpdateNetSurplus(id string, netSurplus *models.NetSurplusModel) error {
 
 	err := c.db.Where("id = ?", id).Save(netSurplus).Error
@@ -267,6 +367,17 @@ func (c *NetSurplusService) UpdateNetSurplus(id string, netSurplus *models.NetSu
 	return nil
 }
 
+// DeleteNetSurplus deletes a net surplus record from the database.
+//
+// This function deletes the net surplus record with the given ID, and also
+// removes any associated transactions, loan applications, and savings records.
+// If any operation fails, an error is returned.
+//
+// Parameters:
+//   - id: The ID of the net surplus record to be deleted.
+//
+// Returns:
+//   - An error if the operation fails.
 func (s *NetSurplusService) DeleteNetSurplus(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		err := tx.Where("net_surplus_id = ?", id).Delete(&models.TransactionModel{}).Error
@@ -284,6 +395,21 @@ func (s *NetSurplusService) DeleteNetSurplus(id string) error {
 		return tx.Where("id = ?", id).Delete(&models.NetSurplusModel{}).Error
 	})
 }
+
+// GetMembers retrieves and processes cooperative members for a specified net surplus.
+//
+// This function fetches the cooperative members associated with a given company ID from the
+// database, calculates their total savings, loans, and transactions within the net surplus
+// period, and updates their records with the net surplus ID. It also calculates the allocation
+// of mandatory savings and business profit for each member based on their contributions and
+// the net surplus distribution settings.
+//
+// Parameters:
+//   - tx: A pointer to the GORM database transaction.
+//   - netSurplus: A pointer to the NetSurplusModel that contains the net surplus details.
+//
+// Returns:
+//   - An error if any database operation fails or if required data is missing.
 
 func (n *NetSurplusService) GetMembers(tx *gorm.DB, netSurplus *models.NetSurplusModel) error {
 	// getCompany, _ := c.Get("companySession")
@@ -378,6 +504,10 @@ func (n *NetSurplusService) GetMembers(tx *gorm.DB, netSurplus *models.NetSurplu
 	return nil
 }
 
+// GenNumber generates the next number for a new net surplus. It queries the database to get the latest
+// net surplus number for the given company, and then uses the invoice bill setting to generate the next
+// number. If the query fails, it falls back to generating the number from the invoice bill setting
+// with a prefix of "00".
 func (c *NetSurplusService) GenNumber(tx *gorm.DB, netSurplus *models.NetSurplusModel, companyID *string) error {
 	setting, err := c.cooperativeSettingService.GetSetting(companyID)
 	if err != nil {
@@ -402,6 +532,12 @@ func (c *NetSurplusService) GenNumber(tx *gorm.DB, netSurplus *models.NetSurplus
 	return nil
 }
 
+// Disbursement disburses the net surplus to the members' accounts.
+// The method first generates the transaction numbers for the disbursement.
+// Then, it creates the transaction for each member, and updates the net surplus member data.
+// It also creates a saving transaction for the voluntary asset, if it is given.
+// The method returns an error if there is an error in generating the transaction numbers,
+// or in creating the transaction, or in updating the net surplus member data.
 func (n *NetSurplusService) Disbursement(date time.Time, members []models.NetSurplusMember, netSurplus *models.NetSurplusModel, destinationID, userID, notes string, voluntaryAssetID *string) error {
 	return n.db.Transaction(func(tx *gorm.DB) error {
 
@@ -545,6 +681,18 @@ func (n *NetSurplusService) Disbursement(date time.Time, members []models.NetSur
 		return nil
 	})
 }
+
+// Distribute distribute net surplus to equity and other accounts
+//
+// The function will delete all transaction with net surplus id
+// and create new transaction for each allocation
+//
+// The function will also create a transaction for net surplus distribution
+// with debit account is sourceID and credit account is equityID
+//
+// # The function will return error if net surplus is already distributed
+//
+// The function will return error if there is an error when creating transaction
 func (n *NetSurplusService) Distribute(netSurplus *models.NetSurplusModel, sourceID string, allocations []models.NetSurplusAllocation, userID string) error {
 
 	if netSurplus.Status == "DISTRIBUTED" {
