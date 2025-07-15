@@ -26,6 +26,14 @@ type FinanceService struct {
 	AssetService       *asset.AssetService
 }
 
+// NewFinanceService creates a new instance of FinanceService.
+//
+// The service is created by providing a pointer to a gorm.DB instance and a pointer to an ERPContext instance.
+// The ERP context is used for authentication and authorization purposes, while the
+// database instance is used for CRUD (Create, Read, Update, Delete) operations.
+//
+// The service will call the Migrate() method after creation to migrate the database.
+// If the migration fails, the service will panic.
 func NewFinanceService(ctx *context.ERPContext) *FinanceService {
 	fmt.Println("INIT FINANCE SERVICE")
 	var service = FinanceService{
@@ -45,6 +53,14 @@ func NewFinanceService(ctx *context.ERPContext) *FinanceService {
 	return &service
 }
 
+// Migrate migrates the database schema for the FinanceService.
+//
+// If the SkipMigration flag is true in the context, this method
+// will not perform any migration and will return nil. Otherwise, it will
+// attempt to auto-migrate the database to include the
+// AccountModel, TransactionModel, JournalModel, TaxModel, and AssetModel schemas.
+// If the migration process encounters an error, it will return that error.
+// Otherwise, it will return nil upon successful migration.
 func (s *FinanceService) Migrate() error {
 	if s.ctx.SkipMigration {
 		return nil
@@ -81,6 +97,12 @@ func (s *FinanceService) Migrate() error {
 	// }
 	return nil
 }
+
+// DB returns the underlying GORM database connection used by the FinanceService.
+//
+// This method provides access to the database instance associated with the
+// current ERP context, enabling CRUD operations within the service.
+
 func (s *FinanceService) DB() *gorm.DB {
 	return s.ctx.DB
 }

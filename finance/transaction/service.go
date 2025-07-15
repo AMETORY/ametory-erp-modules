@@ -20,10 +20,20 @@ type TransactionService struct {
 	accountService *account.AccountService
 }
 
+// NewTransactionService returns a new instance of TransactionService.
+//
+// The service is created by providing a GORM database instance, an ERP context,
+// and an AccountService. The ERP context is used for authentication and
+// authorization purposes, while the database instance is used for CRUD (Create,
+// Read, Update, Delete) operations. The AccountService is used to fetch related
+// account data for transactions.
+
 func NewTransactionService(db *gorm.DB, ctx *context.ERPContext, accountService *account.AccountService) *TransactionService {
 	return &TransactionService{db: db, ctx: ctx, accountService: accountService}
 }
 
+// Migrate runs the database migration for the transaction module. It creates the
+// transactions table with the required columns and indexes.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.TransactionModel{})
 }
@@ -31,6 +41,10 @@ func (s *TransactionService) SetDB(db *gorm.DB) {
 	s.db = db
 }
 
+// CreateTransaction creates a new transaction in the database. If the
+// transaction's AccountID is set, the transaction is associated with the
+// specified account. If the transaction's SourceID is set, a transfer
+// transaction is created.
 func (s *TransactionService) CreateTransaction(transaction *models.TransactionModel, amount float64) error {
 	code := utils.RandString(10, false)
 	if transaction.AccountID != nil {
@@ -118,6 +132,15 @@ func (s *TransactionService) CreateTransaction(transaction *models.TransactionMo
 	return nil
 }
 
+// UpdateTransaction updates a transaction by its ID. It takes a string ID and a pointer
+// to a TransactionModel as its arguments. The TransactionModel instance contains the
+// updated values for the transaction.
+//
+// The method returns an error if the update operation fails. If the update is
+// successful, the error is nil.
+//
+// The method is run inside a transaction. If the transaction has a counter-part
+// transaction with the same code, the counter-part transaction is updated as well.
 func (s *TransactionService) UpdateTransaction(id string, transaction *models.TransactionModel) error {
 	// return s.db.Where("id = ?", id).Updates(transaction).Error
 	return s.db.Transaction(func(tx *gorm.DB) error {
@@ -157,6 +180,12 @@ func (s *TransactionService) UpdateTransaction(id string, transaction *models.Tr
 	})
 }
 
+// DeleteTransaction deletes a transaction by its ID.
+//
+// It returns an error if the deletion operation fails. Before deleting the
+// transaction, it retrieves the transaction data to get the transaction code.
+// After deleting the transaction, it deletes the counter-part transaction with
+// the same code.
 func (s *TransactionService) DeleteTransaction(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var data models.TransactionModel
@@ -176,6 +205,12 @@ func (s *TransactionService) DeleteTransaction(id string) error {
 	})
 }
 
+// GetTransactionById retrieves a transaction by its ID.
+//
+// It takes the ID of the transaction as an argument and returns a pointer to a
+// TransactionModel and an error. The function uses GORM to retrieve the
+// transaction data from the transactions table. If the operation fails, an error
+// is returned.
 func (s *TransactionService) GetTransactionById(id string) (*models.TransactionModel, error) {
 	var transaction models.TransactionModel
 	err := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id").
@@ -183,12 +218,23 @@ func (s *TransactionService) GetTransactionById(id string) (*models.TransactionM
 	return &transaction, err
 }
 
+// GetTransactionByCode retrieves a transaction by its code.
+//
+// It takes a code as input and returns a slice of TransactionModel and an error.
+// The function uses GORM to retrieve the transaction data from the transactions
+// table. If the operation fails, an error is returned. Otherwise, the error is
+// nil.
 func (s *TransactionService) GetTransactionByCode(code string) ([]models.TransactionModel, error) {
 	var transaction []models.TransactionModel
 	err := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id").
 		First(&transaction, "transactions.code = ?", code).Error
 	return transaction, err
 }
+
+// GetTransactionByDate retrieves a paginated list of transactions that occurred
+// between the specified 'from' and 'to' dates. The function filters transactions
+// by company ID if it is provided in the request header. It returns a paginated
+// page of TransactionModel and an error if the operation fails.
 
 func (s *TransactionService) GetTransactionByDate(from, to time.Time, request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
@@ -202,6 +248,11 @@ func (s *TransactionService) GetTransactionByDate(from, to time.Time, request ht
 	return page, nil
 }
 
+// GetByDateAndCompanyId retrieves a paginated list of transactions that occurred
+// between the specified 'from' and 'to' dates for a given company ID. The
+// function filters transactions by date and company ID, and returns a slice of
+// TransactionModel and an error if the operation fails. The function uses
+// pagination to manage the result set.
 func (s *TransactionService) GetByDateAndCompanyId(from, to time.Time, companyId string, page, limit int) ([]models.TransactionModel, error) {
 	var transactions []models.TransactionModel
 	err := s.db.Where("date BETWEEN ? AND ? AND company_id = ?", from, to, companyId).
@@ -209,6 +260,13 @@ func (s *TransactionService) GetByDateAndCompanyId(from, to time.Time, companyId
 	return transactions, err
 }
 
+// GetTransactionsByAccountID retrieves a paginated list of transactions for a given account ID.
+//
+// It takes an account ID, optional start and end dates, and an optional company ID as input.
+// The function filters transactions by account ID, company ID, and date range, and returns a
+// paginated page of TransactionModel and an error if the operation fails.
+// The function uses pagination to manage the result set.
+// Each item in the result set has its balance calculated using the getBalance function.
 func (s *TransactionService) GetTransactionsByAccountID(accountID string, startDate *time.Time, endDate *time.Time, companyID *string, request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id")
@@ -242,6 +300,17 @@ func (s *TransactionService) GetTransactionsByAccountID(accountID string, startD
 	page.Items = &newItems
 	return page, nil
 }
+
+// GetTransactions retrieves a paginated list of transactions from the database.
+//
+// It takes an HTTP request and a search query string as input. The method uses
+// GORM to query the database for transactions, applying the search query to the
+// account name, code, description, and various other fields. If the request contains
+// a company ID header, the method filters the result by the company ID.
+// The function utilizes pagination to manage the result set and includes any
+// necessary request modifications using the utils.FixRequest utility.
+// The function returns a paginated page of TransactionModel and an error if the
+// operation fails.
 func (s *TransactionService) GetTransactions(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Account").Select("transactions.*, accounts.name as account_name").Joins("LEFT JOIN accounts ON accounts.id = transactions.account_id")
@@ -328,6 +397,9 @@ func (s *TransactionService) GetTransactions(request http.Request, search string
 	return page, nil
 }
 
+// UpdateCreditDebit updates the debit and credit values of a transaction based on the given account type.
+// It also sets the appropriate flags for expense, income, and equity transactions.
+// The function returns the updated transaction, or an error if the account type is unrecognized.
 func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionModel, accountType models.AccountType) (*models.TransactionModel, error) {
 	// transaction.IsExpense = false
 	// transaction.IsIncome = false
@@ -381,6 +453,9 @@ func (s *TransactionService) UpdateCreditDebit(transaction *models.TransactionMo
 	return transaction, nil
 }
 
+// getBalance takes a transaction and returns the balance of the transaction.
+// It uses the type of the account to determine whether the balance is
+// calculated as debit - credit or credit - debit.
 func (s *TransactionService) getBalance(transaction models.TransactionModel) float64 {
 	switch transaction.Account.Type {
 	case models.EXPENSE, models.COST, models.CONTRA_LIABILITY, models.CONTRA_EQUITY, models.CONTRA_REVENUE, models.RECEIVABLE:
