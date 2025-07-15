@@ -11,11 +11,16 @@ import (
 	"gorm.io/gorm"
 )
 
+// AuthService is a service for managing user authentication.
+//
+// It provides methods for registering, logging in, changing passwords, and
+// verifying tokens.
 type AuthService struct {
 	erpContext *context.ERPContext
 	db         *gorm.DB
 }
 
+// NewAuthService creates a new instance of AuthService.
 func NewAuthService(erpContext *context.ERPContext) *AuthService {
 	var service = AuthService{erpContext: erpContext, db: erpContext.DB}
 	if erpContext.SkipMigration {
@@ -29,16 +34,20 @@ func NewAuthService(erpContext *context.ERPContext) *AuthService {
 	return &service
 }
 
+// Migrate runs the database migrations.
 func (s *AuthService) Migrate() error {
-	// s.db.Migrator().AlterColumn(&models.RoleModel{}, "name")
 	return s.db.AutoMigrate(&models.UserModel{}, &models.RoleModel{}, &models.PermissionModel{}, &models.PushTokenModel{}, &models.UserActivityModel{})
 }
 
+// DB returns the underlying database connection.
 func (s *AuthService) DB() *gorm.DB {
 	return s.db
 }
 
-// Register membuat user baru
+// Register creates a new user.
+//
+// It takes the full name, username, email, password, and phone number as
+// arguments.
 func (s *AuthService) Register(fullname, username, email, password, phoneNumber string) (*models.UserModel, error) {
 	// Hash password
 	hashedPassword, err := models.HashPassword(password)
@@ -73,7 +82,9 @@ func (s *AuthService) Register(fullname, username, email, password, phoneNumber 
 	return &user, nil
 }
 
-// Login memverifikasi username/email dan password
+// Login logs in a user.
+//
+// It takes the username or email and password as arguments.
 func (s *AuthService) Login(usernameOrEmail, password string, checkVerified bool) (*models.UserModel, error) {
 	var user models.UserModel
 
@@ -98,7 +109,9 @@ func (s *AuthService) Login(usernameOrEmail, password string, checkVerified bool
 	return &user, nil
 }
 
-// ForgotPassword mengirim email reset password (contoh sederhana)
+// ForgotPassword sends a password reset email.
+//
+// It takes the email as an argument.
 func (s *AuthService) ForgotPassword(email string) error {
 	var user models.UserModel
 
@@ -118,7 +131,9 @@ func (s *AuthService) ForgotPassword(email string) error {
 	return nil
 }
 
-// ChangePassword mengganti password
+// ChangePassword changes the password for a user.
+//
+// It takes the old password and new password as arguments.
 func (s *AuthService) ChangePassword(userID, oldPassword, newPassword string) error {
 	var user models.UserModel
 
@@ -141,7 +156,6 @@ func (s *AuthService) ChangePassword(userID, oldPassword, newPassword string) er
 		return err
 	}
 
-	// Ganti password di database
 	user.Password = hashedPassword
 	if err := s.db.Save(&user).Error; err != nil {
 		return err
@@ -178,6 +192,9 @@ func (s *AuthService) Verification(token, newPassword string) error {
 	return nil
 }
 
+// GetUserDataByPhoneNumber retrieves a user by their phone number.
+//
+// It returns the UserModel if found, otherwise an error.
 func (s *AuthService) GetUserDataByPhoneNumber(phoneNumber string) (*models.UserModel, error) {
 	var user models.UserModel
 	if err := s.db.Where("phone_number = ?", phoneNumber).First(&user).Error; err != nil {
@@ -187,6 +204,10 @@ func (s *AuthService) GetUserDataByPhoneNumber(phoneNumber string) (*models.User
 	}
 	return &user, nil
 }
+
+// GetUserByEmail checks if a user exists by their email.
+//
+// It returns true if found, otherwise false.
 func (s *AuthService) GetUserByEmail(email string) bool {
 	var user models.UserModel
 	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
@@ -196,6 +217,10 @@ func (s *AuthService) GetUserByEmail(email string) bool {
 	}
 	return true
 }
+
+// GetUserByPhoneNumber checks if a user exists by their phone number.
+//
+// It returns true if found, otherwise false.
 func (s *AuthService) GetUserByPhoneNumber(phone string) bool {
 	var user models.UserModel
 	if err := s.db.Where("phone_number = ?", phone).First(&user).Error; err != nil {
@@ -206,9 +231,11 @@ func (s *AuthService) GetUserByPhoneNumber(phone string) bool {
 	return true
 }
 
+// GetUserByEmailOrPhone retrieves a user by their email or phone number.
+//
+// It returns the UserModel if found, otherwise an error.
 func (s *AuthService) GetUserByEmailOrPhone(emailOrPhone string) (*models.UserModel, error) {
 	var user models.UserModel
-	// Cari user berdasarkan email atau phone number
 	if err := s.db.Where("email = ? OR phone_number = ?", emailOrPhone, emailOrPhone).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
@@ -217,10 +244,12 @@ func (s *AuthService) GetUserByEmailOrPhone(emailOrPhone string) (*models.UserMo
 	}
 	return &user, nil
 }
+
+// GetUserByID retrieves a user by their ID, preloading roles and permissions.
+//
+// It returns the UserModel with profile picture and permissions if found, otherwise an error.
 func (s *AuthService) GetUserByID(userID string) (*models.UserModel, error) {
 	var user models.UserModel
-	// fmt.Println("s.db.", s.db)
-	// Cari user berdasarkan ID
 	if err := s.db.Preload("Roles", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id", "name", "is_super_admin").Preload("Permissions", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id", "name")
@@ -247,6 +276,11 @@ func (s *AuthService) GetUserByID(userID string) (*models.UserModel, error) {
 	return &user, nil
 }
 
+// VerificationEmail memverifikasi token reset password
+//
+// It takes the token as an argument.
+//
+// It returns an error if the token is invalid or has expired.
 func (s *AuthService) VerificationEmail(token string) error {
 	var user models.UserModel
 
@@ -275,6 +309,11 @@ func (s *AuthService) VerificationEmail(token string) error {
 	return nil
 }
 
+// GetCompanies retrieves the companies of a user.
+//
+// It takes the user ID as an argument.
+//
+// It returns a slice of CompanyModel and an error.
 func (s *AuthService) GetCompanies(userID string) ([]models.CompanyModel, error) {
 	var user models.UserModel
 	// fmt.Println("s.db.", s.db)
@@ -297,6 +336,11 @@ func (s *AuthService) GetCompanies(userID string) ([]models.CompanyModel, error)
 	return user.Companies, nil
 }
 
+// UpdateEmail updates the email of a user.
+//
+// It takes the user ID, email, verification token, and verification expired at as arguments.
+//
+// It returns an error if the user is already verified or if there is an error saving the user.
 func (s *AuthService) UpdateEmail(userID string, email string, verificationToken string, verificationExpiredAt time.Time) error {
 	user := &models.UserModel{}
 	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
@@ -316,6 +360,12 @@ func (s *AuthService) UpdateEmail(userID string, email string, verificationToken
 
 	return nil
 }
+
+// UpdateReferralCode updates the referral code of a user.
+//
+// It takes the user ID and referral code as arguments.
+//
+// It returns an error if the user is already verified or if there is an error saving the user.
 func (s *AuthService) UpdateReferralCode(userID string, referralCode string) error {
 	user := &models.UserModel{}
 	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
@@ -343,6 +393,12 @@ func (s *AuthService) UpdateReferralCode(userID string, referralCode string) err
 
 	return nil
 }
+
+// UpdateAddress updates the address of a user.
+//
+// It takes the user ID and address as arguments.
+//
+// It returns an error if there is an error saving the user.
 func (s *AuthService) UpdateAddress(userID string, address string) error {
 	user := &models.UserModel{}
 	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
@@ -358,6 +414,11 @@ func (s *AuthService) UpdateAddress(userID string, address string) error {
 	return nil
 }
 
+// UpdateLatLng updates the latitude and longitude of a user.
+//
+// It takes the user ID, latitude, and longitude as arguments.
+//
+// It returns an error if there is an error saving the user.
 func (s *AuthService) UpdateLatLng(userID string, latitude, longitude float64) error {
 	user := &models.UserModel{}
 	if err := s.db.Where("id = ?", userID).First(user).Error; err != nil {
@@ -374,6 +435,11 @@ func (s *AuthService) UpdateLatLng(userID string, latitude, longitude float64) e
 	return nil
 }
 
+// CreatePushToken creates a push token for a user.
+//
+// It takes the user ID, token, device type, and token type as arguments.
+//
+// It returns a pointer to the created push token and an error.
 func (s *AuthService) CreatePushToken(userID *string, token, deviceType, tokenType string) (*models.PushTokenModel, error) {
 	// Check if the token already exists
 	var existingPushToken models.PushTokenModel
@@ -395,6 +461,11 @@ func (s *AuthService) CreatePushToken(userID *string, token, deviceType, tokenTy
 	return pushToken, nil
 }
 
+// GetTokenFromUserID retrieves the push tokens of a user.
+//
+// It takes the user ID as an argument.
+//
+// It returns a slice of strings and an error.
 func (s *AuthService) GetTokenFromUserID(userID string) ([]string, error) {
 	var pushTokens []models.PushTokenModel
 	if err := s.db.Where("user_id = ?", userID).Find(&pushTokens).Error; err != nil {

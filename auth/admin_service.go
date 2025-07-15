@@ -18,6 +18,11 @@ type AdminAuthService struct {
 	db         *gorm.DB
 }
 
+// NewAdminAuthService creates a new instance of AdminAuthService.
+// It initializes the service with the provided ERPContext and performs
+// database migrations unless the SkipMigration flag is set. If migration
+// fails, it logs the error and panics.
+
 func NewAdminAuthService(erpContext *context.ERPContext) *AdminAuthService {
 	var service = AdminAuthService{erpContext: erpContext, db: erpContext.DB}
 	if erpContext.SkipMigration {
@@ -30,12 +35,25 @@ func NewAdminAuthService(erpContext *context.ERPContext) *AdminAuthService {
 	}
 	return &service
 }
+
+// Migrate runs the database migrations. It creates the tables for the
+// admin models (AdminModel, RoleModel, and PermissionModel) if they do not
+// exist yet.
 func (s *AdminAuthService) Migrate() error {
 
 	return s.db.AutoMigrate(&models.AdminModel{}, &models.RoleModel{}, &models.PermissionModel{})
 }
 
-// Register membuat user baru
+// Register creates a new admin user.
+//
+// It takes the full name, username, email, password, and a boolean value indicating
+// whether the user is being added or not as arguments. If isAdd is true, the user
+// is immediately verified and the verification token is set to an empty string.
+// If isAdd is false, a verification token is generated and the user must be
+// verified using the Verification method.
+//
+// It returns the created admin user if successful, otherwise an error.
+
 func (s *AdminAuthService) Register(fullname, username, email, password string, isAdd bool) (*models.AdminModel, error) {
 	// Hash password
 	hashedPassword, err := models.HashPassword(password)
@@ -73,7 +91,11 @@ func (s *AdminAuthService) Register(fullname, username, email, password string, 
 	return &user, nil
 }
 
-// Login memverifikasi username/email dan password
+// Login logs in a user.
+//
+// It takes the username or email and password as arguments.
+//
+// It returns the logged in user if successful, otherwise an error.
 func (s *AdminAuthService) Login(usernameOrEmail, password string) (*models.AdminModel, error) {
 	var user models.AdminModel
 
@@ -97,7 +119,11 @@ func (s *AdminAuthService) Login(usernameOrEmail, password string) (*models.Admi
 	return &user, nil
 }
 
-// ForgotPassword mengirim email reset password (contoh sederhana)
+// ForgotPassword sends a password reset email.
+//
+// It takes the email as an argument.
+//
+// It returns an error if the user is not found or if there is a problem with the database.
 func (s *AdminAuthService) ForgotPassword(email string) error {
 	var user models.AdminModel
 
@@ -117,7 +143,12 @@ func (s *AdminAuthService) ForgotPassword(email string) error {
 	return nil
 }
 
-// ChangePassword mengganti password
+// ChangePassword changes the password for a user.
+//
+// It takes the user ID, old password, and new password as arguments.
+//
+// It returns an error if the user is not found, the old password is invalid, or
+// if there is a problem with the database.
 func (s *AdminAuthService) ChangePassword(userID, oldPassword, newPassword string) error {
 	var user models.AdminModel
 
@@ -149,7 +180,15 @@ func (s *AdminAuthService) ChangePassword(userID, oldPassword, newPassword strin
 	return nil
 }
 
-// Verification memverifikasi token reset password
+// Verification verifies a user's reset password token and updates the password.
+//
+// It takes the token and new password as arguments. If the token is valid and
+// not expired, the user's password is updated to the new password, and the token
+// is invalidated. The user's verified status is also updated.
+//
+// Returns an error if the token is invalid, expired, or if there is an issue
+// updating the user in the database.
+
 func (s *AdminAuthService) Verification(token, newPassword string) error {
 	var user models.AdminModel
 
@@ -177,7 +216,9 @@ func (s *AdminAuthService) Verification(token, newPassword string) error {
 	return nil
 }
 
-// GetAdminByID mengambil admin berdasarkan ID
+// GetAdminByID retrieves a user by their ID, preloading roles and permissions.
+//
+// It returns the AdminModel with profile picture and permissions if found, otherwise an error.
 func (s *AdminAuthService) GetAdminByID(userID string) (*models.AdminModel, error) {
 	var user models.AdminModel
 	// fmt.Println("s.db.", s.db)
@@ -209,7 +250,11 @@ func (s *AdminAuthService) GetAdminByID(userID string) (*models.AdminModel, erro
 	return &user, nil
 }
 
-// UpdateAdminByID memperbarui informasi admin berdasarkan ID
+// UpdateAdminByID updates the data of a user by their ID.
+//
+// It takes the user ID and data to be updated as arguments.
+//
+// It returns an error if the user is not found or if there is an error saving the user.
 func (s *AdminAuthService) UpdateAdminByID(userID string, updatedData *models.AdminModel) error {
 	var user models.AdminModel
 
@@ -231,7 +276,13 @@ func (s *AdminAuthService) UpdateAdminByID(userID string, updatedData *models.Ad
 	return nil
 }
 
-// GetAdmins retrieves a list of all admins
+// GetAdmins retrieves a list of users with pagination.
+//
+// It takes a request and a search parameter as arguments.
+//
+// The search parameter is used to search the users by full name, email, or username.
+//
+// It returns a paginate.Page containing the list of AdminModel with profile picture.
 func (s *AdminAuthService) GetAdmins(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Roles")
@@ -261,6 +312,11 @@ func (s *AdminAuthService) GetAdmins(request http.Request, search string) (pagin
 	return page, nil
 }
 
+// GetProfilePicture returns the profile picture of a user by their ID.
+//
+// It takes the user ID as an argument.
+//
+// It returns the FileModel of the profile picture if found, otherwise an error.
 func (s *AdminAuthService) GetProfilePicture(userID string) (models.FileModel, error) {
 	var image models.FileModel
 	err := s.db.Where("ref_id = ? and ref_type = ?", userID, "admin").First(&image).Error
@@ -268,6 +324,10 @@ func (s *AdminAuthService) GetProfilePicture(userID string) (models.FileModel, e
 }
 
 // CreatePushToken creates a new push token for an admin
+//
+// It takes the admin ID, token, device type, and token type as arguments.
+//
+// It returns a pointer to the created push token and an error.
 func (s *AdminAuthService) CreatePushToken(adminID *string, token, deviceType, tokenType string) (*models.PushTokenModel, error) {
 	// Check if the token already exists
 	var existingPushToken models.PushTokenModel
@@ -289,6 +349,11 @@ func (s *AdminAuthService) CreatePushToken(adminID *string, token, deviceType, t
 	return pushToken, nil
 }
 
+// GetTokenFromAdminID returns a slice of strings containing the push tokens of an admin
+//
+// It takes the admin ID as an argument.
+//
+// It returns a slice of strings containing the push tokens if found, otherwise an error.
 func (s *AuthService) GetTokenFromAdminID(userID string) ([]string, error) {
 	var pushTokens []models.PushTokenModel
 	if err := s.db.Where("admin_id = ?", userID).Find(&pushTokens).Error; err != nil {
@@ -301,6 +366,11 @@ func (s *AuthService) GetTokenFromAdminID(userID string) ([]string, error) {
 	return tokens, nil
 }
 
+// GetUserByEmail returns a user by their email
+//
+// It takes the email as an argument.
+//
+// It returns the UserModel if found, otherwise an error.
 func (s *AdminAuthService) GetUserByEmail(email string) (*models.AdminModel, error) {
 	var user models.AdminModel
 	// Cari user berdasarkan email atau phone number
@@ -313,6 +383,11 @@ func (s *AdminAuthService) GetUserByEmail(email string) (*models.AdminModel, err
 	return &user, nil
 }
 
+// GetUserByID returns a user by their ID
+//
+// It takes the user ID as an argument.
+//
+// It returns the UserModel if found, otherwise an error.
 func (s *AdminAuthService) GetUserByID(userID string) (*models.AdminModel, error) {
 	var user models.AdminModel
 	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
@@ -324,6 +399,11 @@ func (s *AdminAuthService) GetUserByID(userID string) (*models.AdminModel, error
 	return &user, nil
 }
 
+// VerificationEmail verifies a user by their verification token
+//
+// It takes the verification token as an argument.
+//
+// It returns an error if the token is invalid, expired, or if there is an issue updating the user in the database.
 func (s *AdminAuthService) VerificationEmail(token string) error {
 	var user models.AdminModel
 
@@ -350,4 +430,5 @@ func (s *AdminAuthService) VerificationEmail(token string) error {
 		return err
 	}
 	return nil
+
 }
