@@ -15,6 +15,13 @@ type CustomerServiceMessage interface {
 	SendCSMessage() (any, error)
 }
 
+// SendCustomerServiceMessage sends a customer service message using the input provided to the service.
+//
+// It calls SendCSMessage on the input CustomerServiceMessage to send the message and processes the response to
+// extract the message data, which is stored in the input data. If the input specifies that the message should be saved,
+// it calls SaveMessage to save the message data.
+//
+// Returns the message data if successful, or an error if any step fails.
 func SendCustomerServiceMessage(cs CustomerServiceMessage) (any, error) {
 	return cs.SendCSMessage()
 }
@@ -26,6 +33,14 @@ type CustomerRelationshipService struct {
 	TelegramService  *telegram.TelegramService
 	InstagramService *instagram.InstagramService
 }
+
+// NewCustomerRelationshipService creates a new instance of CustomerRelationshipService.
+//
+// It initializes the service with the given ERP context and sets up the Whatsapp,
+// Form, Telegram, and Instagram services. It also performs migration for the necessary
+// database models. If the migration fails, it logs the error.
+//
+// Returns a pointer to the newly created CustomerRelationshipService.
 
 func NewCustomerRelationshipService(ctx *context.ERPContext) *CustomerRelationshipService {
 	csService := CustomerRelationshipService{
@@ -41,6 +56,18 @@ func NewCustomerRelationshipService(ctx *context.ERPContext) *CustomerRelationsh
 	}
 	return &csService
 }
+
+// Migrate migrates the database schema for the CustomerRelationshipService.
+//
+// If the SkipMigration flag is set to true in the context, this method
+// will not perform any migration and will return nil. Otherwise, it will
+// attempt to auto-migrate the database to include the schemas for
+// WhatsappMessageModel, WhatsappMessageReaction, WhatsappMessageSession,
+// FormTemplate, FormModel, FormResponseModel, WhatsappMessageTemplate,
+// MessageTemplate, TelegramMessage, TelegramMessageSession,
+// InstagramMessage, and InstagramMessageSession.
+// If the migration process encounters an error, it will return that error.
+// Otherwise, it will return nil upon successful migration.
 
 func (cs *CustomerRelationshipService) Migrate() error {
 	if cs.ctx.SkipMigration {

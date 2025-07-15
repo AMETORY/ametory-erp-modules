@@ -25,6 +25,10 @@ type TelegramService struct {
 	input   *TelegramMsg
 }
 
+// NewTelegramService initializes a new instance of TelegramService with the provided context.
+// It sets the context for the service which will be used for various operations within the service.
+// Returns a pointer to the newly created TelegramService.
+
 func NewTelegramService(ctx *context.ERPContext) *TelegramService {
 	service := &TelegramService{
 		ctx: ctx,
@@ -32,14 +36,22 @@ func NewTelegramService(ctx *context.ERPContext) *TelegramService {
 	return service
 }
 
+// SetInput sets the input message for the Telegram service to use in the SendTelegramMessage method.
 func (t *TelegramService) SetInput(input *TelegramMsg) {
 	t.input = input
 }
+
+// SetToken sets the bot name and token for the Telegram service.
+// These must be set before making any API requests that require authentication.
 
 func (t *TelegramService) SetToken(botName, token *string) {
 	t.botName = botName
 	t.token = token
 }
+
+// GetWebhookInfo retrieves the current status of the webhook for the Telegram bot.
+// It sends a GET request to the Telegram Bot API to obtain information about the webhook set for the bot.
+// Returns a map containing the webhook information if successful, or an error if the request fails or bot credentials are not set.
 
 func (t *TelegramService) GetWebhookInfo() (map[string]any, error) {
 	if t.botName == nil || t.token == nil {
@@ -57,6 +69,10 @@ func (t *TelegramService) GetWebhookInfo() (map[string]any, error) {
 	}
 	return webhookInfo, nil
 }
+
+// SetWebhook sets the webhook for the Telegram bot.
+// It sends a POST request to the Telegram Bot API to set the webhook for the bot.
+// Returns an error if the request fails or bot credentials are not set.
 func (t *TelegramService) SetWebhook(webhookURL string) error {
 	if t.botName == nil || t.token == nil {
 		return errors.New("botName and token must be set")
@@ -74,6 +90,10 @@ func (t *TelegramService) SetWebhook(webhookURL string) error {
 	return nil
 }
 
+// GetUserProfilePhotos retrieves the user profile photos for the given user ID.
+//
+// It sends a GET request to the Telegram Bot API to obtain the user profile photos.
+// Returns a map containing the last photo's file information if successful, or an error if the request fails or bot credentials are not set.
 func (t *TelegramService) GetUserProfilePhotos(userId int64) (map[string]any, error) {
 	if t.botName == nil || t.token == nil {
 		return nil, errors.New("botName and token must be set")
@@ -105,10 +125,15 @@ func (t *TelegramService) GetUserProfilePhotos(userId int64) (map[string]any, er
 		if err != nil {
 			return nil, err
 		}
-		break
 	}
 	return fileResp, nil
 }
+
+// GetFile retrieves file information from the Telegram Bot API using the provided file ID.
+//
+// It constructs a request URL with the bot token and file ID, then sends a GET request to the Telegram API.
+// Returns a map containing the file information if successful, or an error if the request fails
+// or the bot credentials are not set.
 
 func (t *TelegramService) GetFile(fileId string) (map[string]interface{}, error) {
 	if t.botName == nil || t.token == nil {
@@ -133,6 +158,12 @@ func (t *TelegramService) GetFile(fileId string) (map[string]interface{}, error)
 
 	return result, nil
 }
+
+// GetMe retrieves bot information from the Telegram Bot API.
+//
+// It constructs a request URL with the bot token, then sends a GET request to the Telegram API.
+// Returns a map containing the bot information if successful, or an error if the request fails
+// or the bot credentials are not set.
 func (t *TelegramService) GetMe() (map[string]interface{}, error) {
 	if t.botName == nil || t.token == nil {
 		return nil, errors.New("botName and token must be set")
@@ -156,6 +187,14 @@ func (t *TelegramService) GetMe() (map[string]interface{}, error) {
 
 	return result, nil
 }
+
+// SendCSMessage sends a customer service message using the input provided to the Telegram service.
+//
+// It first checks if the input is nil and returns an error if it is. Then, it calls SendTelegramMessage
+// to send the message and processes the response to extract the message ID, which is stored in the input data.
+// If the input specifies that the message should be saved, it calls SaveMessage to save the message data.
+//
+// Returns the message data if successful, or an error if any step fails.
 
 func (ws *TelegramService) SendCSMessage() (any, error) {
 	if ws.input == nil {
@@ -187,6 +226,13 @@ func (ws *TelegramService) SendCSMessage() (any, error) {
 	return ws.input.Data, nil
 }
 
+// SendTelegramMessage sends a message to Telegram.
+//
+// It takes a TelegramMsg object as input, which must contain a chat ID and a message.
+// If the input specifies a file, it will be sent as a document, photo, audio or video
+// depending on the MIME type.
+//
+// Returns a map containing the response from the Telegram Bot API, or an error if the request fails.
 func (t *TelegramService) SendTelegramMessage(input *TelegramMsg) (map[string]any, error) {
 	if t.botName == nil || t.token == nil {
 		return nil, errors.New("botName and token must be set")
@@ -292,6 +338,14 @@ type TelegramMsg struct {
 	Data        *models.TelegramMessage
 }
 
+// CheckSession checks and updates the session information for a given Telegram message.
+//
+// It takes a TGResponse, a ContactModel, a connection ID, and a company ID as parameters.
+// The function first attempts to find an existing TelegramMessageSession for the contact.
+// If no session is found, a new session is created with the provided information.
+// If a session is found, it updates the LastMessage and LastOnlineAt fields with the latest data.
+// Returns the TelegramMessageSession and an error, if any occurs during the database operations.
+
 func (t *TelegramService) CheckSession(resp *models.TGResponse, input *models.ContactModel, connectionID, companyID string) (*models.TelegramMessageSession, error) {
 
 	now := time.Now()
@@ -322,6 +376,11 @@ func (t *TelegramService) CheckSession(resp *models.TGResponse, input *models.Co
 	return &sessions, nil
 }
 
+// SaveMessage saves a Telegram message to the database.
+//
+// It takes a pointer to a models.TelegramMessage struct as an argument and returns an error.
+// The function uses the provided context's database connection to create a new record in the
+// telegram_messages table. If the operation fails, it returns the error.
 func (t *TelegramService) SaveMessage(msg *models.TelegramMessage) error {
 	if err := t.ctx.DB.Create(msg).Error; err != nil {
 		return err
@@ -329,6 +388,19 @@ func (t *TelegramService) SaveMessage(msg *models.TelegramMessage) error {
 	return nil
 }
 
+// GetSessionMessageBySessionName retrieves a paginated list of Telegram message sessions for a specific session name, search query, and/or tags.
+//
+// It takes a session name, an optional search query, and an HTTP request as parameters.
+// The function filters message sessions by session name and optionally by search query and tags.
+// It returns a paginated page of TelegramMessageSession models and an error if the operation fails.
+//
+// The function uses request parameters to modify the pagination and filtering behavior.
+// The following query parameters are supported:
+//
+//   - search: a string to search in the contact's name and email.
+//   - tag_ids: a comma-separated list of tag IDs to filter the results.
+//   - ID-Company: a header to filter the results by company ID. If the header is
+//     set to "nil" or "null", only message sessions with a null company ID are returned.
 func (ws *TelegramService) GetSessionMessageBySessionName(sessionName string, request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := ws.ctx.DB.Preload("Contact.Tags").Model(&models.TelegramMessageSession{})
@@ -401,6 +473,13 @@ func (ws *TelegramService) GetSessionMessageBySessionName(sessionName string, re
 	return page, nil
 }
 
+// GetMessageSessionChatBySessionName retrieves a paginated list of Telegram messages for a specific session and contact.
+//
+// It takes a session name, an optional contact ID pointer, and an HTTP request as parameters.
+// The function filters messages by session ID and optionally by contact ID. It returns a paginated
+// page of TelegramMessage models and an error if the operation fails.
+//
+// The function uses request parameters to modify the pagination and filtering behavior.
 func (ws *TelegramService) GetMessageSessionChatBySessionName(sessionName string, contact_id *string, request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := ws.ctx.DB.Preload("Member.User").Preload("Contact").Model(&models.TelegramMessage{})
