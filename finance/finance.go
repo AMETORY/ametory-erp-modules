@@ -102,7 +102,6 @@ func (s *FinanceService) Migrate() error {
 //
 // This method provides access to the database instance associated with the
 // current ERP context, enabling CRUD operations within the service.
-
 func (s *FinanceService) DB() *gorm.DB {
 	return s.ctx.DB
 }
