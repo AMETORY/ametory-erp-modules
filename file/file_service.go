@@ -19,6 +19,11 @@ type FileService struct {
 	baseURL string
 }
 
+// NewFileService creates a new instance of FileService.
+//
+// It takes an ERPContext and a baseURL as parameter and returns a pointer to a FileService.
+//
+// It uses the ERPContext to initialize the FileService and run the migration for the FileModel database schema.
 func NewFileService(ctx *context.ERPContext, baseURL string) *FileService {
 	service := FileService{
 		ctx:     ctx,
@@ -36,6 +41,13 @@ func NewFileService(ctx *context.ERPContext, baseURL string) *FileService {
 	return &service
 }
 
+// UploadFileFromBase64 uploads a file from a base64 encoded string.
+//
+// It takes a base64 encoded string, a provider, a folder and a pointer to a FileModel as parameter.
+//
+// It decodes the base64 string into a byte array and then calls UploadFile with the byte array and the given parameters.
+//
+// It returns an error if there is an error decoding the base64 string or uploading the file.
 func (s *FileService) UploadFileFromBase64(base64String, provider, folder string, fileObj *models.FileModel) error {
 	file, err := base64.StdEncoding.DecodeString(base64String)
 	if err != nil {
@@ -44,6 +56,13 @@ func (s *FileService) UploadFileFromBase64(base64String, provider, folder string
 	return s.UploadFile(file, provider, folder, fileObj)
 }
 
+// UploadFile uploads a file to a provider.
+//
+// It takes a byte array, a provider, a folder and a pointer to a FileModel as parameter.
+//
+// It detects the mime type of the file from the byte array and then calls the UploadFileToFirebaseStorage method of the Firestore service if the provider is "firebase", or writes the file to the local file system if the provider is "local".
+//
+// It returns an error if there is an error uploading the file to the provider.
 func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *models.FileModel) error {
 	// TODO: implement upload file logic
 	var path, url, mimeType string
@@ -103,6 +122,10 @@ func (s *FileService) UploadFile(file []byte, provider, folder string, fileObj *
 
 	return s.ctx.DB.Save(fileObj).Error
 }
+
+// GetFileByID retrieves a file by its ID.
+//
+// It takes an ID as parameter and returns the FileModel if found, otherwise an error.
 func (s *FileService) GetFileByID(id string) (*models.FileModel, error) {
 	file := &models.FileModel{}
 	err := s.ctx.DB.Where("id = ?", id).First(file).Error
@@ -112,13 +135,30 @@ func (s *FileService) GetFileByID(id string) (*models.FileModel, error) {
 	return file, nil
 }
 
+// UpdateFileByID updates the details of a file in the database by its ID.
+//
+// It takes a string id and a pointer to a FileModel containing the updated file information.
+// The function returns an error if the update operation fails.
+
 func (s *FileService) UpdateFileByID(id string, file *models.FileModel) error {
 	return s.ctx.DB.Model(&models.FileModel{}).Where("id = ?", id).Updates(file).Error
 }
+
+// UpdateFileRefByID updates the reference ID and type of a file in the database by its ID.
+//
+// It takes a string id, a string refID, and a string refType as parameters.
+// The function returns an error if the update operation fails.
 func (s *FileService) UpdateFileRefByID(id string, refID, refType string) error {
 	return s.ctx.DB.Model(&models.FileModel{}).Where("id = ?", id).Updates(map[string]interface{}{"ref_id": refID, "ref_type": refType}).Error
 }
 
+// DeleteFile deletes a file by its ID.
+//
+// It takes an ID as parameter and retrieves the associated FileModel from the database.
+// If the file provider is "local", it deletes the file from the local file system.
+// If the file provider is "firebase", it deletes the file from the Firebase Storage.
+// The function then deletes the FileModel from the database.
+// It returns an error if any of the operations fail.
 func (s *FileService) DeleteFile(id string) error {
 	file := &models.FileModel{}
 	err := s.ctx.DB.Where("id = ?", id).First(file).Error
