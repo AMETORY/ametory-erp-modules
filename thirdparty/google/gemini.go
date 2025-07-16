@@ -2,6 +2,7 @@ package google
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -34,6 +35,11 @@ type GeminiService struct {
 	sessionCode        *string
 }
 
+// NewGeminiService creates a new instance of GeminiService with the given ERP context and API key.
+//
+// It fetches the histories from the database and sets up the Gemini client.
+// If the SkipMigration flag in the ERPContext is false, it runs the migration first.
+// It then returns the newly created GeminiService.
 func NewGeminiService(ctx *erpContext.ERPContext, apiKey string) *GeminiService {
 	if !ctx.SkipMigration {
 		Migrate(ctx.DB)
@@ -60,14 +66,24 @@ func NewGeminiService(ctx *erpContext.ERPContext, apiKey string) *GeminiService 
 	return &service
 }
 
+// SetupAgentID sets the agent ID for the Gemini service.
+//
+// It will filter the histories by the given agent ID when calling RefreshHistories.
 func (s *GeminiService) SetupAgentID(agentID string) {
 	s.agentID = &agentID
 }
 
+// SetupSessionCode sets the session code for the Gemini service.
+//
+// It will filter the histories by the given session code when calling RefreshHistories.
 func (s *GeminiService) SetupSessionCode(sessionCode string) {
 	s.sessionCode = &sessionCode
 }
 
+// SetupAPIKey sets the API key for the Gemini service.
+//
+// It will create a new Gemini client with the given API key and refresh the histories.
+// If skipHistory is true, it won't refresh the histories.
 func (s *GeminiService) SetupAPIKey(apiKey string, skipHistory bool) {
 	s.apiKey = apiKey
 
@@ -87,14 +103,28 @@ func (s *GeminiService) SetupAPIKey(apiKey string, skipHistory bool) {
 
 }
 
+// Migrate runs the migration for the Gemini service.
+//
+// It will create a new database table for the Gemini histories if it doesn't exist.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.GeminiHistoryModel{}, &models.GeminiAgent{})
 }
 
+// RefreshHistories refreshes the histories from the database.
+//
+// It will call getHistories to fetch the histories from the database and set them as the histories of the Gemini service.
 func (s *GeminiService) RefreshHistories() {
 	getHistories(*s.ctx.Ctx, s)
 }
 
+// getHistories fetches the histories from the database and sets them as the histories of the Gemini service.
+//
+// It takes a context and a Gemini service as arguments.
+// It fetches the histories from the database, and if the agent ID or session code is set,
+// it will filter the histories by the given agent ID or session code.
+// For each history, it will create a genai.Content object with the input and output of the history,
+// and append it to the histories slice.
+// Finally, it will set the histories slice as the histories of the Gemini service.
 func getHistories(ctx context.Context, service *GeminiService) {
 	var historyModels []models.GeminiHistoryModel
 	db := service.ctx.DB.Model(&models.GeminiHistoryModel{})
@@ -136,17 +166,32 @@ func getHistories(ctx context.Context, service *GeminiService) {
 	service.histories = histories
 }
 
+// SetUpSystemInstruction sets the system instruction for the Gemini service.
+//
+// It takes a string as argument and sets it as the system instruction of the Gemini service.
 func (service *GeminiService) SetUpSystemInstruction(systemInstruction string) {
 	service.systemInstruction = systemInstruction
 }
 
+// UploadToGemini uploads a file to Gemini.
+//
+// It takes a path to a local file and a MIME type as arguments.
+// It will upload the file to Gemini and return a string with the URI of the uploaded file.
+// If there is an error, it will return an empty string and an error.
 func (s *GeminiService) UploadToGemini(path, mimeType string) (string, error) {
 	response := uploadToGemini(*s.ctx.Ctx, s.client, path, mimeType)
 	if response == "" {
-		return "", fmt.Errorf("Error uploading file")
+		return "", errors.New("error uploading file")
 	}
 	return response, nil
 }
+
+// uploadToGemini uploads a file to Gemini.
+//
+// It takes a context, a Gemini client, a path to a local file, and a MIME type as arguments.
+// If the path is a URL, it will download the file first.
+// It will then upload the file to Gemini and return a string with the URI of the uploaded file.
+// If there is an error, it will return an empty string and an error.
 func uploadToGemini(ctx context.Context, client *genai.Client, path, mimeType string) string {
 	if strings.HasPrefix(path, "http") {
 		resp, err := http.Get(path)
@@ -192,6 +237,11 @@ func uploadToGemini(ctx context.Context, client *genai.Client, path, mimeType st
 	return fileData.URI
 }
 
+// SetupModel sets the model and its parameters for the Gemini service.
+//
+// It takes the set temperature, top K, top P, maximum output tokens, response MIME type, and model name as arguments.
+// It sets the given parameters as the parameters of the Gemini service.
+// The parameters are used to generate content with the Gemini service.
 func (service *GeminiService) SetupModel(
 	setTemperature float32,
 	setTopK int32,
@@ -201,15 +251,6 @@ func (service *GeminiService) SetupModel(
 	model string,
 ) {
 
-	// fmt.Println(
-	// 	setTemperature,
-	// 	setTopK,
-	// 	setTopP,
-	// 	setMaxOutputTokens,
-	// 	responseMimetype,
-	// 	model,
-	// )
-
 	service.setTemperature = setTemperature
 	service.setTopK = setTopK
 	service.setTopP = setTopP
@@ -218,6 +259,13 @@ func (service *GeminiService) SetupModel(
 	service.model = model
 
 }
+
+// GenerateContent generates content based on the input and user histories.
+//
+// It takes the input as a string, user histories as a slice of maps, and a file URL and MIME type as arguments.
+// It sets the given parameters as the parameters of the Gemini service.
+// It then generates content based on the input and user histories and returns the generated content as a string.
+// If there is an error, it will return an empty string and an error.
 func (service *GeminiService) GenerateContent(ctx context.Context, input string, userHistories []map[string]any, fileURL, mimeType string) (string, error) {
 	if service.client == nil {
 		return "", fmt.Errorf("client is not initialized")
@@ -332,6 +380,12 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 	return "", nil
 }
 
+// GetHistories fetches the histories from the database.
+//
+// It takes an agent ID and company ID as arguments.
+// It fetches the histories from the database, and if the agent ID or company ID is set,
+// it will filter the histories by the given agent ID or company ID.
+// It returns a slice of models.GeminiHistoryModel.
 func (s *GeminiService) GetHistories(agentID *string, companyID *string) []models.GeminiHistoryModel {
 	var historyModels []models.GeminiHistoryModel
 	db := s.ctx.DB.Model(&models.GeminiHistoryModel{})
@@ -345,6 +399,11 @@ func (s *GeminiService) GetHistories(agentID *string, companyID *string) []model
 	return historyModels
 }
 
+// UpdateHistory updates the history in the database.
+//
+// It takes a history and its ID as arguments.
+// It updates the history in the database with the given ID.
+// If there is an error, it will return an error.
 func (s *GeminiService) UpdateHistory(id string, history models.GeminiHistoryModel) error {
 
 	if err := s.ctx.DB.Where("id = ?", id).Updates(&history).Error; err != nil {
@@ -353,6 +412,11 @@ func (s *GeminiService) UpdateHistory(id string, history models.GeminiHistoryMod
 	return nil
 }
 
+// AddHistory adds a new history to the database.
+//
+// It takes a history as an argument.
+// It adds the history to the database.
+// If there is an error, it will return an error.
 func (s *GeminiService) AddHistory(history models.GeminiHistoryModel) error {
 	if s.sessionCode != nil {
 		history.SessionCode = s.sessionCode
@@ -364,6 +428,11 @@ func (s *GeminiService) AddHistory(history models.GeminiHistoryModel) error {
 	return nil
 }
 
+// DeleteHistory deletes the history from the database.
+//
+// It takes the ID of the history as an argument.
+// It deletes the history from the database with the given ID.
+// If there is an error, it will return an error.
 func (s *GeminiService) DeleteHistory(id string) error {
 	if err := s.ctx.DB.Where("id = ?", id).Delete(&models.GeminiHistoryModel{}).Error; err != nil {
 		return fmt.Errorf("error deleting history: %v", err)
@@ -371,10 +440,19 @@ func (s *GeminiService) DeleteHistory(id string) error {
 	return nil
 }
 
+// SetResponseMIMEType sets the MIME type for the response.
+//
+// It takes the MIME type as an argument.
+// It sets the response MIME type of the Gemini service.
 func (s *GeminiService) SetResponseMIMEType(mimetype string) {
 	s.responseMimetype = mimetype
 }
 
+// CreateAgent creates a new agent in the database.
+//
+// It takes an agent as an argument.
+// It creates a new agent in the database.
+// If there is an error, it will return an error.
 func (s *GeminiService) CreateAgent(agent *models.GeminiAgent) error {
 	if err := s.ctx.DB.Create(agent).Error; err != nil {
 		return fmt.Errorf("error creating agent: %v", err)
@@ -383,6 +461,11 @@ func (s *GeminiService) CreateAgent(agent *models.GeminiAgent) error {
 	return nil
 }
 
+// UpdateAgent updates the agent in the database.
+//
+// It takes the ID of the agent and the agent as arguments.
+// It updates the agent in the database with the given ID.
+// If there is an error, it will return an error.
 func (s *GeminiService) UpdateAgent(id string, agent *models.GeminiAgent) error {
 
 	if err := s.ctx.DB.Where("id = ?", id).Updates(agent).Error; err != nil {
@@ -391,6 +474,11 @@ func (s *GeminiService) UpdateAgent(id string, agent *models.GeminiAgent) error 
 	return nil
 }
 
+// DeleteAgent deletes the agent from the database.
+//
+// It takes the ID of the agent as an argument.
+// It deletes the agent from the database with the given ID.
+// If there is an error, it will return an error.
 func (s *GeminiService) DeleteAgent(id string) error {
 	if err := s.ctx.DB.Where("id = ?", id).Delete(&models.GeminiAgent{}).Error; err != nil {
 		return fmt.Errorf("error deleting agent: %v", err)
@@ -398,6 +486,11 @@ func (s *GeminiService) DeleteAgent(id string) error {
 	return nil
 }
 
+// GetAgents fetches the agents from the database.
+//
+// It takes an HTTP request as an argument.
+// It fetches the agents from the database and paginates them.
+// It returns a paginate.Page and an error.
 func (s *GeminiService) GetAgents(request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.ctx.DB.Order("created_at desc").Model(&models.GeminiAgent{})
@@ -407,6 +500,11 @@ func (s *GeminiService) GetAgents(request http.Request) (paginate.Page, error) {
 	return page, nil
 }
 
+// GetAgent fetches the agent from the database.
+//
+// It takes the ID of the agent as an argument.
+// It fetches the agent from the database with the given ID.
+// It returns the fetched agent and an error.
 func (s *GeminiService) GetAgent(id string) (*models.GeminiAgent, error) {
 	var agent models.GeminiAgent
 

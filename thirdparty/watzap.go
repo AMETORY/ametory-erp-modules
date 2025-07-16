@@ -7,8 +7,11 @@ import (
 	"net/http"
 )
 
+// Package thirdparty provides a client for interacting with the Watzap API.
+
 const WatzapURL = "https://api.watzap.id"
 
+// WatzapClient is a client for interacting with the Watzap API.
 type WatzapClient struct {
 	ApiKey     string
 	NumberKey  string
@@ -17,16 +20,19 @@ type WatzapClient struct {
 	IsMock     bool
 }
 
+// SendMessageRequest represents the request payload for sending a message.
 type SendMessageRequest struct {
 	PhoneNo string `json:"phone_no"`
 	Message string `json:"message"`
 }
 
+// SendFileURLRequest represents the request payload for sending a file URL.
 type SendFileURLRequest struct {
 	PhoneNo string `json:"phone_no"`
 	URL     string `json:"url"`
 }
 
+// SendImageURLRequest represents the request payload for sending an image URL.
 type SendImageURLRequest struct {
 	PhoneNo         string `json:"phone_no"`
 	URL             string `json:"url"`
@@ -34,6 +40,9 @@ type SendImageURLRequest struct {
 	SeparateCaption int    `json:"separate_caption"`
 }
 
+// NewWatzapClient creates a new instance of WatzapClient with the given parameters.
+//
+// If redisKey is empty, it will be set to "watzap:notif".
 func NewWatzapClient(apiKey, numberKey, mockNumber string, isMock bool, redisKey string) *WatzapClient {
 	if redisKey == "" {
 		redisKey = "watzap:notif"
@@ -47,6 +56,9 @@ func NewWatzapClient(apiKey, numberKey, mockNumber string, isMock bool, redisKey
 	}
 }
 
+// SendMessage sends a message to the specified phone number using the Watzap API.
+//
+// It returns an error if the message could not be sent.
 func (c *WatzapClient) SendMessage(phoneNo, message string) error {
 	req := SendMessageRequest{
 		PhoneNo: phoneNo,
@@ -71,6 +83,9 @@ func (c *WatzapClient) SendMessage(phoneNo, message string) error {
 	return c.sendRequest(WatzapURL+"/v1/send_message", jsonReq)
 }
 
+// SendFileURL sends a file URL to the specified phone number using the Watzap API.
+//
+// It returns an error if the file URL could not be sent.
 func (c *WatzapClient) SendFileURL(phoneNo, url string) error {
 	req := SendFileURLRequest{
 		PhoneNo: phoneNo,
@@ -95,6 +110,9 @@ func (c *WatzapClient) SendFileURL(phoneNo, url string) error {
 	return c.sendRequest(WatzapURL+"/v1/send_file_url", jsonReq)
 }
 
+// SendImageURL sends an image URL with an optional message to the specified phone number using the Watzap API.
+//
+// It returns an error if the image URL could not be sent.
 func (c *WatzapClient) SendImageURL(phoneNo, url, message string, separateCaption int) error {
 	req := SendImageURLRequest{
 		PhoneNo:         phoneNo,
@@ -123,6 +141,9 @@ func (c *WatzapClient) SendImageURL(phoneNo, url, message string, separateCaptio
 	return c.sendRequest(WatzapURL+"/v1/send_image_url", jsonReq)
 }
 
+// sendRequest sends a HTTP POST request to the specified URL with the given JSON payload.
+//
+// It returns an error if the request fails or the response status is not OK.
 func (c *WatzapClient) sendRequest(url string, jsonReq []byte) error {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonReq))
 	if err != nil {
@@ -139,7 +160,7 @@ func (c *WatzapClient) sendRequest(url string, jsonReq []byte) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("gagal mengirim request, status code: %d", resp.StatusCode)
+		return fmt.Errorf("failed to send request, status code: %d", resp.StatusCode)
 	}
 
 	return nil

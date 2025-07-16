@@ -9,12 +9,24 @@ import (
 	"google.golang.org/api/option"
 )
 
+// Firestore is a wrapper around the Firebase Firestore client.
+//
+// It provides a convenient interface for interacting with the Firestore
+// database, including uploading and downloading files.
 type Firestore struct {
+	// client is the underlying Firebase Firestore client.
 	client *firebase.App
+
+	// bucket is the name of the Firebase Storage bucket to use.
 	bucket string
-	ctx    context.Context
+
+	// ctx is the context.Context to use when interacting with the Firestore
+	// client.
+	ctx context.Context
 }
 
+// NewFirebaseApp creates a new Firestore client from a Firebase
+// credentials file and a bucket name.
 func NewFirebaseApp(ctx context.Context, firebaseCredentialFile, bucket string) (*Firestore, error) {
 	opt := option.WithCredentialsFile(firebaseCredentialFile)
 
@@ -26,6 +38,10 @@ func NewFirebaseApp(ctx context.Context, firebaseCredentialFile, bucket string) 
 	return &Firestore{client: app, bucket: bucket, ctx: ctx}, nil
 }
 
+// UploadFileToFirebaseStorage uploads a file to the specified bucket and
+// folder in Firebase Storage.
+//
+// It returns the object path and public URL for the uploaded file.
 func (f *Firestore) UploadFileToFirebaseStorage(file []byte, folder string, fileName string) (string, string, error) {
 	client, err := f.client.Storage(f.ctx)
 	if err != nil {
@@ -57,6 +73,7 @@ func (f *Firestore) UploadFileToFirebaseStorage(file []byte, folder string, file
 	return objString, publicURL, nil
 }
 
+// makePublic makes the specified object publicly accessible.
 func (f *Firestore) makePublic(object string) error {
 
 	client, err := f.client.Storage(f.ctx)
@@ -76,6 +93,8 @@ func (f *Firestore) makePublic(object string) error {
 	return nil
 }
 
+// DeleteFileFromFirebaseStorage deletes the specified object from Firebase
+// Storage.
 func (f *Firestore) DeleteFileFromFirebaseStorage(objString string) error {
 	client, err := f.client.Storage(f.ctx)
 	if err != nil {

@@ -1,7 +1,5 @@
 package thirdparty
 
-import "fmt"
-
 // Konstanta untuk perhitungan BPJS dan PPh 21
 
 type Bpjs struct {
@@ -45,6 +43,23 @@ func InitBPJS() *Bpjs {
 	}
 }
 
+// Bpjs menghitung iuran BPJS berdasarkan peraturan perundangan yang berlaku
+//
+// Bpjs menghitung iuran BPJS Kesehatan, BPJS Ketenagakerjaan JHT, BPJS JP,
+// BPJS JKM, dan BPJS JKK berdasarkan upah dan resiko pekerjaan.
+//
+// Bpjs menggunakan batas atas dan bawah upah yang ditentukan dalam peraturan
+// perundangan yang berlaku untuk menghitung iuran BPJS.
+//
+// Bpjs juga menggunakan tarif iuran BPJS yang ditentukan oleh pemerintah untuk
+// menghitung iuran BPJS.
+//
+// Bpjs diinisialisasi dengan menggunakan fungsi InitBPJS.
+//
+// Contoh penggunaan Bpjs:
+// bpjs := InitBPJS()
+// employerContribution, employeeContribution, totalContribution := bpjs.CalculateBPJSKes(salary)
+
 func (m Bpjs) CalculateBPJSKes(salary float64) (float64, float64, float64) {
 	// Pastikan gaji berada dalam batas yang ditentukan untuk BPJS Kesehatan
 	if salary > m.MaxSalaryKes {
@@ -58,14 +73,16 @@ func (m Bpjs) CalculateBPJSKes(salary float64) (float64, float64, float64) {
 	employeeContribution := salary * m.BpjsKesRateEmployee
 	totalContribution := employerContribution + employeeContribution
 
-	fmt.Println("CALCULATE_BPJSKES", salary, m.BpjsKesRateEmployer)
-	fmt.Println("CALCULATE_BPJSKES", salary, m.BpjsKesRateEmployee)
-	fmt.Println("CALCULATE_BPJSKES", employerContribution, employeeContribution)
-
 	return employerContribution, employeeContribution, totalContribution
 }
 
-// Fungsi untuk menghitung iuran BPJS JHT Ketenagakerjaan
+// CalculateBPJSTkJht menghitung iuran BPJS Ketenagakerjaan JHT berdasarkan upah yang diberikan.
+//
+// Fungsi ini akan memastikan bahwa upah berada dalam batas yang ditentukan untuk BPJS Ketenagakerjaan.
+//
+// Contoh penggunaan CalculateBPJSTkJht:
+// bpjs := InitBPJS()
+// employerContribution, employeeContribution, totalContribution := bpjs.CalculateBPJSTkJht(salary)
 func (m Bpjs) CalculateBPJSTkJht(salary float64) (float64, float64, float64) {
 	// Pastikan gaji berada dalam batas yang ditentukan untuk BPJS Ketenagakerjaan
 	if salary > m.MaxSalaryTk {
@@ -77,14 +94,17 @@ func (m Bpjs) CalculateBPJSTkJht(salary float64) (float64, float64, float64) {
 	employeeContribution := salary * m.BpjsTkJhtRateEmployee
 	totalContribution := employerContribution + employeeContribution
 
-	fmt.Println("CALCULATE_BPJSTK_JHT", salary, m.BpjsTkJhtRateEmployer)
-	fmt.Println("CALCULATE_BPJSTK_JHT", salary, m.BpjsTkJhtRateEmployee)
-	fmt.Println("CALCULATE_BPJSTK_JHT", employerContribution, employeeContribution)
-
 	return employerContribution, employeeContribution, totalContribution
 }
 
-// Fungsi untuk menghitung iuran BPJS JP Ketenagakerjaan
+// CalculateBPJSTkJp menghitung iuran BPJS Ketenagakerjaan Jp berdasarkan upah yang diberikan.
+//
+// Fungsi ini akan menghitung iuran BPJS Ketenagakerjaan Jp yang dibayar oleh pemberi kerja dan
+// pekerja, serta total iuran yang harus dibayar.
+//
+// Contoh penggunaan CalculateBPJSTkJp:
+// bpjs := InitBPJS()
+// employerContribution, employeeContribution, totalContribution := bpjs.CalculateBPJSTkJp(salary)
 func (m Bpjs) CalculateBPJSTkJp(salary float64) (float64, float64, float64) {
 
 	// Hitung iuran BPJS Ketenagakerjaan Jp
@@ -95,10 +115,26 @@ func (m Bpjs) CalculateBPJSTkJp(salary float64) (float64, float64, float64) {
 	return employerContribution, employeeContribution, totalContribution
 }
 
+// CalculateBPJSTkJkm menghitung iuran BPJS Ketenagakerjaan Kmk berdasarkan upah yang diberikan.
+//
+// Fungsi ini akan menghitung iuran BPJS Ketenagakerjaan Kmk yang dibayar oleh pekerja.
+//
+// Contoh penggunaan CalculateBPJSTkJkm:
+// bpjs := InitBPJS()
+// employerContribution := bpjs.CalculateBPJSTkJkm(salary)
 func (m Bpjs) CalculateBPJSTkJkm(salary float64) float64 {
 	return salary * m.BpjsTkJkmEmployee
 }
 
+// CalculateBPJSTkJkk menghitung iuran BPJS Ketenagakerjaan Kkk berdasarkan upah yang diberikan dan
+// resiko yang dihadapi.
+//
+// Fungsi ini akan menghitung iuran BPJS Ketenagakerjaan Kkk yang dibayar oleh pekerja berdasarkan
+// resiko yang dihadapi.
+//
+// Contoh penggunaan CalculateBPJSTkJkk:
+// bpjs := InitBPJS()
+// employerContribution, employeeContribution := bpjs.CalculateBPJSTkJkk(salary, risk)
 func (m Bpjs) CalculateBPJSTkJkk(salary float64, risk string) (float64, float64) {
 	switch risk {
 	case "low":

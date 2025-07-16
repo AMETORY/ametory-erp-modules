@@ -268,7 +268,11 @@ func (ws *WhatsappService) GetMessageSession(JID string) ([]models.WhatsappMessa
 //     set to "nil" or "null", only message sessions with a null company ID are returned.
 func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := ws.db.Preload("Contact.Tags").Select(
+	stmt := ws.db.Preload("Contact", func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Tags", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name", "color")
+		}).Select("id", "name", "phone")
+	}).Select(
 		"whatsapp_message_sessions.id",
 		"whatsapp_message_sessions.created_at",
 		"whatsapp_message_sessions.updated_at",

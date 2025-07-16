@@ -12,6 +12,18 @@ import (
 type KirimEmail struct {
 }
 
+// SendEmail sends an email using the kirim.email API.
+//
+// It takes the following parameters:
+//   - from: the sender's email address
+//   - domain: the domain to use for the email
+//   - apiKey: the API key for the kirim.email domain
+//   - subject: the subject of the email
+//   - to: the recipient's email address
+//   - message: the email message
+//   - attachment: an array of strings representing the paths to the files to attach
+//
+// It returns an error if something goes wrong.
 func (s KirimEmail) SendEmail(from, domain, apiKey, subject, to, message string, attachment []string) error {
 	// fmt.Println(from, domain, apiKey, subject, to, message)
 	url := "https://aplikasi.kirim.email/api/v3/transactional/messages"

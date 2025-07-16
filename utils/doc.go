@@ -6,6 +6,20 @@ import (
 	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
 )
 
+// GeneratePDF generates a PDF file from an HTML string.
+//
+// Parameters:
+//   - wkhtmltopdfPath: The file path for the wkhtmltopdf binary. If not empty, it sets the path to the wkhtmltopdf executable.
+//   - footer: The footer text to be added to each page of the PDF. If empty, no footer is added.
+//   - html: The HTML content to be converted into a PDF.
+//
+// Returns:
+//   - A byte slice containing the generated PDF.
+//   - An error if there is an issue during PDF generation.
+//
+// This function sets various options for the PDF, such as enabling local file access, setting page margins to zero, and
+// disabling smart shrinking. It also configures footer settings if a footer is provided. It supports customization of
+// the PDF size, DPI, and orientation.
 func GeneratePDF(wkhtmltopdfPath, footer, html string) ([]byte, error) {
 	if wkhtmltopdfPath != "" {
 		wkhtmltopdf.SetPath(wkhtmltopdfPath)

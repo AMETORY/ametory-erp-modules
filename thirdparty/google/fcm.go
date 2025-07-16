@@ -30,9 +30,10 @@ type FCMMessage struct {
 	Data map[string]string `json:"data"`
 }
 
+// NewFCMService creates a new FCMService instance using the provided ERP context, server key, and credential path.
+// It initializes an FCM client if a credential path is provided.
 func NewFCMService(ctx *context.ERPContext, serverKey, credentialPath *string) *FCMService {
 	var client *fcm.Client
-	// fmt.Println("LOAD CONFIG", *serverKey, *credentialPath)
 	if credentialPath != nil {
 		cl, err := fcm.NewClient(
 			*ctx.Ctx,
@@ -45,9 +46,10 @@ func NewFCMService(ctx *context.ERPContext, serverKey, credentialPath *string) *
 	return &FCMService{serverKey: serverKey, ctx: ctx, client: client}
 }
 
+// NewFCMServiceV2 creates a new FCMService instance using a Go context and credential path.
+// It initializes an FCM client if a credential path is provided.
 func NewFCMServiceV2(ctx *golangCtx.Context, credentialPath *string) *FCMService {
 	var client *fcm.Client
-	// fmt.Println("LOAD CONFIG", *serverKey, *credentialPath)
 	if credentialPath != nil {
 		cl, err := fcm.NewClient(
 			*ctx,
@@ -60,6 +62,8 @@ func NewFCMServiceV2(ctx *golangCtx.Context, credentialPath *string) *FCMService
 	return &FCMService{client: client}
 }
 
+// SendFCMV2MessageByUserID sends an FCM message to a user identified by userID.
+// It retrieves the user's push tokens and sends a message to each token.
 func (s *FCMService) SendFCMV2MessageByUserID(userID, title, body string, data map[string]string) error {
 	var user = models.UserModel{}
 	err := s.ctx.DB.Model(&user).Where("id = ? or email = ?", userID, userID).First(&user).Error
@@ -84,10 +88,10 @@ func (s *FCMService) SendFCMV2MessageByUserID(userID, title, body string, data m
 	}
 
 	log.Println("Success sending fcm message to", user.FullName)
-	// var user = models.UserModel{}
-
 	return nil
 }
+
+// SendFCMV2Message sends an FCM message using the FCM client to the specified token with the given title, body, and data.
 func (s *FCMService) SendFCMV2Message(token, title, body string, data map[string]string) error {
 	if s.client == nil {
 		return fmt.Errorf("client is not set")
@@ -118,6 +122,8 @@ func (s *FCMService) SendFCMV2Message(token, title, body string, data map[string
 	fmt.Println("error msg:", resp.Responses[0].Error)
 	return nil
 }
+
+// SendFCMMessage sends an FCM message using HTTP POST to the specified token with the given title and body.
 func (s *FCMService) SendFCMMessage(token, title, body string) error {
 	if s.serverKey == nil {
 		return fmt.Errorf("server key is not set")

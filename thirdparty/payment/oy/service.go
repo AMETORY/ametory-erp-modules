@@ -23,6 +23,8 @@ type OyPaymentService struct {
 	// Add fields specific to OyPaymentService
 }
 
+// NewOyPaymentService creates a new instance of OyPaymentService with the given username,
+// api key, and environment. It sets the base URL for the Oy API based on the environment.
 func NewOyPaymentService(username, apiKey string, env objects.EnvironmentType) *OyPaymentService {
 	baseURL := "https://api-stg.oyindonesia.com"
 	if env == objects.PROD {
@@ -35,6 +37,14 @@ func NewOyPaymentService(username, apiKey string, env objects.EnvironmentType) *
 	}
 }
 
+// CreatePaymentVA creates a virtual account payment request using the Oy API.
+// It takes an interface{} as the dataPayment parameter, which should be of type
+// OyCreatePaymentVARequest. The function marshals the request data into JSON format
+// and sends a POST request to the Oy API's "generate-static-va" endpoint. It sets
+// the necessary headers for authentication. If the request is successful, it decodes
+// the JSON response into an OyCreatePaymentVAResponse struct and returns it. In case
+// of an error during marshaling, request creation, API call, or response decoding,
+// an error is returned.
 func (o *OyPaymentService) CreatePaymentVA(dataPayment interface{}) (interface{}, error) {
 	data, ok := dataPayment.(OyCreatePaymentVARequest)
 	if !ok {
@@ -66,6 +76,15 @@ func (o *OyPaymentService) CreatePaymentVA(dataPayment interface{}) (interface{}
 	}
 	return response, nil
 }
+
+// CreatePaymentEWallet creates an e-wallet payment request using the Oy API.
+// It takes an interface{} as the dataPayment parameter, which should be of type
+// OyCreatePaymentEWalletRequest. The function marshals the request data into JSON format
+// and sends a POST request to the Oy API's "e-wallet-aggregator/create-transaction" endpoint. It sets
+// the necessary headers for authentication. If the request is successful, it decodes
+// the JSON response into an OyCreatePaymentEWalletResponse struct and returns it. In case
+// of an error during marshaling, request creation, API call, or response decoding,
+// an error is returned.
 func (o *OyPaymentService) CreatePaymentEWallet(dataPayment interface{}) (interface{}, error) {
 	data, ok := dataPayment.(OyCreatePaymentEWalletRequest)
 	if !ok {
@@ -97,6 +116,15 @@ func (o *OyPaymentService) CreatePaymentEWallet(dataPayment interface{}) (interf
 	}
 	return response, nil
 }
+
+// CreatePaymentLink creates a payment link request using the Oy API.
+// It takes an interface{} as the dataPayment parameter, which should be of type
+// OyCreatePaymentLinkRequest. The function marshals the request data into JSON format
+// and sends a POST request to the Oy API's "payment-checkout/create-v2" endpoint. It sets
+// the necessary headers for authentication. If the request is successful, it decodes
+// the JSON response into an OyCreatePaymentLinkResponse struct and returns it. In case
+// of an error during marshaling, request creation, API call, or response decoding,
+// an error is returned.
 func (o *OyPaymentService) CreatePaymentLink(dataPayment interface{}) (interface{}, error) {
 	data, ok := dataPayment.(OyCreatePaymentLinkRequest)
 	if !ok {
@@ -135,6 +163,13 @@ func (o *OyPaymentService) CreatePaymentLink(dataPayment interface{}) (interface
 	return response, nil
 }
 
+// DetailPaymentVA retrieves details of a virtual account payment using the Oy API.
+// It takes a variadic interface{} parameter, where the first element should be a slice of interfaces
+// containing the virtual account ID as a string. The function sends a GET request to the Oy API's
+// "static-virtual-account" endpoint to fetch the payment details. It sets the necessary headers
+// for authentication. If the request is successful, it decodes the JSON response into an
+// OyCreatePaymentVAResponse struct and returns it. In case of an error during request
+// creation, API call, or response decoding, an error is returned.
 func (o *OyPaymentService) DetailPaymentVA(data ...interface{}) (interface{}, error) {
 	if len(data) < 1 {
 		return nil, fmt.Errorf("invalid data")
@@ -165,6 +200,14 @@ func (o *OyPaymentService) DetailPaymentVA(data ...interface{}) (interface{}, er
 	return response, nil
 
 }
+
+// DetailPaymentEWallet retrieves details of an e-wallet payment using the Oy API.
+// It takes a variadic interface{} parameter, where the first element should be a slice of interfaces
+// containing the transaction ID as a string. The function sends a POST request to the Oy API's
+// "e-wallet-aggregator/check-status" endpoint to fetch the payment details. It sets the necessary headers
+// for authentication. If the request is successful, it decodes the JSON response into an
+// OyCreatePaymentEWalletResponse struct and returns it. In case of an error during request
+// creation, API call, or response decoding, an error is returned.
 func (o *OyPaymentService) DetailPaymentEWallet(data ...interface{}) (interface{}, error) {
 	if len(data) < 1 {
 		return nil, fmt.Errorf("invalid data")
@@ -201,6 +244,14 @@ func (o *OyPaymentService) DetailPaymentEWallet(data ...interface{}) (interface{
 	return response, nil
 
 }
+
+// DetailPayment retrieves a payment status from the Oy API.
+// The function takes a variadic interface{} parameter, where the first element should be a slice of interfaces
+// containing the partner transaction ID as a string and a boolean indicating whether to send a callback or not.
+// The function sends a GET request to the Oy API's "payment-checkout/status" endpoint to fetch the payment status. It sets
+// the necessary headers for authentication. If the request is successful, it decodes the JSON response into an
+// OyPaymentResponse struct and returns it. In case of an error during request creation, API call, or response decoding,
+// an error is returned.
 func (o *OyPaymentService) DetailPayment(data ...interface{}) (interface{}, error) {
 
 	if len(data) < 1 {
