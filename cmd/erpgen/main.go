@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -229,7 +230,7 @@ func main() {
 	var answer string
 	if err := survey.AskOne(&survey.Select{
 		Message: "What would you like to do?",
-		Options: []string{"1. Init Project", "2. Generate API"},
+		Options: []string{"1. Init Project", "2. Generate API", "3. Backoffice"},
 		Default: "1. Init Project",
 	}, &answer); err != nil {
 		log.Fatal(err)
@@ -240,11 +241,37 @@ func main() {
 		initProject()
 	case "2. Generate API":
 		generateAPI()
+	case "3. Backoffice":
+		initBackoffice()
 	default:
 		fmt.Println("Invalid answer")
 	}
 }
 
+func initBackoffice() {
+	projectData, err := readYamlFile()
+	if err != nil {
+		log.Fatalf("Failed to read project.yaml: %v", err)
+		return
+	}
+	projectDir := projectData["project_dir"].(string)
+	cloneDir := projectDir + "/backoffice"
+	if err := survey.AskOne(&survey.Input{
+		Message: "Enter the directory to clone the backoffice:",
+		Default: cloneDir,
+	}, &cloneDir); err != nil {
+		log.Fatal(err)
+	}
+
+	cmd := exec.Command("git", "clone", "git@github.com:AMETORY/ametory-backoffice.git", cloneDir)
+	cmd.Dir = projectDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to clone ametory-backoffice: %v, output: %s", err, string(output))
+		return
+	}
+
+}
 func generateAPI() {
 	projectData, err := readYamlFile()
 	if err != nil {
