@@ -9,7 +9,8 @@ import (
 type BillOfMaterial struct {
 	shared.BaseModel
 	Code       string         `json:"code"`       // e.g. BOM0001
-	ProductID  string         `json:"product_id"` // reference to master product
+	ProductID  *string        `json:"product_id"` // reference to master product
+	Product    *ProductModel  `json:"product" gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
 	Version    float64        `json:"version"`
 	Revision   float64        `json:"revision"`
 	Status     string         `json:"status"` // e.g. Active, Inactive

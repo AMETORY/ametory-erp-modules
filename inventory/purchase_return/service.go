@@ -26,6 +26,7 @@ type PurchaseReturnService struct {
 	purchaseService      *purchase.PurchaseService
 }
 
+// NewPurchaseReturnService creates a new instance of PurchaseReturnService with the given database connection, context, finance service, stock movement service and purchase service.
 func NewPurchaseReturnService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, stockMovementService *stockmovement.StockMovementService, purchaseService *purchase.PurchaseService) *PurchaseReturnService {
 	return &PurchaseReturnService{
 		db:                   db,
@@ -36,10 +37,22 @@ func NewPurchaseReturnService(db *gorm.DB, ctx *context.ERPContext, financeServi
 	}
 }
 
+// Migrate migrates the database schema needed for the PurchaseReturnService.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.ReturnModel{}, &models.ReturnItemModel{})
 }
 
+// GetReturns retrieves a paginated list of purchase returns from the database.
+//
+// It takes an http.Request and a search query string as input. The method uses
+// GORM to query the database for purchase returns, applying the search query
+// to the return description and return number fields. If the request contains
+// a company ID header, the method also filters the result by the company ID.
+// The function utilizes pagination to manage the result set and applies any
+// necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of ReturnModel and an error if
+// the operation fails.
 func (s *PurchaseReturnService) GetReturns(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Items")
@@ -72,6 +85,13 @@ func (s *PurchaseReturnService) GetReturns(request http.Request, search string) 
 	return page, nil
 }
 
+// GetReturnByID retrieves a purchase return by its ID.
+//
+// The function takes the ID of the return as a string and returns a pointer to a ReturnModel
+// containing the return details. It preloads the ReleasedBy and Items associations,
+// along with related data such as Product, Variant, Unit, Tax, and Warehouse for each item.
+// It also fetches the associated purchase order using the RefID and stores it in the PurchaseRef field.
+// The function returns an error if the retrieval operation fails.
 func (s *PurchaseReturnService) GetReturnByID(id string) (*models.ReturnModel, error) {
 	var returnPurchase models.ReturnModel
 	err := s.db.Preload("ReleasedBy", func(db *gorm.DB) *gorm.DB {
@@ -89,6 +109,13 @@ func (s *PurchaseReturnService) GetReturnByID(id string) (*models.ReturnModel, e
 	returnPurchase.PurchaseRef = &purchase
 	return &returnPurchase, nil
 }
+
+// AddItem adds a new item to the purchase return with the given ID.
+//
+// The function takes a pointer to a ReturnModel which contains the return details
+// and a pointer to a ReturnItemModel which contains the item details.
+// It creates a new record in the return items table with the given data.
+// The function returns an error if the operation fails.
 func (s *PurchaseReturnService) AddItem(returnPurchase *models.ReturnModel, item *models.ReturnItemModel) error {
 	item.ReturnID = returnPurchase.ID
 	if err := s.db.Create(item).Error; err != nil {
@@ -97,6 +124,10 @@ func (s *PurchaseReturnService) AddItem(returnPurchase *models.ReturnModel, item
 	return nil
 }
 
+// DeleteItem deletes a purchase return item with the given ID from the database.
+//
+// It takes the ID of the return and the ID of the item to delete as input.
+// The function returns an error if the operation fails.
 func (s *PurchaseReturnService) DeleteItem(returnID string, itemID string) error {
 	if err := s.db.Where("id = ? AND return_id = ?", itemID, returnID).Delete(&models.ReturnItemModel{}).Error; err != nil {
 		return err
@@ -104,6 +135,11 @@ func (s *PurchaseReturnService) DeleteItem(returnID string, itemID string) error
 	return nil
 }
 
+// DeleteReturn removes a purchase return and its associated items from the database.
+//
+// The function takes the ID of the purchase return as input. It first deletes all items
+// associated with the purchase return by their return ID, and then deletes the purchase
+// return itself. If any deletion operation fails, the function returns an error.
 func (s *PurchaseReturnService) DeleteReturn(id string) error {
 	// Delete all items first
 	if err := s.db.Where("return_id = ?", id).Delete(&models.ReturnItemModel{}).Error; err != nil {
@@ -115,9 +151,23 @@ func (s *PurchaseReturnService) DeleteReturn(id string) error {
 	return nil
 }
 
+// UpdateReturn updates an existing purchase return with the given ID and data.
+//
+// The function takes the ID of the purchase return as a string and a pointer to a ReturnModel
+// containing the new data. It updates the purchase return record in the database with
+// the given values, omitting any associations. If the operation fails, the function returns
+// an error.
 func (s *PurchaseReturnService) UpdateReturn(id string, returnPurchase *models.ReturnModel) error {
 	return s.db.Omit(clause.Associations).Where("id = ?", id).Save(returnPurchase).Error
 }
+
+// CreateReturn creates a new purchase return from the given data and commits the transaction.
+//
+// The function takes a pointer to a ReturnModel as input, which contains the new data.
+// It creates a new record in the returns table with the given data, omitting any associations.
+// It also creates new records in the return items table for each item in the associated
+// purchase order, copying the data from the purchase order items. If the operation fails,
+// the function returns an error.
 func (s *PurchaseReturnService) CreateReturn(returnPurchase *models.ReturnModel) error {
 	returnPurchase.ReturnType = "PURCHASE_RETURN"
 	// Commit the transaction
@@ -153,6 +203,25 @@ func (s *PurchaseReturnService) CreateReturn(returnPurchase *models.ReturnModel)
 	return s.db.Create(returnPurchase).Error
 }
 
+// ReleaseReturn processes the release of a purchase return with the specified ID.
+//
+// This function retrieves the purchase return details, checks for the existence
+// of return items, and verifies the necessary accounts. It then performs a series
+// of transactions to update financial and stock records, including creating transactions
+// for inventory, cash/credit, and tax accounts. Stock movements are recorded for
+// each return item, and the associated purchase order is updated. If an account ID
+// is provided, additional transactions are performed for asset and source accounts,
+// and a purchase payment return is created if applicable.
+//
+// Parameters:
+//   - returnID: The ID of the purchase return to be released.
+//   - userID: The ID of the user performing the release operation.
+//   - date: The date of the release transaction.
+//   - notes: Notes or comments regarding the release.
+//   - accountID: An optional account ID used for specific transactions.
+//
+// Returns an error if any operation within the transaction fails or if required
+// data is missing.
 func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, date time.Time, notes string, accountID *string) error {
 	returnPurchase, err := s.GetReturnByID(returnID)
 	if err != nil {
@@ -409,6 +478,20 @@ func (s *PurchaseReturnService) ReleaseReturn(returnID string, userID string, da
 	return err
 }
 
+// UpdateItem updates the details of a return item in the database.
+//
+// This function recalculates and updates the value, subtotal before discount,
+// discount amount, subtotal, total tax, and total for the given return item
+// based on its quantity, unit price, discount percent, and tax information.
+// It fetches the unit value if a UnitID is provided and updates the item value
+// accordingly. The function also saves the updated item in the database.
+//
+// Parameters:
+//   - item: A pointer to a ReturnItemModel containing the details of the return
+//     item to be updated.
+//
+// Returns:
+//   - An error if the database update operation fails; otherwise, nil.
 func (s *PurchaseReturnService) UpdateItem(item *models.ReturnItemModel) error {
 	taxPercent := 0.0
 	taxAmount := 0.0

@@ -94,7 +94,6 @@ func (s *PurchaseService) ClearTransaction(id string) error {
 //
 // Returns an error if the creation of the purchase order fails or if the inventory account
 // is not found.
-
 func (s *PurchaseService) CreatePurchaseOrder(data *models.PurchaseOrderModel) error {
 	var companyID *string
 	if s.ctx.Request.Header.Get("ID-Company") != "" {
@@ -112,7 +111,13 @@ func (s *PurchaseService) CreatePurchaseOrder(data *models.PurchaseOrderModel) e
 	return s.db.Create(data).Error
 }
 
-// ReceivePurchaseOrder menerima barang dari supplier dan menambah stok
+// ReceivePurchaseOrder processes the receipt of a purchase order into a specified warehouse.
+//
+// It accepts the date of receipt, the purchase order ID, the warehouse ID, and a description
+// of the transaction. The function checks if the purchase order is in a "pending" state and,
+// if so, creates stock movements for each item in the purchase order, updating the stock status
+// to "received". It performs these operations within a transaction to ensure data consistency.
+// Returns an error if the purchase order is already processed or if any database operations fail.
 func (s *PurchaseService) ReceivePurchaseOrder(date time.Time, poID, warehouseID string, description string) error {
 	// companyID := s.ctx.Request.Header.Get("ID-Company")
 	var po models.PurchaseOrderModel
@@ -160,7 +165,17 @@ func (s *PurchaseService) ReceivePurchaseOrder(date time.Time, poID, warehouseID
 	return nil
 }
 
-// CancelPurchaseOrder membatalkan purchase order
+// CancelPurchaseOrder cancels a purchase order with the given ID.
+//
+// This function retrieves the purchase order from the database and checks if its status is "pending".
+// If the purchase order is already processed, it returns an error. Otherwise, it updates the status
+// to "cancelled". Returns an error if the purchase order retrieval or update operation fails.
+//
+// Params:
+// - poID (uint): The ID of the purchase order to be cancelled.
+//
+// Returns:
+// - (error): An error object if the cancellation fails or if the purchase order is already processed.
 func (s *PurchaseService) CancelPurchaseOrder(poID uint) error {
 	var po models.PurchaseOrderModel
 	if err := s.db.First(&po, poID).Error; err != nil {
@@ -181,7 +196,35 @@ func (s *PurchaseService) CancelPurchaseOrder(poID uint) error {
 	return nil
 }
 
-// CreatePayment membuat payment untuk purchase order
+// CreatePayment creates a new payment transaction associated with a purchase order.
+//
+// The function takes as parameters:
+//   - poID: the ID of the purchase order to be paid
+//   - date: the date of the payment
+//   - amount: the amount of the payment
+//   - accountPayableID: the ID of the account payable associated with the purchase order
+//   - accountAssetID: the ID of the asset account to be debited
+//
+// It performs the following operations:
+//  1. Retrieves the purchase order from the database and checks if its status is "pending".
+//  2. Checks if the payment amount is greater than the total amount of the purchase order. If so, it returns an error.
+//  3. Creates a new transaction record in the database with the following details:
+//     - Date: the provided date
+//     - AccountID: the ID of the asset account to be debited
+//     - Description: "Pembayaran [purchase number]"
+//     - Notes: the description of the purchase order
+//     - TransactionRefID: the ID of the purchase order
+//     - TransactionRefType: "purchase"
+//     - CompanyID: the ID of the company associated with the purchase order
+//     - Debit: the payment amount
+//  4. If accountPayableID is not nil, it creates another transaction record with the following details:
+//     - AccountID: the ID of the account payable associated with the purchase order
+//     - Credit: the payment amount
+//  5. Updates the purchase order record in the database with the new paid amount.
+//  6. If the paid amount is equal to the total amount, it updates the status of the purchase order to "paid".
+//  7. Commits the transaction if all operations are successful. Otherwise, it rolls back the transaction.
+//
+// Returns an error if any of the operations fail.
 func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount float64, accountPayableID *string, accountAssetID string) error {
 	var companyID *string
 	if s.ctx.Request.Header.Get("ID-Company") != "" {
@@ -251,6 +294,17 @@ func (s *PurchaseService) CreatePayment(poID string, date time.Time, amount floa
 	})
 }
 
+// GetPurchases retrieves a paginated list of purchase orders from the database.
+//
+// It takes an http.Request and a search query string as input. The method uses
+// GORM to query the database for purchase orders, applying the search query to
+// the purchase order description and purchase number fields. If the request contains
+// a company ID header, the method also filters the result by the company ID.
+// The function utilizes pagination to manage the result set and applies any
+// necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of PurchaseOrderModel and an error if
+// the operation fails.
 func (s *PurchaseService) GetPurchases(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Contact")
@@ -276,6 +330,14 @@ func (s *PurchaseService) GetPurchases(request http.Request, search string) (pag
 	return page, nil
 }
 
+// GetPurchaseByID retrieves a purchase order from the database by ID.
+//
+// It takes a purchase order ID as input and returns a pointer to a PurchaseOrderModel
+// containing the purchase order details. If the purchase order is a return, it also
+// retrieves the original purchase order and stores it in the PurchaseRef field.
+// The function calculates the total amount paid by iterating over the purchase payments
+// and updating the Paid field of the purchase order.
+// The function returns an error if the operation fails.
 func (s *PurchaseService) GetPurchaseByID(id string) (*models.PurchaseOrderModel, error) {
 	var data models.PurchaseOrderModel
 	if err := s.db.Preload("PublishedBy", func(db *gorm.DB) *gorm.DB {
@@ -308,6 +370,13 @@ func (s *PurchaseService) GetPurchaseByID(id string) (*models.PurchaseOrderModel
 	return &data, nil
 }
 
+// AddItem adds a new item to the purchase order with the given ID.
+//
+// It takes a pointer to a PurchaseOrderModel which contains the purchase order details
+// and a pointer to a PurchaseOrderItemModel which contains the item details.
+// The function creates a new record in the purchase order items table with the given data.
+// It also updates the Total and Paid fields of the purchase order.
+// The function returns an error if the operation fails.
 func (s *PurchaseService) AddItem(purchase *models.PurchaseOrderModel, data *models.PurchaseOrderItemModel) error {
 	if err := s.db.Create(data).Error; err != nil {
 		return err
@@ -341,6 +410,11 @@ func (s *PurchaseService) UpdateTotal(purchase *models.PurchaseOrderModel) error
 	return s.db.Omit(clause.Associations).Save(&purchase).Error
 }
 
+// CalculateTaxes calculates the total tax for a given base amount and a list of tax models.
+//
+// If the isCompound flag is true, the total tax is calculated by adding the tax amount of each tax model to the total amount.
+// If the isCompound flag is false, the total tax is calculated by adding the total tax amount of all tax models to the total amount.
+// The function returns the total amount after tax, the total tax amount, and a map of tax name to tax amount.
 func (s *PurchaseService) CalculateTaxes(baseAmount float64, isCompound bool, taxes []*models.TaxModel) (float64, float64, map[string]float64) {
 	totalAmount := baseAmount
 	taxBreakdown := make(map[string]float64)
@@ -364,6 +438,19 @@ func (s *PurchaseService) CalculateTaxes(baseAmount float64, isCompound bool, ta
 	}
 	return totalAmount, totalTax, taxBreakdown
 }
+
+// GetItems retrieves all items associated with a specific purchase order ID.
+//
+// The function preloads related data such as Product, Unit, Variant, Warehouse, and Tax for each item.
+// It returns a slice of PurchaseOrderItemModel and an error if the retrieval fails. Each product
+// within the items is also updated with its prices if a ProductID is available.
+//
+// Parameters:
+//   - id: A string representing the purchase order ID.
+//
+// Returns:
+//   - A slice of PurchaseOrderItemModel containing the items associated with the purchase order.
+//   - An error if the retrieval process encounters an issue.
 
 func (s *PurchaseService) GetItems(id string) ([]models.PurchaseOrderItemModel, error) {
 	var items []models.PurchaseOrderItemModel
@@ -391,6 +478,11 @@ func (s *PurchaseService) GetItems(id string) ([]models.PurchaseOrderItemModel, 
 	return items, nil
 }
 
+// DeleteItem deletes a purchase order item from the database by its ID and updates the total cost of the associated purchase order.
+//
+// The function takes a pointer to a PurchaseOrderModel and an item ID as a string.
+// It deletes the item associated with the given ID from the database and updates the total cost of the purchase order by calling UpdateTotal.
+// The function returns an error if the deletion or update operation fails.
 func (s *PurchaseService) DeleteItem(purchase *models.PurchaseOrderModel, itemID string) error {
 	err := s.db.Where("purchase_id = ? AND id = ?", purchase.ID, itemID).Delete(&models.PurchaseOrderItemModel{}).Error
 	if err != nil {
@@ -433,6 +525,12 @@ func (s *PurchaseService) UpdateItem(purchase *models.PurchaseOrderModel, itemID
 	return s.UpdateTotal(purchase)
 }
 
+// PostPurchase posts a purchase order with the given ID and data, and updates the status of the purchase order to "POSTED".
+//
+// The function takes a pointer to a PurchaseOrderModel and a string representing the user ID.
+// It updates the status of the purchase order to "POSTED", and sets the published at and published by fields.
+// It then creates a new transaction for each item in the purchase order, and updates the total cost of the purchase order.
+// The function returns an error if any of the operations fail.
 func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderModel, userID string, date time.Time) error {
 
 	if data.DocumentType != "BILL" {
@@ -597,6 +695,12 @@ func (s *PurchaseService) PostPurchase(id string, data *models.PurchaseOrderMode
 	return err
 }
 
+// GetBalance calculates the remaining balance of a purchase order.
+//
+// If the payment account is an asset account, it returns 0 immediately.
+// Otherwise, it calculates the total payment amount made to the purchase order,
+// and returns the difference between the purchase order total and the total payment.
+// If the payment is more than the total, it returns an error.
 func (s *PurchaseService) GetBalance(purchase *models.PurchaseOrderModel) (float64, error) {
 	if purchase.PaymentAccount.Type == "ASSET" {
 		return 0, nil
@@ -613,6 +717,32 @@ func (s *PurchaseService) GetBalance(purchase *models.PurchaseOrderModel) (float
 	}
 	return 0, errors.New("payment is more than total")
 }
+
+// CreatePurchasePayment creates a new purchase payment transaction associated with a purchase order.
+//
+// The function takes as parameters a pointer to a PurchaseOrderModel and a pointer to a PurchasePaymentModel which contains the payment details.
+// It performs the following operations:
+//  1. Verifies if the payment amount is greater than the remaining balance of the purchase order. If so, it returns an error.
+//  2. Retrieves the payment account associated with the purchase order and verifies its type. If the account type is not LIABILITY, it returns an error.
+//  3. Creates a new transaction record in the database with the following details:
+//     - Date: the provided date
+//     - AccountID: the ID of the liability account associated with the purchase order
+//     - Description: "Pembayaran [purchase number]"
+//     - Notes: the description of the purchase order
+//     - TransactionRefID: the ID of the asset account associated with the payment
+//     - TransactionRefType: "transaction"
+//     - CompanyID: the ID of the company associated with the purchase order
+//     - Debit: the payment amount
+//  4. Creates another transaction record with the following details:
+//     - AccountID: the ID of the asset account associated with the payment
+//     - Credit: the payment amount
+//  5. If the payment discount is greater than 0, it creates another transaction record with the following details:
+//     - AccountID: the ID of the inventory account associated with the company
+//     - Credit: the discount amount
+//  6. Saves the purchase payment data in the database.
+//  7. Commits the transaction if all operations are successful. Otherwise, it rolls back the transaction.
+//
+// Returns an error if any of the operations fail.
 func (s *PurchaseService) CreatePurchasePayment(purchase *models.PurchaseOrderModel, purchasePayment *models.PurchasePaymentModel) error {
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {

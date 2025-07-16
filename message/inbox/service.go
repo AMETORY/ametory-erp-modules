@@ -15,10 +15,18 @@ type InboxService struct {
 	ctx *context.ERPContext
 }
 
+// NewInboxService creates a new instance of InboxService with the given database connection and context.
+// Use this function to create a new InboxService instance, which can be used to interact with the inbox-related database tables.
 func NewInboxService(db *gorm.DB, ctx *context.ERPContext) *InboxService {
 	return &InboxService{db: db, ctx: ctx}
 }
 
+// GetInboxes retrieves a list of inbox models from the database for the given user ID and member ID.
+// The function filters the inboxes by the given user ID and member ID. If the user ID and member ID are both nil,
+// the function returns an empty list. If the user ID is not nil, the function returns the inboxes for the given user ID.
+// If the member ID is not nil, the function returns the inboxes for the given member ID.
+// If the user ID and member ID are not nil, the function returns the inboxes that match both the user ID and member ID.
+// The function also creates a default inbox and a trash inbox if they do not exist, and returns them in the list.
 func (s *InboxService) GetInboxes(userID *string, memberID *string) ([]models.InboxModel, error) {
 	var inboxes []models.InboxModel
 	if userID != nil && memberID != nil {
@@ -91,6 +99,19 @@ func (s *InboxService) GetInboxes(userID *string, memberID *string) ([]models.In
 	return inboxes, nil
 }
 
+// SendMessage sends an inbox message using the provided data.
+//
+// It first checks if the RecipientMemberID is provided and attempts to find the default inbox
+// for the member. If the inbox is not found, it creates a new default inbox using the member's
+// details. The function then assigns the inbox ID to the message data.
+//
+// Similarly, if the RecipientUserID is provided, it searches for the default inbox for the user.
+// If it doesn't exist, it creates a new default inbox for the user and assigns the inbox ID to
+// the message data.
+//
+// The function finally creates the message in the database. If any operation fails, it returns
+// an error, otherwise, it returns nil upon successful message creation.
+
 func (s *InboxService) SendMessage(data *models.InboxMessageModel) error {
 
 	var inbox models.InboxModel
@@ -132,6 +153,18 @@ func (s *InboxService) SendMessage(data *models.InboxMessageModel) error {
 	return nil
 }
 
+// GetMessageByInboxID retrieves a paginated list of messages for a given inbox ID.
+//
+// If the inbox ID is provided, it only returns messages that are not replies and are addressed
+// to the inbox. If the inbox is associated with a member, it also returns messages that are
+// replies to messages in the inbox and addressed to the member.
+//
+// The search parameter is optional and is used to filter the results by subject or message content.
+// The function uses request parameters to modify the pagination and filtering behavior.
+//
+// The function returns a paginated page of InboxMessageModel objects and an error if the operation
+// fails, allowing the caller to handle any database-related issues that might occur during the query
+// process.
 func (s *InboxService) GetMessageByInboxID(request http.Request, search string, inboxID *string) (paginate.Page, error) {
 
 	pg := paginate.New()
@@ -170,6 +203,14 @@ func (s *InboxService) GetMessageByInboxID(request http.Request, search string, 
 	return page, nil
 }
 
+// GetDefaultInbox retrieves the default inbox for a given user or member.
+//
+// It accepts a user ID and a member ID as parameters, either of which may be nil.
+// If the user ID is provided, the function searches for the default inbox associated
+// with that user. If the member ID is provided, it searches for the default inbox
+// associated with that member. The function returns the found InboxModel and a nil
+// error if successful, or a nil InboxModel and an error if the inbox is not found
+// or if a database error occurs during the query.
 func (s *InboxService) GetDefaultInbox(userID *string, memberID *string) (*models.InboxModel, error) {
 	var inbox models.InboxModel
 	if userID != nil {
@@ -184,6 +225,10 @@ func (s *InboxService) GetDefaultInbox(userID *string, memberID *string) (*model
 	return &inbox, nil
 }
 
+// GetSentMessages retrieves a paginated list of sent messages for the specified user or member.
+//
+// It accepts an HTTP request, a search string, and optional user and member IDs for filtering.
+// The function returns a paginated page of InboxMessageModel objects and an error if the operation fails.
 func (s *InboxService) GetSentMessages(request http.Request, search string, userID *string, memberID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Where("parent_inbox_message_id IS NULL").
@@ -214,6 +259,9 @@ func (s *InboxService) GetSentMessages(request http.Request, search string, user
 	return page, nil
 }
 
+// CountUnreadSendMessage counts the unread sent messages for the specified user or member.
+//
+// It accepts optional user and member IDs and returns the count of unread sent messages and an error if the operation fails.
 func (s *InboxService) CountUnreadSendMessage(userID *string, memberID *string) (int64, error) {
 	var count int64
 	if userID != nil && memberID != nil {
@@ -244,6 +292,9 @@ func (s *InboxService) CountUnreadSendMessage(userID *string, memberID *string) 
 	return count, nil
 }
 
+// CountUnread counts the unread messages for the specified user or member.
+//
+// It accepts optional user and member IDs and returns the count of unread messages and an error if the operation fails.
 func (s *InboxService) CountUnread(userID *string, memberID *string) (int64, error) {
 	var count int64
 	if userID != nil {
@@ -255,14 +306,12 @@ func (s *InboxService) CountUnread(userID *string, memberID *string) (int64, err
 			Where("recipient_user_id = ?", *userID).
 			Where("read = ?", false).
 			Where("parent_inbox_message_id IS NULL").
-			// Where("inbox_id IN (SELECT id FROM inbox WHERE user_id = ? AND is_default = ?) AND recipient_user_id = ? AND read = ?", userID, true, userID, false).
 			Count(&count).Error; err != nil {
 			return 0, err
 		}
 	} else if memberID != nil {
 		if err := s.db.Model(&models.InboxMessageModel{}).
 			Joins("JOIN inbox ON inbox_messages.inbox_id = inbox.id").
-			// Where("inbox_id IN (SELECT id FROM inbox WHERE member_id = ? AND is_default = ?) AND recipient_member_id = ? AND read = ?", memberID, true, memberID, false).
 			Where("inbox.is_trash = ?", false).
 			Where("inbox.is_default = ?", true).
 			Where("inbox.member_id = ?", *memberID).
@@ -276,6 +325,9 @@ func (s *InboxService) CountUnread(userID *string, memberID *string) (int64, err
 	return count, nil
 }
 
+// DeleteMessage moves the specified message to the trash for the given user or member.
+//
+// It accepts the message ID, and optional user and member IDs, and returns an error if the operation fails.
 func (s *InboxService) DeleteMessage(inboxMessageID string, userID *string, memberID *string) error {
 	var inbox *models.InboxModel
 	if userID != nil && memberID != nil {
@@ -302,6 +354,9 @@ func (s *InboxService) DeleteMessage(inboxMessageID string, userID *string, memb
 	return s.db.Save(&inboxMessage).Error
 }
 
+// GetInboxMessageDetail retrieves the details of a specific inbox message, including its replies.
+//
+// It accepts the message ID and returns the InboxMessageModel object with details and an error if the operation fails.
 func (s *InboxService) GetInboxMessageDetail(inboxMessageID string) (*models.InboxMessageModel, error) {
 	var inboxMessage models.InboxMessageModel
 	if err := s.db.

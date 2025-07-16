@@ -23,18 +23,25 @@ type StockOpnameService struct {
 	stockMovementService *stockmovement.StockMovementService
 }
 
+// NewStockOpnameService creates a new instance of StockOpnameService with the given database connection, context,
+// product service and stock movement service.
 func NewStockOpnameService(db *gorm.DB, ctx *context.ERPContext, productService *product.ProductService, stockMovementService *stockmovement.StockMovementService) *StockOpnameService {
 	return &StockOpnameService{db: db, ctx: ctx, productService: productService, stockMovementService: stockMovementService}
 }
 
+// Migrate performs the database schema migration for StockOpnameHeader and StockOpnameDetail models.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.StockOpnameHeader{}, &models.StockOpnameDetail{})
 }
 
+// CreateStockOpnameFromHeader creates a new stock opname header with the given data and returns an error if the
+// creation is unsuccessful.
 func (s *StockOpnameService) CreateStockOpnameFromHeader(data *models.StockOpnameHeader) error {
 	return s.db.Create(data).Error
 }
 
+// UpdateStockOpname updates the stock opname header with the given ID with the given data.
+// An error is returned if the update is unsuccessful.
 func (s *StockOpnameService) UpdateStockOpname(stockOpnameID string, data *models.StockOpnameHeader) error {
 	return s.db.Model(&models.StockOpnameHeader{}).
 		Where("id = ?", stockOpnameID).
@@ -42,6 +49,9 @@ func (s *StockOpnameService) UpdateStockOpname(stockOpnameID string, data *model
 		Error
 }
 
+// GetStockOpnameByID retrieves a stock opname header by its ID. The function returns the stock opname header
+// with its associated warehouse and created by user, as well as its details with associated products.
+// An error is returned if the retrieval is unsuccessful.
 func (s *StockOpnameService) GetStockOpnameByID(stockOpnameID string) (*models.StockOpnameHeader, error) {
 	var stockOpnameHeader models.StockOpnameHeader
 	if err := s.db.
@@ -54,6 +64,17 @@ func (s *StockOpnameService) GetStockOpnameByID(stockOpnameID string) (*models.S
 	return &stockOpnameHeader, nil
 }
 
+// GetStockOpnames retrieves a paginated list of stock opnames from the database.
+//
+// It takes an HTTP request and a search query string as input. The function uses
+// GORM to query the database for stock opnames, applying the search query to the
+// stock opname number and notes fields. If the request contains a company ID
+// header, the method also filters the result by the company ID or includes entries
+// with a null company ID. The function utilizes pagination to manage the result set
+// and applies any necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of StockOpnameHeader and an error if
+// the operation fails.
 func (s *StockOpnameService) GetStockOpnames(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -74,6 +95,15 @@ func (s *StockOpnameService) GetStockOpnames(request http.Request, search string
 	return page, nil
 }
 
+// AddItem adds a new item to the stock opname with the given ID.
+//
+// The function first retrieves the stock opname header with the given ID from the database.
+// If the retrieval is unsuccessful, the function returns an error.
+// The function then populates the stock opname detail with the given data and the retrieved
+// stock opname header's ID. It also retrieves the product's current stock quantity from the
+// product service and populates the stock opname detail with it.
+// Finally, the function creates a new stock opname detail in the database and returns an error
+// if the creation is unsuccessful.
 func (s *StockOpnameService) AddItem(stockOpnameID string, data *models.StockOpnameDetail) error {
 	var stockOpnameHeader models.StockOpnameHeader
 	if err := s.db.First(&stockOpnameHeader, "id = ?", stockOpnameID).Error; err != nil {
@@ -90,6 +120,12 @@ func (s *StockOpnameService) AddItem(stockOpnameID string, data *models.StockOpn
 	return s.db.Debug().Create(&data).Error
 }
 
+// UpdateItem updates an existing stock opname detail with the specified ID using the provided data.
+//
+// The function first retrieves the stock opname detail with the given ID from the database.
+// If the retrieval is unsuccessful, it returns an error.
+// It then updates the stock opname detail with the new data provided.
+// An error is returned if the update operation in the database fails.
 func (s *StockOpnameService) UpdateItem(stockOpnameDetailID string, data *models.StockOpnameDetail) error {
 	var stockOpnameDetail models.StockOpnameDetail
 	if err := s.db.First(&stockOpnameDetail, "id = ?", stockOpnameDetailID).Error; err != nil {
@@ -104,6 +140,10 @@ func (s *StockOpnameService) UpdateItem(stockOpnameDetailID string, data *models
 	return nil
 }
 
+// DeleteItem deletes the stock opname detail with the given ID.
+//
+// The function performs the deletion in a database transaction.
+// If the deletion is unsuccessful, it returns an error.
 func (s *StockOpnameService) DeleteItem(stockOpnameDetailID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Delete stock opname detail
@@ -114,6 +154,21 @@ func (s *StockOpnameService) DeleteItem(stockOpnameDetailID string) error {
 	})
 }
 
+// DeleteStockOpname deletes a stock opname and its related records from the database.
+//
+// This function deletes the stock opname details, related stock movements, and the stock
+// opname header associated with the given stockOpnameID. It also deletes related inventory
+// transactions unless the skipTransaction flag is set to true. The operation is performed
+// within a database transaction, ensuring that all deletions are completed successfully or
+// none at all.
+//
+// Args:
+//   - stockOpnameID: the ID of the stock opname to be deleted.
+//   - skipTransaction: a boolean flag indicating whether to skip the deletion of related
+//     inventory transactions.
+//
+// Returns:
+//   - An error if any deletion operation fails.
 func (s *StockOpnameService) DeleteStockOpname(stockOpnameID string, skipTransaction bool) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Delete stock opname detail
@@ -137,6 +192,21 @@ func (s *StockOpnameService) DeleteStockOpname(stockOpnameID string, skipTransac
 		return tx.Where("id = ?", stockOpnameID).Delete(&models.StockOpnameHeader{}).Error
 	})
 }
+
+// CreateStockOpname creates a new stock opname header with the given warehouse ID and notes.
+// It also creates stock opname details for each product in the given list, using the
+// current system stock quantity from the product service. The function first creates
+// the stock opname header in the database, then creates the stock opname details.
+// If any error occurs during the creation, the function returns an error.
+//
+// Args:
+//   - warehouseID: the ID of the warehouse for the stock opname.
+//   - products: a list of products to be included in the stock opname.
+//   - notes: an optional notes field for the stock opname.
+//
+// Returns:
+//   - A pointer to the newly created stock opname header, or an error if the
+//     creation fails.
 func (s *StockOpnameService) CreateStockOpname(warehouseID string, products []models.ProductModel, notes string) (*models.StockOpnameHeader, error) {
 	if s.productService == nil {
 		return nil, errors.New("product service is not initialized")
@@ -181,6 +251,22 @@ func (s *StockOpnameService) CreateStockOpname(warehouseID string, products []mo
 	return &stockOpnameHeader, nil
 }
 
+// CompleteStockOpname completes a stock opname with the given ID. The function
+// updates the product stock quantities and creates stock movement records for
+// each product with a difference between the counted quantity and the system
+// quantity. The function also creates journal entries for the stock opname if
+// the inventoryID parameter is not nil. The function returns an error if any
+// error occurs during the process.
+//
+// Args:
+//   - stockOpnameID: the ID of the stock opname to be completed.
+//   - date: the date of the stock opname.
+//   - userID: the ID of the user who is completing the stock opname.
+//   - inventoryID: the ID of the inventory account to be used for the journal
+//     entries. If nil, the function will not create journal entries.
+//
+// Returns:
+//   - An error if any error occurs during the process.
 func (s *StockOpnameService) CompleteStockOpname(stockOpnameID string, date time.Time, userID string, inventoryID *string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var stockOpnameHeader models.StockOpnameHeader
@@ -354,6 +440,11 @@ type StockDiscrepancyReport struct {
 	Notes       string `json:"notes"`
 }
 
+// GenerateDiscrepancyReport generates a discrepancy report for a given stock opname ID.
+//
+// The discrepancy report is a list of products with their physical quantity, system quantity, difference, and notes.
+// The function first joins the stock_opname_details table with the products table and then selects the required columns.
+// The function then scans the results into a slice of StockDiscrepancyReport and returns it along with an error if any.
 func (s *StockOpnameService) GenerateDiscrepancyReport(stockOpnameID string) ([]StockDiscrepancyReport, error) {
 	var report []StockDiscrepancyReport
 	err := s.db.Table("stock_opname_details").

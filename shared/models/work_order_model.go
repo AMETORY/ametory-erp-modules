@@ -11,7 +11,7 @@ import (
 type WorkOrder struct {
 	shared.BaseModel
 	Code                string              `gorm:"unique;not null" json:"code,omitempty"` // contoh: WO-PRD-202504
-	ProductID           string              `gorm:"not null" json:"product_id,omitempty"`  // barang jadi yang akan diproduksi
+	ProductID           *string             `gorm:"not null" json:"product_id,omitempty"`  // barang jadi yang akan diproduksi
 	Product             *ProductModel       `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"product,omitempty"`
 	QuantityPlanned     int                 `gorm:"not null" json:"quantity_planned,omitempty"`
 	QuantityDone        int                 `json:"quantity_done,omitempty"`
@@ -23,6 +23,7 @@ type WorkOrder struct {
 	FinishedAt          *time.Time          `json:"finished_at,omitempty"`
 	Notes               string              `json:"notes,omitempty"`
 	ProductionProcesses []ProductionProcess `gorm:"foreignKey:WorkOrderID" json:"production_processes,omitempty"`
+	TotalCost           float64             `gorm:"default:0" json:"total_cost,omitempty"`
 }
 
 func (wo *WorkOrder) BeforeCreate(tx *gorm.DB) error {
@@ -34,12 +35,12 @@ func (wo *WorkOrder) BeforeCreate(tx *gorm.DB) error {
 
 type ProductionProcess struct {
 	shared.BaseModel
-	WorkOrderID      string                     `gorm:"not null" json:"work_order_id,omitempty"`
-	WorkOrder        WorkOrder                  `json:"work_order,omitempty"`
+	WorkOrderID      *string                    `gorm:"not null" json:"work_order_id,omitempty"`
+	WorkOrder        *WorkOrder                 `json:"work_order,omitempty"`
 	WorkCenterID     uint                       `gorm:"not null" json:"work_center_id,omitempty"`
 	WorkCenter       WorkCenter                 `json:"work_center,omitempty"`
-	BOMID            string                     `gorm:"not null" json:"bom_id,omitempty"`
-	BOM              BillOfMaterial             `gorm:"foreignKey:BOMID;constraint:OnDelete:CASCADE" json:"bom,omitempty"`
+	BOMID            *string                    `gorm:"not null" json:"bom_id,omitempty"`
+	BOM              *BillOfMaterial            `gorm:"foreignKey:BOMID;constraint:OnDelete:CASCADE" json:"bom,omitempty"`
 	ProcessName      string                     `json:"process_name,omitempty"`               // misal: Cutting, Welding, Packing
 	Sequence         int                        `json:"sequence,omitempty" gorm:"default:1"`  // urutan dalam proses produksi
 	ProductID        string                     `gorm:"not null" json:"product_id,omitempty"` // produk utama
@@ -72,11 +73,11 @@ func (p *ProductionProcess) BeforeCreate(tx *gorm.DB) (err error) {
 
 type ProductionAdditionalCost struct {
 	shared.BaseModel
-	ProductionProcessID string            `json:"production_process_id"`
-	ProductionProcess   ProductionProcess `gorm:"foreignKey:ProductionProcessID" json:"production_process"`
-	Type                string            `json:"type"` // contoh: "Labor", "Electricity", "Maintenance"
-	Description         string            `json:"description"`
-	Amount              float64           `json:"amount"`
+	ProductionProcessID *string            `json:"production_process_id"`
+	ProductionProcess   *ProductionProcess `gorm:"foreignKey:ProductionProcessID" json:"production_process"`
+	Type                string             `json:"type"` // contoh: "Labor", "Electricity", "Maintenance"
+	Description         string             `json:"description"`
+	Amount              float64            `json:"amount"`
 }
 
 func (p *ProductionAdditionalCost) BeforeCreate(tx *gorm.DB) (err error) {
@@ -88,15 +89,15 @@ func (p *ProductionAdditionalCost) BeforeCreate(tx *gorm.DB) (err error) {
 
 type ProductionOutput struct {
 	shared.BaseModel
-	ProductionProcessID string            `json:"production_process_id"`
-	ProductionProcess   ProductionProcess `gorm:"foreignKey:ProductionProcessID" json:"production_process"`
-	ProductID           string            `json:"product_id"`
-	Product             ProductModel      `gorm:"foreignKey:ProductID" json:"product"`
-	Quantity            float64           `json:"quantity"`
-	UnitID              string            `json:"unit_id"`
-	Unit                UnitModel         `gorm:"foreignKey:UnitID;references:ID" json:"unit"`
-	IsPrimaryOutput     bool              `json:"is_primary_output"`
-	Notes               string            `json:"notes"`
+	ProductionProcessID *string            `json:"production_process_id"`
+	ProductionProcess   *ProductionProcess `gorm:"foreignKey:ProductionProcessID" json:"production_process"`
+	ProductID           string             `json:"product_id"`
+	Product             ProductModel       `gorm:"foreignKey:ProductID" json:"product"`
+	Quantity            float64            `json:"quantity"`
+	UnitID              string             `json:"unit_id"`
+	Unit                UnitModel          `gorm:"foreignKey:UnitID;references:ID" json:"unit"`
+	IsPrimaryOutput     bool               `json:"is_primary_output"`
+	Notes               string             `json:"notes"`
 }
 
 func (p *ProductionOutput) BeforeCreate(tx *gorm.DB) (err error) {

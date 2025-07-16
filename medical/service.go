@@ -25,6 +25,9 @@ type MedicalService struct {
 	treatmentQueue        *treatment_queue.TreatmentQueueService
 }
 
+// NewMedicalService creates a new instance of MedicalService with the given database connection and context.
+//
+// It returns a pointer to the newly created MedicalService.
 func NewMedicalService(db *gorm.DB, ctx *context.ERPContext) *MedicalService {
 	service := MedicalService{
 		db:                    db,
@@ -40,6 +43,15 @@ func NewMedicalService(db *gorm.DB, ctx *context.ERPContext) *MedicalService {
 	service.Migrate()
 	return &service
 }
+
+// Migrate performs automatic migrations for the medical service models.
+//
+// This method checks if migrations should be skipped and, if not, it uses
+// Gorm's AutoMigrate to ensure that the database schema is up-to-date with
+// the models defined in the system. It migrates patient, health facility,
+// sub-facility, medical staff, doctor, nurse, medical appointment, medical
+// record, medicine, and pharmacy models. It returns an error if the migration
+// process fails.
 
 func (s *MedicalService) Migrate() error {
 	if s.ctx.SkipMigration {
