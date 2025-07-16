@@ -31,6 +31,7 @@ type POSService struct {
 	inventoryService *inventory.InventoryService
 }
 
+// NewPOSService creates a new instance of POSService with the given database connection, context and finance service.
 func NewPOSService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService) *POSService {
 	var contactSrv *contact.ContactService
 	contactService, ok := ctx.ContactService.(*contact.ContactService)
@@ -52,11 +53,12 @@ func NewPOSService(db *gorm.DB, ctx *context.ERPContext, financeService *finance
 	}
 }
 
+// Migrate migrates the POS models.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.POSModel{}, &models.POSSalesItemModel{})
 }
 
-// CreateMerchant membuat merchant baru
+// CreateMerchant creates a new merchant.
 func (s *POSService) CreateMerchant(name, address, phone string) (*models.MerchantModel, error) {
 	merchant := models.MerchantModel{
 		Name:    name,
@@ -71,6 +73,7 @@ func (s *POSService) CreateMerchant(name, address, phone string) (*models.Mercha
 	return &merchant, nil
 }
 
+// CreatePosFromCart creates a new POS from the given cart.
 func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, taxAmount float64, assetAccountID, saleAccountID *string) (*models.POSModel, *objects.NewUserData, error) {
 	var notifUserData *objects.NewUserData
 	customerData := struct {
@@ -198,6 +201,23 @@ func (s *POSService) CreatePosFromCart(cart models.CartModel, paymentID *string,
 	return &pos, notifUserData, nil
 }
 
+// UpdateTransaction updates transaction data in the database based on the given POS data and merchant company.
+//
+// This function will create a new transaction if the transaction does not exist, or update the existing transaction if it does.
+//
+// Transaction data is generated based on the given POS data and merchant company. The generated transaction data will have the same date as the POS data, and the description will be in the format of "Penjualan [merchant name] [sales number]".
+//
+// If the POS data has a sale account ID and an asset account ID, the transaction will be created with debit and credit accounts set to the sale account ID and the asset account ID respectively.
+//
+// If the POS data has a user payment status of "paid" or "complete", the transaction will be created with a payment status of "PAID".
+//
+// If the POS data has a user payment status of "pending", the transaction will be created with a payment status of "PENDING".
+//
+// If the POS data has a user payment status of "failed", the transaction will be created with a payment status of "FAILED".
+//
+// If the POS data has a user payment status of "canceled", the transaction will be created with a payment status of "CANCELED".
+//
+// If the POS data has a user payment status of "expired", the transaction will be created with a payment status of "EXPIRED".
 func (s *POSService) UpdateTransaction(pos *models.POSModel, merchant models.MerchantModel) error {
 	var existingTransaction models.TransactionModel
 	err := s.db.Where("transaction_ref_type = ? AND transaction_ref_id = ?", "pos_sales", pos.ID).First(&existingTransaction).Error
@@ -240,6 +260,38 @@ func (s *POSService) UpdateTransaction(pos *models.POSModel, merchant models.Mer
 
 	return nil
 }
+
+// CreatePosFromOffer creates a new POS model from the given offer data and payment data.
+//
+// The generated POS model will have the following fields set:
+// - ContactID: set to the contact ID of the user who made the offer
+// - Code: set to a random string
+// - MerchantID: set to the merchant ID of the offer
+// - Total: set to the total price of the offer plus the payment fee
+// - Subtotal: set to the subtotal of the offer
+// - SubTotalBeforeDiscount: set to the subtotal before discount of the offer
+// - ShippingFee: set to the shipping fee of the offer
+// - PaymentFee: set to the payment fee of the payment
+// - Tax: set to the tax of the offer
+// - TaxAmount: set to the tax amount of the offer
+// - TaxType: set to the tax type of the offer
+// - ServiceFee: set to the service fee of the offer
+// - CompanyID: set to the company ID of the merchant
+// - Status: set to "PENDING"
+// - UserPaymentStatus: set to the user payment status of the payment
+// - PaymentID: set to the payment ID of the payment
+// - OfferID: set to the offer ID of the offer
+// - ContactData: set to the shipping data of the offer
+// - SalesDate: set to the current time
+// - DueDate: set to the current time plus 24 hours
+// - PaymentType: set to the payment type of the payment
+// - SalesNumber: set to the sales number of the offer
+// - PaymentProviderType: set to the payment provider type of the payment
+// - Items: set to the items of the offer
+// - AssetAccountID: set to the asset account ID of the merchant
+// - SaleAccountID: set to the sale account ID of the merchant
+// - OrderType: set to the order type of the offer
+// - TotalBeforeDisc: set to the total before discount of the offer
 func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, salesNumber, paymentType, paymentTypeProvider, userPaymentStatus string, assetAccountID, saleAccountID *string, orderType string) (*models.POSModel, error) {
 	var shippingData struct {
 		FullName        string  `json:"full_name"`
@@ -377,7 +429,13 @@ func (s *POSService) CreatePosFromOffer(offer models.OfferModel, paymentID, sale
 	return &pos, nil
 }
 
-// CreatePOSTransaction membuat transaksi POS baru dengan multi-item
+// CreatePOSTransaction creates a new POS transaction from the given items, merchant, and contact. The transaction will be created with status "PENDING".
+//
+// The function will also create a new stock movement for each item in the transaction. The stock movement will be created with type "out" and quantity equal to the quantity of the item in the transaction.
+//
+// If the transaction has a sale account ID and an asset account ID, the function will create a new transaction in the journal with debit and credit accounts set to the sale account ID and the asset account ID respectively.
+//
+// The function will return the created POS model if the transaction is successful, or an error if there is a problem during the transaction.
 func (s *POSService) CreatePOSTransaction(merchantID *string, contactID *string, warehouseID string, items []models.POSSalesItemModel, description string) (*models.POSModel, error) {
 	invSrv, ok := s.ctx.InventoryService.(*inventory.InventoryService)
 	if !ok {
@@ -476,7 +534,9 @@ func (s *POSService) CreatePOSTransaction(merchantID *string, contactID *string,
 	return &pos, nil
 }
 
-// GetTransactionsByMerchant mengambil semua transaksi POS berdasarkan merchant
+// GetTransactionsByMerchant returns all POS transactions for the given merchant ID.
+//
+// This function preloads the items of the transactions, and returns a slice of POSModel.
 func (s *POSService) GetTransactionsByMerchant(merchantID uint) ([]models.POSModel, error) {
 	var transactions []models.POSModel
 	if err := s.db.Preload("Items").Where("merchant_id = ?", merchantID).Find(&transactions).Error; err != nil {
@@ -485,7 +545,9 @@ func (s *POSService) GetTransactionsByMerchant(merchantID uint) ([]models.POSMod
 	return transactions, nil
 }
 
-// GetUserPosSaleByID mengambil transaksi POS berdasarkan user dan id
+// GetUserPosSaleByID returns a POS transaction for the given user ID and transaction ID.
+//
+// This function preloads the contact and items of the transaction, and returns a pointer to a POSModel.
 func (s *POSService) GetUserPosSaleByID(userID string, id string) (*models.POSModel, error) {
 	var pos models.POSModel
 	if err := s.db.Preload("Contact").Preload("Items", func(db *gorm.DB) *gorm.DB {
@@ -500,7 +562,9 @@ func (s *POSService) GetUserPosSaleByID(userID string, id string) (*models.POSMo
 	return &pos, nil
 }
 
-// GetUserPosSaleDetail mengambil detail transaksi POS berdasarkan user dan id
+// GetUserPosSaleDetail returns the detail of a POS transaction for the given transaction ID.
+//
+// This function preloads the contact and items of the transaction, and returns a pointer to a POSModel.
 func (s *POSService) GetUserPosSaleDetail(id string) (*models.POSModel, error) {
 	var pos models.POSModel
 	if err := s.db.Preload("Contact").Preload("Items", func(db *gorm.DB) *gorm.DB {
@@ -529,6 +593,16 @@ func (s *POSService) GetUserPosSaleDetail(id string) (*models.POSModel, error) {
 	}
 	return &pos, nil
 }
+
+// GetUserPosSales returns a paginated list of POS transactions for the given user.
+//
+// The method takes an http.Request and a search query string as input. The method
+// preloads the items and payment of the transaction, and returns a pointer to a
+// paginate.Page. The function utilizes pagination to manage the result set and
+// applies any necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of POSModel and an error if the operation
+// fails.
 func (s *POSService) GetUserPosSales(request http.Request, search, userID string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Items", func(db *gorm.DB) *gorm.DB {
@@ -600,6 +674,9 @@ func (s *POSService) GetUserPosSales(request http.Request, search, userID string
 	return page, nil
 }
 
+// GetPosSalesDetail returns the detail of a POS transaction for the given transaction ID.
+//
+// This function preloads the contact and items of the transaction, and returns a pointer to a POSModel.
 func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
 	var pos models.POSModel
 	if err := s.db.Preload("Contact.User").Preload("Merchant").Preload("Offer.Merchant", func(tx *gorm.DB) *gorm.DB {
@@ -627,6 +704,14 @@ func (s *POSService) GetPosSalesDetail(id string) (*models.POSModel, error) {
 	return &pos, nil
 }
 
+// GetPosSales returns a paginated list of POS transactions for the given company.
+//
+// The method takes an http.Request and a search query string as input. The method
+// preloads the merchant, items and payment of the transaction, and returns a pointer to a
+// paginate.Page. The function utilizes pagination to manage the result set and applies any
+// necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of POSModel and an error if the operation fails.
 func (s *POSService) GetPosSales(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Merchant").Preload("Items", func(tx *gorm.DB) *gorm.DB {
@@ -699,6 +784,9 @@ func (s *POSService) GetPosSales(request http.Request, search string) (paginate.
 	return page, nil
 }
 
+// GetPushTokenFromID retrieves a list of push tokens associated with a specific POS transaction.
+//
+// It takes a transaction ID and returns a slice of push tokens and an error if the operation fails.
 func (s *POSService) GetPushTokenFromID(id string) ([]string, error) {
 	var pos models.POSModel
 	err := s.db.Preload("Contact.User").Find(&pos, "id = ?", id).Error
@@ -707,8 +795,6 @@ func (s *POSService) GetPushTokenFromID(id string) ([]string, error) {
 	}
 
 	userIDs := []string{pos.Contact.User.ID}
-	// merchant.Company.Users = make([]models.UserModel, 0)
-	// merchant.Company.Users = append(merchant.Company.Users, *merchant.User)
 
 	var pushToken []models.PushTokenModel
 	err = s.db.Where("user_id IN (?)", userIDs).Find(&pushToken).Error
@@ -723,6 +809,9 @@ func (s *POSService) GetPushTokenFromID(id string) ([]string, error) {
 	return tokens, nil
 }
 
+// UpdatePickedByID updates the stock status of a POS transaction to "IN_DELIVERY" and records stock movements.
+//
+// It takes a transaction ID and returns an error if the operation fails.
 func (s *POSService) UpdatePickedByID(id string) error {
 	fmt.Println("UPDATE PICKED BY ID", id)
 	var pos models.POSModel
@@ -764,6 +853,9 @@ func (s *POSService) UpdatePickedByID(id string) error {
 	return nil
 }
 
+// UpdateDeliveredByID updates the stock status of a POS transaction to "DELIVERED" and records stock movements.
+//
+// It takes a transaction ID and returns an error if the operation fails.
 func (s *POSService) UpdateDeliveredByID(id string) error {
 	fmt.Println("UPDATE DELIVERED BY ID", id)
 	var pos models.POSModel
@@ -805,6 +897,9 @@ func (s *POSService) UpdateDeliveredByID(id string) error {
 	return nil
 }
 
+// CountPosSalesByStatus retrieves the total count of POS sales with a specific status.
+//
+// This function takes a status string and returns the total count of POS sales with that status, or an error if the operation fails.
 func (s *POSService) CountPosSalesByStatus(status string) (int64, error) {
 
 	var count int64
@@ -814,6 +909,18 @@ func (s *POSService) CountPosSalesByStatus(status string) (int64, error) {
 	return count, nil
 }
 
+// GetPosSalesByDate retrieves a list of POS sales that fall within the given date range and match the given status.
+//
+// The date range can be one of the following:
+//   - TODAY: sales from the current day
+//   - THIS_WEEK: sales from the current week
+//   - THIS_MONTH: sales from the current month
+//   - THIS_YEAR: sales from the current year
+//   - LAST_7_DAYS: sales from the last 7 days
+//   - LAST_MONTH: sales from the last month
+//   - LAST_QUARTER: sales from the last quarter
+//
+// The method returns a slice of POSModel and an error, if any.
 func (s *POSService) GetPosSalesByDate(dateRange string, status string) ([]models.POSModel, error) {
 	var pos []models.POSModel
 	var start, end time.Time
@@ -852,7 +959,43 @@ func (s *POSService) GetPosSalesByDate(dateRange string, status string) ([]model
 	return pos, nil
 }
 
-// get pos sales data and generate to invoice html
+// DownloadInvoice generates an invoice PDF file based on the given POS sale data.
+//
+// The function takes a POS sale ID, a layout template file path, and a body template file path as arguments.
+//
+// The layout template file should contain an HTML template with the following placeholders:
+//   - {{.SalesNumber}}
+//   - {{.Items}}
+//   - {{.SalesDate}}
+//   - {{.DueDate}}
+//   - {{.CustomerData}}
+//   - {{.BuyerName}}
+//   - {{.BuyerAddress}}
+//   - {{.BuyerPhone}}
+//   - {{.BuyerEmail}}
+//   - {{.Code}}
+//   - {{.Description}}
+//   - {{.Notes}}
+//   - {{.Total}}
+//   - {{.DiscountAmount}}
+//   - {{.Subtotal}}
+//   - {{.SubTotalBeforeDiscount}}
+//   - {{.ShippingFee}}
+//   - {{.ServiceFee}}
+//   - {{.PaymentFee}}
+//   - {{.Tax}}
+//   - {{.TaxType}}
+//   - {{.TaxAmount}}
+//   - {{.PaymentMethod}}
+//   - {{.UserPaymentStatus}}
+//   - {{.MerchantName}}
+//   - {{.MerchantAddress}}
+//   - {{.MerchantPhone}}
+//   - {{.MerchantEmail}}
+//
+// The body template file should contain an HTML template with the same placeholders as the layout template file.
+//
+// The function returns an error if the operation fails.
 func (s *POSService) DownloadInvoice(id, layout, body string) ([]byte, error) {
 	var pos models.POSModel
 	if err := s.db.Preload("Contact.User").Preload("Payment").Preload("Items.Product").Preload("Items.Variant").Preload("Merchant.Company").First(&pos, "id = ?", id).Error; err != nil {

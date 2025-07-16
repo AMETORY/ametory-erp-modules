@@ -27,14 +27,24 @@ type SalesService struct {
 	inventoryService *inventory.InventoryService
 }
 
+// Migrate applies database schema changes for the sales module.
+// It automates the migration of sales-related models, ensuring that the database schema
+// is up to date with the current definitions of SalesModel, SalesItemModel, and SalesPaymentModel.
+// If successful, it returns nil; otherwise, it returns an error indicating what went wrong.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.SalesModel{}, &models.SalesItemModel{}, &models.SalesPaymentModel{})
 }
 
+// NewSalesService creates a new instance of SalesService with the given database connection, context, finance service and inventory service.
 func NewSalesService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, inventoryService *inventory.InventoryService) *SalesService {
 	return &SalesService{db: db, ctx: ctx, financeService: financeService, inventoryService: inventoryService}
 }
 
+// CreateSales creates a new sales document in the database and performs relevant accounting entries.
+// If the sales document has items with a sale account and/or an asset account, transactions will be created
+// for the sale and the asset account. If the sales document has a payment account, the sales document will be
+// marked as paid. If the sales document has a partial payment, the sales document will be marked as partial.
+// If successful, it returns nil; otherwise, it returns an error indicating what went wrong.
 func (s *SalesService) CreateSales(data *models.SalesModel) error {
 	var companyID *string
 	if s.ctx.Request.Header.Get("ID-Company") != "" {
@@ -103,6 +113,35 @@ func (s *SalesService) CreateSales(data *models.SalesModel) error {
 
 }
 
+// CreatePayment creates a new payment transaction associated with a sales order.
+//
+// The function takes as parameters:
+//   - salesID: the ID of the sales order to be paid
+//   - date: the date of the payment
+//   - amount: the amount of the payment
+//   - accountReceivableID: the ID of the account receivable associated with the sales order
+//   - accountAssetID: the ID of the asset account to be debited
+//
+// It performs the following operations:
+//  1. Retrieves the sales order from the database and checks if its status is "pending".
+//  2. Checks if the payment amount is greater than the remaining balance of the sales order. If so, it returns an error.
+//  3. Creates a new transaction record in the database with the following details:
+//     - Date: the provided date
+//     - AccountID: the ID of the asset account to be debited
+//     - Description: "Pembayaran [sales number]"
+//     - Notes: the description of the sales order
+//     - TransactionRefID: the ID of the sales order
+//     - TransactionRefType: "sales"
+//     - CompanyID: the ID of the company associated with the sales order
+//     - Debit: the payment amount
+//  4. If accountReceivableID is not nil, it creates another transaction record with the following details:
+//     - AccountID: the ID of the account receivable associated with the sales order
+//     - Credit: the payment amount
+//  5. Updates the sales order record in the database with the new paid amount.
+//  6. If the paid amount is equal to the total amount, it updates the status of the sales order to "paid".
+//  7. Commits the transaction if all operations are successful. Otherwise, it rolls back the transaction.
+//
+// Returns an error if any of the operations fail.
 func (s *SalesService) CreatePayment(salesID string, date time.Time, amount float64, accountReceivableID *string, accountAssetID string) error {
 	var companyID *string
 	if s.ctx.Request.Header.Get("ID-Company") != "" {
@@ -161,6 +200,11 @@ func (s *SalesService) CreatePayment(salesID string, date time.Time, amount floa
 	})
 }
 
+// UpdateSales updates the sales order data with the given ID.
+//
+// This function will update all fields of the sales order except for the ID.
+//
+// Returns an error if the update operation fails.
 func (s *SalesService) UpdateSales(id string, data *models.SalesModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
@@ -188,6 +232,13 @@ func (s *SalesService) DeleteSales(id string) error {
 
 }
 
+// GetSalesByID retrieves a sales order from the database by ID.
+//
+// The function returns an error if the sales order is not found.
+//
+// The function also populates the Paid field of the sales order.
+// If the sales order has a payment account and the type of the account is ASSET, the Paid field is set to the total amount of the sales order.
+// Otherwise, the Paid field is the sum of the amounts of all payments associated with the sales order.
 func (s *SalesService) GetSalesByID(id string) (*models.SalesModel, error) {
 	var sales, refSales models.SalesModel
 	err := s.db.Preload("Contact").Preload("SalesUser").Preload("PublishedBy", func(db *gorm.DB) *gorm.DB {
@@ -221,18 +272,32 @@ func (s *SalesService) GetSalesByID(id string) (*models.SalesModel, error) {
 	return &sales, err
 }
 
+// GetSalesByCode retrieves a sales order from the database by code.
+//
+// The function returns an error if the sales order is not found.
 func (s *SalesService) GetSalesByCode(code string) (*models.SalesModel, error) {
 	var sales models.SalesModel
 	err := s.db.Where("code = ?", code).First(&sales).Error
 	return &sales, err
 }
 
+// GetSalesBySalesNumber retrieves a sales order from the database by sales number.
+//
+// The function returns an error if the sales order is not found.
 func (s *SalesService) GetSalesBySalesNumber(salesNumber string) (*models.SalesModel, error) {
 	var sales models.SalesModel
 	err := s.db.Where("sales_number = ?", salesNumber).First(&sales).Error
 	return &sales, err
 }
 
+// GetSales retrieves a paginated list of sales orders from the database.
+//
+// The function takes an http.Request and a search query string as input. The method
+// preloads the sales user and contact of the sales order, and returns a pointer to a
+// paginate.Page. The function utilizes pagination to manage the result set and applies any
+// necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of SalesModel and an error if the operation fails.
 func (s *SalesService) GetSales(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("SalesUser").Preload("Contact")
@@ -271,6 +336,12 @@ func (s *SalesService) GetSales(request http.Request, search string) (paginate.P
 	return page, nil
 }
 
+// UpdateStock updates the stock of a sales order and its items.
+//
+// The function takes an sales ID and a warehouse ID as input and updates the stock status of the sales
+// order to "updated". The function also adds stock movements for the items in the sales order.
+//
+// The function returns an error if the operation fails.
 func (s *SalesService) UpdateStock(salesID, warehouseID string, description string) error {
 	var sales models.SalesModel
 	if err := s.db.First(&sales, salesID).Error; err != nil {
@@ -311,6 +382,17 @@ func (s *SalesService) UpdateStock(salesID, warehouseID string, description stri
 
 }
 
+// CreateSalesFromOrderRequest creates a new sales document from an order request.
+//
+// The function takes an order request, a sales number, a tax percentage, and a description as input.
+// It then creates a new sales document based on the order request and its items. The function
+// returns an error if the operation fails.
+//
+// The function uses the tax percentage to calculate the total before tax and the total after
+// tax. The function also uses the discount percent and discount amount to calculate the total
+// before discount and the total after discount.
+//
+// The function returns an error if the operation fails.
 func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderRequestModel, salesNumber string, taxPercent float64, description string) error {
 	var companyID *string
 	if s.ctx.Request.Header.Get("ID-Company") != "" {
@@ -365,6 +447,16 @@ func (s *SalesService) CreateSalesFromOrderRequest(orderRequest *models.OrderReq
 	return s.CreateSales(data)
 }
 
+// AddItem adds a new item to a sales document.
+//
+// It takes a sales document and a new item as input, and returns an error if the operation fails.
+//
+// The function first loads the product associated with the item, and sets the item's base price
+// to the product's price. If the product has a tax set, the item is also set to have the same tax.
+//
+// The function then creates the item in the database, and returns an error if the operation fails.
+//
+// Finally, the function calls the UpdateTotal function to recalculate the total of the sales document.
 func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemModel) error {
 	if item.ProductID != nil {
 		var product models.ProductModel
@@ -376,7 +468,6 @@ func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemM
 		if product.TaxID != nil {
 			item.TaxID = product.TaxID
 			item.Tax = product.Tax
-
 		}
 	}
 
@@ -385,9 +476,15 @@ func (s *SalesService) AddItem(sales *models.SalesModel, item *models.SalesItemM
 		return err
 	}
 
-	return s.UpdateItem(sales, item.ID, item)
+	return s.UpdateTotal(sales)
 }
 
+// GetItems returns all items associated with a sales document.
+//
+// It takes a sales ID as input, and returns a slice of items and an error if the operation fails.
+//
+// The function uses the GORM preload function to load all items associated with the sales document,
+// as well as the associated product, unit, variant, warehouse, sale account, asset account, and tax.
 func (s *SalesService) GetItems(id string) ([]models.SalesItemModel, error) {
 	var items []models.SalesItemModel
 
@@ -416,6 +513,17 @@ func (s *SalesService) GetItems(id string) ([]models.SalesItemModel, error) {
 	return items, nil
 }
 
+// UpdateTotal recalculates the total of a sales document.
+//
+// It takes a sales document as input, and returns an error if the operation fails.
+//
+// The function first loads all items associated with the sales document, and then calculates the total
+// before tax, the total before discount, the total tax, and the total discount.
+//
+// The function then calculates the total after tax by calling the CalculateTaxes function, and
+// sets the total of the sales document to the calculated total.
+//
+// Finally, the function updates the sales document in the database, and returns an error if the operation fails.
 func (s *SalesService) UpdateTotal(sales *models.SalesModel) error {
 	s.db.Preload("Items").Model(sales).Find(sales)
 	var totalBeforeTax, totalBeforeDisc, subTotal, itemsTax, totalDisc float64
@@ -431,7 +539,6 @@ func (s *SalesService) UpdateTotal(sales *models.SalesModel) error {
 	sales.Subtotal = subTotal
 
 	afterTax, salesTaxAmount, taxBreakdown := s.CalculateTaxes(subTotal, sales.IsCompound, sales.Taxes)
-	// fmt.Printf("TAX_AMOUNT %f", salesTaxAmount)
 	sales.Subtotal = afterTax
 	sales.TotalTax = itemsTax + salesTaxAmount
 	sales.Total = sales.Subtotal + sales.TotalTax
@@ -442,6 +549,12 @@ func (s *SalesService) UpdateTotal(sales *models.SalesModel) error {
 	return s.db.Omit(clause.Associations).Save(&sales).Error
 }
 
+// DeleteItem deletes an item from a sales document.
+//
+// It takes a sales document and an item ID as input, and returns an error if the operation fails.
+//
+// The function first deletes the item from the database, and then calls the UpdateTotal function
+// to recalculate the total of the sales document.
 func (s *SalesService) DeleteItem(sales *models.SalesModel, itemID string) error {
 	err := s.db.Where("sales_id = ? AND id = ?", sales.ID, itemID).Delete(&models.SalesItemModel{}).Error
 	if err != nil {
@@ -450,6 +563,16 @@ func (s *SalesService) DeleteItem(sales *models.SalesModel, itemID string) error
 	return s.UpdateTotal(sales)
 }
 
+// UpdateItem updates an item in a sales document.
+//
+// It takes a sales document, an item ID, and an updated item as input, and returns an error if the operation fails.
+//
+// The function first loads the product associated with the item, and sets the item's base price
+// to the product's price. If the product has a tax set, the item is also set to have the same tax.
+//
+// The function then updates the item in the database, and returns an error if the operation fails.
+//
+// Finally, the function calls the UpdateTotal function to recalculate the total of the sales document.
 func (s *SalesService) UpdateItem(sales *models.SalesModel, itemID string, item *models.SalesItemModel) error {
 	if item.ProductID != nil {
 		var product models.ProductModel
@@ -484,14 +607,30 @@ func (s *SalesService) UpdateItem(sales *models.SalesModel, itemID string, item 
 	}
 	item.TotalTax = taxAmount
 	item.Total = item.SubTotal + taxAmount
-	fmt.Println("UPDATE ITEM", item.Description)
-	utils.LogJson(item)
 	err := s.db.Where("sales_id = ? AND id = ?", sales.ID, itemID).Omit("sales_id").Save(item).Error
 	if err != nil {
 		return err
 	}
 	return s.UpdateTotal(sales)
 }
+
+// CalculateTaxes computes the total amount after applying taxes to a base amount.
+//
+// This function iterates over a list of tax models, calculates the tax for each model,
+// and aggregates the total tax amount. If the isCompound flag is true, it applies each
+// tax incrementally, recalculating the base amount after each tax application. If false,
+// it applies the total tax at once to the base amount. The function returns the total
+// amount after taxes, the total tax amount, and a breakdown of individual tax amounts.
+//
+// Parameters:
+//   - baseAmount: The initial amount before taxes.
+//   - isCompound: A boolean indicating whether taxes should be compounded.
+//   - taxes: A slice of TaxModel pointers representing the taxes to be applied.
+//
+// Returns:
+//   - The total amount after all taxes have been applied.
+//   - The aggregated total tax amount.
+//   - A map detailing the tax amount for each tax model by name.
 
 func (s *SalesService) CalculateTaxes(baseAmount float64, isCompound bool, taxes []*models.TaxModel) (float64, float64, map[string]float64) {
 	totalAmount := baseAmount
@@ -517,6 +656,13 @@ func (s *SalesService) CalculateTaxes(baseAmount float64, isCompound bool, taxes
 	return totalAmount, totalTax, taxBreakdown
 }
 
+// PublishSales creates a new sales document in the database and performs relevant accounting entries.
+//
+// If the sales document has items with a sale account and/or an asset account, transactions will be created
+// for the sale and the asset account. If the sales document has a payment account, the sales document will be
+// marked as paid. If the sales document has a partial payment, the sales document will be marked as partial.
+//
+// If successful, it returns nil; otherwise, it returns an error indicating what went wrong.
 func (s *SalesService) PublishSales(data *models.SalesModel) error {
 	if len(data.Items) == 0 {
 		return errors.New("sales has no items")
@@ -612,6 +758,15 @@ func (s *SalesService) PublishSales(data *models.SalesModel) error {
 	})
 }
 
+// PostInvoice posts a sales invoice with the given ID and data, and updates the status of the invoice to "POSTED".
+//
+// The function takes a pointer to a SalesModel and a string representing the user ID.
+// It verifies that the document type is "INVOICE" and that there are items present in the sales model.
+// It updates the status of the invoice to "POSTED", sets the published at and published by fields, and manages payment terms if applicable.
+// It retrieves the necessary accounts for cost of goods sold (COGS) and inventory, and creates financial transactions for each item in the sales model.
+// It also manages stock movements for products associated with the invoice.
+// The function executes these operations within a transaction to ensure data consistency.
+// Returns an error if any of the operations fail.
 func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID string, date time.Time) error {
 
 	if data.DocumentType != "INVOICE" {
@@ -826,6 +981,12 @@ func (s *SalesService) PostInvoice(id string, data *models.SalesModel, userID st
 	return err
 }
 
+// GetBalance calculates the remaining balance of a sales order.
+//
+// If the payment account is an asset account, it returns 0 immediately.
+// Otherwise, it calculates the total payment amount made to the sales order,
+// and returns the difference between the sales order total and the total payment.
+// If the payment is more than the total, it returns an error.
 func (s *SalesService) GetBalance(sales *models.SalesModel) (float64, error) {
 	if sales.PaymentAccount.Type == "ASSET" {
 		return 0, nil
@@ -842,8 +1003,32 @@ func (s *SalesService) GetBalance(sales *models.SalesModel) (float64, error) {
 	}
 	return 0, errors.New("payment is more than total")
 }
-func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment *models.SalesPaymentModel) error {
 
+// CreateSalesPayment creates a new sales payment transaction associated with a sales order.
+//
+// It performs the following operations:
+//  1. Verifies if the payment amount is greater than the remaining balance of the sales order. If so, it returns an error.
+//  2. Retrieves the payment account associated with the sales order and verifies its type. If the account type is not RECEIVABLE, it returns an error.
+//  3. Creates a new transaction record in the database with the following details:
+//     - Date: the provided date
+//     - AccountID: the ID of the receivable account associated with the sales order
+//     - Description: "Pembayaran [sales number]"
+//     - Notes: the description of the sales order
+//     - TransactionRefID: the ID of the asset account associated with the payment
+//     - TransactionRefType: "transaction"
+//     - CompanyID: the ID of the company associated with the sales order
+//     - Credit: the payment amount
+//  4. Creates another transaction record with the following details:
+//     - AccountID: the ID of the asset account associated with the payment
+//     - Debit: the payment amount
+//  5. If the payment discount is greater than 0, it creates another transaction record with the following details:
+//     - AccountID: the ID of the contra revenue account associated with the company
+//     - Debit: the discount amount
+//  6. Saves the sales payment data in the database.
+//  7. Commits the transaction if all operations are successful. Otherwise, it rolls back the transaction.
+//
+// Returns an error if any of the operations fail.
+func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment *models.SalesPaymentModel) error {
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		s.financeService.TransactionService.SetDB(tx)
 		balance, err := s.GetBalance(sales)
@@ -947,6 +1132,13 @@ func (s *SalesService) CreateSalesPayment(sales *models.SalesModel, salesPayment
 	return err
 }
 
+// GetPdf generates a PDF invoice for a sales order.
+//
+// It accepts the sales order, a template path, a time format string, a footer string,
+// and flags indicating whether to show the company and shipping information.
+// The function retrieves the company information from the database and formats the invoice
+// with the sales order details, items, payments, and contact information.
+// It returns a byte slice of the generated PDF or an error if any operation fails.
 func (s *SalesService) GetPdf(sales *models.SalesModel, templatePath, timeFormatStr, footer string, showCompany, showShipped bool) ([]byte, error) {
 	if timeFormatStr == "" {
 		timeFormatStr = "02/01/2006"
@@ -1041,8 +1233,6 @@ func (s *SalesService) GetPdf(sales *models.SalesModel, templatePath, timeFormat
 	if ok {
 		shippedTo.Address = shippedAddress
 	}
-
-	//DeliveryDataParsed
 
 	var data = utils.InvoicePDF{
 		ShowCompany: showCompany,

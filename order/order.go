@@ -32,6 +32,12 @@ type OrderService struct {
 	SalesReturnService *sales_return.SalesReturnService
 }
 
+// NewOrderService initializes a new OrderService instance.
+//
+// It takes an ERPContext and initializes sub-services. It also runs a migration
+// for the database.
+//
+// If the migration fails, it will return nil.
 func NewOrderService(ctx *context.ERPContext) *OrderService {
 	fmt.Println("INIT ORDER SERVICE")
 	var financeService *finance.FinanceService
@@ -61,6 +67,15 @@ func NewOrderService(ctx *context.ERPContext) *OrderService {
 	return &service
 }
 
+// Migrate runs the database migrations for the order module.
+//
+// It first checks if the SkipMigration flag is set in the context. If it is, the
+// function returns immediately.
+//
+// It then calls the Migrate functions of the Sales, POS, Merchant, Payment,
+// Withdrawal, Banner, Promotion, and Payment Term services, passing the database
+// connection from the context. If any of these calls returns an error, the
+// function logs the error and returns it.
 func (s *OrderService) Migrate() error {
 	if s.ctx.SkipMigration {
 		return nil
@@ -101,6 +116,10 @@ func (s *OrderService) Migrate() error {
 	return nil
 }
 
+// DB returns the underlying database connection.
+//
+// The method returns the GORM database connection that is used by the service
+// for CRUD (Create, Read, Update, Delete) operations.
 func (s *OrderService) DB() *gorm.DB {
 	return s.ctx.DB
 }

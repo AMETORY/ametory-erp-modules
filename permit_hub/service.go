@@ -24,6 +24,8 @@ type PermitHubService struct {
 	CitizenService         *citizen.CitizenService
 }
 
+// NewPermitHubService creates a new instance of PermitHubService with the given database connection and context.
+// It also calls Migrate() if the SkipMigration flag is not set.
 func NewPermitHubService(ctx *context.ERPContext) *PermitHubService {
 	service := PermitHubService{
 		ctx:                    ctx,
@@ -36,6 +38,11 @@ func NewPermitHubService(ctx *context.ERPContext) *PermitHubService {
 	return &service
 }
 
+// Migrate runs database migrations for permit hub module.
+//
+// It creates all tables used by permit hub module, and sets up foreign key constraints.
+//
+// Migrate should be called only once when the application starts.
 func (s *PermitHubService) Migrate() error {
 	return s.ctx.DB.AutoMigrate(
 		&models.Citizen{},
@@ -59,6 +66,12 @@ func (s *PermitHubService) Migrate() error {
 	)
 }
 
+// GetPermitTypeBySlug returns a permit type by slug.
+//
+// The function takes a permit type slug and returns a permit type object, its field definitions,
+// approval flow, and permit requirements.
+//
+// If the permit type doesn't exist, it returns gorm.ErrRecordNotFound.
 func (s *PermitHubService) GetPermitTypeBySlug(slug string) (*models.PermitType, error) {
 	var permitType models.PermitType
 	if err := s.ctx.DB.Preload("FieldDefinitions").
@@ -70,6 +83,8 @@ func (s *PermitHubService) GetPermitTypeBySlug(slug string) (*models.PermitType,
 	return &permitType, nil
 }
 
+// CreateCitizenIfNotExists creates a new citizen if one with the same NIK doesn't exist.
+// It returns an error if the citizen already exists, or if there's an error creating a new one.
 func (s *PermitHubService) CreateCitizenIfNotExists(citizen *models.Citizen) error {
 	if err := s.ctx.DB.Where("nik = ?", citizen.NIK).First(&citizen).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -200,6 +215,13 @@ func (s *PermitHubService) CreatePermitRequest(citizenID, subDistrictID, permitT
 	return req, nil
 }
 
+// ApprovePermitRequestStep handles the approval process for a permit request step.
+//
+// It checks if the user is authorized based on their role, logs the approval decision,
+// updates the request status, and progresses to the next step if applicable. If the
+// approval is rejected, the request status is marked as rejected. The function returns
+// an error if the user is unauthorized, if the request or approval step is not found,
+// or if there is a failure in logging the approval or updating the request.
 func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy *models.UserModel, note string, approved bool) error {
 	// 1. Check approved by role
 	if approvedBy.Role == nil {
@@ -334,6 +356,17 @@ func (s *PermitHubService) ApprovePermitRequestStep(requestID string, approvedBy
 	return s.ctx.DB.Save(&request).Error
 }
 
+// GetAllRequests returns a paginated list of permit requests.
+//
+// The function takes an HTTP request as a parameter and supports ordering
+// based on query parameters. It returns a Paginate object containing the
+// permit requests. The result is filtered based on the following query parameters:
+// - ID-SubDistrict: filter by sub district ID
+// - citizen_ids: filter by citizen IDs
+// - citizen_id: filter by citizen ID
+// - start_date: filter by submitted at date range
+// - end_date: filter by submitted at date range
+// - order: order by submitted at date range
 func (s *PermitHubService) GetAllRequests(request *http.Request) (paginate.Page, error) {
 
 	pg := paginate.New()
@@ -376,6 +409,12 @@ func (s *PermitHubService) GetAllRequests(request *http.Request) (paginate.Page,
 
 }
 
+// GetRequestByID returns a permit request by its ID.
+//
+// The function takes a permit request ID and returns a permit request object, its permit type, citizen,
+// current step roles, approval logs, documents, and dynamic request data.
+//
+// If the permit request doesn't exist, it returns gorm.ErrRecordNotFound.
 func (s *PermitHubService) GetRequestByID(requestID string) (*models.PermitRequest, error) {
 	var request models.PermitRequest
 	err := s.ctx.DB.
@@ -403,6 +442,9 @@ func (s *PermitHubService) GetRequestByID(requestID string) (*models.PermitReque
 	return &request, nil
 }
 
+// GetPermitRequestListByRefID returns a paginated list of permit requests by reference ID.
+//
+// The function takes an HTTP request and a reference ID as parameters. It returns a Paginate object containing the permit requests.
 func (s *PermitHubService) GetPermitRequestListByRefID(request *http.Request, refID string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.ctx.DB.Model(&models.PermitRequest{}).
@@ -414,6 +456,13 @@ func (s *PermitHubService) GetPermitRequestListByRefID(request *http.Request, re
 	page.Page = page.Page + 1
 	return page, nil
 }
+
+// GetPermitRequestByCode returns a permit request by code.
+//
+// The function takes a code and returns a permit request object, its permit type, citizen,
+// current step roles, approval logs, documents, and dynamic request data.
+//
+// If the permit request doesn't exist, it returns gorm.ErrRecordNotFound.
 func (s *PermitHubService) GetPermitRequestByCode(code string) (*models.PermitRequest, error) {
 	var request models.PermitRequest
 	err := s.ctx.DB.
@@ -435,10 +484,16 @@ func (s *PermitHubService) GetPermitRequestByCode(code string) (*models.PermitRe
 	return &request, nil
 }
 
+// UpdateRequest updates a permit request.
+//
+// The function takes a permit request ID and a permit request object as parameters. It returns an error.
 func (s *PermitHubService) UpdateRequest(requestID string, data *models.PermitRequest) error {
 	return s.ctx.DB.Where("id = ?", requestID).Updates(data).Error
 }
 
+// DeleteRequest deletes a permit request.
+//
+// The function takes a permit request ID and returns an error.
 func (s *PermitHubService) DeleteRequest(requestID string) error {
 	return s.ctx.DB.Where("id = ?", requestID).Delete(&models.PermitRequest{}).Error
 }

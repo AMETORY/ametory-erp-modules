@@ -7,27 +7,49 @@ import (
 	"gorm.io/gorm"
 )
 
+// PaymentTermService handles operations related to payment terms.
+//
+// It utilizes a GORM database instance and an ERP context to perform
+// CRUD operations on payment terms, as well as other context-related
+// functionalities.
 type PaymentTermService struct {
 	ctx *context.ERPContext
 	db  *gorm.DB
 }
 
+// NewPaymentTermService creates a new instance of PaymentTermService.
+//
+// It initializes the service with the provided GORM database and ERP context.
+// The database is used for performing operations on payment terms, while the
+// context provides authentication and authorization capabilities.
 func NewPaymentTermService(db *gorm.DB, ctx *context.ERPContext) *PaymentTermService {
 	return &PaymentTermService{ctx: ctx, db: db}
 }
 
+// Migrate applies the necessary database migrations for the payment term model.
+//
+// It ensures that the underlying database schema is up to date with the
+// current version of the PaymentTermModel.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&models.PaymentTermModel{},
 	)
 }
 
+// GetPaymentTerms retrieves all payment terms from the database.
+//
+// It returns a slice of PaymentTermModel containing all the payment terms
+// stored in the database.
 func (s *PaymentTermService) GetPaymentTerms() []models.PaymentTermModel {
 	var paymentTerms []models.PaymentTermModel
 	s.db.Find(&paymentTerms)
 	return paymentTerms
 }
 
+// GroupPaymentTermsByCategory groups the payment terms by their category.
+//
+// It returns a map where the keys are category names and the values are
+// slices of PaymentTermModel corresponding to each category.
 func (s *PaymentTermService) GroupPaymentTermsByCategory() map[string][]models.PaymentTermModel {
 	var paymentTerms []models.PaymentTermModel
 	s.db.Find(&paymentTerms)
@@ -40,6 +62,10 @@ func (s *PaymentTermService) GroupPaymentTermsByCategory() map[string][]models.P
 	return grouped
 }
 
+// InitPaymentTerms initializes the payment terms in the database.
+//
+// This method populates the database with predefined payment terms if they
+// do not already exist.
 func (s *PaymentTermService) InitPaymentTerms() error {
 	terms := []models.PaymentTermModel{
 		{

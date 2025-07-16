@@ -18,6 +18,9 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// SalesReturnService provides methods to manage sales returns.
+//
+// A SalesReturnService contains a reference to a database connection and an ERP context.
 type SalesReturnService struct {
 	db                   *gorm.DB
 	ctx                  *context.ERPContext
@@ -26,6 +29,7 @@ type SalesReturnService struct {
 	salesService         *sales.SalesService
 }
 
+// NewSalesReturnService creates a new instance of SalesReturnService with the given database connection, context, finance service, stock movement service and sales service.
 func NewSalesReturnService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, stockMovementService *stockmovement.StockMovementService, salesService *sales.SalesService) *SalesReturnService {
 	return &SalesReturnService{
 		db:                   db,
@@ -36,10 +40,22 @@ func NewSalesReturnService(db *gorm.DB, ctx *context.ERPContext, financeService 
 	}
 }
 
+// Migrate migrates the database schema to the latest version.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.ReturnModel{}, &models.ReturnItemModel{})
 }
 
+// GetReturns retrieves a paginated list of sales returns from the database.
+//
+// It takes an HTTP request and a search query string as input. The method uses
+// GORM to query the database for sales returns, applying the search query to
+// the return description and return number fields. If the request contains
+// a company ID header, the method also filters the result by the company ID.
+// The function utilizes pagination to manage the result set and applies any
+// necessary request modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of ReturnModel and an error if the
+// operation fails.
 func (s *SalesReturnService) GetReturns(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Items")
@@ -72,6 +88,13 @@ func (s *SalesReturnService) GetReturns(request http.Request, search string) (pa
 	return page, nil
 }
 
+// GetReturnByID retrieves a sales return by its ID.
+//
+// The function takes the ID of the return as a string and returns a pointer to a ReturnModel
+// containing the return details. It preloads the ReleasedBy and Items associations,
+// along with related data such as Product, Variant, Unit, Tax, and Warehouse for each item.
+// It also fetches the associated sales using the RefID and stores it in the SalesRef field.
+// The function returns an error if the retrieval operation fails.
 func (s *SalesReturnService) GetReturnByID(id string) (*models.ReturnModel, error) {
 	var returnPurchase models.ReturnModel
 	err := s.db.Preload("ReleasedBy", func(db *gorm.DB) *gorm.DB {
@@ -89,6 +112,13 @@ func (s *SalesReturnService) GetReturnByID(id string) (*models.ReturnModel, erro
 	returnPurchase.SalesRef = &sales
 	return &returnPurchase, nil
 }
+
+// AddItem adds a new item to the sales return with the given ID.
+//
+// The function takes a pointer to a ReturnModel which contains the return details
+// and a pointer to a ReturnItemModel which contains the item details.
+// It creates a new record in the return items table with the given data.
+// The function returns an error if the operation fails.
 func (s *SalesReturnService) AddItem(returnPurchase *models.ReturnModel, item *models.ReturnItemModel) error {
 	item.ReturnID = returnPurchase.ID
 	if err := s.db.Create(item).Error; err != nil {
@@ -97,6 +127,10 @@ func (s *SalesReturnService) AddItem(returnPurchase *models.ReturnModel, item *m
 	return nil
 }
 
+// DeleteItem deletes a sales return item with the given ID from the database.
+//
+// It takes the ID of the return and the ID of the item to delete as input.
+// The function returns an error if the operation fails.
 func (s *SalesReturnService) DeleteItem(returnID string, itemID string) error {
 	if err := s.db.Where("id = ? AND return_id = ?", itemID, returnID).Delete(&models.ReturnItemModel{}).Error; err != nil {
 		return err
@@ -104,6 +138,11 @@ func (s *SalesReturnService) DeleteItem(returnID string, itemID string) error {
 	return nil
 }
 
+// DeleteReturn removes a sales return with the given ID from the database.
+//
+// It takes the ID of the return as input. The function first deletes all items
+// associated with the return, and then deletes the return itself.
+// The function returns an error if the operation fails.
 func (s *SalesReturnService) DeleteReturn(id string) error {
 	// Delete all items first
 	if err := s.db.Where("return_id = ?", id).Delete(&models.ReturnItemModel{}).Error; err != nil {
@@ -115,6 +154,11 @@ func (s *SalesReturnService) DeleteReturn(id string) error {
 	return nil
 }
 
+// UpdateReturn updates the sales return with the given ID.
+//
+// It takes the ID of the return and a pointer to a ReturnModel containing the updated return details.
+// The function uses Omit to avoid updating associations.
+// The function returns an error if the operation fails.
 func (s *SalesReturnService) UpdateReturn(id string, returnPurchase *models.ReturnModel) error {
 	return s.db.Omit(clause.Associations).Where("id = ?", id).Save(returnPurchase).Error
 }
@@ -154,6 +198,18 @@ func (s *SalesReturnService) CreateReturn(returnPurchase *models.ReturnModel) er
 	return s.db.Create(returnPurchase).Error
 }
 
+// ReleaseReturn releases the sales return with the given ID.
+//
+// It takes the ID of the return, the ID of the user who is releasing the return,
+// the date of the release, a notes string, and an optional account ID as input.
+// If an account ID is provided, it will create a payment return using that account.
+// The function first checks if the return items are empty, and if so, returns an error.
+// It then retrieves the sales associated with the return and checks if the account
+// receivable for the tax is found. If not, it returns an error.
+// It then creates a transaction for each item in the return, updating the inventory
+// and HPP accounts, and creates a stock movement for each item.
+// It also updates the associated sales by subtracting the return total from the paid amount.
+// Finally, it updates the status of the return to RELEASED and sets the released at date and released by ID.
 func (s *SalesReturnService) ReleaseReturn(returnID string, userID string, date time.Time, notes string, accountID *string) error {
 	returnPurchase, err := s.GetReturnByID(returnID)
 	if err != nil {
@@ -462,6 +518,20 @@ func (s *SalesReturnService) ReleaseReturn(returnID string, userID string, date 
 	return err
 }
 
+// UpdateItem updates the details of a return item in the database.
+//
+// This function recalculates and updates the value, subtotal before discount,
+// discount amount, subtotal, total tax, and total for the given return item
+// based on its quantity, unit price, discount percent, and tax information.
+// It fetches the unit value if a UnitID is provided and updates the item value
+// accordingly. The function also saves the updated item in the database.
+//
+// Parameters:
+//   - item: A pointer to a ReturnItemModel containing the details of the return
+//     item to be updated.
+//
+// Returns:
+//   - An error if the database update operation fails; otherwise, nil.
 func (s *SalesReturnService) UpdateItem(item *models.ReturnItemModel) error {
 	taxPercent := 0.0
 	taxAmount := 0.0
