@@ -18,5 +18,6 @@ release:
 	@git tag v$(VERSION)
 	@echo "Pushing tag v$(VERSION) to origin"
 	@git push origin v$(VERSION)
+	@curl -X POST -H "Content-Type: application/json" -d '{"username":"erpgen","content":"Just released v'$(VERSION)'","avatar_url":"https://avatars.githubusercontent.com/u/171210158"}' https://discord.com/api/webhooks/1394927138393554964/OmCpQUs475CMfskhgLI9M22EdFQ2ekfG6AgFso7k4Fdkl8gSsf0yKIUBF0e5FbuQxxdW
 
 
