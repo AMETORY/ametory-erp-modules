@@ -39,6 +39,22 @@ type HRISservice struct {
 	EmployeeResignationService  *employee_resignation.EmployeeResignationService
 }
 
+// NewHRISservice creates a new instance of HRISservice.
+//
+// The service is created by providing a pointer to an ERPContext. The ERPContext
+// is used for authentication and authorization purposes.
+//
+// The service is created with all the services that are a part of the HRIS module.
+// The services are created with the provided ERP context and the necessary
+// dependencies.
+//
+// The method also calls Migrate() on the service, which migrates the database
+// schema to the latest version.
+//
+// If the SkipMigration flag is set on the ERPContext, the Migrate() method is not
+// called.
+//
+// The service is then returned as a pointer to the caller.
 func NewHRISservice(ctx *context.ERPContext) *HRISservice {
 	employeeService := employee.NewEmployeeService(ctx)
 	attendancePolicyService := attendance_policy.NewAttendancePolicyService(ctx)
@@ -67,6 +83,14 @@ func NewHRISservice(ctx *context.ERPContext) *HRISservice {
 	return &service
 }
 
+// Migrate migrates the database schema to the latest version.
+//
+// The method calls Migrate() on all the services that are a part of the HRIS
+// module. If the SkipMigration flag is set on the ERPContext, the Migrate()
+// method is not called.
+//
+// The method returns an error if any of the services fail to migrate their
+// database schema.
 func (s *HRISservice) Migrate() error {
 	if s.ctx.SkipMigration {
 		return nil

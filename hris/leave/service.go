@@ -20,10 +20,21 @@ type LeaveService struct {
 	employeeService *employee.EmployeeService
 }
 
+// NewLeaveService creates a new instance of LeaveService.
+//
+// The service is initialized with a GORM database from the ERP context
+// and an EmployeeService for handling employee-related operations.
+
 func NewLeaveService(ctx *context.ERPContext, employeeService *employee.EmployeeService) *LeaveService {
 	return &LeaveService{db: ctx.DB, ctx: ctx, employeeService: employeeService}
 }
 
+// Migrate runs the database migration for the Leave module.
+//
+// The function takes a GORM database and runs the AutoMigrate method
+// on the LeaveModel and LeaveCategory models.
+//
+// The function returns an error if the migration fails.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&models.LeaveModel{},
@@ -31,6 +42,11 @@ func Migrate(db *gorm.DB) error {
 	)
 }
 
+// CreateLeave creates a new leave record in the database.
+//
+// The function takes a LeaveModel as input and creates a new leave record in the database.
+// The function returns an error if the creation fails, or if the EmployeeID field of the input
+// LeaveModel is nil.
 func (s *LeaveService) CreateLeave(m *models.LeaveModel) error {
 	if m.EmployeeID == nil {
 		return errors.New("employee id is required")
@@ -38,6 +54,14 @@ func (s *LeaveService) CreateLeave(m *models.LeaveModel) error {
 	return s.db.Create(m).Error
 }
 
+// FindAllLeave retrieves a paginated list of leave records from the database.
+//
+// The function takes an http.Request as input and applies various filters based on the request
+// parameters such as company ID, search term, date range, and employee IDs. The results can be
+// ordered based on a specified order parameter or defaults to ordering by start_date in descending
+// order.
+//
+// The function returns a paginated page of LeaveModel and an error if the operation fails.
 func (s *LeaveService) FindAllLeave(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.
@@ -75,6 +99,17 @@ func (s *LeaveService) FindAllLeave(request *http.Request) (paginate.Page, error
 	return page, nil
 }
 
+// FindAllByEmployeeID retrieves a paginated list of leave records for a given employee ID.
+//
+// This function takes an HTTP request and an employee ID as inputs. It uses GORM to query
+// the database for leave records, preloading the associated Employee (with User and JobTitle),
+// Approver (with User), and LeaveCategory models. It applies various filters based on the
+// request parameters such as search term, date range, and order. The results can be ordered
+// based on a specified order parameter or defaults to ordering by start_date in descending order.
+//
+// Pagination is utilized to manage the result set, and any necessary request modifications
+// are applied using the utils.FixRequest utility. The function returns a paginated page of
+// LeaveModel and an error if the operation fails.
 func (s *LeaveService) FindAllByEmployeeID(request *http.Request, employeeID string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.
@@ -107,6 +142,14 @@ func (s *LeaveService) FindAllByEmployeeID(request *http.Request, employeeID str
 	return page, nil
 }
 
+// FindLeaveByID retrieves a leave record by ID from the database.
+//
+// The function takes a leave ID as input and uses it to query the database for the leave record.
+// The associated Employee (with User, JobTitle, WorkLocation, WorkShift, and Branch), Approver (with User),
+// ApprovalByAdmin, and LeaveCategory models are preloaded.
+//
+// The function returns the leave record and an error if the operation fails. If the leave record is not found,
+// a nil pointer is returned together with a gorm.ErrRecordNotFound error.
 func (s *LeaveService) FindLeaveByID(id string) (*models.LeaveModel, error) {
 	var m models.LeaveModel
 	if err := s.db.
@@ -147,22 +190,83 @@ func (s *LeaveService) CountLeaveSummary(employee *models.EmployeeModel, startDa
 	return int64(employee.AnnualLeaveDays) - count, nil
 }
 
+// UpdateLeave updates a leave record in the database.
+//
+// The function takes a LeaveModel object as input and attempts to
+// update the corresponding leave record in the database. If the operation
+// is successful, it returns nil; otherwise, it returns an error indicating
+// what went wrong.
+//
+// Parameters:
+//
+//	m (*models.LeaveModel): The leave model instance to be updated.
+//
+// Returns:
+//
+//	error: An error object if the operation fails, or nil if it is successful.
 func (s *LeaveService) UpdateLeave(m *models.LeaveModel) error {
 	return s.db.Save(m).Error
 }
 
+// DeleteLeave deletes an existing leave record from the database.
+//
+// The function takes a leave ID as parameter and attempts to delete the
+// leave record with the given ID from the database. If the operation is
+// successful, it returns an error object indicating what went wrong.
+//
+// Parameters:
+//
+//	id (string): The ID of the leave record to be deleted.
+//
+// Returns:
+//
+//	error: An error object if the operation fails, or nil if it is successful.
 func (s *LeaveService) DeleteLeave(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.LeaveModel{}).Error
 }
 
+// Delete deletes an existing leave record from the database.
+//
+// The function takes a leave ID as parameter and attempts to delete the
+// leave record with the given ID from the database. If the operation is
+// successful, it returns an error object indicating what went wrong.
+//
+// Parameters:
+//
+//	id (string): The ID of the leave record to be deleted.
+//
+// Returns:
+//
+//	error: An error object if the operation fails, or nil if it is successful.
 func (s *LeaveService) Delete(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.LeaveModel{}).Error
 }
 
+// CreateLeaveCategory creates a new leave category record in the database.
+//
+// The function takes a pointer to a LeaveCategory as parameter and creates a new
+// leave category record in the database with the given details.
+//
+// Parameters:
+//
+//	c (*models.LeaveCategory): The leave category model instance to be created.
+//
+// Returns:
+//
+//	error: An error object if the operation fails, or nil if it is successful.
 func (s *LeaveService) CreateLeaveCategory(c *models.LeaveCategory) error {
 	return s.db.Create(c).Error
 }
 
+// FindAllLeaveCategories retrieves a paginated list of leave categories from the database.
+//
+// The function takes an HTTP request as input and applies filters based on the request
+// parameters such as company ID and search term. The results can be filtered by company ID,
+// allowing for company-specific or global categories, and can be searched by name.
+//
+// Pagination is utilized to manage the result set, and any necessary request modifications
+// are applied using the utils.FixRequest utility. The function returns a paginated page of
+// LeaveCategory and an error if the operation fails.
 func (s *LeaveService) FindAllLeaveCategories(request *http.Request) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Model(&models.LeaveCategory{})
@@ -178,6 +282,20 @@ func (s *LeaveService) FindAllLeaveCategories(request *http.Request) (paginate.P
 	return page, nil
 }
 
+// FindLeaveCategoryByID retrieves a leave category by ID from the database.
+//
+// The function takes a leave category ID as input and uses it to query the database for the
+// leave category record. The function returns the leave category record and an error if the
+// operation fails.
+//
+// Parameters:
+//
+//	id (string): The ID of the leave category to be retrieved.
+//
+// Returns:
+//
+//	*models.LeaveCategory, error: The leave category model instance and an error object if the
+//	operation fails, or nil if it is successful.
 func (s *LeaveService) FindLeaveCategoryByID(id string) (*models.LeaveCategory, error) {
 	var category models.LeaveCategory
 	if err := s.db.Where("id = ?", id).First(&category).Error; err != nil {
@@ -186,14 +304,62 @@ func (s *LeaveService) FindLeaveCategoryByID(id string) (*models.LeaveCategory, 
 	return &category, nil
 }
 
+// UpdateLeaveCategory updates an existing leave category record in the database.
+//
+// The function takes a pointer to a LeaveCategory as parameter and updates the
+// corresponding record in the database with the given details.
+//
+// Parameters:
+//
+//	c (*models.LeaveCategory): The leave category model instance to be updated.
+//
+// Returns:
+//
+//	error: An error object if the operation fails, or nil if it is successful.
 func (s *LeaveService) UpdateLeaveCategory(c *models.LeaveCategory) error {
 	return s.db.Save(c).Error
 }
 
+// DeleteLeaveCategory removes a leave category from the database by its ID.
+//
+// The function takes a leave category ID as input and attempts to delete the
+// corresponding record from the database. If the operation is successful, it
+// returns nil; otherwise, it returns an error indicating what went wrong.
+//
+// Parameters:
+//
+//	id (string): The ID of the leave category to be deleted.
+//
+// Returns:
+//
+//	error: An error object if the operation fails, or nil if it is successful.
 func (s *LeaveService) DeleteLeaveCategory(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.LeaveCategory{}).Error
 }
 
+// GenLeaveCategories is a utility function that generates a set of standard leave categories.
+//
+// It inserts the following leave categories into the database:
+//
+// - Dinas Luar Kota
+// - Cuti Menikah
+// - Cuti Menikahkan Anak
+// - Cuti Khitanan Anak
+// - Cuti Baptis Anak
+// - Cuti Istri Melahirkan atau Keguguran
+// - Cuti Keluarga Meninggal
+// - Cuti Anggota Keluarga Dalam Satu Rumah Meninggal
+// - Cuti Ibadah Haji
+// - Cuti Diluar Tanggungan
+// - Pergantian Overtime
+// - Pergantian Shift/Jadwal
+// - Izin Lainnya
+// - Izin Sakit
+// - Sakit dengan Surat Dokter
+// - Absen
+//
+// Note that this function is only intended to be called once, during the initial setup of the
+// system. It is not intended to be called by the normal flow of the system.
 func (s *LeaveService) GenLeaveCategories() {
 	cats := []string{
 		"Dinas Luar Kota",
@@ -237,6 +403,17 @@ func (s *LeaveService) GenLeaveCategories() {
 	})
 }
 
+// CountByEmployeeID returns the count of approved leaves for a given employee ID and date range.
+//
+// Parameters:
+//
+//	employeeID (string): The ID of the employee whose leaves are being counted.
+//	startDate (*time.Time): The start date of the date range for filtering leave records.
+//	endDate (*time.Time): The end date of the date range for filtering leave records.
+//
+// Returns:
+//
+//	int64, error: The count of approved leaves and an error object if the operation fails, or nil if it is successful.
 func (s *LeaveService) CountByEmployeeID(employeeID string, startDate *time.Time, endDate *time.Time) (int64, error) {
 	var countPending int64
 	err := s.ctx.DB.Model(&models.LeaveModel{}).
