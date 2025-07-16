@@ -26,6 +26,11 @@ type ProjectService struct {
 	customerRelationshipService *customer_relationship.CustomerRelationshipService
 }
 
+// NewProjectService creates a new instance of ProjectService with the given ERP context.
+//
+// It fetches the whatsmeow service from the context and panics if it is not found.
+// It also fetches the CustomerRelationshipService from the context, but won't panic if it is not found.
+// It then returns the newly created ProjectService with the given database connection, context, whatsmeow service and customer relationship service.
 func NewProjectService(ctx *context.ERPContext) *ProjectService {
 	whatsmeowService, ok := ctx.ThirdPartyServices["WA"].(*whatsmeow_client.WhatsmeowService)
 	if !ok {
@@ -40,18 +45,34 @@ func NewProjectService(ctx *context.ERPContext) *ProjectService {
 	return &ProjectService{db: ctx.DB, ctx: ctx, whatsmeowService: whatsmeowService, customerRelationshipService: customerRelationshipService}
 }
 
+// CreateProject creates a new project with the given data.
+//
+// It uses the Omit clause to avoid creating associations.
 func (s *ProjectService) CreateProject(data *models.ProjectModel) error {
 	return s.db.Omit(clause.Associations).Create(data).Error
 }
 
+// UpdateProject updates the project with the given ID to the given data.
+//
+// It uses the Updates method to update the columns of the project.
 func (s *ProjectService) UpdateProject(id string, data *models.ProjectModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
+// DeleteProject deletes the project with the given ID.
+//
+// It uses the Delete method to delete the project.
 func (s *ProjectService) DeleteProject(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.ProjectModel{}).Error
 }
 
+// GetProjectByID retrieves a project by its ID, optionally filtering by a member ID.
+//
+// It takes a project ID and an optional member ID as parameters. If a member ID is provided,
+// the project is filtered to include only those where the given member is associated.
+// The function preloads associated Columns, Tasks, Actions, and Members.User data.
+//
+// Returns a pointer to a ProjectModel and an error, if any.
 func (s *ProjectService) GetProjectByID(id string, memberID *string) (*models.ProjectModel, error) {
 	var project models.ProjectModel
 	db := s.db.Preload("Columns", func(db *gorm.DB) *gorm.DB {
@@ -60,13 +81,16 @@ func (s *ProjectService) GetProjectByID(id string, memberID *string) (*models.Pr
 	if memberID != nil {
 		db = db.
 			Joins("JOIN project_members ON project_members.project_model_id = projects.id").
-			// Joins("JOIN members ON members.id = project_members.member_model_id").
 			Where("project_members.member_model_id = ?", *memberID)
 	}
 	err := db.Where("id = ?", id).First(&project).Error
 	return &project, err
 }
 
+// GetColumnActionsByColumnID retrieves actions associated with a specific column ID.
+//
+// It takes a column ID as a parameter and returns a slice of ColumnAction and an error, if any.
+// The function preloads the associated Column data, selecting only the ID and name fields.
 func (s *ProjectService) GetColumnActionsByColumnID(id string) ([]models.ColumnAction, error) {
 	var action []models.ColumnAction
 	err := s.db.Where("column_id = ?", id).Preload("Column", func(db *gorm.DB) *gorm.DB { return db.Select("id", "name") }).Find(&action).Error
@@ -76,6 +100,14 @@ func (s *ProjectService) GetColumnActionsByColumnID(id string) ([]models.ColumnA
 	return action, nil
 }
 
+// GetProjects retrieves a paginated list of projects, optionally filtering by search and member ID.
+//
+// It takes an HTTP request, a search string, and an optional member ID. The search string is applied to
+// the project's name and description fields. If a company ID is present in the request header, the result is
+// filtered by the company ID. If a member ID is provided, the projects are filtered to include only those
+// associated with the given member. The function supports ordering and pagination.
+//
+// Returns a paginated page of ProjectModel and an error, if any.
 func (s *ProjectService) GetProjects(request http.Request, search string, memberID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db.Preload("Columns").Preload("Members.User")
@@ -91,7 +123,6 @@ func (s *ProjectService) GetProjects(request http.Request, search string, member
 	if memberID != nil {
 		stmt = stmt.
 			Joins("JOIN project_members ON project_members.project_model_id = projects.id").
-			// Joins("JOIN members ON members.id = project_members.member_model_id").
 			Where("project_members.member_model_id = ?", *memberID)
 	}
 
@@ -109,24 +140,44 @@ func (s *ProjectService) GetProjects(request http.Request, search string, member
 	return page, nil
 }
 
+// CreateColumn creates a new column with the given data.
+//
+// It uses the Omit clause to avoid creating associations.
 func (s *ProjectService) CreateColumn(data *models.ColumnModel) error {
 	return s.db.Create(data).Error
 }
 
+// UpdateColumn updates the column with the given ID to the given data.
+//
+// It uses the Updates method to update the columns of the column.
 func (s *ProjectService) UpdateColumn(id string, data *models.ColumnModel) error {
 	return s.db.Where("id = ?", id).Omit(clause.Associations).Updates(data).Error
 }
 
+// DeleteColumn deletes the column with the given ID.
+//
+// It uses the Delete method to delete the column.
 func (s *ProjectService) DeleteColumn(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.ColumnModel{}).Error
 }
 
+// GetColumnByID retrieves a column by its ID, optionally filtering by a project ID.
+//
+// It takes a column ID as a parameter and returns a pointer to a ColumnModel and an error, if any.
+// The function preloads associated Actions, Project, and Column data.
 func (s *ProjectService) GetColumnByID(id string) (*models.ColumnModel, error) {
 	var invoice models.ColumnModel
-	err := s.db.Where("id = ?", id).Preload("Actions").First(&invoice).Error
+	err := s.db.Where("id = ?", id).Preload("Actions").Preload("Project").Preload("Column").First(&invoice).Error
 	return &invoice, err
 }
 
+// GetColumns retrieves a paginated list of columns, optionally filtering by search and project ID.
+//
+// It takes an HTTP request, a search string, and an optional project ID. The search string is applied to
+// the column's name field. If a project ID is present in the request header, the result is
+// filtered by the project ID. The function supports ordering and pagination.
+//
+// Returns a paginated page of ColumnModel and an error, if any.
 func (s *ProjectService) GetColumns(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
@@ -144,6 +195,9 @@ func (s *ProjectService) GetColumns(request http.Request, search string) (pagina
 	return page, nil
 }
 
+// AddMemberToProject adds a member to a project with the given ID and member ID.
+//
+// It creates a new project member entry in the project_members table.
 func (s *ProjectService) AddMemberToProject(projectID string, memberID string) error {
 	return s.db.Table("project_members").Create(map[string]interface{}{
 		"project_model_id": projectID,
@@ -151,12 +205,20 @@ func (s *ProjectService) AddMemberToProject(projectID string, memberID string) e
 	}).Error
 }
 
+// GetMembersByProjectID retrieves a list of members associated with a project with the given ID.
+//
+// It takes a project ID as a parameter and returns a slice of MemberModel and an error, if any.
+// The function preloads associated User data.
 func (s *ProjectService) GetMembersByProjectID(projectID string) ([]models.MemberModel, error) {
 	var project models.ProjectModel
 	err := s.db.Model(&models.ProjectModel{}).Where("id = ?", projectID).Preload("Members.User").Find(&project).Error
 	return project.Members, err
 }
 
+// AddActivity adds an activity to a project with the given ID.
+//
+// It takes a project ID, a member ID, a column ID, a task ID, an activity type, and an optional notes string as parameters.
+// It creates a new project activity entry in the project_activities table.
 func (s *ProjectService) AddActivity(projectID, memberID string, columnID, taskID *string, activityType string, notes *string) (*models.ProjectActivityModel, error) {
 	var activity models.ProjectActivityModel = models.ProjectActivityModel{
 		ProjectID:    projectID,
@@ -178,6 +240,11 @@ func (s *ProjectService) AddActivity(projectID, memberID string, columnID, taskI
 	return &activity, nil
 }
 
+// GetRecentActivities retrieves a list of recent activities associated with a project with the given ID.
+//
+// It takes a project ID and a limit as parameters and returns a slice of ProjectActivityModel and an error, if any.
+// The function preloads associated Project, Member, Column, Task, and User data.
+// The function supports ordering by the activity date in descending order.
 func (s *ProjectService) GetRecentActivities(projectID string, limit int) ([]models.ProjectActivityModel, error) {
 	var activities []models.ProjectActivityModel
 	err := s.db.
@@ -189,19 +256,36 @@ func (s *ProjectService) GetRecentActivities(projectID string, limit int) ([]mod
 	return activities, err
 }
 
+// CreateColumnAction creates a new column action with the given data.
+//
+// It uses the Omit clause to avoid creating associations.
 func (s *ProjectService) CreateColumnAction(data *models.ColumnAction) error {
 	return s.db.Create(data).Error
 }
 
+// UpdateColumnAction updates the column action with the given ID to the given data.
+//
+// It uses the Updates method to update the columns of the column action.
 func (s *ProjectService) UpdateColumnAction(id string, data *models.ColumnAction) error {
-	fmt.Println("UPDATE_COLUMN_ACTION", data)
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
 
+// DeleteColumnAction deletes the column action with the given ID.
+//
+// It uses the Delete method to delete the column action.
 func (s *ProjectService) DeleteColumnAction(id string) error {
 	return s.db.Where("id = ?", id).Delete(&models.ColumnAction{}).Error
 }
 
+// CheckIdleColumn checks for idle columns and sends a message to the column's tasks if the idle time has been reached.
+//
+// It takes a callback function as a parameter, which is called with the scheduled message data.
+//
+// The function queries for all column actions with the action trigger set to "IDLE" and preloads the associated Column, Tasks, and User data.
+// For each column action, it checks if the action is set to "send_whatsapp_message" and if the task's ref type is set to "whatsapp_session".
+// If so, it checks if the task's last action trigger at is older than the idle time and if the action status is set to "READY".
+// If both conditions are met, it sets the action status to "WAITING", updates the task, and calls the callback function with the scheduled message data.
+// The callback function is expected to send the message to the task's contact phone number.
 func (s *ProjectService) CheckIdleColumn(callback func(models.ScheduledMessage)) error {
 	// Add logic to check for idle columns
 	var idleColumns []models.ColumnAction
