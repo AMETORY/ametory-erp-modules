@@ -26,6 +26,7 @@ type PurchaseService struct {
 	stockMovementService *stockmovement.StockMovementService
 }
 
+// NewPurchaseService creates a new instance of PurchaseService with the given database connection, context, finance service and stock movement service.
 func NewPurchaseService(db *gorm.DB, ctx *context.ERPContext, financeService *finance.FinanceService, stockMovementService *stockmovement.StockMovementService) *PurchaseService {
 	return &PurchaseService{
 		db:                   db,
@@ -35,10 +36,19 @@ func NewPurchaseService(db *gorm.DB, ctx *context.ERPContext, financeService *fi
 	}
 }
 
+// Migrate migrates the purchase database model to the given database connection.
+//
+// It uses gorm's AutoMigrate method to create the tables if they don't exist, and to migrate the existing tables if they do.
+//
+// AutoMigrate will add missing columns, but won't change existing column's type or delete unused column, it also won't delete/rename tables.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.PurchaseOrderModel{}, &models.PurchaseOrderItemModel{}, &models.PurchasePaymentModel{})
 }
 
+// UpdatePurchase updates the purchase order with the given id with the given data.
+//
+// It takes the id of the purchase order to be updated and a pointer to a PurchaseOrderModel which contains the updated data of the purchase order.
+// The function returns an error if the update operation fails.
 func (s *PurchaseService) UpdatePurchase(id string, data *models.PurchaseOrderModel) error {
 	return s.db.Where("id = ?", id).Updates(data).Error
 }
@@ -62,6 +72,12 @@ func (s *PurchaseService) DeletePurchase(id string) error {
 	})
 
 }
+
+// ClearTransaction clears all transaction with given id as reference id.
+//
+// This function runs inside a transaction, so if any error occurs, it will rollback.
+//
+// It uses gorm's Delete method to delete all transaction with given id as reference id.
 func (s *PurchaseService) ClearTransaction(id string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		return tx.Where("transaction_ref_id = ?", id).Delete(&models.TransactionModel{}).Error
@@ -69,7 +85,16 @@ func (s *PurchaseService) ClearTransaction(id string) error {
 
 }
 
-// CreatePurchaseOrder membuat purchase order baru
+// CreatePurchaseOrder creates a new purchase order in the database.
+//
+// It accepts a pointer to a PurchaseOrderModel which contains the purchase order details.
+// The function retrieves the company ID from the request header and verifies the existence
+// of an inventory account associated with the company. If the inventory account is not found,
+// it returns an error. Otherwise, it saves the purchase order data in the database.
+//
+// Returns an error if the creation of the purchase order fails or if the inventory account
+// is not found.
+
 func (s *PurchaseService) CreatePurchaseOrder(data *models.PurchaseOrderModel) error {
 	var companyID *string
 	if s.ctx.Request.Header.Get("ID-Company") != "" {
