@@ -32,16 +32,18 @@ func (m *GeminiHistoryModel) BeforeCreate(tx *gorm.DB) error {
 
 type GeminiAgent struct {
 	shared.BaseModel
-	Name               string  `gorm:"type:varchar(255);not null" json:"name"`
-	ApiKey             string  `gorm:"type:varchar(255);not null" json:"api_key"`
-	Active             bool    `gorm:"default:true" json:"active"`
-	SystemInstruction  string  `gorm:"type:text" json:"system_instruction"`
-	Model              string  `gorm:"type:varchar(255);default:'gemini-1.5-flash'" json:"model"`
-	SetTemperature     float32 `gorm:"type:float;default:1" json:"set_temperature"`
-	SetTopK            int32   `gorm:"type:int;default:0" json:"set_top_k"`
-	SetTopP            float32 `gorm:"type:float;default:0.92" json:"set_top_p"`
-	SetMaxOutputTokens int32   `gorm:"type:int;default:256" json:"set_max_output_tokens"`
-	ResponseMimetype   string  `gorm:"type:varchar(255);default:'application/json'" json:"response_mimetype"`
+	Name               string        `gorm:"type:varchar(255);not null" json:"name"`
+	ApiKey             string        `gorm:"type:varchar(255);not null" json:"api_key"`
+	Active             bool          `gorm:"default:true" json:"active"`
+	SystemInstruction  string        `gorm:"type:text" json:"system_instruction"`
+	Model              string        `gorm:"type:varchar(255);default:'gemini-1.5-flash'" json:"model"`
+	SetTemperature     float32       `gorm:"type:float;default:1" json:"set_temperature"`
+	SetTopK            int32         `gorm:"type:int;default:0" json:"set_top_k"`
+	SetTopP            float32       `gorm:"type:float;default:0.92" json:"set_top_p"`
+	SetMaxOutputTokens int32         `gorm:"type:int;default:256" json:"set_max_output_tokens"`
+	ResponseMimetype   string        `gorm:"type:varchar(255);default:'application/json'" json:"response_mimetype"`
+	CompanyID          *string       `gorm:"type:char(36)" json:"company_id"`
+	Company            *CompanyModel `gorm:"foreignKey:CompanyID;references:ID"`
 }
 
 func (a *GeminiAgent) TableName() string {

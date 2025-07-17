@@ -33,7 +33,7 @@ type InstagramMessage struct {
 	RefID                     *string                  `json:"ref_id,omitempty" gorm:"column:ref_id"`
 	IsAutoPilot               bool                     `json:"is_auto_pilot" gorm:"default:false"`
 	InstagramMessageSessionID *string                  `json:"instagram_message_session_id,omitempty" gorm:"column:instagram_message_session_id"`
-	InstagramMessageSession   *InstagramMessageSession `gorm:"foreignKey:InstagramMessageSessionID" json:"instagram_message_session,omitempty"`
+	InstagramMessageSession   *InstagramMessageSession `gorm:"foreignKey:InstagramMessageSessionID;onDelete:CASCADE" json:"instagram_message_session,omitempty"`
 }
 
 func (t *InstagramMessage) BeforeCreate(tx *gorm.DB) error {

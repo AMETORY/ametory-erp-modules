@@ -85,6 +85,7 @@ func (cs *CustomerRelationshipService) Migrate() error {
 		&models.MessageTemplate{},
 		&models.TelegramMessage{},
 		&models.TelegramMessageSession{},
+		&models.TiktokMessageSession{},
 		&models.InstagramMessage{},
 		&models.InstagramMessageSession{},
 	)

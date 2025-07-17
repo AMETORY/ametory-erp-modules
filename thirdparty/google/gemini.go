@@ -493,7 +493,11 @@ func (s *GeminiService) DeleteAgent(id string) error {
 // It returns a paginate.Page and an error.
 func (s *GeminiService) GetAgents(request http.Request) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := s.ctx.DB.Order("created_at desc").Model(&models.GeminiAgent{})
+	stmt := s.ctx.DB
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ?", request.Header.Get("ID-Company"))
+	}
+	stmt = stmt.Order("created_at desc").Model(&models.GeminiAgent{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.GeminiAgent{})
 	page.Page = page.Page + 1
