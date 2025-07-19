@@ -33,6 +33,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/kafka"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
@@ -84,6 +85,7 @@ type AppContainer struct {
 	WhatsmeowService *whatsmeow_client.WhatsmeowService
 	FCMService       *google.FCMService
 	RedisService     *redis.RedisService
+	KafkaService     *kafka.KafkaService
 	WebsocketService *websocket.WebsocketService
 	AppService       any    // This can be a specific service or a generic interface
 	baseURL          string // Base URL for the application

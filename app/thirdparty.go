@@ -9,6 +9,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/kafka"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
@@ -137,5 +138,13 @@ func WithFlowEngine() AppContainerOption {
 
 		c.FlowEngine = flow_engine.NewFlowEngine()
 		log.Println("FlowEngine initialized")
+	}
+}
+
+func WithKafkaService(ctx context.Context) AppContainerOption {
+	return func(c *AppContainer) {
+
+		c.KafkaService = kafka.NewKafkaService(ctx)
+		log.Println("KafkaService initialized")
 	}
 }

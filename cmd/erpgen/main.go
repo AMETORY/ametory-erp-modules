@@ -213,6 +213,7 @@ var (
 		"Firestore",
 		"FCMService",
 		"RedisService",
+		"KafkaService",
 		"WebsocketService",
 		"GoogleAPIService",
 		"AppService",
