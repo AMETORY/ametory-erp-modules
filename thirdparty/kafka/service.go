@@ -9,108 +9,96 @@ import (
 )
 
 type KafkaService struct {
-	ctx         context.Context
-	connections map[string]*kafka.Conn
+	ctx       context.Context
+	topic     *string
+	partition int
+	server    *string
 }
 
-func NewKafkaService(ctx context.Context) *KafkaService {
-
+func NewKafkaService(ctx context.Context, server *string) *KafkaService {
 	return &KafkaService{
-		ctx:         ctx,
-		connections: make(map[string]*kafka.Conn), // = value
+		ctx:    ctx,
+		server: server,
 	}
 }
 
-func (s *KafkaService) AddNewConnection(server string, topic string, partition int) error {
-	conn, err := connect(s.ctx, server, topic, partition)
-	if err != nil {
-		return err
-	}
-	s.connections[server] = conn
-	return nil
+// SetTopic sets the topic name for the Kafka topic.
+//
+// This is a required configuration.
+func (s *KafkaService) SetTopic(topic string) {
+	s.topic = &topic
 }
 
-func connect(ctx context.Context, server string, topic string, partition int) (*kafka.Conn, error) {
-	conn, err := kafka.DialLeader(ctx, "tcp",
-		server, topic, partition)
+// SetPartition sets the partition number for the Kafka topic.
+//
+// This is a required configuration.
+func (s *KafkaService) SetPartition(partition int) {
+	s.partition = partition
+}
+
+func (s *KafkaService) connect(ctx context.Context, server *string) (*kafka.Conn, error) {
+
+	conn, err := kafka.DialLeader(ctx,
+		"tcp",
+		*server,
+		*s.topic,
+		s.partition,
+	)
 	if err != nil {
 		fmt.Println("failed to dial leader")
 	}
 	return conn, err
 }
 
-func (s *KafkaService) WriteMessages(topic string, msgs []string) error {
-	conn, ok := s.connections[topic]
-	if !ok {
-		return fmt.Errorf("connection not found")
+// WriteMessage writes a message to the given topic.
+//
+// It will return an error if the topic and server are not set.
+// It will also return an error if there is a problem connecting to kafka.
+// It will also return an error if there is a problem writing the message.
+func (s *KafkaService) WriteMessage(topic string, msg []byte) error {
+	if s.topic == nil {
+		return fmt.Errorf("topic is not set")
 	}
-	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-
-	var err error
-	for _, msg := range msgs {
-		_, err = conn.WriteMessages(
-			kafka.Message{Value: []byte(msg)})
-
+	if s.server == nil {
+		return fmt.Errorf("server is not set")
 	}
+	conn, err := s.connect(s.ctx, s.server)
 	if err != nil {
-		fmt.Println("failed to write messages:", err)
 		return err
 	}
-
-	return nil
-} //end writeMessages
-
-// Reads all messages in the partition from the start
-// Specify a minimum and maximum size in bytes to read (1 char = 1 byte)
-func (s *KafkaService) ReadMessages(topic string, minSize int, maxSize int, callback func(output []byte)) error {
-	conn, ok := s.connections[topic]
-	if !ok {
-		return fmt.Errorf("connection not found")
+	defer conn.Close()
+	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	_, err = conn.WriteMessages(
+		kafka.Message{Value: msg})
+	if err != nil {
+		fmt.Println("failed to write messages:", err)
 	}
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	batch := conn.ReadBatch(minSize, maxSize) //in bytes
-
-	msg := make([]byte, 10e3) //set the max length of each message
-	for {
-		msgSize, err := batch.Read(msg)
-		if err != nil {
-			break
-		}
-		// fmt.Println(string(msg[:msgSize]))
-		callback(msg[:msgSize])
-	}
-
-	if err := batch.Close(); err != nil { //make sure to close the batch
-		fmt.Println("failed to close batch:", err)
-	}
-	return nil
-} //end readMessages
+	return err
+}
 
 // Read from the topic using kafka.Reader
 // Readers can use consumer groups (but are not required to)
-func (s *KafkaService) ReadWithReader(topic string, server string, groupID string, callback func(output kafka.Message)) {
-	r := kafka.NewReader(kafka.ReaderConfig{
+// example:
+// readDeadline, _ := context.WithDeadline(context.Background(),
+//
+//	time.Now().Add(5*time.Second))
+//
+//	for {
+//	    m, err := r.ReadMessage(readDeadline)
+//	    if err != nil {
+//	        break
+//	    }
+//	    fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
+//	}
+//
+//	if err := r.Close(); err != nil {
+//	    log.Fatal("failed to close reader:", err)
+//	}
+func (s *KafkaService) ReadWithReader(topic string, server string, groupID string) *kafka.Reader {
+	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{server},
 		GroupID:  groupID,
 		Topic:    topic,
 		MaxBytes: 100, //per message
-		// more options are available
 	})
-
-	//Create a deadline
-	readDeadline, _ := context.WithDeadline(context.Background(),
-		time.Now().Add(5*time.Second))
-	for {
-		msg, err := r.ReadMessage(readDeadline)
-		if err != nil {
-			break
-		}
-		fmt.Printf("message at topic/partition/offset %v/%v/%v: %s = %s\n",
-			msg.Topic, msg.Partition, msg.Offset, string(msg.Key), string(msg.Value))
-		callback(msg)
-	}
-
-	if err := r.Close(); err != nil {
-		fmt.Println("failed to close reader:", err)
-	}
 }
