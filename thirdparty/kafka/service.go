@@ -55,7 +55,7 @@ func (s *KafkaService) connect(ctx context.Context, server *string) (*kafka.Conn
 // It will return an error if the topic and server are not set.
 // It will also return an error if there is a problem connecting to kafka.
 // It will also return an error if there is a problem writing the message.
-func (s *KafkaService) WriteMessage(topic string, msg []byte) error {
+func (s *KafkaService) WriteMessage(topic string, key string, msg []byte) error {
 	if s.topic == nil {
 		return fmt.Errorf("topic is not set")
 	}
@@ -69,7 +69,10 @@ func (s *KafkaService) WriteMessage(topic string, msg []byte) error {
 	defer conn.Close()
 	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	_, err = conn.WriteMessages(
-		kafka.Message{Value: msg})
+		kafka.Message{
+			Key:   []byte(key),
+			Value: msg,
+		})
 	if err != nil {
 		fmt.Println("failed to write messages:", err)
 	}
@@ -77,22 +80,22 @@ func (s *KafkaService) WriteMessage(topic string, msg []byte) error {
 }
 
 // Read from the topic using kafka.Reader
-// Readers can use consumer groups (but are not required to)
-// example:
-// readDeadline, _ := context.WithDeadline(context.Background(),
 //
-//	time.Now().Add(5*time.Second))
+// Example:
+//
+//	readDeadline, _ := context.WithDeadline(context.Background(),
+//		time.Now().Add(5*time.Second))
 //
 //	for {
-//	    m, err := r.ReadMessage(readDeadline)
-//	    if err != nil {
-//	        break
-//	    }
-//	    fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
+//		m, err := r.ReadMessage(readDeadline)
+//		if err != nil {
+//			break
+//		}
+//		fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
 //	}
 //
 //	if err := r.Close(); err != nil {
-//	    log.Fatal("failed to close reader:", err)
+//		log.Fatal("failed to close reader:", err)
 //	}
 func (s *KafkaService) ReadWithReader(topic string, server string, groupID string) *kafka.Reader {
 	return kafka.NewReader(kafka.ReaderConfig{
