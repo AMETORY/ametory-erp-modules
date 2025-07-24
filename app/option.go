@@ -22,6 +22,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/notification"
 	"github.com/AMETORY/ametory-erp-modules/order"
 	"github.com/AMETORY/ametory-erp-modules/permit_hub"
+	"github.com/AMETORY/ametory-erp-modules/planning_budget"
 	"github.com/AMETORY/ametory-erp-modules/project_management/project"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
 	"github.com/AMETORY/ametory-erp-modules/shared/indonesia_regional"
@@ -288,5 +289,15 @@ func WithPermitHub() AppContainerOption {
 	return func(c *AppContainer) {
 		c.PermitHubService = permit_hub.NewPermitHubService(c.erpContext)
 		log.Println("PermitHubService initialized")
+	}
+}
+
+// WithPlanningBudget adds the PlanningBudgetService to the AppContainer.
+//
+// It is an optional option.
+func WithPlanningBudget() AppContainerOption {
+	return func(c *AppContainer) {
+		c.PlanningBudgetService = planning_budget.NewPlanningBudgetService(c.erpContext)
+		log.Println("PlanningBudgetService initialized")
 	}
 }

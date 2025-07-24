@@ -26,6 +26,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/notification"
 	"github.com/AMETORY/ametory-erp-modules/order"
 	"github.com/AMETORY/ametory-erp-modules/permit_hub"
+	"github.com/AMETORY/ametory-erp-modules/planning_budget"
 	"github.com/AMETORY/ametory-erp-modules/project_management/project"
 	"github.com/AMETORY/ametory-erp-modules/shared/audit_trail"
 	"github.com/AMETORY/ametory-erp-modules/shared/indonesia_regional"
@@ -67,6 +68,7 @@ type AppContainer struct {
 	TagService                  *tag.TagService
 	MessageService              *message.MessageService
 	ProjectManagementService    *project.ProjectService
+	PlanningBudgetService       *planning_budget.PlanningBudgetService
 	CrowdFundingService         *crowd_funding.CrowdFundingService
 	NotificationService         *notification.NotificationService
 	HRISService                 *hris.HRISservice

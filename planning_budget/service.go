@@ -12,13 +12,13 @@ import (
 )
 
 type PlanningBudgetService struct {
-	ctx              *context.ERPContext
-	BudgetService    *budget.BudgetService
-	ActivityService  *activity.ActivityService
-	ComponentService *component.ComponentService
-	KPIService       *kpi.KPIService
-	OutputService    *output.OutputService
-	StrategyService  *strategic_objective.StrategicObjectiveService
+	ctx                       *context.ERPContext
+	BudgetService             *budget.BudgetService
+	ActivityService           *activity.ActivityService
+	ComponentService          *component.ComponentService
+	KPIService                *kpi.KPIService
+	OutputService             *output.OutputService
+	StrategicObjectiveService *strategic_objective.StrategicObjectiveService
 }
 
 // NewPlanningBudgetService creates a new instance of PlanningBudgetService.
@@ -31,13 +31,13 @@ type PlanningBudgetService struct {
 // unless SkipMigration is set to true in the ERPContext.
 func NewPlanningBudgetService(ctx *context.ERPContext) *PlanningBudgetService {
 	service := PlanningBudgetService{
-		ctx:              ctx,
-		BudgetService:    budget.NewBudgetService(ctx),
-		ActivityService:  activity.NewActivityService(ctx),
-		ComponentService: component.NewComponentService(ctx),
-		KPIService:       kpi.NewKPIService(ctx),
-		OutputService:    output.NewOutputService(ctx),
-		StrategyService:  strategic_objective.NewStrategicObjectiveService(ctx),
+		ctx:                       ctx,
+		BudgetService:             budget.NewBudgetService(ctx),
+		ActivityService:           activity.NewActivityService(ctx),
+		ComponentService:          component.NewComponentService(ctx),
+		KPIService:                kpi.NewKPIService(ctx),
+		OutputService:             output.NewOutputService(ctx),
+		StrategicObjectiveService: strategic_objective.NewStrategicObjectiveService(ctx),
 	}
 
 	if !ctx.SkipMigration {
@@ -65,6 +65,7 @@ func Migrate(ctx *context.ERPContext) error {
 	return ctx.DB.AutoMigrate(
 		&models.BudgetModel{},
 		&models.BudgetActivityModel{},
+		&models.BudgetActivityDetailModel{},
 		&models.BudgetComponentModel{},
 		&models.BudgetKPIModel{},
 		&models.BudgetOutputModel{},

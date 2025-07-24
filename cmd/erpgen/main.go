@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.52"
+var version = "1.0.53"
 
 var logo = `
 MMMMMMMMMMMMMMMMWXOxoc;,............';coxOXWMMMMMMMMMMMMMMMM
@@ -203,6 +203,14 @@ var (
 			"PermitType",
 			"PermitApprovalFlow",
 			"PermitRequirement",
+		},
+		"PlanningBudget": {
+			"Activity",
+			"Budget",
+			"Component",
+			"KPI",
+			"Output",
+			"StrategicObjective",
 		},
 	}
 	thirdParty = []string{
