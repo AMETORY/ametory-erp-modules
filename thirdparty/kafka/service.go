@@ -9,10 +9,11 @@ import (
 )
 
 type KafkaService struct {
-	ctx       context.Context
-	topic     *string
-	partition int
-	server    *string
+	ctx          context.Context
+	topic        *string
+	partition    int
+	server       *string
+	readerConfig *kafka.ReaderConfig
 }
 
 func NewKafkaService(ctx context.Context, server *string) *KafkaService {
@@ -27,6 +28,10 @@ func NewKafkaService(ctx context.Context, server *string) *KafkaService {
 // This is a required configuration.
 func (s *KafkaService) SetTopic(topic string) {
 	s.topic = &topic
+}
+
+func (s *KafkaService) SetReaderConfig(readerConfig *kafka.ReaderConfig) {
+	s.readerConfig = readerConfig
 }
 
 // SetPartition sets the partition number for the Kafka topic.
@@ -98,10 +103,20 @@ func (s *KafkaService) WriteMessage(topic string, key string, msg []byte) error 
 //		log.Fatal("failed to close reader:", err)
 //	}
 func (s *KafkaService) ReadWithReader(topic string, server string, groupID string) *kafka.Reader {
+	if s.readerConfig != nil {
+		return kafka.NewReader(*s.readerConfig)
+	}
 	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{server},
 		GroupID:  groupID,
 		Topic:    topic,
 		MaxBytes: 100, //per message
 	})
+}
+
+// CommitOffset commits the offset of the message to kafka.
+//
+// The offset is the last read message offset.
+func (s *KafkaService) CommitOffset(r *kafka.Reader, offset int64) error {
+	return r.CommitMessages(context.Background(), kafka.Message{Offset: offset})
 }
