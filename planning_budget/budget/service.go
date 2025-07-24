@@ -1,8 +1,12 @@
 package budget
 
 import (
+	"net/http"
+
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 )
 
 type BudgetService struct {
@@ -20,15 +24,30 @@ func (s *BudgetService) CreateBudget(model *models.BudgetModel) (*models.BudgetM
 func (s *BudgetService) GetBudgetByID(id string) (*models.BudgetModel, error) {
 	model := models.BudgetModel{}
 	err := s.ctx.DB.
-		Preload("BudgetKPIs").
-		Preload("BudgetOutputs").
-		Preload("BudgetComponents").
-		Preload("BudgetActivities").
-		Preload("BudgetStrategicObjectives").
 		Where("id = ?", id).
 		First(&model).
 		Error
 	return &model, err
+}
+
+func (s *BudgetService) GetBudgets(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.ctx.DB
+	if search != "" {
+		stmt = stmt.Where("name ILIKE ? OR  description ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.UnitModel{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.UnitModel{})
+	page.Page = page.Page + 1
+	return page, nil
 }
 
 func (s *BudgetService) UpdateBudget(model *models.BudgetModel) error {

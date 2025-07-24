@@ -21,6 +21,14 @@ type PlanningBudgetService struct {
 	StrategyService  *strategic_objective.StrategicObjectiveService
 }
 
+// NewPlanningBudgetService creates a new instance of PlanningBudgetService.
+//
+// It takes an ERPContext as parameter and returns a pointer to a PlanningBudgetService.
+//
+// It uses the ERPContext to initialize the BudgetService, ActivityService, ComponentService, KPIService,
+// OutputService, and StrategicObjectiveService.
+// Additionally, it calls the Migrate method of the PlanningBudgetService to create the necessary database schema,
+// unless SkipMigration is set to true in the ERPContext.
 func NewPlanningBudgetService(ctx *context.ERPContext) *PlanningBudgetService {
 	service := PlanningBudgetService{
 		ctx:              ctx,
@@ -41,6 +49,15 @@ func NewPlanningBudgetService(ctx *context.ERPContext) *PlanningBudgetService {
 	return &service
 }
 
+// Migrate migrates the database schema for the PlanningBudgetService.
+//
+// If the SkipMigration flag is set to true in the context, this method
+// will not perform any migration and will return nil. Otherwise, it will
+// attempt to auto-migrate the database to include the BudgetModel,
+// BudgetActivityModel, BudgetComponentModel, BudgetKPIModel,
+// BudgetOutputModel, and BudgetStrategicObjectiveModel schemas.
+// If the migration process encounters an error, it will return that error.
+// Otherwise, it will return nil upon successful migration.
 func Migrate(ctx *context.ERPContext) error {
 	if ctx.SkipMigration {
 		return nil
