@@ -16,7 +16,7 @@ import (
 
 //go:embed templates/*
 var templateFS embed.FS
-var version = "1.0.53"
+var version = "1.0.54"
 
 func loadTemplate(name string) (*template.Template, error) {
 	content, err := fs.ReadFile(templateFS, "templates/"+name)
