@@ -2,6 +2,7 @@ package contact
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -211,8 +212,10 @@ func (s *ContactService) GetContacts(request http.Request, search string, isCust
 
 	stmt = stmt.Group("contacts.id, contacts.name, contacts.email, contacts.phone")
 	stmt = stmt.Model(&models.ContactModel{})
-	utils.FixRequest(&request)
+	fmt.Println("REQUEST CONTACT", request)
+	utils.LogJson(request)
 	page := pg.With(stmt).Request(request).Response(&[]models.ContactModel{})
+	utils.FixRequest(&request)
 	page.Page = page.Page + 1
 
 	items := page.Items.(*[]models.ContactModel)
