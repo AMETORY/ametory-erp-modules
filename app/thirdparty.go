@@ -36,12 +36,13 @@ func WithEmailSender(smtpServer string, smtpPort int, smtpUsername, smtpPassword
 // domain, API key, and EmailAPI sender.
 //
 // This option is used to send emails using the EmailAPI package.
-func WithEmailAPIService(from, domain, apiKey string, sender email_api.EmailAPI) AppContainerOption {
+func WithEmailAPIService(from, domain, apiKey, apiSecret string, sender email_api.EmailAPI) AppContainerOption {
 	return func(c *AppContainer) {
 		c.EmailAPIService = email_api.NewEmailApiService(
 			from,
 			domain,
 			apiKey,
+			apiSecret,
 			sender,
 		)
 		log.Println("EmailAPIService initialized")
