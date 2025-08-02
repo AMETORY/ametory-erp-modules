@@ -3,6 +3,7 @@ package medical
 import (
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/medical/appointment"
+	"github.com/AMETORY/ametory-erp-modules/medical/doctor"
 	"github.com/AMETORY/ametory-erp-modules/medical/healh_facility"
 	"github.com/AMETORY/ametory-erp-modules/medical/medical_record"
 	"github.com/AMETORY/ametory-erp-modules/medical/medical_staff"
@@ -23,6 +24,7 @@ type MedicalService struct {
 	medicalRecord         *medical_record.MedicalRecordService
 	pharmacyService       *pharmacy.PharmacyService
 	treatmentQueue        *treatment_queue.TreatmentQueueService
+	doctorService         *doctor.DoctorService
 }
 
 // NewMedicalService creates a new instance of MedicalService with the given database connection and context.
@@ -39,6 +41,7 @@ func NewMedicalService(db *gorm.DB, ctx *context.ERPContext) *MedicalService {
 		medicalRecord:         medical_record.NewMedicalRecordService(db, ctx),
 		pharmacyService:       pharmacy.NewPharmacyService(db, ctx),
 		treatmentQueue:        treatment_queue.NewTreatmentQueueService(db, ctx),
+		doctorService:         doctor.NewDoctorService(db, ctx),
 	}
 	service.Migrate()
 	return &service
@@ -62,12 +65,18 @@ func (s *MedicalService) Migrate() error {
 		&models.HealthFacilityModel{},
 		&models.SubFacilityModel{},
 		&models.MedicalStaffModel{},
-		&models.DoctorModel{},
+		&models.Doctor{},
+		&models.DoctorSchedule{},
 		&models.NurseModel{},
 		&models.MedicalAppointmentModel{},
 		&models.MedicalRecordModel{},
 		&models.MedicineModel{},
 		&models.PharmacyModel{},
+		&models.Prescription{},
+		&models.MedicationDetail{},
+		&models.Consultation{},
+		&models.ConsultationPayment{},
+		&models.InitialScreening{},
 	)
 	return nil
 }

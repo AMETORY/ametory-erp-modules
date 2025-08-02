@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.54"
+var version = "1.0.55"
 
 var logo = `
 MMMMMMMMMMMMMMMMWXOxoc;,............';coxOXWMMMMMMMMMMMMMMMM
@@ -120,6 +120,18 @@ var (
 			"Saving",
 			"Tax",
 			"Transaction",
+		},
+		"Medical": {
+			"Appointment",
+			"Consultation",
+			"HealthFacility",
+			"MedicalRecord",
+			"Prescription",
+			"MedicalStaff",
+			"Pharmacy",
+			"TreatmentQueue",
+			"Doctor",
+			"Patient",
 		},
 		"Cooperative": {
 			"CooperativeMember",

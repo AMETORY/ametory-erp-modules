@@ -21,27 +21,6 @@ func (m *MedicalStaffModel) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-type DoctorModel struct {
-	shared.BaseModel
-	MedicalStaffID    string            `json:"medical_staff_id,omitempty"`
-	MedicalStaffModel MedicalStaffModel `gorm:"foreignKey:MedicalStaffID;constraint:OnDelete:CASCADE;"`
-	Specialization    string            `json:"specialization,omitempty"`
-	LicenseNumber     string            `json:"license_number,omitempty"`
-	Title             string            `json:"title,omitempty"`
-}
-
-func (d DoctorModel) TableName() string {
-	return "doctors"
-}
-
-func (d *DoctorModel) BeforeCreate(tx *gorm.DB) error {
-
-	if d.ID == "" {
-		tx.Statement.SetColumn("id", uuid.New().String())
-	}
-	return nil
-}
-
 type NurseModel struct {
 	shared.BaseModel
 	MedicalStaffID    string            `json:"medical_staff_id,omitempty"`
