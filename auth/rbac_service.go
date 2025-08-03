@@ -249,6 +249,19 @@ func (s *RBACService) AddPermissionsToRole(roleID string, permissionNames []stri
 	return nil
 }
 
+// GetRoleFromUser mengambil peran berdasarkan user
+func (s *RBACService) GetRoleFromUser(userID string) (*models.RoleModel, error) {
+	var role models.RoleModel
+	if err := s.db.
+		Joins("JOIN user_roles ON user_roles.role_model_id = roles.id").
+		Joins("JOIN users ON users.id = user_roles.user_model_id").
+		Where("users.id = ?", userID).
+		First(&role).Error; err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
 // GetRoleByName mengambil peran berdasarkan nama
 func (s *RBACService) GetRoleByName(name string, isAdmin bool) (*models.RoleModel, error) {
 	var role models.RoleModel
