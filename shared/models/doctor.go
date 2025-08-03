@@ -16,7 +16,7 @@ type Doctor struct {
 	STRNumber      string           `json:"str_number"`
 	SIPNumber      string           `json:"sip_number"`
 	AvailableSlots []DoctorSchedule `gorm:"foreignKey:DoctorID;references:ID" json:"available_slots"`
-	Reviews        []string         `json:"reviews"`
+	Reviews        string           `json:"reviews"`
 }
 
 func (m *Doctor) BeforeCreate(tx *gorm.DB) (err error) {

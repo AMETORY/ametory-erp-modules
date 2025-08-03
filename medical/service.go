@@ -17,14 +17,14 @@ import (
 type MedicalService struct {
 	db                    *gorm.DB
 	ctx                   *context.ERPContext
-	patientService        *patient.PatientService
-	healthFacilityService *healh_facility.HeathFacilityService
-	medicalStaffService   *medical_staff.MedicalStaffService
-	appointmentService    *appointment.AppointmentService
-	medicalRecord         *medical_record.MedicalRecordService
-	pharmacyService       *pharmacy.PharmacyService
-	treatmentQueue        *treatment_queue.TreatmentQueueService
-	doctorService         *doctor.DoctorService
+	PatientService        *patient.PatientService
+	HealthFacilityService *healh_facility.HeathFacilityService
+	MedicalStaffService   *medical_staff.MedicalStaffService
+	AppointmentService    *appointment.AppointmentService
+	MedicalRecord         *medical_record.MedicalRecordService
+	PharmacyService       *pharmacy.PharmacyService
+	TreatmentQueue        *treatment_queue.TreatmentQueueService
+	DoctorService         *doctor.DoctorService
 }
 
 // NewMedicalService creates a new instance of MedicalService with the given database connection and context.
@@ -34,14 +34,14 @@ func NewMedicalService(db *gorm.DB, ctx *context.ERPContext) *MedicalService {
 	service := MedicalService{
 		db:                    db,
 		ctx:                   ctx,
-		patientService:        patient.NewPatientService(db, ctx),
-		healthFacilityService: healh_facility.NewHeathFacilityService(db, ctx),
-		medicalStaffService:   medical_staff.NewMedicalStaffService(db, ctx),
-		appointmentService:    appointment.NewAppointmentService(db, ctx),
-		medicalRecord:         medical_record.NewMedicalRecordService(db, ctx),
-		pharmacyService:       pharmacy.NewPharmacyService(db, ctx),
-		treatmentQueue:        treatment_queue.NewTreatmentQueueService(db, ctx),
-		doctorService:         doctor.NewDoctorService(db, ctx),
+		PatientService:        patient.NewPatientService(db, ctx),
+		HealthFacilityService: healh_facility.NewHeathFacilityService(db, ctx),
+		MedicalStaffService:   medical_staff.NewMedicalStaffService(db, ctx),
+		AppointmentService:    appointment.NewAppointmentService(db, ctx),
+		MedicalRecord:         medical_record.NewMedicalRecordService(db, ctx),
+		PharmacyService:       pharmacy.NewPharmacyService(db, ctx),
+		TreatmentQueue:        treatment_queue.NewTreatmentQueueService(db, ctx),
+		DoctorService:         doctor.NewDoctorService(db, ctx),
 	}
 	service.Migrate()
 	return &service

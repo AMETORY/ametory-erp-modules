@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -36,13 +37,13 @@ func (c *Consultation) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type InitialScreening struct {
-	ID            string       `json:"id"`
-	PatientID     string       `json:"patient_id" gorm:"type:char(36);index"`
-	Patient       PatientModel `gorm:"foreignKey:PatientID;references:ID" json:"patient"`
-	MainComplaint string       `json:"main_complaint"`
-	Symptoms      []string     `json:"symptoms"`
-	SubmittedAt   time.Time    `json:"submitted_at"`
-	Status        string       `json:"status"` // e.g., "Pending", "Completed"
+	ID            string          `json:"id"`
+	PatientID     string          `json:"patient_id" gorm:"type:char(36);index"`
+	Patient       PatientModel    `gorm:"foreignKey:PatientID;references:ID" json:"patient"`
+	MainComplaint string          `json:"main_complaint"`
+	Symptoms      json.RawMessage `json:"symptoms"`
+	SubmittedAt   time.Time       `json:"submitted_at"`
+	Status        string          `json:"status"` // e.g., "Pending", "Completed"
 }
 
 // BeforeCreate is the hook for creating a new InitialScreening.

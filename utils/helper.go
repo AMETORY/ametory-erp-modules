@@ -108,6 +108,11 @@ func SaveJson(data interface{}) {
 	log.Println(string(jsonString))
 }
 
+func ToJsonString(data interface{}) string {
+	jsonString, _ := json.Marshal(data)
+	return string(jsonString)
+}
+
 func FixRequest(request *http.Request) {
 	req := request.URL.Query()
 	pageStr := request.URL.Query().Get("page")

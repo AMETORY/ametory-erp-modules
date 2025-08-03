@@ -33,7 +33,7 @@ func (s *RBACService) AssignRoleToUser(userID string, roleName string) error {
 	var role models.RoleModel
 
 	// Cari pengguna
-	if err := s.db.First(&user, userID).Error; err != nil {
+	if err := s.db.First(&user, "id = ?", userID).Error; err != nil {
 		return errors.New("user not found")
 	}
 
@@ -44,6 +44,29 @@ func (s *RBACService) AssignRoleToUser(userID string, roleName string) error {
 
 	// Tetapkan peran ke pengguna
 	if err := s.db.Model(&user).Association("Roles").Append(&role); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AssignRoleToAdmin menetapkan peran ke admin
+func (s *RBACService) AssignRoleToAdmin(adminID string, roleName string) error {
+	var admin models.AdminModel
+	var role models.RoleModel
+
+	// Cari admin
+	if err := s.db.First(&admin, adminID).Error; err != nil {
+		return errors.New("admin not found")
+	}
+
+	// Cari peran
+	if err := s.db.Where("name = ?", roleName).First(&role).Error; err != nil {
+		return errors.New("role not found")
+	}
+
+	// Tetapkan peran ke admin
+	if err := s.db.Model(&admin).Association("Roles").Append(&role); err != nil {
 		return err
 	}
 

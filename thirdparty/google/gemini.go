@@ -386,7 +386,7 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 // It fetches the histories from the database, and if the agent ID or company ID is set,
 // it will filter the histories by the given agent ID or company ID.
 // It returns a slice of models.GeminiHistoryModel.
-func (s *GeminiService) GetHistories(agentID *string, companyID *string) []models.GeminiHistoryModel {
+func (s *GeminiService) GetHistories(agentID *string, companyID *string, sessionCode *string) []models.GeminiHistoryModel {
 	var historyModels []models.GeminiHistoryModel
 	db := s.ctx.DB.Model(&models.GeminiHistoryModel{})
 	if agentID != nil {
@@ -394,6 +394,9 @@ func (s *GeminiService) GetHistories(agentID *string, companyID *string) []model
 	}
 	if companyID != nil {
 		db = db.Where("company_id = ?", companyID)
+	}
+	if sessionCode != nil {
+		db = db.Where("session_code = ?", sessionCode)
 	}
 	db.Order("created_at asc").Find(&historyModels)
 	return historyModels

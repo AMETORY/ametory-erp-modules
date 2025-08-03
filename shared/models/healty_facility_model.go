@@ -14,7 +14,7 @@ type HealthFacilityModel struct {
 	PhoneNumber   string             `gorm:"type:varchar(255)" json:"phone_number,omitempty"`
 	Email         string             `gorm:"type:varchar(255)" json:"email,omitempty"`   // TODO: validate email
 	Website       string             `gorm:"type:varchar(255)" json:"website,omitempty"` // TODO: validate website
-	SubFacilities []SubFacilityModel `gorm:"foreignKey:HealthFacilityID;constraint:OnDelete:CASCADE;" json:"sub_facilities,omitempty"`
+	SubFacilities []SubFacilityModel `gorm:"foreignKey:FacilityID;constraint:OnDelete:CASCADE;" json:"sub_facilities,omitempty"`
 }
 
 func (HealthFacilityModel) TableName() string {

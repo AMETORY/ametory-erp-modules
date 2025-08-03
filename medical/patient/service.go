@@ -37,6 +37,20 @@ func (s *PatientService) GetPatientByID(ID string) (*models.PatientModel, error)
 	return p, nil
 }
 
+// GetPatientByPhoneNumber retrieves a patient by their phone number from the database.
+//
+// It takes a string argument representing the patient's phone number and returns a pointer
+// to a PatientModel and an error. If the retrieval fails, it returns an error.
+func (s *PatientService) GetPatientByPhoneNumber(phoneNumber string) (*models.PatientModel, error) {
+	p := &models.PatientModel{}
+	err := s.db.Where("phone_number = ?", phoneNumber).First(p).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
 // UpdatePatient updates a patient in the database.
 //
 // It takes a pointer to a PatientModel as an argument and returns an error
