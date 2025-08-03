@@ -160,3 +160,73 @@ func (ds *DoctorService) UpdateDoctorSchedule(id string, schedule *models.Doctor
 func (ds *DoctorService) DeleteDoctorSchedule(id string) error {
 	return ds.db.Where("id = ?", id).Delete(&models.DoctorSchedule{}).Error
 }
+
+// CreateDoctorSpecialization adds a new doctor specialization to the database.
+//
+// It takes a pointer to a DoctorSpecialization model as an argument and returns
+// an error if the specialization could not be created.
+func (ds *DoctorService) CreateDoctorSpecialization(specialization *models.DoctorSpecialization) error {
+	return ds.db.Create(specialization).Error
+}
+
+// GetDoctorSpecializations retrieves a paginated list of doctor specializations from the database.
+//
+// It takes a pointer to an HTTP request and a search query string as arguments. The method
+// uses GORM to query the database for doctor specializations, applying the search query
+// to the code, name, and description fields. The function utilizes pagination to manage
+// the result set and applies any necessary request modifications using the utils.FixRequest
+// utility.
+//
+// The function returns a paginated page of DoctorSpecialization models and an error if the
+// operation fails.
+func (ds *DoctorService) GetDoctorSpecializations(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := ds.db
+	if search != "" {
+		stmt = stmt.Where("code ILIKE ? OR name ILIKE ? OR description ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	request.URL.Query().Get("page")
+	stmt = stmt.Model(&models.DoctorSpecialization{})
+	utils.FixRequest(&request)
+	page := pg.With(stmt).Request(request).Response(&[]models.DoctorSpecialization{})
+	page.Page = page.Page + 1
+	return page, nil
+}
+
+// GetDoctorSpecializationByID retrieves a doctor specialization by its ID.
+//
+// It takes a string argument representing the specialization ID and returns a pointer
+// to a DoctorSpecialization model and an error. If the retrieval fails, it returns an
+// error.
+func (ds *DoctorService) GetDoctorSpecializationByID(id string) (*models.DoctorSpecialization, error) {
+	var specialization models.DoctorSpecialization
+
+	err := ds.db.Where("id = ?", id).Find(&specialization).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &specialization, nil
+}
+
+// UpdateDoctorSpecialization updates an existing doctor specialization in the database.
+//
+// It takes a string representing the specialization's ID and a pointer to a DoctorSpecialization
+// model containing the updated information as arguments. The function returns an
+// error if the update operation fails.
+func (ds *DoctorService) UpdateDoctorSpecialization(id string, specialization *models.DoctorSpecialization) error {
+	return ds.db.Where("id = ?", id).Updates(specialization).Error
+}
+
+// DeleteDoctorSpecialization removes a doctor specialization from the database.
+//
+// It takes a string representing the doctor specialization's ID as a parameter and returns
+// an error if the deletion process fails.
+func (ds *DoctorService) DeleteDoctorSpecialization(id string) error {
+	return ds.db.Where("id = ?", id).Delete(&models.DoctorSpecialization{}).Error
+}
