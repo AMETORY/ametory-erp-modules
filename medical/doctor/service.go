@@ -58,9 +58,10 @@ func (ds *DoctorService) GetDoctorByID(id string) (*models.Doctor, error) {
 func (s *DoctorService) GetDoctors(request http.Request, search string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := s.db
+	stmt = stmt.Preload("Specialization")
 	if search != "" {
-		stmt = stmt.Joins("LEFT JOIN doctor_specializations ON doctor_specializations.doctor_id = doctors.id")
-		stmt = stmt.Where("doctors.name ILIKE ? OR doctors.str_number ILIKE ? OR doctors.sip_number ILIKE ? OR doctor_specializations.name ILIKE ? OR doctor_specializations.description ILIKE ?",
+		stmt = stmt.Joins("LEFT JOIN doctor_specializations ON doctor_specializations.code = doctors.specialization_code")
+		stmt = stmt.Where("doctors.name ILIKE ? OR doctors.str_number ILIKE ? OR doctors.s_ip_number ILIKE ? OR doctor_specializations.name ILIKE ? OR doctor_specializations.description ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",

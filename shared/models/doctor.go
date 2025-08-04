@@ -10,20 +10,20 @@ import (
 
 type Doctor struct {
 	shared.BaseModel
-	Name             string                `json:"name"`
-	Title            string                `json:"title"`
-	SuffixTitle      string                `json:"suffix_title"`
-	PhoneNumber      string                `json:"phone_number"`
-	STRNumber        string                `json:"str_number"`
-	SIPNumber        string                `json:"sip_number"`
-	AvailableSlots   []DoctorSchedule      `gorm:"foreignKey:DoctorID;references:ID" json:"available_slots"`
-	Reviews          string                `json:"reviews"`
-	FullName         string                `json:"full_name" gorm:"-"`
-	Avatar           *FileModel            `json:"avatar" gorm:"-"`
-	SpecializationID *string               `json:"specialization_id,omitempty" gorm:"type:char(36);index"`
-	Specialization   *DoctorSpecialization `gorm:"foreignKey:SpecializationID;references:ID" json:"specialization,omitempty"`
-	Email            string                `json:"email"`
-	Address          string                `json:"address"`
+	Name               string                `json:"name"`
+	Title              string                `json:"title"`
+	SuffixTitle        string                `json:"suffix_title"`
+	PhoneNumber        string                `json:"phone_number"`
+	STRNumber          string                `json:"str_number"`
+	SIPNumber          string                `json:"sip_number"`
+	AvailableSlots     []DoctorSchedule      `gorm:"foreignKey:DoctorID;references:ID" json:"available_slots"`
+	Reviews            string                `json:"reviews"`
+	FullName           string                `json:"full_name" gorm:"-"`
+	Avatar             *FileModel            `json:"avatar" gorm:"-"`
+	SpecializationCode string                `json:"specialization_code,omitempty" gorm:"type:varchar(255)"`
+	Specialization     *DoctorSpecialization `gorm:"foreignKey:SpecializationCode;references:Code" json:"specialization,omitempty"`
+	Email              string                `json:"email"`
+	Address            string                `json:"address"`
 }
 
 func (m *Doctor) BeforeCreate(tx *gorm.DB) (err error) {
