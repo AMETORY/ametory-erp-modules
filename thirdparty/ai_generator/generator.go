@@ -1,9 +1,8 @@
 package ai_generator
 
 import (
+	"context"
 	"fmt"
-
-	erpContext "github.com/AMETORY/ametory-erp-modules/context"
 )
 
 type AiGenerator interface {
@@ -27,7 +26,7 @@ type AiAttachment struct {
 }
 
 type GeneratorConfig struct {
-	Ctx               *erpContext.ERPContext
+	Ctx               *context.Context
 	APIKey            string
 	SystemInstruction string
 	Model             string
@@ -57,7 +56,7 @@ func NewAiGenerator(factory GeneratorFactory, config GeneratorConfig) (AiGenerat
 
 func ExampleNewAiGenerator() {
 	factory := func(config GeneratorConfig) (AiGenerator, error) {
-		init := NewDeepSeekService(config.Ctx.Ctx, config.APIKey)
+		init := NewDeepSeekService(config.Ctx, config.APIKey)
 		return init, nil
 	}
 	config := GeneratorConfig{

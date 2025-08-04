@@ -55,6 +55,10 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.22.0 // indirect
@@ -105,6 +109,7 @@ require (
 	github.com/go-deepseek/deepseek v0.8.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/lib/pq v1.10.9
+	github.com/openai/openai-go v1.12.0
 	github.com/schollz/progressbar/v3 v3.14.1
 	github.com/segmentio/kafka-go v0.4.48
 	google.golang.org/genai v1.18.0

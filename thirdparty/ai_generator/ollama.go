@@ -17,10 +17,11 @@ type OllamaService struct {
 	stream            bool
 }
 
-func NewOllamaService(ctx *context.Context) *OllamaService {
+func NewOllamaService(ctx *context.Context, model string) *OllamaService {
 	return &OllamaService{
-		ctx:  ctx,
-		host: "http://localhost:11434",
+		ctx:   ctx,
+		host:  "http://localhost:11434",
+		model: model,
 	}
 }
 
