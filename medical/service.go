@@ -67,6 +67,7 @@ func (s *MedicalService) Migrate() error {
 		&models.MedicalStaffModel{},
 		&models.Doctor{},
 		&models.DoctorSchedule{},
+		&models.DoctorSpecialization{},
 		&models.NurseModel{},
 		&models.MedicalAppointmentModel{},
 		&models.MedicalRecordModel{},

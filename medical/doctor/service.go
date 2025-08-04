@@ -59,7 +59,10 @@ func (s *DoctorService) GetDoctors(request http.Request, search string) (paginat
 	pg := paginate.New()
 	stmt := s.db
 	if search != "" {
-		stmt = stmt.Where("name ILIKE ? OR str_number ILIKE ? OR sip_number ILIKE ?",
+		stmt = stmt.Joins("LEFT JOIN doctor_specializations ON doctor_specializations.doctor_id = doctors.id")
+		stmt = stmt.Where("doctors.name ILIKE ? OR doctors.str_number ILIKE ? OR doctors.sip_number ILIKE ? OR doctor_specializations.name ILIKE ? OR doctor_specializations.description ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
 			"%"+search+"%",
