@@ -18,7 +18,7 @@ type OpenAiService struct {
 
 func NewOpenAiService(ctx *context.Context, apiKey string) *OpenAiService {
 	client := openai.NewClient(
-		option.WithAPIKey("My API Key"), // defaults to os.LookupEnv("OPENAI_API_KEY")
+		option.WithAPIKey(apiKey), // defaults to os.LookupEnv("OPENAI_API_KEY")
 	)
 
 	return &OpenAiService{
