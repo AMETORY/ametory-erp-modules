@@ -53,12 +53,13 @@ func (u *Doctor) AfterFind(tx *gorm.DB) error {
 
 type DoctorSchedule struct {
 	shared.BaseModel
-	DoctorID  string    `json:"doctor_id" gorm:"type:char(36);index"`
-	Doctor    Doctor    `gorm:"foreignKey:DoctorID;references:ID" json:"doctor"`
-	Price     float64   `json:"price"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Status    string    `json:"status"`
+	DoctorID    string    `json:"doctor_id" gorm:"type:char(36);index"`
+	Doctor      Doctor    `gorm:"foreignKey:DoctorID;references:ID" json:"doctor"`
+	Price       float64   `json:"price"`
+	StartTime   time.Time `json:"start_time"`
+	EndTime     time.Time `json:"end_time"`
+	Status      string    `json:"status"`
+	Description string    `json:"description"`
 }
 
 func (m *DoctorSchedule) BeforeCreate(tx *gorm.DB) (err error) {

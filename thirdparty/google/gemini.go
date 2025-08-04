@@ -259,6 +259,9 @@ func (service *GeminiService) SetupModel(
 	service.model = model
 
 }
+func (service *GeminiService) SetupModelOnly(model string) {
+	service.model = model
+}
 
 // GenerateContent generates content based on the input and user histories.
 //
@@ -270,6 +273,8 @@ func (service *GeminiService) GenerateContent(ctx context.Context, input string,
 	if service.client == nil {
 		return "", fmt.Errorf("client is not initialized")
 	}
+
+	// fmt.Println("model", service.model)
 	model := service.client.GenerativeModel(service.model)
 	if model == nil {
 		return "", fmt.Errorf("model is not found")

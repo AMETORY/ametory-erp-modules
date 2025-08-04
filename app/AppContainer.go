@@ -32,6 +32,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/shared/indonesia_regional"
 	"github.com/AMETORY/ametory-erp-modules/tag"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/ai_generator"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/kafka"
@@ -74,6 +75,7 @@ type AppContainer struct {
 	HRISService                 *hris.HRISservice
 	AuditTrailService           *audit_trail.AuditTrailService
 	PermitHubService            *permit_hub.PermitHubService
+	AiGeneratorService          ai_generator.AiGenerator
 
 	ThirdPartyServices map[string]any
 	// Add additional services here

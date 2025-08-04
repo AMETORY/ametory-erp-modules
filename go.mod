@@ -1,6 +1,6 @@
 module github.com/AMETORY/ametory-erp-modules
 
-go 1.23.0
+go 1.23.4
 
 toolchain go1.24.1
 
@@ -39,6 +39,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/s2a-go v0.1.8 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.0 // indirect
@@ -101,10 +102,12 @@ require (
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
+	github.com/go-deepseek/deepseek v0.8.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/lib/pq v1.10.9
 	github.com/schollz/progressbar/v3 v3.14.1
 	github.com/segmentio/kafka-go v0.4.48
+	google.golang.org/genai v1.18.0
 	gopkg.in/olahol/melody.v1 v1.0.0-20170518105555-d52139073376
 	gopkg.in/yaml.v3 v3.0.1
 )

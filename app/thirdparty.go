@@ -7,6 +7,7 @@ import (
 
 	"github.com/AMETORY/ametory-erp-modules/app/flow_engine"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/ai_generator"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/kafka"
@@ -205,5 +206,15 @@ func WithKafkaService(ctx context.Context, server *string) AppContainerOption {
 
 		c.KafkaService = kafka.NewKafkaService(ctx, server)
 		log.Println("KafkaService initialized")
+	}
+}
+
+func WithAiGeneratorService(factory ai_generator.GeneratorFactory, config ai_generator.GeneratorConfig) AppContainerOption {
+	return func(c *AppContainer) {
+		generator, err := ai_generator.NewAiGenerator(factory, config)
+		if err != nil {
+			panic(err)
+		}
+		c.AiGeneratorService = generator
 	}
 }

@@ -166,9 +166,9 @@ func (s *ProjectService) DeleteColumn(id string) error {
 // It takes a column ID as a parameter and returns a pointer to a ColumnModel and an error, if any.
 // The function preloads associated Actions, Project, and Column data.
 func (s *ProjectService) GetColumnByID(id string) (*models.ColumnModel, error) {
-	var invoice models.ColumnModel
-	err := s.db.Where("id = ?", id).Preload("Actions").Preload("Project").Preload("Column").First(&invoice).Error
-	return &invoice, err
+	var column models.ColumnModel
+	err := s.db.Where("id = ?", id).Preload("Actions").Preload("Project").First(&column).Error
+	return &column, err
 }
 
 // GetColumns retrieves a paginated list of columns, optionally filtering by search and project ID.

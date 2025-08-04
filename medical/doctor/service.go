@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
@@ -168,6 +169,16 @@ func (ds *DoctorService) GetDoctorSchedules(request http.Request, search string,
 	if request.URL.Query().Get("date") != "" {
 		stmt = stmt.Where("start_time <= ? AND end_time >= ?", request.URL.Query().Get("date"), request.URL.Query().Get("date"))
 	}
+	if request.URL.Query().Get("month") != "" {
+		thisMonth, err := time.Parse("2006-01-02", request.URL.Query().Get("month"))
+		if err == nil {
+			firstDateOfMonth := time.Date(thisMonth.Year(), thisMonth.Month(), 1, 0, 0, 0, 0, time.UTC)
+			lastDateOfMonth := firstDateOfMonth.AddDate(0, 1, -1)
+			stmt = stmt.Where("start_time >= ? AND end_time <= ?", firstDateOfMonth, lastDateOfMonth)
+
+		}
+
+	}
 
 	if request.URL.Query().Get("status") != "" {
 		stmt = stmt.Where("status = ?", request.URL.Query().Get("status"))
@@ -269,4 +280,39 @@ func (ds *DoctorService) UpdateDoctorSpecialization(id string, specialization *m
 // an error if the deletion process fails.
 func (ds *DoctorService) DeleteDoctorSpecialization(id string) error {
 	return ds.db.Where("id = ?", id).Delete(&models.DoctorSpecialization{}).Error
+}
+
+// FindScheduleFromParams retrieves a doctor schedule by its parameters.
+//
+// It takes a set of parameters in the form of a gin.Context and returns a pointer
+// to a DoctorSchedule model and an error. If the retrieval fails, it returns an
+// error.
+func (ds *DoctorService) FindScheduleFromParams(doctorID, date, specializationCode, timeStr, doctorName *string) []models.DoctorSchedule {
+	var schedules []models.DoctorSchedule
+	stmt := ds.db.Preload("Doctor.Specialization")
+	if doctorID != nil {
+		stmt = stmt.Where("doctor_id = ?", *doctorID)
+	}
+	if date != nil {
+		stmt = stmt.Where("DATE(start_time) = ?", *date)
+	}
+	if specializationCode != nil || doctorName != nil {
+		stmt = stmt.Joins("LEFT JOIN doctors ON doctor_schedules.doctor_id = doctors.id")
+		if specializationCode != nil {
+			stmt = stmt.Where("doctors.specialization_code = ?", *specializationCode)
+		}
+		if doctorName != nil {
+			stmt = stmt.Where("doctors.name ilike ?", "%"+*doctorName+"%")
+		}
+	}
+	if date != nil && timeStr != nil {
+		availableTime, err := time.Parse("2006-01-02 15:04", *date+" "+*timeStr)
+		if err == nil {
+			stmt = stmt.Where("start_time <= ? AND end_time >= ?", availableTime, availableTime)
+		}
+	}
+
+	stmt.Find(&schedules)
+
+	return schedules
 }

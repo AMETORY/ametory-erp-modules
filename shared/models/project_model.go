@@ -53,6 +53,7 @@ func (c *ColumnModel) BeforeCreate(tx *gorm.DB) (err error) {
 type ColumnModel struct {
 	shared.BaseModel
 	ProjectID  string         `gorm:"type:char(36)" json:"project_id,omitempty"`
+	Project    *ProjectModel  `json:"project,omitempty" gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE;"`
 	Name       string         `gorm:"type:varchar(255)" json:"name,omitempty"`
 	Icon       *string        `json:"icon,omitempty"`
 	Order      int            `json:"order,omitempty"` // Urutan kolom
