@@ -37,7 +37,9 @@ func (ds *DoctorService) CreateDoctor(doctor *models.Doctor) error {
 func (ds *DoctorService) GetDoctorByID(id string) (*models.Doctor, error) {
 	var doctor models.Doctor
 
-	err := ds.db.Where("id = ?", id).Find(&doctor).Error
+	err := ds.db.
+		Preload("Specialization").
+		Where("id = ?", id).Find(&doctor).Error
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +72,15 @@ func (s *DoctorService) GetDoctors(request http.Request, search string) (paginat
 		)
 	}
 
-	request.URL.Query().Get("page")
+	order := request.URL.Query().Get("order")
+	if order != "" {
+		stmt = stmt.Order(order)
+	} else {
+		stmt = stmt.Order("name ASC")
+	}
 	stmt = stmt.Model(&models.Doctor{})
 	utils.FixRequest(&request)
+
 	page := pg.With(stmt).Request(request).Response(&[]models.Doctor{})
 	page.Page = page.Page + 1
 	return page, nil
@@ -128,19 +136,42 @@ func (ds *DoctorService) GetDoctorScheduleByID(id string) (*models.DoctorSchedul
 //
 // The function returns a paginated page of DoctorSchedule models and an error if the
 // operation fails.
-func (ds *DoctorService) GetDoctorSchedules(request http.Request, search string) (paginate.Page, error) {
+func (ds *DoctorService) GetDoctorSchedules(request http.Request, search string, doctorID *string) (paginate.Page, error) {
 	pg := paginate.New()
 	stmt := ds.db
 	if search != "" {
-		stmt = stmt.Where("doctor_id ILIKE ? OR start_time ILIKE ? OR end_time ILIKE ? OR price ILIKE ?",
-			"%"+search+"%",
-			"%"+search+"%",
-			"%"+search+"%",
-			"%"+search+"%",
-		)
+		stmt = stmt.Joins("LEFT JOIN doctors ON doctor_schedules.doctor_id = doctors.id").
+			Where("doctors.name ILIKE ?",
+				"%"+search+"%",
+			)
 	}
 
-	request.URL.Query().Get("page")
+	order := request.URL.Query().Get("order")
+	if order != "" {
+		stmt = stmt.Order(order)
+	} else {
+		stmt = stmt.Order("created_at ASC")
+	}
+
+	if request.URL.Query().Get("doctor_id") != "" {
+		stmt = stmt.Where("doctor_id = ?", request.URL.Query().Get("doctor_id"))
+	}
+
+	if doctorID != nil {
+		stmt = stmt.Where("doctor_id = ?", *doctorID)
+	}
+
+	if request.URL.Query().Get("time") != "" {
+		stmt = stmt.Where("start_time <= ? AND end_time >= ?", request.URL.Query().Get("time"), request.URL.Query().Get("time"))
+	}
+
+	if request.URL.Query().Get("date") != "" {
+		stmt = stmt.Where("start_time <= ? AND end_time >= ?", request.URL.Query().Get("date"), request.URL.Query().Get("date"))
+	}
+
+	if request.URL.Query().Get("status") != "" {
+		stmt = stmt.Where("status = ?", request.URL.Query().Get("status"))
+	}
 	stmt = stmt.Model(&models.DoctorSchedule{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.DoctorSchedule{})
@@ -194,7 +225,12 @@ func (ds *DoctorService) GetDoctorSpecializations(request http.Request, search s
 		)
 	}
 
-	request.URL.Query().Get("page")
+	order := request.URL.Query().Get("order")
+	if order != "" {
+		stmt = stmt.Order(order)
+	} else {
+		stmt = stmt.Order("name ASC")
+	}
 	stmt = stmt.Model(&models.DoctorSpecialization{})
 	utils.FixRequest(&request)
 	page := pg.With(stmt).Request(request).Response(&[]models.DoctorSpecialization{})
