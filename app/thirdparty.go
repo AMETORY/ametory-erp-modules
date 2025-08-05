@@ -209,12 +209,15 @@ func WithKafkaService(ctx context.Context, server *string) AppContainerOption {
 	}
 }
 
-func WithAiGeneratorService(factory ai_generator.GeneratorFactory, config ai_generator.GeneratorConfig) AppContainerOption {
+func WithAiGeneratorService(factory ai_generator.GeneratorFactory, config *ai_generator.GeneratorConfig, skipMigration bool) AppContainerOption {
 	return func(c *AppContainer) {
-		generator, err := ai_generator.NewAiGenerator(factory, config)
-		if err != nil {
-			panic(err)
+		c.AiGeneratorService = ai_generator.NewAiGeneratorService(c.erpContext.Ctx, c.DB, skipMigration)
+		if factory != nil {
+			c.AiGeneratorService.SetFactory(factory)
 		}
-		c.AiGeneratorService = generator
+		if config != nil {
+			c.AiGeneratorService.SetConfig(*config)
+		}
+		log.Println("AiGeneratorService initialized")
 	}
 }

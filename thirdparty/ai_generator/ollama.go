@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/AMETORY/ametory-erp-modules/utils"
 )
 
 type OllamaService struct {
@@ -15,6 +17,7 @@ type OllamaService struct {
 	model             string
 	systemInstruction string
 	stream            bool
+	contentConfig     *ContentConfig
 }
 
 func NewOllamaService(ctx *context.Context, model string) *OllamaService {
@@ -34,6 +37,10 @@ type Request struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
 	Stream   bool      `json:"stream"`
+	Format   string    `json:"format"`
+	Options  struct {
+		NumCtx int `json:"num_ctx"`
+	}
 }
 type Response struct {
 	Model              string    `json:"model"`
@@ -50,7 +57,7 @@ type Response struct {
 
 func (g *OllamaService) Generate(prompt string, attachment *AiAttachment, histories []AiMessage) (*AiMessage, error) {
 	if g.model == "" {
-		return nil, fmt.Errorf("model is required")
+		return nil, fmt.Errorf("ollama model is required")
 	}
 	messages := []Message{}
 	if g.systemInstruction != "" {
@@ -72,7 +79,19 @@ func (g *OllamaService) Generate(prompt string, attachment *AiAttachment, histor
 		Model:    g.model,
 		Messages: messages,
 		Stream:   false,
+		Options: struct {
+			NumCtx int `json:"num_ctx"`
+		}{
+			NumCtx: 8192,
+		},
 	}
+
+	if g.contentConfig != nil {
+		cfg := *g.contentConfig
+		ollamaReq.Format = cfg.ResponseMIMEType
+	}
+
+	utils.LogJson(ollamaReq)
 
 	js, err := json.Marshal(&ollamaReq)
 	if err != nil {
@@ -123,6 +142,7 @@ func (g *OllamaService) SetModel(model string) {
 	}
 }
 func (g *OllamaService) SetContentConfig(config *ContentConfig) {
+	g.contentConfig = config
 
 }
 

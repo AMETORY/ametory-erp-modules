@@ -75,7 +75,7 @@ type AppContainer struct {
 	HRISService                 *hris.HRISservice
 	AuditTrailService           *audit_trail.AuditTrailService
 	PermitHubService            *permit_hub.PermitHubService
-	AiGeneratorService          ai_generator.AiGenerator
+	AiGeneratorService          *ai_generator.AiGeneratorService
 
 	ThirdPartyServices map[string]any
 	// Add additional services here
