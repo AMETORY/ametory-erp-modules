@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/AMETORY/ametory-erp-modules/utils"
 )
 
 type OllamaService struct {
@@ -59,6 +57,7 @@ func (g *OllamaService) Generate(prompt string, attachment *AiAttachment, histor
 	if g.model == "" {
 		return nil, fmt.Errorf("ollama model is required")
 	}
+	fmt.Printf("SEND PROMPT %s with OLLAMA(%s)\n", prompt, g.model)
 	messages := []Message{}
 	if g.systemInstruction != "" {
 		messages = append(messages, Message{
@@ -91,7 +90,7 @@ func (g *OllamaService) Generate(prompt string, attachment *AiAttachment, histor
 		ollamaReq.Format = cfg.ResponseMIMEType
 	}
 
-	utils.LogJson(ollamaReq)
+	// utils.LogJson(ollamaReq)
 
 	js, err := json.Marshal(&ollamaReq)
 	if err != nil {

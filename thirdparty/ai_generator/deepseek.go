@@ -3,6 +3,7 @@ package ai_generator
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-deepseek/deepseek"
 	"github.com/go-deepseek/deepseek/request"
@@ -14,6 +15,7 @@ type DeepSeekService struct {
 	client            *deepseek.Client
 	systemInstruction string
 	model             string
+	isJson            bool
 }
 
 func NewDeepSeekService(ctx *context.Context, apiKey string) *DeepSeekService {
@@ -26,6 +28,7 @@ func NewDeepSeekService(ctx *context.Context, apiKey string) *DeepSeekService {
 		ApiKey: apiKey,
 		client: &client,
 		model:  deepseek.DEEPSEEK_CHAT_MODEL,
+		isJson: true,
 	}
 }
 
@@ -36,7 +39,7 @@ func (g *DeepSeekService) Generate(prompt string, attachment *AiAttachment, hist
 	if g.client == nil {
 		return nil, fmt.Errorf("client is required")
 	}
-
+	fmt.Printf("SEND PROMPT %s with DEEPSEEK\n", prompt)
 	client := *g.client
 
 	var messages []*request.Message
@@ -64,6 +67,13 @@ func (g *DeepSeekService) Generate(prompt string, attachment *AiAttachment, hist
 		Messages: messages,
 		Stream:   false,
 	}
+
+	if g.isJson {
+		chatReq.ResponseFormat = &request.ResponseFormat{
+			Type: "json_object",
+		}
+	}
+
 	resp, err := client.CallChatCompletionsChat(*g.ctx, chatReq)
 	if err != nil {
 		fmt.Println("Error =>", err)
@@ -95,7 +105,14 @@ func (g *DeepSeekService) SetModel(model string) {
 	g.model = model
 }
 func (g *DeepSeekService) SetContentConfig(config *ContentConfig) {
-
+	if config != nil {
+		if strings.Contains(config.ResponseMIMEType, "json") {
+			g.isJson = true
+		}
+		if strings.Contains(config.ResponseMIMEType, "text") {
+			g.isJson = false
+		}
+	}
 }
 
 func (g *DeepSeekService) SetHost(host string) {

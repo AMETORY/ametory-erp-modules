@@ -37,6 +37,7 @@ func (g *OpenAiService) Generate(prompt string, attachment *AiAttachment, histor
 		return nil, fmt.Errorf("client is required")
 	}
 
+	fmt.Printf("SEND PROMPT %s with OPENAI(%s)\n", prompt, g.model)
 	client := *g.client
 
 	var messages []openai.ChatCompletionMessageParamUnion
@@ -49,7 +50,7 @@ func (g *OpenAiService) Generate(prompt string, attachment *AiAttachment, histor
 		if v.Role == "user" {
 			messages = append(messages, openai.UserMessage(v.Content))
 		}
-		if v.Role == "model" {
+		if v.Role == "model" || v.Role == "assistant" {
 			messages = append(messages, openai.AssistantMessage(v.Content))
 		}
 	}

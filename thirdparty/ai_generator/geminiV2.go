@@ -2,6 +2,8 @@ package ai_generator
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"google.golang.org/genai"
 )
@@ -13,6 +15,7 @@ type GeminiV2SService struct {
 	model             string
 	systemInstruction string
 	contentConfig     *genai.GenerateContentConfig
+	isJson            bool
 }
 
 func NewGeminiV2Service(ctx *context.Context, apiKey string) *GeminiV2SService {
@@ -32,10 +35,19 @@ func NewGeminiV2Service(ctx *context.Context, apiKey string) *GeminiV2SService {
 		client:        client,
 		model:         "gemini-1.5-flash",
 		contentConfig: &genai.GenerateContentConfig{},
+		isJson:        true,
 	}
 }
 
 func (g *GeminiV2SService) Generate(prompt string, attachment *AiAttachment, histories []AiMessage) (*AiMessage, error) {
+	if g.model == "" {
+		return nil, fmt.Errorf("model is required")
+	}
+	if g.client == nil {
+		return nil, fmt.Errorf("client is required")
+	}
+
+	fmt.Printf("SEND PROMPT %s with GEMINI(%s)\n", prompt, g.model)
 	var contents []*genai.Content
 	for _, v := range histories {
 		content := genai.Content{
@@ -87,6 +99,9 @@ func (g *GeminiV2SService) Generate(prompt string, attachment *AiAttachment, his
 			},
 		}
 	}
+	if g.isJson {
+		config.ResponseMIMEType = "application/json"
+	}
 	resp, err := g.client.Models.GenerateContent(*g.ctx, g.model, contents, config)
 	if err != nil {
 		return nil, err
@@ -128,6 +143,13 @@ func (g *GeminiV2SService) SetContentConfig(config *ContentConfig) {
 			StopSequences:    config.StopSequences,
 			ResponseLogprobs: config.ResponseLogprobs,
 			Logprobs:         config.Logprobs,
+		}
+
+		if strings.Contains(config.ResponseMIMEType, "json") {
+			g.isJson = true
+		}
+		if strings.Contains(config.ResponseMIMEType, "text") {
+			g.isJson = false
 		}
 	}
 }

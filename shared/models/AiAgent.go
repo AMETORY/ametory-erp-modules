@@ -52,6 +52,7 @@ type AiAgentHistory struct {
 	Company     *CompanyModel `gorm:"foreignKey:CompanyID;references:ID"`
 	Role        string        `json:"role" gorm:"type:varchar(255);default:'model'"`
 	SessionCode *string       `gorm:"type:varchar(255)" json:"session_code"`
+	IsModel     bool          `json:"is_model" gorm:"default:false"`
 }
 
 func (AiAgentHistory) TableName() string {
