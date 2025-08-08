@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/shared"
@@ -53,13 +54,16 @@ func (u *Doctor) AfterFind(tx *gorm.DB) error {
 
 type DoctorSchedule struct {
 	shared.BaseModel
-	DoctorID    string    `json:"doctor_id" gorm:"type:char(36);index"`
-	Doctor      Doctor    `gorm:"foreignKey:DoctorID;references:ID" json:"doctor"`
-	Price       float64   `json:"price"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Status      string    `json:"status"`
-	Description string    `json:"description"`
+	DoctorID    string           `json:"doctor_id" gorm:"type:char(36);index"`
+	Doctor      Doctor           `gorm:"foreignKey:DoctorID;references:ID" json:"doctor"`
+	Price       float64          `json:"price"`
+	StartTime   time.Time        `json:"start_time"`
+	EndTime     time.Time        `json:"end_time"`
+	Status      string           `json:"status"`
+	Description string           `json:"description"`
+	PatientID   *string          `json:"patient_id" gorm:"type:char(36);index"`
+	Patient     *PatientModel    `gorm:"foreignKey:PatientID;references:ID" json:"patient"`
+	PaymentData *json.RawMessage `json:"payment_data"`
 }
 
 func (m *DoctorSchedule) BeforeCreate(tx *gorm.DB) (err error) {

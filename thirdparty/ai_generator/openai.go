@@ -6,6 +6,7 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/shared"
 )
 
 type OpenAiService struct {
@@ -60,6 +61,11 @@ func (g *OpenAiService) Generate(prompt string, attachment *AiAttachment, histor
 	chatReq := openai.ChatCompletionNewParams{
 		Messages: messages,
 		Model:    g.model,
+		ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
+			OfJSONObject: &shared.ResponseFormatJSONObjectParam{
+				Type: "json_object",
+			},
+		},
 	}
 	resp, err := client.Chat.Completions.New(*g.ctx, chatReq)
 	if err != nil {

@@ -50,6 +50,7 @@ type TaskModel struct {
 	RefType                 *string                `gorm:"type:varchar(255);index" json:"ref_type,omitempty"`
 	LastActionTriggerAt     *time.Time             `json:"last_action_trigger_at,omitempty"`
 	Tags                    []TagModel             `gorm:"many2many:task_tags;constraint:OnDelete:CASCADE;" json:"tags,omitempty"`
+	ColumnActions           []ColumnAction         `gorm:"many2many:task_column_actions;constraint:OnDelete:CASCADE;" json:"column_actions,omitempty"`
 }
 
 func (TaskModel) TableName() string {

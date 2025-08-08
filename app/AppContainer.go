@@ -40,6 +40,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
 	"github.com/AMETORY/ametory-erp-modules/user"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
@@ -47,7 +48,8 @@ type AppContainer struct {
 	erpContext                  *context.ERPContext // Context for the ERP application
 	DB                          *gorm.DB            // Database connection
 	Ctx                         ctx.Context         // Context
-	Request                     *http.Request       // HTTP request
+	Mongo                       *mongo.Client
+	Request                     *http.Request // HTTP request
 	InventoryService            *inventory.InventoryService
 	ManufactureService          *manufacture.ManufactureService
 	AuthService                 *auth.AuthService

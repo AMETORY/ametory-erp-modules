@@ -299,6 +299,7 @@ func (s *ProjectService) CheckIdleColumn(callback func(models.ScheduledMessage))
 		if action.Action == "send_whatsapp_message" {
 			log.Println("READY TO GET TASK FROM", action.Name)
 			for _, task := range action.Column.Tasks {
+
 				var waSession models.WhatsappMessageSession
 				if task.RefID != nil && *task.RefType == "whatsapp_session" {
 					err := s.ctx.DB.Preload("Contact").First(&waSession, "id = ?", task.RefID).Error
@@ -331,23 +332,39 @@ func (s *ProjectService) CheckIdleColumn(callback func(models.ScheduledMessage))
 
 						switch idlePeriode {
 						case "days":
-							fmt.Println(now.Sub(updatedAt).Hours()/24, "HARI")
+							fmt.Println(now.Sub(updatedAt).Hours()/24, "HARI", "==>", action.Name)
 							if now.Sub(updatedAt).Hours()/24 > idleTime && action.ActionStatus == "READY" {
 								readyToSend = true
 							}
 						case "hours":
-							fmt.Println(now.Sub(updatedAt).Hours(), "JAM", action.ActionStatus)
+							fmt.Println(now.Sub(updatedAt).Hours(), "JAM", action.ActionStatus, "==>", action.Name)
 
 							if now.Sub(updatedAt).Hours() > idleTime && action.ActionStatus == "READY" {
 								readyToSend = true
 							}
 						case "minutes":
-							fmt.Println(now.Sub(updatedAt).Minutes(), "MENIT")
+							fmt.Println(now.Sub(updatedAt).Minutes(), "MENIT", "==>", action.Name)
 							if now.Sub(updatedAt).Minutes() > idleTime && action.ActionStatus == "READY" {
 								readyToSend = true
 							}
 						}
 
+						s.db.Preload("ColumnActions").Find(&task)
+						// fmt.Println("TASK ACTIONS")
+						// utils.LogJson(task.ColumnActions)
+						for _, v := range task.ColumnActions {
+							if action.ID == v.ID && action.RunOnce {
+								readyToSend = false
+								continue
+							}
+						}
+
+						if !readyToSend {
+							continue
+						}
+
+						fmt.Println(readyToSend, idleTime, idlePeriode, action.ActionStatus)
+						utils.LogJson(actionData)
 						if readyToSend {
 							if action.ActionHour != nil {
 								parsedTime, err := time.Parse("15:04", *action.ActionHour)
@@ -393,9 +410,15 @@ func (s *ProjectService) CheckIdleColumn(callback func(models.ScheduledMessage))
 									log.Println("ERROR", err)
 									continue
 								}
-								task.LastActionTriggerAt = &now
+								if !action.RunOnce {
+									task.LastActionTriggerAt = &now
+								}
 								task.UpdatedAt = &now
 								s.ctx.DB.Omit(clause.Associations).Save(&task)
+								err = s.ctx.DB.Model(&task).Association("ColumnActions").Append(&action)
+								if err != nil {
+									log.Println("ERROR ADD ASSOCIATION", err)
+								}
 							}
 
 							// thumbnail, restFiles := models.GetThumbnail(action.Files)

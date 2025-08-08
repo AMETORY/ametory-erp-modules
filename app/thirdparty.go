@@ -14,6 +14,8 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // WithEmailSender initializes the EmailSender with the given SMTP server,
@@ -209,6 +211,13 @@ func WithKafkaService(ctx context.Context, server *string) AppContainerOption {
 	}
 }
 
+// WithAiGeneratorService initializes the AiGeneratorService with the given context, database, factory, config, and skipMigration flag.
+//
+// This option is used to interact with the AI generator service.
+//
+// It creates an instance of AiGeneratorService with the provided context, database, and skipMigration flag.
+// If the factory is not nil, it sets the factory of the AiGeneratorService to the provided factory.
+// If the config is not nil, it sets the config of the AiGeneratorService to the provided config.
 func WithAiGeneratorService(factory ai_generator.GeneratorFactory, config *ai_generator.GeneratorConfig, skipMigration bool) AppContainerOption {
 	return func(c *AppContainer) {
 		c.AiGeneratorService = ai_generator.NewAiGeneratorService(c.erpContext.Ctx, c.DB, skipMigration)
@@ -219,5 +228,22 @@ func WithAiGeneratorService(factory ai_generator.GeneratorFactory, config *ai_ge
 			c.AiGeneratorService.SetConfig(*config)
 		}
 		log.Println("AiGeneratorService initialized")
+	}
+}
+
+// WithMongoDBService initializes the MongoDBService with the given context, connection string, and database name.
+//
+// This option is used to interact with the MongoDB database.
+//
+// It creates an instance of MongoDBService with the provided context, connection string, and database name.
+func WithMongoDBService(ctx context.Context, opts ...*options.ClientOptions) AppContainerOption {
+	return func(c *AppContainer) {
+
+		client, err := mongo.Connect(ctx, opts...)
+		if err != nil {
+			panic(err)
+		}
+		c.Mongo = client
+		log.Println("MongoDBService initialized")
 	}
 }

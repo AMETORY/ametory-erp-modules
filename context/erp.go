@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
@@ -13,6 +14,7 @@ type ERPContext struct {
 	DB      *gorm.DB         // Database connection
 	Ctx     *context.Context // Context
 	Request *http.Request    // HTTP request
+	Mongo   *mongo.Client
 	// Tambahkan service lainnya di sini
 	InventoryService            interface{} // Contoh: InventoryService
 	ManufactureService          interface{} // Contoh: ManufactureService
@@ -55,6 +57,7 @@ type ERPContext struct {
 
 // NewERPContext membuat instance baru dari ERPContext
 func NewERPContext(db *gorm.DB, req *http.Request, ctx *context.Context, skipMigrate bool) *ERPContext {
+
 	return &ERPContext{
 		DB:                 db,
 		Request:            req,
