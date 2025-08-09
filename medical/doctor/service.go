@@ -139,7 +139,7 @@ func (ds *DoctorService) GetDoctorScheduleByID(id string) (*models.DoctorSchedul
 // operation fails.
 func (ds *DoctorService) GetDoctorSchedules(request http.Request, search string, doctorID *string) (paginate.Page, error) {
 	pg := paginate.New()
-	stmt := ds.db
+	stmt := ds.db.Preload("Patient")
 	if search != "" {
 		stmt = stmt.Joins("LEFT JOIN doctors ON doctor_schedules.doctor_id = doctors.id").
 			Where("doctors.name ILIKE ?",

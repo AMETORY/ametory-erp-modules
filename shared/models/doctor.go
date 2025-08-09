@@ -64,6 +64,8 @@ type DoctorSchedule struct {
 	PatientID   *string          `json:"patient_id" gorm:"type:char(36);index"`
 	Patient     *PatientModel    `gorm:"foreignKey:PatientID;references:ID" json:"patient"`
 	PaymentData *json.RawMessage `json:"payment_data"`
+	MetaData    *json.RawMessage `json:"meta_data"`
+	MeetingURL  *string          `json:"meeting_url"`
 }
 
 func (m *DoctorSchedule) BeforeCreate(tx *gorm.DB) (err error) {
