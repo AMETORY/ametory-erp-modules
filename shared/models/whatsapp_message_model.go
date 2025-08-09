@@ -12,37 +12,37 @@ import (
 )
 
 type WhatsappMessageModel struct {
-	shared.BaseModel
-	JID                      string                    `gorm:"type:varchar(255)" json:"jid"`
-	Sender                   string                    `gorm:"type:varchar(255)" json:"sender"`
-	Receiver                 string                    `gorm:"type:varchar(255)" json:"receiver"`
-	Message                  string                    `json:"message"`
-	QuotedMessage            *string                   `json:"quoted_message"`
-	QuotedMessageID          *string                   `json:"quoted_message_id"`
-	MediaURL                 string                    `gorm:"type:varchar(255)" json:"media_url"`
-	MimeType                 string                    `gorm:"type:varchar(255)" json:"mime_type"`
-	Session                  string                    `gorm:"type:varchar(255)" json:"session"`
-	Info                     string                    `gorm:"type:json" json:"-"`
-	MessageInfo              map[string]interface{}    `gorm:"-" json:"message_info"`
-	ContactID                *string                   `json:"contact_id,omitempty" gorm:"column:contact_id"`
-	Contact                  *ContactModel             `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
-	CompanyID                *string                   `json:"company_id,omitempty" gorm:"column:company_id"`
-	Company                  *CompanyModel             `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
-	IsFromMe                 bool                      `json:"is_from_me"`
-	IsGroup                  bool                      `json:"is_group"`
-	IsReplied                bool                      `json:"is_replied" gorm:"default:false"`
-	SentAt                   *time.Time                `json:"sent_at" gorm:"-"`
-	IsRead                   bool                      `json:"is_read" gorm:"default:false"`
-	MessageID                *string                   `json:"message_id" gorm:"column:message_id"`
-	ResponseTime             *float64                  `json:"response_time"`
-	MemberID                 *string                   `json:"member_id,omitempty" gorm:"column:member_id"`
-	Member                   *MemberModel              `gorm:"foreignKey:MemberID" json:"member,omitempty"`
-	UserID                   *string                   `json:"user_id,omitempty" gorm:"column:user_id"`
-	User                     *UserModel                `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	IsNew                    bool                      `json:"is_new" gorm:"default:false"`
-	RefID                    *string                   `json:"ref_id,omitempty" gorm:"column:ref_id"`
-	IsAutoPilot              bool                      `json:"is_auto_pilot" gorm:"default:false"`
-	WhatsappMessageReactions []WhatsappMessageReaction `gorm:"foreignKey:WhatsappMessageID" json:"whatsapp_message_reactions,omitempty"`
+	shared.BaseModel         `bson:"base"`
+	JID                      string                    `gorm:"type:varchar(255)" json:"jid" bson:"jid"`
+	Sender                   string                    `gorm:"type:varchar(255)" json:"sender" bson:"sender"`
+	Receiver                 string                    `gorm:"type:varchar(255)" json:"receiver" bson:"receiver"`
+	Message                  string                    `json:"message" bson:"message"`
+	QuotedMessage            *string                   `json:"quotedMessage" bson:"quotedMessage"`
+	QuotedMessageID          *string                   `json:"quotedMessageId" bson:"quotedMessageId"`
+	MediaURL                 string                    `gorm:"type:varchar(255)" json:"mediaUrl" bson:"mediaUrl"`
+	MimeType                 string                    `gorm:"type:varchar(255)" json:"mimeType" bson:"mimeType"`
+	Session                  string                    `gorm:"type:varchar(255)" json:"session" bson:"session"`
+	Info                     string                    `gorm:"type:json" json:"-" bson:"info"`
+	MessageInfo              map[string]interface{}    `gorm:"-" json:"messageInfo" bson:"messageInfo"`
+	ContactID                *string                   `json:"contactId,omitempty" gorm:"column:contact_id" bson:"contactId"`
+	Contact                  *ContactModel             `gorm:"foreignKey:ContactID" json:"contact,omitempty" bson:"contact"`
+	CompanyID                *string                   `json:"companyId,omitempty" gorm:"column:company_id" bson:"companyId"`
+	Company                  *CompanyModel             `gorm:"foreignKey:CompanyID" json:"company,omitempty" bson:"company"`
+	IsFromMe                 bool                      `json:"isFromMe" bson:"isFromMe"`
+	IsGroup                  bool                      `json:"isGroup" bson:"isGroup"`
+	IsReplied                bool                      `json:"isReplied" gorm:"default:false" bson:"isReplied"`
+	SentAt                   *time.Time                `json:"sentAt" gorm:"-" bson:"sentAt"`
+	IsRead                   bool                      `json:"isRead" gorm:"default:false" bson:"isRead"`
+	MessageID                *string                   `json:"messageId" gorm:"column:message_id" bson:"messageId"`
+	ResponseTime             *float64                  `json:"responseTime" bson:"responseTime"`
+	MemberID                 *string                   `json:"memberId,omitempty" gorm:"column:member_id" bson:"memberId"`
+	Member                   *MemberModel              `gorm:"foreignKey:MemberID" json:"member,omitempty" bson:"member"`
+	UserID                   *string                   `json:"userId,omitempty" gorm:"column:user_id" bson:"userId"`
+	User                     *UserModel                `gorm:"foreignKey:UserID" json:"user,omitempty" bson:"user"`
+	IsNew                    bool                      `json:"isNew" gorm:"default:false" bson:"isNew"`
+	RefID                    *string                   `json:"refId,omitempty" gorm:"column:ref_id" bson:"refId"`
+	IsAutoPilot              bool                      `json:"isAutoPilot" gorm:"default:false" bson:"isAutoPilot"`
+	WhatsappMessageReactions []WhatsappMessageReaction `gorm:"foreignKey:WhatsappMessageID" json:"whatsappMessageReactions,omitempty" bson:"whatsappMessageReactions"`
 }
 
 type WhatsappMessageReaction struct {
@@ -100,22 +100,22 @@ func (m *WhatsappMessageModel) AfterFind(tx *gorm.DB) error {
 }
 
 type WhatsappMessageSession struct {
-	shared.BaseModel
-	JID          string        `gorm:"type:varchar(255);index" json:"jid"`
-	Session      string        `gorm:"type:varchar(255);index" json:"session"`
-	SessionName  string        `gorm:"type:varchar(255)" json:"session_name"`
-	LastOnlineAt *time.Time    `json:"last_online_at"`
-	LastMessage  string        `json:"last_message"`
-	CompanyID    *string       `json:"company_id,omitempty" gorm:"column:company_id"`
-	Company      *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty"`
-	ContactID    *string       `json:"contact_id,omitempty" gorm:"column:contact_id"`
-	Contact      *ContactModel `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
-	RefID        *string       `json:"ref_id,omitempty" gorm:"index"`
-	RefType      *string       `json:"ref_type,omitempty"`
-	Ref          any           `json:"ref,omitempty" gorm:"-"`
-	IsHumanAgent bool          `json:"is_human_agent"`
-	IsGroup      bool          `json:"is_group" gorm:"default:false"`
-	CountUnread  int           `json:"count_unread" gorm:"-"`
+	shared.BaseModel `bson:"base"`
+	JID              string        `gorm:"type:varchar(255);index" json:"jid" bson:"jid"`
+	Session          string        `gorm:"type:varchar(255);index" json:"session" bson:"session"`
+	SessionName      string        `gorm:"type:varchar(255)" json:"sessionName" bson:"sessionName"`
+	LastOnlineAt     *time.Time    `json:"lastOnlineAt" bson:"lastOnlineAt"`
+	LastMessage      string        `json:"lastMessage" bson:"lastMessage"`
+	CompanyID        *string       `json:"companyID,omitempty" gorm:"column:company_id" bson:"companyId"`
+	Company          *CompanyModel `gorm:"foreignKey:CompanyID" json:"company,omitempty" bson:"company"`
+	ContactID        *string       `json:"contactID,omitempty" gorm:"column:contact_id" bson:"contactId"`
+	Contact          *ContactModel `gorm:"foreignKey:ContactID" json:"contact,omitempty" bson:"contact"`
+	RefID            *string       `json:"refID,omitempty" gorm:"index" bson:"refId"`
+	RefType          *string       `json:"refType,omitempty" bson:"refType"`
+	Ref              any           `json:"ref,omitempty" gorm:"-" bson:"-"`
+	IsHumanAgent     bool          `json:"isHumanAgent" bson:"isHumanAgent"`
+	IsGroup          bool          `json:"isGroup" gorm:"default:false" bson:"isGroup"`
+	CountUnread      int           `json:"countUnread" gorm:"-" bson:"-"`
 }
 
 func (m *WhatsappMessageSession) BeforeCreate(tx *gorm.DB) error {

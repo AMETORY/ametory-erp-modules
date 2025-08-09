@@ -249,6 +249,18 @@ func (ds *DoctorService) GetDoctorSpecializations(request http.Request, search s
 	return page, nil
 }
 
+// GetDoctorSpecializationsCode retrieves a list of doctor specialization codes from the database.
+//
+// It takes no arguments and returns a slice of strings and an error if the operation fails.
+func (ds *DoctorService) GetDoctorSpecializationsCode() ([]string, error) {
+	var codes []string
+	err := ds.db.Model(&models.DoctorSpecialization{}).Select("code").Find(&codes).Error
+	if err != nil {
+		return nil, err
+	}
+	return codes, nil
+}
+
 // GetDoctorSpecializationByID retrieves a doctor specialization by its ID.
 //
 // It takes a string argument representing the specialization ID and returns a pointer
@@ -287,7 +299,7 @@ func (ds *DoctorService) DeleteDoctorSpecialization(id string) error {
 // It takes a set of parameters in the form of a gin.Context and returns a pointer
 // to a DoctorSchedule model and an error. If the retrieval fails, it returns an
 // error.
-func (ds *DoctorService) FindScheduleFromParams(doctorID, date, specializationCode, timeStr, doctorName *string) []models.DoctorSchedule {
+func (ds *DoctorService) FindScheduleFromParams(doctorID, date, specializationCode, timeStr, doctorName, status *string) []models.DoctorSchedule {
 	var schedules []models.DoctorSchedule
 	stmt := ds.db.Preload("Doctor.Specialization")
 	if doctorID != nil {
@@ -310,6 +322,10 @@ func (ds *DoctorService) FindScheduleFromParams(doctorID, date, specializationCo
 		if err == nil {
 			stmt = stmt.Where("start_time <= ? AND end_time >= ?", availableTime, availableTime)
 		}
+	}
+
+	if status != nil {
+		stmt = stmt.Where("status = ?", *status)
 	}
 
 	stmt.Find(&schedules)

@@ -151,6 +151,14 @@ func (s *AiGeneratorService) CreateHistory(history *models.AiAgentHistory) error
 	}
 	return nil
 }
+
+func (s *AiGeneratorService) UpdateHistory(history *models.AiAgentHistory) error {
+	err := s.db.Save(history).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func (s *AiGeneratorService) GetHistories(id, companyID *string, sessionCode *string, isModel *bool) ([]models.AiAgentHistory, error) {
 	stmt := s.db.Model(&models.AiAgentHistory{}).Where("ai_agent_id = ?", *id)
 	if sessionCode != nil {

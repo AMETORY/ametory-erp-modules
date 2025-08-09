@@ -13,10 +13,10 @@ import (
 )
 
 type BaseModel struct {
-	ID        string         `gorm:"type:char(36);primary_key" json:"id,omitempty"`
-	CreatedAt *time.Time     `json:"created_at"`
-	UpdatedAt *time.Time     `json:"-"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID        string         `gorm:"type:char(36);primary_key" bson:"-" json:"id,omitempty"`
+	CreatedAt *time.Time     `json:"created_at" bson:"-"`
+	UpdatedAt *time.Time     `json:"-" bson:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-" bson:"-"`
 }
 
 type InvoiceBillSettingModel struct {

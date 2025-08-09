@@ -11,6 +11,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/kafka"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/payment/xendit"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/whatsmeow_client"
@@ -245,5 +246,20 @@ func WithMongoDBService(ctx context.Context, opts ...*options.ClientOptions) App
 		}
 		c.Mongo = client
 		log.Println("MongoDBService initialized")
+	}
+}
+
+// WithXenditService initializes the XenditService with the given secret key.
+//
+// This option is used to interact with the Xendit payment service.
+//
+// It creates an instance of XenditService with the provided secret key.
+func WithXenditService(apiKey string) AppContainerOption {
+	return func(c *AppContainer) {
+		service := xendit.NewXenditService()
+		service.SetAPIKey(apiKey)
+
+		c.XenditService = service
+		log.Println("XenditService initialized")
 	}
 }

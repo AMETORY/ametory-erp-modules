@@ -78,6 +78,8 @@ func (g *OpenAiService) Generate(prompt string, attachment *AiAttachment, histor
 		Content: resp.Choices[0].Message.Content,
 	}
 
+	fmt.Println("USAGE TOKEN", resp.Usage.TotalTokens)
+
 	return &responseData, nil
 }
 
