@@ -17,16 +17,16 @@ const (
 
 type AiAgentModel struct {
 	shared.BaseModel
-	Name              string        `gorm:"type:varchar(255);not null" json:"name"`
-	ApiKey            string        `gorm:"type:varchar(255);not null" json:"api_key"`
-	Active            bool          `gorm:"default:true" json:"active"`
-	Host              string        `gorm:"type:varchar(255)" json:"host"`
-	SystemInstruction string        `gorm:"type:text" json:"system_instruction"`
-	Model             string        `gorm:"type:varchar(255);default:'gemini-1.5-flash'" json:"model"`
-	ResponseMimetype  string        `gorm:"type:varchar(255);default:'application/json'" json:"response_mimetype"`
-	CompanyID         *string       `gorm:"type:char(36)" json:"company_id"`
-	Company           *CompanyModel `gorm:"foreignKey:CompanyID;references:ID"`
-	AgentType         AiAgentType   `gorm:"type:varchar(255);default:'gemini'" json:"agent_type"`
+	Name              string        `gorm:"type:varchar(255);not null" json:"name" bson:"name"`
+	ApiKey            string        `gorm:"type:varchar(255);not null" json:"api_key" bson:"apiKey"`
+	Active            bool          `gorm:"default:true" json:"active" bson:"active"`
+	Host              string        `gorm:"type:varchar(255)" json:"host" bson:"host"`
+	SystemInstruction string        `gorm:"type:text" json:"system_instruction" bson:"systemInstruction"`
+	Model             string        `gorm:"type:varchar(255);default:'gemini-1.5-flash'" json:"model" bson:"model"`
+	ResponseMimetype  string        `gorm:"type:varchar(255);default:'application/json'" json:"response_mimetype" bson:"responseMimetype"`
+	CompanyID         *string       `gorm:"type:char(36)" json:"company_id" bson:"company_id"`
+	Company           *CompanyModel `gorm:"foreignKey:CompanyID;references:ID" json:"company" bson:"company"`
+	AgentType         AiAgentType   `gorm:"type:varchar(255);default:'gemini'" json:"agent_type" bson:"agentType"`
 }
 
 func (AiAgentModel) TableName() string {

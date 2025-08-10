@@ -332,3 +332,37 @@ func (ds *DoctorService) FindScheduleFromParams(doctorID, date, specializationCo
 
 	return schedules
 }
+
+// FindUserSchedule retrieves user schedules based on provided parameters.
+//
+// It takes a set of parameters in the form of a gin.Context and returns a slice
+// of UserSchedule models. If the retrieval fails, it returns an error.
+func (ds *DoctorService) FindUserSchedule(patientId, phoneNumber, status, startDate, endDate *string) ([]models.DoctorSchedule, error) {
+	var schedules []models.DoctorSchedule
+	stmt := ds.db.Preload("Patient").Preload("Doctor.Specialization")
+	if patientId != nil {
+		stmt = stmt.Where("patient_id = ?", *patientId)
+	}
+
+	if phoneNumber != nil {
+		stmt = stmt.Joins("LEFT JOIN patients ON doctor_schedules.patient_id = patients.id")
+		stmt = stmt.Where("patients.phone_number = ?", *phoneNumber)
+	}
+
+	if status != nil {
+		stmt = stmt.Where("status = ?", *status)
+	}
+
+	if startDate != nil {
+		stmt = stmt.Where("start_time >= ?", *startDate)
+	} else if endDate != nil {
+		stmt = stmt.Where("start_time <= ?", *endDate)
+	} else if startDate != nil && endDate != nil {
+		stmt = stmt.Where("start_time >= ? AND start_time <= ?", *startDate, *endDate)
+	}
+	if err := stmt.Find(&schedules).Error; err != nil {
+		return nil, err
+	}
+
+	return schedules, nil
+}
