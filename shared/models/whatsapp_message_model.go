@@ -116,6 +116,7 @@ type WhatsappMessageSession struct {
 	RefID            *string            `json:"ref_id,omitempty" gorm:"index" bson:"refId"`
 	RefType          *string            `json:"ref_type,omitempty" bson:"refType"`
 	Ref              any                `json:"ref,omitempty" gorm:"-" bson:"ref"`
+	RefName          *string            `json:"ref_name,omitempty" bson:"refName"`
 	IsHumanAgent     bool               `json:"is_human_agent" bson:"isHumanAgent"`
 	IsGroup          bool               `json:"is_group" gorm:"default:false" bson:"isGroup"`
 	CountUnread      int                `json:"count_unread" gorm:"-" bson:"-"`

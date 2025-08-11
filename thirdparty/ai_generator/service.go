@@ -163,6 +163,8 @@ func (s *AiGeneratorService) GetHistories(id, companyID *string, sessionCode *st
 	stmt := s.db.Model(&models.AiAgentHistory{}).Where("ai_agent_id = ?", *id)
 	if sessionCode != nil {
 		stmt = stmt.Where("session_code = ?", *sessionCode)
+	} else {
+		stmt = stmt.Where("session_code IS NULL")
 	}
 
 	if companyID != nil {
