@@ -159,7 +159,7 @@ func (s *AiGeneratorService) UpdateHistory(history *models.AiAgentHistory) error
 	}
 	return nil
 }
-func (s *AiGeneratorService) GetHistories(id, companyID *string, sessionCode *string, isModel *bool) ([]models.AiAgentHistory, error) {
+func (s *AiGeneratorService) GetHistories(id, companyID *string, sessionCode *string, isModel *bool, limit *int) ([]models.AiAgentHistory, error) {
 	stmt := s.db.Model(&models.AiAgentHistory{}).Where("ai_agent_id = ?", *id)
 	if sessionCode != nil {
 		stmt = stmt.Where("session_code = ?", *sessionCode)
@@ -171,6 +171,10 @@ func (s *AiGeneratorService) GetHistories(id, companyID *string, sessionCode *st
 
 	if isModel != nil {
 		stmt = stmt.Where("is_model = ?", *isModel)
+	}
+
+	if limit != nil {
+		stmt = stmt.Limit(*limit)
 	}
 
 	var histories []models.AiAgentHistory

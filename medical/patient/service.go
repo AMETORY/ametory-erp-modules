@@ -1,8 +1,12 @@
 package patient
 
 import (
+	"net/http"
+
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/utils"
+	"github.com/morkid/paginate"
 	"gorm.io/gorm"
 )
 
@@ -65,4 +69,41 @@ func (s *PatientService) UpdatePatient(patient *models.PatientModel) error {
 // if the deletion fails.
 func (s *PatientService) DeletePatient(ID string) error {
 	return s.db.Where("id = ?", ID).Delete(&models.PatientModel{}).Error
+}
+
+// GetPatients retrieves a paginated list of patients from the database.
+//
+// It accepts an HTTP request and a search query string as inputs. The function
+// uses GORM to query the database for patients, applying the search query to
+// relevant fields in the doctors and doctor_specializations tables. The function
+// utilizes pagination to manage the result set and applies any necessary request
+// modifications using the utils.FixRequest utility.
+//
+// The function returns a paginated page of PatientModel models and an error if the
+// operation fails.
+
+func (s *PatientService) GetPatients(request http.Request, search string) (paginate.Page, error) {
+	pg := paginate.New()
+	stmt := s.db
+	if search != "" {
+		stmt = stmt.Where("full_name ILIKE ? OR identity_card_number ILIKE ? OR social_security_number ILIKE ? OR address ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	order := request.URL.Query().Get("order")
+	if order != "" {
+		stmt = stmt.Order(order)
+	} else {
+		stmt = stmt.Order("full_name ASC")
+	}
+	stmt = stmt.Model(&models.PatientModel{})
+	utils.FixRequest(&request)
+
+	page := pg.With(stmt).Request(request).Response(&[]models.PatientModel{})
+	page.Page = page.Page + 1
+	return page, nil
 }

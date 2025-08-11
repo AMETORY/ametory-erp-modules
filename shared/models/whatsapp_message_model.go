@@ -119,6 +119,7 @@ type WhatsappMessageSession struct {
 	IsHumanAgent     bool               `json:"is_human_agent" bson:"isHumanAgent"`
 	IsGroup          bool               `json:"is_group" gorm:"default:false" bson:"isGroup"`
 	CountUnread      int                `json:"count_unread" gorm:"-" bson:"-"`
+	User             *UserModel         `gorm:"-" json:"user,omitempty" bson:"user,omitempty"`
 }
 
 func (m *WhatsappMessageSession) BeforeCreate(tx *gorm.DB) error {
