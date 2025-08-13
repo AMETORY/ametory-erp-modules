@@ -14,7 +14,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/mail"
+	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -665,4 +667,34 @@ func FormatDateIndonesian(date time.Time) string {
 		"Juli", "Agustus", "September", "Oktober", "November", "Desember",
 	}
 	return fmt.Sprintf("%02d %s %d", date.Day(), months[date.Month()-1], date.Year())
+}
+
+func GetCurrentMachineID() string {
+	switch runtime.GOOS {
+	case "linux":
+		// Linux pakai UUID dari DMI
+		out, err := exec.Command("cat", "/sys/class/dmi/id/product_uuid").Output()
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(string(out))
+
+	case "darwin":
+		// macOS pakai IOPlatformUUID
+		out, err := exec.Command("ioreg", "-rd1", "-c", "IOPlatformExpertDevice").Output()
+		if err != nil {
+			return ""
+		}
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			if strings.Contains(line, "IOPlatformUUID") {
+				parts := strings.Split(line, "\"")
+				if len(parts) > 3 {
+					return parts[3]
+				}
+			}
+		}
+	}
+
+	return ""
 }

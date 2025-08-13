@@ -29,6 +29,7 @@ type AiAgentModel struct {
 	AgentType             AiAgentType   `gorm:"type:varchar(255);default:'gemini'" json:"agent_type" bson:"agentType"`
 	AutoResponseStartTime *string       `json:"auto_response_start_time" gorm:"type:varchar(32)"`
 	AutoResponseEndTime   *string       `json:"auto_response_end_time" gorm:"type:varchar(32)"`
+	NeedRegistration      bool          `json:"need_registration" bson:"needRegistration" default:"true"`
 }
 
 func (AiAgentModel) TableName() string {

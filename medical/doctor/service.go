@@ -87,6 +87,28 @@ func (s *DoctorService) GetDoctors(request http.Request, search string) (paginat
 	return page, nil
 }
 
+// GetDoctorByName&SpecializationCode returns a doctor by name and specialization code.
+//
+// It takes a name and specialization code as parameters and returns the doctor
+// associated with that name and specialization code. If the doctor does not exist,
+// it returns an error.
+func (ds *DoctorService) GetDoctorByNameAndSpecializationCode(name *string, specializationCode *string) ([]models.Doctor, error) {
+	var doctors []models.Doctor
+	stmt := ds.db.Preload("Specialization")
+	if specializationCode != nil {
+		stmt = stmt.Joins("JOIN doctor_specializations ON doctor_specializations.code = doctors.specialization_code").
+			Where("doctor_specializations.code = ?", specializationCode)
+	}
+	if name != nil {
+		stmt = stmt.Where("doctors.name ilike ?", "%"+*name+"%")
+	}
+	err := stmt.First(&doctors).Error
+	if err != nil {
+		return nil, err
+	}
+	return doctors, nil
+}
+
 // UpdateDoctor updates the details of an existing doctor in the database.
 //
 // It takes a string representing the doctor's ID and a pointer to a Doctor model
@@ -120,7 +142,26 @@ func (ds *DoctorService) CreateDoctorSchedule(schedule *models.DoctorSchedule) e
 func (ds *DoctorService) GetDoctorScheduleByID(id string) (*models.DoctorSchedule, error) {
 	var schedule models.DoctorSchedule
 
-	err := ds.db.Where("id = ?", id).Find(&schedule).Error
+	err := ds.db.Where("id = ?", id).
+		Preload("Patient").Preload("Doctor.Specialization").
+		Find(&schedule).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &schedule, nil
+}
+func (ds *DoctorService) GetDoctorScheduleByDate(doctorId string, date *string, timeStr *string) (*models.DoctorSchedule, error) {
+	var schedule models.DoctorSchedule
+	stmt := ds.db.Preload("Doctor.Specialization").Where("doctor_id = ?", doctorId)
+
+	if date != nil && timeStr != nil {
+		availableTime, err := time.ParseInLocation("2006-01-02 15:04", *date+" "+*timeStr, time.Local)
+		if err == nil {
+			stmt = stmt.Where("start_time = ?", availableTime)
+		}
+	}
+	err := stmt.Debug().Find(&schedule).Error
 	if err != nil {
 		return nil, err
 	}
@@ -318,9 +359,9 @@ func (ds *DoctorService) FindScheduleFromParams(doctorID, date, specializationCo
 		}
 	}
 	if date != nil && timeStr != nil {
-		availableTime, err := time.Parse("2006-01-02 15:04", *date+" "+*timeStr)
+		availableTime, err := time.ParseInLocation("2006-01-02 15:04", *date+" "+*timeStr, time.Local)
 		if err == nil {
-			stmt = stmt.Where("start_time <= ? AND end_time >= ?", availableTime, availableTime)
+			stmt = stmt.Where("start_time >= ?", availableTime)
 		}
 	}
 
@@ -328,7 +369,7 @@ func (ds *DoctorService) FindScheduleFromParams(doctorID, date, specializationCo
 		stmt = stmt.Where("status = ?", *status)
 	}
 
-	stmt.Find(&schedules)
+	stmt.Where("start_time >= ?", time.Now().Format("2006-01-02")).Debug().Find(&schedules)
 
 	return schedules
 }
