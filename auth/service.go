@@ -82,6 +82,21 @@ func (s *AuthService) Register(fullname, username, email, password, phoneNumber 
 	return &user, nil
 }
 
+// CreateUser creates a new user in the database.
+//
+// It returns the created UserModel or an error if any occurs.
+func (s *AuthService) CreateUser(user *models.UserModel) (*models.UserModel, error) {
+	hashedPassword, err := models.HashPassword(user.Password)
+	if err != nil {
+		return nil, err
+	}
+	user.Password = hashedPassword
+	if err := s.db.Create(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 // Login logs in a user.
 //
 // It takes the username or email and password as arguments.
