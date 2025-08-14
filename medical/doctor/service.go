@@ -131,7 +131,7 @@ func (ds *DoctorService) DeleteDoctor(id string) error {
 // It takes a pointer to a DoctorSchedule model as an argument and returns
 // an error if the schedule could not be created.
 func (ds *DoctorService) CreateDoctorSchedule(schedule *models.DoctorSchedule) error {
-	return ds.db.Create(schedule).Error
+	return ds.db.Debug().Create(schedule).Error
 }
 
 // GetDoctorScheduleByID retrieves a doctor schedule by its ID.
