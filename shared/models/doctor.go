@@ -66,6 +66,7 @@ type DoctorSchedule struct {
 	PaymentData *json.RawMessage `json:"payment_data"`
 	MetaData    *json.RawMessage `json:"meta_data"`
 	MeetingURL  *string          `json:"meeting_url"`
+	Complaint   *string          `json:"complaint"`
 }
 
 func (m *DoctorSchedule) BeforeCreate(tx *gorm.DB) (err error) {

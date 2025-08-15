@@ -102,7 +102,7 @@ func (ds *DoctorService) GetDoctorByNameAndSpecializationCode(name *string, spec
 	if name != nil {
 		stmt = stmt.Where("doctors.name ilike ?", "%"+*name+"%")
 	}
-	err := stmt.First(&doctors).Error
+	err := stmt.Debug().Find(&doctors).Error
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func (ds *DoctorService) GetDoctorScheduleByDate(doctorId string, date *string, 
 			stmt = stmt.Where("start_time = ?", availableTime)
 		}
 	}
-	err := stmt.Debug().Find(&schedule).Error
+	err := stmt.Debug().First(&schedule).Error
 	if err != nil {
 		return nil, err
 	}

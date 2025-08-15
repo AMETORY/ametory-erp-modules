@@ -22,6 +22,7 @@ type PatientModel struct {
 	RegencyID            *string    `json:"regency_id,omitempty" gorm:"type:char(4);index;constraint:OnDelete:SET NULL;"`
 	DistrictID           *string    `json:"district_id,omitempty" gorm:"type:char(6);index;constraint:OnDelete:SET NULL;"`
 	VillageID            *string    `json:"village_id,omitempty" gorm:"type:char(10);index;constraint:OnDelete:SET NULL;"`
+	Complaint            string     `json:"complaint,omitempty" gorm:"-"`
 }
 
 func (PatientModel) TableName() string {
