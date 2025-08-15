@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"google.golang.org/genai"
 )
 
@@ -106,6 +107,9 @@ func (g *GeminiV2SService) Generate(prompt string, attachment *AiAttachment, his
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("USAGE TOKEN", resp.UsageMetadata.TotalTokenCount)
+	utils.LogJson(resp.UsageMetadata)
 
 	var responseData AiMessage = AiMessage{
 		Role:    "model",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/shared"
@@ -79,6 +80,7 @@ func (g *OpenAiService) Generate(prompt string, attachment *AiAttachment, histor
 	}
 
 	fmt.Println("USAGE TOKEN", resp.Usage.TotalTokens)
+	utils.LogJson(resp.Usage)
 
 	return &responseData, nil
 }

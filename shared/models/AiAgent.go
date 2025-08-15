@@ -30,6 +30,7 @@ type AiAgentModel struct {
 	AutoResponseStartTime *string       `json:"auto_response_start_time" gorm:"type:varchar(32)"`
 	AutoResponseEndTime   *string       `json:"auto_response_end_time" gorm:"type:varchar(32)"`
 	NeedRegistration      bool          `json:"need_registration" bson:"needRegistration" default:"true"`
+	HistoryLength         int           `json:"history_length" bson:"historyLength" gorm:"default:30"`
 }
 
 func (AiAgentModel) TableName() string {

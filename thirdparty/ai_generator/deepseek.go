@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/go-deepseek/deepseek"
 	"github.com/go-deepseek/deepseek/request"
 )
@@ -79,6 +80,9 @@ func (g *DeepSeekService) Generate(prompt string, attachment *AiAttachment, hist
 		fmt.Println("Error =>", err)
 		return nil, err
 	}
+
+	fmt.Println("USAGE TOKEN", resp.Usage.TotalTokens)
+	utils.LogJson(resp.Usage)
 
 	var responseData AiMessage = AiMessage{
 		Role:    "model",
