@@ -1,13 +1,18 @@
 package objects
 
-import "time"
+import (
+	"time"
+)
 
 type WhatsAppMessage struct {
-	Conversation       *string          `json:"conversation"`
-	ImageMessage       *ImageMessage    `json:"imageMessage,omitempty"`
-	VideoMessage       *VideoMessage    `json:"videoMessage,omitempty"`
-	DocumentMessage    *DocumentMessage `json:"documentMessage,omitempty"`
-	MessageContextInfo struct {
+	Conversation        *string          `json:"conversation"`
+	ImageMessage        *ImageMessage    `json:"imageMessage,omitempty"`
+	VideoMessage        *VideoMessage    `json:"videoMessage,omitempty"`
+	DocumentMessage     *DocumentMessage `json:"documentMessage,omitempty"`
+	LocationMessage     *LocationMessage `json:"locationMessage,omitempty"`
+	LiveLocationMessage *LocationMessage `json:"liveLocationMessage,omitempty"`
+	ContactMessage      *ContactMessage  `json:"contactMessage,omitempty"`
+	MessageContextInfo  struct {
 		DeviceListMetadata struct {
 			SenderKeyHash      string `json:"senderKeyHash"`
 			SenderTimestamp    int64  `json:"senderTimestamp"`
@@ -17,10 +22,40 @@ type WhatsAppMessage struct {
 		DeviceListMetadataVersion int    `json:"deviceListMetadataVersion"`
 		MessageSecret             string `json:"messageSecret"`
 	} `json:"messageContextInfo"`
-	ExtendedTextMessage *ExtendedTextMessage `json:"extendedTextMessage,omitempty"`
-	ReactionMessage     *ReactionMessage     `json:"reactionMessage,omitempty"`
+	ExtendedTextMessage  *ExtendedTextMessage  `json:"extendedTextMessage,omitempty"`
+	ReactionMessage      *ReactionMessage      `json:"reactionMessage,omitempty"`
+	EventMessage         *EventMessage         `json:"eventMessage,omitempty"`
+	ContactsArrayMessage *ContactsArrayMessage `json:"contactsArrayMessage,omitempty"`
 }
 
+type LocationMessage struct {
+	DegreesLatitude  float64 `json:"degreesLatitude"`
+	DegreesLongitude float64 `json:"degreesLongitude"`
+	JPEGThumbnail    string  `json:"JPEGThumbnail"`
+	SequenceNumber   int64   `json:"sequenceNumber"`
+}
+
+type EventMessage struct {
+	IsCanceled         *bool            `json:"isCanceled,omitempty"`
+	Name               *string          `json:"name,omitempty"`
+	Description        *string          `json:"description,omitempty"`
+	Location           *LocationMessage `json:"location,omitempty"`
+	JoinLink           *string          `json:"joinLink,omitempty"`
+	StartTime          *int64           `json:"startTime,omitempty"`
+	EndTime            *int64           `json:"endTime,omitempty"`
+	ExtraGuestsAllowed *bool            `json:"extraGuestsAllowed,omitempty"`
+	IsScheduleCall     *bool            `json:"isScheduleCall,omitempty"`
+}
+
+type ContactsArrayMessage struct {
+	DisplayName *string           `json:"displayName,omitempty"`
+	Contacts    []*ContactMessage `json:"contacts,omitempty"`
+}
+
+type ContactMessage struct {
+	DisplayName *string `json:"displayName,omitempty"`
+	Vcard       *string `json:"vcard,omitempty"`
+}
 type ReactionMessage struct {
 	Key struct {
 		RemoteJID string `json:"remoteJid"`

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -697,4 +698,71 @@ func GetCurrentMachineID() string {
 	}
 
 	return ""
+}
+
+func ParseVCardString(vcardString string) (*Contact, error) {
+	scanner := bufio.NewScanner(strings.NewReader(vcardString))
+	contact := &Contact{}
+	inPhone := false
+	inEmail := false
+	// inName := false
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "BEGIN:VCARD") {
+			continue
+		}
+		if strings.HasPrefix(line, "END:VCARD") {
+			break
+		}
+		if strings.HasPrefix(line, "FN:") {
+			contact.Name = strings.TrimPrefix(line, "FN:")
+			// inName = trues
+			continue
+		}
+		if strings.HasPrefix(line, "N:") {
+			parts := strings.Split(strings.TrimPrefix(line, "N:"), ";")
+			if len(parts) < 4 {
+				return nil, fmt.Errorf("invalid N: line: %s", line)
+			}
+			contact.FirstName = parts[3]
+			contact.LastName = parts[1]
+			continue
+		}
+		if strings.HasPrefix(line, "TEL;") {
+			inPhone = true
+			continue
+		}
+		if inPhone {
+			if strings.HasPrefix(line, "END:") {
+				inPhone = false
+				continue
+			}
+			contact.Phone = strings.TrimPrefix(line, "tel:")
+			continue
+		}
+		if strings.HasPrefix(line, "EMAIL;") {
+			inEmail = true
+			continue
+		}
+		if inEmail {
+			if strings.HasPrefix(line, "END:") {
+				inEmail = false
+				continue
+			}
+			contact.Email = strings.TrimPrefix(line, "mailto:")
+			continue
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return contact, nil
+}
+
+type Contact struct {
+	Name      string
+	FirstName string
+	LastName  string
+	Phone     string
+	Email     string
 }
