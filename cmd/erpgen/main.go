@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0.63"
+var version = "1.0.64"
 
 var logo = `
 MMMMMMMMMMMMMMMMWXOxoc;,............';coxOXWMMMMMMMMMMMMMMMM
@@ -242,6 +242,7 @@ var (
 		"MongoDBService",
 		"XenditService",
 		"AppService",
+		"MetaService",
 	}
 )
 

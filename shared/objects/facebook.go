@@ -9,14 +9,19 @@ type FacebookWebhookRecipient struct {
 }
 
 type FacebookWebhookMessage struct {
-	MID         string `json:"mid,omitempty"`
-	Text        string `json:"text,omitempty"`
-	Attachments []struct {
-		Type    string `json:"type,omitempty"`
-		Payload struct {
-			URL string `json:"url,omitempty"`
-		} `json:"payload,omitempty"`
-	} `json:"attachments,omitempty"`
+	MID         string     `json:"mid,omitempty"`
+	IsEcho      bool       `json:"is_echo"`
+	Text        string     `json:"text,omitempty"`
+	Attachments Attachment `json:"attachments,omitempty"`
+}
+
+type Attachment struct {
+	Payload Payload `json:"payload"`
+	Type    string  `json:"type"`
+}
+
+type Payload struct {
+	URL string `json:"url"`
 }
 
 type FacebookWebhookMessaging struct {

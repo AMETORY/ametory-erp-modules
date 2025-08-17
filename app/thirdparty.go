@@ -11,6 +11,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/kafka"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/meta"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/payment/xendit"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
@@ -261,5 +262,12 @@ func WithXenditService(apiKey string) AppContainerOption {
 
 		c.XenditService = service
 		log.Println("XenditService initialized")
+	}
+}
+
+func WithMetaService(facebookBaseURL, storageProvider string) AppContainerOption {
+	return func(c *AppContainer) {
+		c.MetaService = meta.NewMetaService(c.DB, c.erpContext, facebookBaseURL, storageProvider)
+		log.Println("MetaService initialized")
 	}
 }

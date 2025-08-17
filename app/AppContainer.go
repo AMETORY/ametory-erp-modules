@@ -36,6 +36,7 @@ import (
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/email_api"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/google"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/kafka"
+	"github.com/AMETORY/ametory-erp-modules/thirdparty/meta"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/payment/xendit"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/redis"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/websocket"
@@ -80,6 +81,7 @@ type AppContainer struct {
 	PermitHubService            *permit_hub.PermitHubService
 	AiGeneratorService          *ai_generator.AiGeneratorService
 	XenditService               *xendit.XenditService
+	MetaService                 *meta.MetaService
 
 	ThirdPartyServices map[string]any
 	// Add additional services here
