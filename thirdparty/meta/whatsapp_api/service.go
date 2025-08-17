@@ -46,7 +46,9 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	req *http.Request,
 	data objects.WhatsappApiWebhookRequest,
 	waSession string,
-	getContact func(phone string, companyID *string) (*models.ContactModel, error),
+	getContact func(phoneNumberID string, companyID *string) (*models.ContactModel, error),
+	getSession func(phoneNumberID string, companyID *string) (*objects.WhatsappApiSession, error),
+	getMessageData func(phoneNumberID string, msg *models.WhatsappMessageModel) error,
 ) error {
 	if w.accessToken == nil {
 		return errors.New("access token not set")
@@ -60,11 +62,19 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	for _, entry := range data.Entry {
 		for _, change := range entry.Changes {
 			if change.Field == "messages" && change.Value.MessagingProduct == "whatsapp" {
+
 				if len(change.Value.Contacts) > 0 {
 					phoneNumberID := change.Value.Metadata.PhoneNumberID
 					fmt.Println("PHONE NUMBER ID", phoneNumberID)
+					sessionData, err := getSession(phoneNumberID, companyID)
+					if err == nil {
+						waSession = sessionData.Session
+						if sessionData.AccessToken != "" {
+							w.SetAccessToken(&sessionData.AccessToken)
+						}
+					}
 
-					contact, err := getContact(change.Value.Contacts[0].WAID, companyID)
+					contact, err := getContact(phoneNumberID, companyID)
 					if err != nil {
 						if errors.Is(err, gorm.ErrRecordNotFound) {
 							contact = &models.ContactModel{
@@ -110,6 +120,7 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 								}
 							}
 						}
+
 						session := fmt.Sprintf("%s@%s", *contact.Phone, waSession)
 						waMsg := models.WhatsappMessageModel{
 							Message:   message,
@@ -130,8 +141,13 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 
 						// utils.LogJson(waMsg)
 						waMsg.ID = waMsgID
-						if err := w.db.Create(&waMsg).Error; err != nil {
-							fmt.Println("ERROR CREATE WHATSAPP MESSAGE #2", err)
+						// if err := w.db.Create(&waMsg).Error; err != nil {
+						// 	fmt.Println("ERROR CREATE WHATSAPP MESSAGE #2", err)
+						// 	continue
+						// }
+						err = getMessageData(phoneNumberID, &waMsg)
+						if err != nil {
+							fmt.Println("ERROR GET MESSAGE DATA", err)
 							continue
 						}
 
@@ -146,12 +162,15 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	return nil
 }
 
-func (w *WhatsAppAPIService) SendMessage(phoneNumberID string, message string, file []*models.FileModel, contact *models.ContactModel, member *models.MemberModel) (*objects.WaResponse, error) {
+func (w *WhatsAppAPIService) SendMessage(phoneNumberID string, message string, file []*models.FileModel, contact *models.ContactModel, quoteMsgID *string) (*objects.WaResponse, error) {
 	imgID := ""
 	if len(file) > 0 {
 		for _, f := range file {
+			if f == nil {
+				continue
+			}
 
-			imageId, err := w.SendWhatsappApiImage(phoneNumberID, contact, f.Path, f.MimeType, member)
+			imageId, err := w.SendWhatsappApiImage(phoneNumberID, contact, f.Path, f.MimeType)
 			if err != nil {
 				return nil, err
 			}
@@ -289,7 +308,7 @@ func (w *WhatsAppAPIService) downloadAndSaveMedia(url, fileName, mime string) (*
 	return fileModel, nil
 }
 
-func (w *WhatsAppAPIService) SendWhatsappApiImage(phoneNumberID string, contact *models.ContactModel, filePath, mimeType string, member *models.MemberModel) (*string, error) {
+func (w *WhatsAppAPIService) SendWhatsappApiImage(phoneNumberID string, contact *models.ContactModel, filePath, mimeType string) (*string, error) {
 	url := fmt.Sprintf("%s/%s/media", w.facebookBaseURL, phoneNumberID)
 
 	// Buat buffer untuk menampung body permintaan

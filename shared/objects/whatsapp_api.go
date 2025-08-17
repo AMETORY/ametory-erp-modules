@@ -93,3 +93,9 @@ type WaResponse struct {
 		MessageStatus string `json:"message_status"`
 	} `json:"messages"`
 }
+
+type WhatsappApiSession struct {
+	PhoneNumberID string `json:"phone_number_id"`
+	Session       string `json:"session"`
+	AccessToken   string `json:"access_token"`
+}
