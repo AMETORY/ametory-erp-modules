@@ -17,15 +17,17 @@ type MetaService struct {
 	WhatsappApiService *whatsapp_api.WhatsAppAPIService
 	storageProvider    string
 	facebookBaseURL    string
+	baseURL            string
 }
 
-func NewMetaService(db *gorm.DB, ctx *context.ERPContext, facebookBaseURL string, storageProvider string) *MetaService {
+func NewMetaService(db *gorm.DB, ctx *context.ERPContext, baseURL, facebookBaseURL string, storageProvider string) *MetaService {
 	return &MetaService{
 		db:                 db,
 		ctx:                ctx,
-		WhatsappApiService: whatsapp_api.NewWhatsAppAPIService(db, ctx, facebookBaseURL, storageProvider),
+		WhatsappApiService: whatsapp_api.NewWhatsAppAPIService(db, ctx, baseURL, facebookBaseURL, storageProvider),
 		facebookBaseURL:    facebookBaseURL,
 		storageProvider:    storageProvider,
+		baseURL:            baseURL,
 	}
 }
 

@@ -267,7 +267,8 @@ func WithXenditService(apiKey string) AppContainerOption {
 
 func WithMetaService(facebookBaseURL, storageProvider string) AppContainerOption {
 	return func(c *AppContainer) {
-		c.MetaService = meta.NewMetaService(c.DB, c.erpContext, facebookBaseURL, storageProvider)
+
+		c.MetaService = meta.NewMetaService(c.DB, c.erpContext, c.baseURL, facebookBaseURL, storageProvider)
 		log.Println("MetaService initialized")
 	}
 }

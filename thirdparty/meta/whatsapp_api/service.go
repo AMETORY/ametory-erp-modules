@@ -26,14 +26,16 @@ type WhatsAppAPIService struct {
 	storageProvider string
 	accessToken     *string
 	facebookBaseURL string
+	baseURL         string
 }
 
-func NewWhatsAppAPIService(db *gorm.DB, ctx *context.ERPContext, facebookBaseURL string, storageProvider string) *WhatsAppAPIService {
+func NewWhatsAppAPIService(db *gorm.DB, ctx *context.ERPContext, baseURL, facebookBaseURL string, storageProvider string) *WhatsAppAPIService {
 	return &WhatsAppAPIService{
 		db:              db,
 		ctx:             ctx,
 		facebookBaseURL: facebookBaseURL,
 		storageProvider: storageProvider,
+		baseURL:         baseURL,
 	}
 }
 
@@ -95,6 +97,7 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 							path, err := w.GetMedia(msg.Image.ID, phoneNumberID)
 							if err != nil {
 								fmt.Println("ERROR", err)
+								continue
 							}
 							if path != nil {
 								mediaUrl = path.URL
@@ -234,6 +237,48 @@ func (w *WhatsAppAPIService) GetMedia(mediaID, phoneNumberID string) (*models.Fi
 		return nil, err
 	}
 
+	// fmt.Println(url)
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *w.accessToken))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response body: %v", err)
+		}
+		// fmt.Println("BODY", string(body))
+		var response map[string]interface{}
+		if err := json.Unmarshal(body, &response); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %v", err)
+		}
+		// utils.LogJson(response)
+
+		return nil, fmt.Errorf("got status %d", resp.StatusCode)
+	}
+
+	var media objects.FacebookMedia
+	if err := json.NewDecoder(resp.Body).Decode(&media); err != nil {
+		return nil, err
+	}
+
+	// fmt.Println("media", media)
+
+	return w.downloadAndSaveMedia(media.URL, media.ID, media.MimeType)
+}
+
+func (w *WhatsAppAPIService) downloadAndSaveMedia(mediaURL, fileName, mime string) (*models.FileModel, error) {
+	// url := fmt.Sprintf("%s/%s", w.facebookBaseURL, mediaURL)
+	// fmt.Println(url)
+	req, err := http.NewRequest("GET", mediaURL, nil)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *w.accessToken))
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -246,32 +291,27 @@ func (w *WhatsAppAPIService) GetMedia(mediaID, phoneNumberID string) (*models.Fi
 		return nil, fmt.Errorf("got status %d", resp.StatusCode)
 	}
 
-	var media objects.FacebookMedia
-	if err := json.NewDecoder(resp.Body).Decode(&media); err != nil {
-		return nil, err
+	filePath := path.Join("assets/files", fileName)
+
+	switch mime {
+	case "image/jpeg":
+		filePath += ".jpg"
+	case "image/png":
+		filePath += ".png"
+	case "application/pdf":
+		filePath += ".pdf"
+	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+		filePath += ".docx"
+	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		filePath += ".xlsx"
+	case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+		filePath += ".pptx"
+	case "audio/mpeg":
+		filePath += ".mp3"
+	case "video/mp4":
+		filePath += ".mp4"
+
 	}
-
-	return w.downloadAndSaveMedia(media.URL, media.ID, media.MimeType)
-}
-
-func (w *WhatsAppAPIService) downloadAndSaveMedia(url, fileName, mime string) (*models.FileModel, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("got status %d", resp.StatusCode)
-	}
-
-	filePath := path.Join(os.TempDir(), fileName)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return nil, err
@@ -282,15 +322,21 @@ func (w *WhatsAppAPIService) downloadAndSaveMedia(url, fileName, mime string) (*
 		return nil, err
 	}
 
+	fileUrl := fmt.Sprintf("%s/%s", w.baseURL, filePath)
+	mediaURL = fileUrl
+
 	fileModel := &models.FileModel{
 		FileName: fileName,
 		MimeType: mime,
 		Path:     filePath,
+		URL:      mediaURL,
 	}
 
 	if err := w.db.Create(fileModel).Error; err != nil {
 		return nil, err
 	}
+
+	// utils.LogJson(fileModel)
 
 	return fileModel, nil
 }
