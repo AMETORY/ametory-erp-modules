@@ -2,10 +2,12 @@ package meta
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/meta/whatsapp_api"
+	"github.com/AMETORY/ametory-erp-modules/utils"
 	"gorm.io/gorm"
 )
 
@@ -22,12 +24,18 @@ func NewMetaService(db *gorm.DB, ctx *context.ERPContext, facebookBaseURL string
 		db:                 db,
 		ctx:                ctx,
 		WhatsappApiService: whatsapp_api.NewWhatsAppAPIService(db, ctx, facebookBaseURL, storageProvider),
+		facebookBaseURL:    facebookBaseURL,
+		storageProvider:    storageProvider,
 	}
 }
 
 func (c *MetaService) VerifyFacebook(req *http.Request, FacebookVerifyToken string) (string, error) {
 	verifyToken := req.URL.Query().Get("hub.verify_token")
 	challenge := req.URL.Query().Get("hub.challenge")
+
+	utils.LogJson(req.URL.Query())
+	fmt.Println("verifyToken", verifyToken)
+	fmt.Println("FacebookVerifyToken", FacebookVerifyToken)
 
 	if verifyToken == FacebookVerifyToken {
 		return challenge, nil

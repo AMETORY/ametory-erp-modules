@@ -3,7 +3,6 @@ package whatsapp_api
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -46,13 +45,13 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	req *http.Request,
 	data objects.WhatsappApiWebhookRequest,
 	waSession string,
-	getContact func(phoneNumberID string, companyID *string) (*models.ContactModel, error),
+	getContact func(phoneNumber, dispayName string, companyID *string) (*models.ContactModel, error),
 	getSession func(phoneNumberID string, companyID *string) (*objects.WhatsappApiSession, error),
 	getMessageData func(phoneNumberID string, msg *models.WhatsappMessageModel) error,
 ) error {
-	if w.accessToken == nil {
-		return errors.New("access token not set")
-	}
+	// if w.accessToken == nil {
+	// 	return errors.New("access token not set")
+	// }
 	now := time.Now()
 	var companyID *string
 	if req.Header.Get("ID-Company") != "" {
@@ -74,22 +73,10 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 						}
 					}
 
-					contact, err := getContact(phoneNumberID, companyID)
+					contact, err := getContact(change.Value.Contacts[0].WAID, change.Value.Contacts[0].Profile.Name, companyID)
 					if err != nil {
-						if errors.Is(err, gorm.ErrRecordNotFound) {
-							contact = &models.ContactModel{
-								CompanyID: companyID,
-								Name:      change.Value.Contacts[0].Profile.Name,
-								Phone:     &change.Value.Contacts[0].WAID,
-							}
-							if err := w.db.Create(contact).Error; err != nil {
-								fmt.Println("ERROR CREATE CONTACT", err)
-								continue
-							}
-						} else {
-							fmt.Println("ERROR GET CONTACT BY PHONE NUMBER ID", err)
-							continue
-						}
+						fmt.Println("ERROR GET CONTACT BY PHONE NUMBER ID", err)
+						continue
 					}
 
 					// GET MESSAGE
@@ -306,6 +293,41 @@ func (w *WhatsAppAPIService) downloadAndSaveMedia(url, fileName, mime string) (*
 	}
 
 	return fileModel, nil
+}
+
+func (w *WhatsAppAPIService) MarkAsRead(phoneNumberID, incomingMsgID string) error {
+	url := fmt.Sprintf("%s/%s/messages", w.facebookBaseURL, phoneNumberID)
+
+	payload := map[string]any{
+		"messaging_product": "whatsapp",
+		"status":            "read",
+		"message_id":        incomingMsgID,
+	}
+
+	// fmt.Println("URL", url, "\nPAYLOAD")
+	// utils.LogJson(payload)
+	jsonPayload, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *w.accessToken))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response body: %v", err)
+		}
+
+		return fmt.Errorf("failed to mark as read, status code: %d - %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }
 
 func (w *WhatsAppAPIService) SendWhatsappApiImage(phoneNumberID string, contact *models.ContactModel, filePath, mimeType string) (*string, error) {
