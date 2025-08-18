@@ -47,9 +47,10 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	req *http.Request,
 	data objects.WhatsappApiWebhookRequest,
 	waSession string,
-	getContact func(phoneNumber, dispayName string, companyID *string) (*models.ContactModel, error),
+	getContact func(phoneNumber, displayName string, companyID *string) (*models.ContactModel, error),
 	getSession func(phoneNumberID string, companyID *string) (*objects.WhatsappApiSession, error),
 	getMessageData func(phoneNumberID string, msg *models.WhatsappMessageModel) error,
+	runAutoPilot func(phoneNumberID string, companyID *string, msg *models.WhatsappMessageModel) error,
 ) error {
 	// if w.accessToken == nil {
 	// 	return errors.New("access token not set")
@@ -138,6 +139,12 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 						err = getMessageData(phoneNumberID, &waMsg)
 						if err != nil {
 							fmt.Println("ERROR GET MESSAGE DATA", err)
+							continue
+						}
+
+						err = runAutoPilot(phoneNumberID, companyID, &waMsg)
+						if err != nil {
+							fmt.Println("ERROR RUN AUTO PILOT", err)
 							continue
 						}
 
@@ -341,13 +348,19 @@ func (w *WhatsAppAPIService) downloadAndSaveMedia(mediaURL, fileName, mime strin
 	return fileModel, nil
 }
 
-func (w *WhatsAppAPIService) MarkAsRead(phoneNumberID, incomingMsgID string) error {
+func (w *WhatsAppAPIService) MarkAsRead(phoneNumberID, incomingMsgID string, isTyping bool) error {
 	url := fmt.Sprintf("%s/%s/messages", w.facebookBaseURL, phoneNumberID)
 
 	payload := map[string]any{
 		"messaging_product": "whatsapp",
 		"status":            "read",
 		"message_id":        incomingMsgID,
+	}
+
+	if isTyping {
+		payload["typing_indicator"] = map[string]any{
+			"type": "text",
+		}
 	}
 
 	// fmt.Println("URL", url, "\nPAYLOAD")
