@@ -78,6 +78,7 @@ func (cs *CustomerRelationshipService) Migrate() error {
 		&models.WhatsappMessageModel{},
 		&models.WhatsappMessageReaction{},
 		&models.WhatsappMessageSession{},
+		&models.WhatsappInteractiveMessage{},
 		&models.FormTemplate{},
 		&models.FormModel{},
 		&models.FormResponseModel{},

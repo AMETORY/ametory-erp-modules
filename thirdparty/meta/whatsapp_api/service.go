@@ -3,6 +3,7 @@ package whatsapp_api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/AMETORY/ametory-erp-modules/context"
@@ -75,6 +77,9 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 							w.SetAccessToken(&sessionData.AccessToken)
 						}
 					}
+					if sessionData.CompanyID != "" {
+						companyID = &sessionData.CompanyID
+					}
 
 					contact, err := getContact(change.Value.Contacts[0].WAID, change.Value.Contacts[0].Profile.Name, companyID)
 					if err != nil {
@@ -86,6 +91,9 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 					for _, msg := range change.Value.Messages {
 						message := ""
 						// QUOTE MESSAGE
+						if msg.Context != nil {
+
+						}
 
 						waMsgID := utils.Uuid()
 
@@ -159,8 +167,19 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	return nil
 }
 
-func (w *WhatsAppAPIService) SendMessage(phoneNumberID string, message string, file []*models.FileModel, contact *models.ContactModel, quoteMsgID *string) (*objects.WaResponse, error) {
+func (w *WhatsAppAPIService) SendMessage(phoneNumberID string,
+	message string,
+	file []*models.FileModel,
+	contact *models.ContactModel,
+	quoteMsgID *string,
+	interactive *models.WhatsappInteractiveMessage,
+) (*objects.WaResponse, error) {
+	if w.accessToken == nil {
+		return nil, errors.New("error send message, access token not set")
+	}
 	imgID := ""
+	msgType := "text"
+	filename := ""
 	if len(file) > 0 {
 		for _, f := range file {
 			if f == nil {
@@ -173,6 +192,16 @@ func (w *WhatsAppAPIService) SendMessage(phoneNumberID string, message string, f
 			}
 
 			fmt.Println("IMAGE ID", *imageId)
+			if strings.Contains(f.MimeType, "image") {
+				msgType = "image"
+			} else if strings.Contains(f.MimeType, "video") {
+				msgType = "video"
+			} else if strings.Contains(f.MimeType, "audio") {
+				msgType = "audio"
+			} else {
+				msgType = "document"
+				filename = f.FileName
+			}
 			imgID = *imageId
 		}
 
@@ -183,28 +212,70 @@ func (w *WhatsAppAPIService) SendMessage(phoneNumberID string, message string, f
 			"messaging_product": "whatsapp",
 			"recipient_type":    "individual",
 			"to":                contact.Phone,
-			"type":              "image",
-			"image": map[string]any{
+			"type":              msgType,
+		}
+		if msgType == "image" {
+			payload["image"] = map[string]any{
 				"id":      imgID,
 				"caption": message,
-			},
+			}
+		}
+		if msgType == "video" {
+			payload["video"] = map[string]any{
+				"id":      imgID,
+				"caption": message,
+			}
+		}
+		if msgType == "audio" {
+			payload["audio"] = map[string]any{
+				"id": imgID,
+			}
+		}
+		if msgType == "document" {
+			payload["document"] = map[string]any{
+				"id":       imgID,
+				"caption":  message,
+				"filename": filename,
+			}
 		}
 	} else {
 		payload = map[string]any{
 			"messaging_product": "whatsapp",
 			"recipient_type":    "individual",
 			"to":                contact.Phone,
-			"type":              "text",
+			"type":              msgType,
 			"text": map[string]any{
 				"body": message,
 			},
 		}
 	}
 
+	if quoteMsgID != nil {
+		payload["context"] = map[string]any{
+			"message_id": *quoteMsgID,
+		}
+	}
+
+	if interactive != nil {
+		payload["type"] = "interactive"
+		var data map[string]any
+		json.Unmarshal(interactive.Data, &data)
+		data["type"] = interactive.Type
+		payload["interactive"] = data
+
+		delete(payload, "text")
+		delete(payload, "image")
+		delete(payload, "video")
+		delete(payload, "audio")
+		delete(payload, "document")
+
+	}
+
 	// https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
 
 	url := fmt.Sprintf("%s/%s/messages", w.facebookBaseURL, phoneNumberID)
-	fmt.Println("URL", url, "\nPAYLOAD", payload)
+	fmt.Println("URL", url)
+	utils.LogJson(payload)
 
 	jsonPayload, _ := json.Marshal(payload)
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))

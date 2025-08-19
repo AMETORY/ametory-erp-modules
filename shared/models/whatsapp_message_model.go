@@ -46,10 +46,11 @@ type WhatsappMessageModel struct {
 	RefID                    *string                   `json:"ref_id,omitempty" gorm:"column:ref_id" bson:"refId"`
 	IsAutoPilot              bool                      `json:"is_auto_pilot" gorm:"default:false" bson:"isAutoPilot"`
 	WhatsappMessageReactions []WhatsappMessageReaction `gorm:"foreignKey:WhatsappMessageID" json:"whatsapp_message_reactions,omitempty" bson:"whatsappMessageReactions"`
-	Latitude                 *float64                  `json:"latitude" gorm:"type:decimal(10,8);not null" bson:"latitude"`
-	Longitude                *float64                  `json:"longitude" gorm:"type:decimal(11,8);not null" bson:"longitude"`
+	Latitude                 *float64                  `json:"latitude" gorm:"type:decimal(10,8)" bson:"latitude"`
+	Longitude                *float64                  `json:"longitude" gorm:"type:decimal(11,8)" bson:"longitude"`
 	LocationMessage          *objects.LocationMessage  `json:"location_message" bson:"locationMessage" gorm:"-"`
 	EventMessage             *objects.EventMessage     `json:"event_message" bson:"eventMessage" gorm:"-"`
+	InteractiveMessage       json.RawMessage           `json:"interactive_message" bson:"interactiveMessage" gorm:"type:JSON"`
 }
 
 type WhatsappMessageReaction struct {

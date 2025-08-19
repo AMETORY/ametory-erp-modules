@@ -1,5 +1,16 @@
 package objects
 
+type WhatsappApiWebhookRequest struct {
+	Entry  []WebhookEntry `json:"entry"`
+	Object string         `json:"object"`
+}
+
+type WebhookEntry struct {
+	Changes                  []WebhookEntryChange       `json:"changes"`
+	ID                       string                     `json:"id"`
+	FacebookWebhookMessaging []FacebookWebhookMessaging `json:"messaging,omitempty"`
+	Time                     int64                      `json:"time"`
+}
 type WebhookEntryChange struct {
 	Field string                  `json:"field"`
 	Value WebhookEntryChangeValue `json:"value"`
@@ -9,16 +20,16 @@ type WebhookEntryChangeValue struct {
 	Contacts         []WebhookEntryChangeContact `json:"contacts"`
 	Messages         []WebhookEntryChangeMessage `json:"messages"`
 	MessagingProduct string                      `json:"messaging_product"`
-	Metadata         *WebhookEntryChangeMetadata `json:"metadata"`
-	From             *WebhookEntryChangeFrom     `json:"from"`
+	Metadata         *WebhookEntryChangeMetadata `json:"metadata,omitempty"`
+	From             *WebhookEntryChangeFrom     `json:"from,omitempty"`
 	ID               string                      `json:"id"`
-	Media            *WebhookEntryChangeMedia    `json:"media"`
+	Media            *WebhookEntryChangeMedia    `json:"media,omitempty"`
 	Text             string                      `json:"text"`
 }
 
 type WebhookEntryChangeContext struct {
-	From *WebhookEntryChangeFrom `json:"from"`
-	ID   string                  `json:"id"`
+	From string `json:"from"`
+	ID   string `json:"id"`
 }
 type WebhookImage struct {
 	Caption  string `json:"caption"`
@@ -45,32 +56,23 @@ type WebhookEntryChangeContact struct {
 }
 
 type WebhookEntryChangeMessage struct {
-	Context *WebhookEntryChangeContext `json:"context"`
-	From    string                     `json:"from"`
-	ID      string                     `json:"id"`
-	Text    struct {
-		Body string `json:"body"`
-	} `json:"text"`
-	Timestamp string        `json:"timestamp"`
-	Type      string        `json:"type"`
-	Image     *WebhookImage `json:"image,omitempty"`
+	Context     *WebhookEntryChangeContext     `json:"context,omitempty"`
+	From        string                         `json:"from"`
+	ID          string                         `json:"id"`
+	Timestamp   string                         `json:"timestamp"`
+	Type        string                         `json:"type"`
+	Text        *WebhookEntryChangeMessageText `json:"text,omitempty"`
+	Image       *WebhookImage                  `json:"image,omitempty"`
+	Interactive *InteractiveMessage            `json:"interactive,omitempty"`
+}
+
+type WebhookEntryChangeMessageText struct {
+	Body string `json:"body"`
 }
 
 type WebhookEntryChangeMetadata struct {
 	DisplayPhoneNumber string `json:"display_phone_number"`
 	PhoneNumberID      string `json:"phone_number_id"`
-}
-
-type WebhookEntry struct {
-	Changes                  []WebhookEntryChange       `json:"changes"`
-	ID                       string                     `json:"id"`
-	FacebookWebhookMessaging []FacebookWebhookMessaging `json:"messaging,omitempty"`
-	Time                     int64                      `json:"time"`
-}
-
-type WhatsappApiWebhookRequest struct {
-	Entry  []WebhookEntry `json:"entry"`
-	Object string         `json:"object"`
 }
 
 type FacebookMedia struct {
@@ -98,4 +100,22 @@ type WhatsappApiSession struct {
 	PhoneNumberID string `json:"phone_number_id"`
 	Session       string `json:"session"`
 	AccessToken   string `json:"access_token"`
+	CompanyID     string `json:"company_id"`
+}
+
+type InteractiveMessage struct {
+	Type         string        `json:"type"`
+	ListReply    *ListReply    `json:"list_reply,omitempty"`
+	ButtonsReply *ButtonsReply `json:"button_reply,omitempty"`
+}
+
+type ListReply struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type ButtonsReply struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
 }
