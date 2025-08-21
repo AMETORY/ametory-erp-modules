@@ -22,6 +22,8 @@ type WhatsappMessageModel struct {
 	Message                  string                    `json:"message" bson:"message"`
 	QuotedMessage            *string                   `json:"quoted_message" bson:"quotedMessage"`
 	QuotedMessageID          *string                   `json:"quoted_message_id" bson:"quotedMessageId"`
+	QuotedMediaURL           *string                   `json:"quoted_media_url" bson:"quotedMediaUrl"`
+	QuotedMimeType           *string                   `json:"quoted_mime_type" bson:"quotedMimeType"`
 	MediaURL                 string                    `gorm:"type:varchar(255)" json:"media_url" bson:"mediaUrl"`
 	MimeType                 string                    `gorm:"type:varchar(255)" json:"mime_type" bson:"mimeType"`
 	Session                  string                    `gorm:"type:varchar(255)" json:"session" bson:"session"`

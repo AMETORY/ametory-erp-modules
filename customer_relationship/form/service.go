@@ -80,7 +80,7 @@ func (s *FormService) UpdateFormTemplate(id string, formTemplate *models.FormTem
 // It takes a string ID as a parameter and returns an error if the deletion fails.
 
 func (s *FormService) DeleteFormTemplate(id string) error {
-	return s.db.Delete(&models.FormTemplate{}, id).Error
+	return s.db.Delete(&models.FormTemplate{}, "id = ?", id).Error
 }
 
 // CreateForm creates a new form in the database.
@@ -178,5 +178,5 @@ func (s *FormService) UpdateForm(id string, form *models.FormModel) error {
 // It takes a string id as a parameter and returns an error. It uses the gorm.DB
 // connection to delete a record from the forms table.
 func (s *FormService) DeleteForm(id string) error {
-	return s.db.Delete(&models.FormModel{}, id).Error
+	return s.db.Delete(&models.FormModel{}, "id = ?", id).Error
 }

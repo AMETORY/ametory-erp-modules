@@ -56,14 +56,22 @@ type WebhookEntryChangeContact struct {
 }
 
 type WebhookEntryChangeMessage struct {
-	Context     *WebhookEntryChangeContext     `json:"context,omitempty"`
-	From        string                         `json:"from"`
-	ID          string                         `json:"id"`
-	Timestamp   string                         `json:"timestamp"`
-	Type        string                         `json:"type"`
-	Text        *WebhookEntryChangeMessageText `json:"text,omitempty"`
-	Image       *WebhookImage                  `json:"image,omitempty"`
-	Interactive *InteractiveMessage            `json:"interactive,omitempty"`
+	Context     *WebhookEntryChangeContext         `json:"context,omitempty"`
+	From        string                             `json:"from"`
+	ID          string                             `json:"id"`
+	Timestamp   string                             `json:"timestamp"`
+	Type        string                             `json:"type"`
+	Text        *WebhookEntryChangeMessageText     `json:"text,omitempty"`
+	Image       *WebhookImage                      `json:"image,omitempty"`
+	Interactive *InteractiveMessage                `json:"interactive,omitempty"`
+	Location    *WebhookEntryChangeMessageLocation `json:"location,omitempty"`
+}
+
+type WebhookEntryChangeMessageLocation struct {
+	Address   string  `json:"address"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	Name      string  `json:"name"`
 }
 
 type WebhookEntryChangeMessageText struct {

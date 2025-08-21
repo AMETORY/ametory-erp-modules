@@ -2,10 +2,12 @@ package ai_generator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/shared/objects"
 	"github.com/AMETORY/ametory-erp-modules/utils"
 	"github.com/morkid/paginate"
 	"gorm.io/gorm"
@@ -113,6 +115,23 @@ func (s *AiGeneratorService) GetGeneratorFromID(id string) (AiGenerator, error) 
 	generator.SetContentConfig(&contentContentConfig)
 	generator.SetModel(agent.Model)
 	return generator, nil
+}
+
+func (s *AiGeneratorService) ParseResponse(msg AiMessage, callback func(msg string, command string, params map[string]any)) error {
+	var resp objects.AiResponse
+	err := json.Unmarshal([]byte(msg.Content), &resp)
+	if err != nil {
+		return err
+	}
+
+	params, ok := resp.Params.(map[string]any)
+	if ok {
+		callback(resp.Response, resp.Command, params)
+		return nil
+	}
+	callback(resp.Response, resp.Command, map[string]any{})
+
+	return nil
 }
 
 func (s *AiGeneratorService) UpdateAgent(agent *models.AiAgentModel) error {

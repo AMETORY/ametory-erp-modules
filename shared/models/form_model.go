@@ -126,15 +126,16 @@ type FormFieldOption struct {
 
 type FormTemplate struct {
 	shared.BaseModel
-	Title             string        `json:"title,omitempty"`
-	Sections          []FormSection `json:"sections,omitempty" gorm:"-"`
-	Data              *string       `json:"data" gorm:"type:JSON"`
-	CompanyID         *string       `gorm:"type:char(36);index" json:"company_id,omitempty"`
-	Company           *CompanyModel `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
-	CreatedByID       *string       `gorm:"type:char(36);index" json:"created_by_id,omitempty"`
-	CreatedBy         *UserModel    `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;constraint:OnDelete:SET NULL;"`
-	CreatedByMemberID *string       `gorm:"type:char(36);index" json:"created_by_member_id,omitempty"`
-	CreatedByMember   *MemberModel  `json:"created_by_member,omitempty" gorm:"foreignKey:CreatedByMemberID;constraint:OnDelete:SET NULL;"`
+	Title             string           `json:"title,omitempty"`
+	Sections          []FormSection    `json:"sections,omitempty" gorm:"-"`
+	Data              *string          `json:"data" gorm:"type:JSON"`
+	Style             *json.RawMessage `json:"style" gorm:"type:JSON"`
+	CompanyID         *string          `gorm:"type:char(36);index" json:"company_id,omitempty"`
+	Company           *CompanyModel    `json:"company,omitempty" gorm:"foreignKey:CompanyID;constraint:OnDelete:CASCADE;"`
+	CreatedByID       *string          `gorm:"type:char(36);index" json:"created_by_id,omitempty"`
+	CreatedBy         *UserModel       `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;constraint:OnDelete:SET NULL;"`
+	CreatedByMemberID *string          `gorm:"type:char(36);index" json:"created_by_member_id,omitempty"`
+	CreatedByMember   *MemberModel     `json:"created_by_member,omitempty" gorm:"foreignKey:CreatedByMemberID;constraint:OnDelete:SET NULL;"`
 }
 
 func (f *FormTemplate) BeforeCreate(tx *gorm.DB) error {

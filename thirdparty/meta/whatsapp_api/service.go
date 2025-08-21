@@ -53,6 +53,7 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	getSession func(phoneNumberID string, companyID *string) (*objects.WhatsappApiSession, error),
 	getMessageData func(phoneNumberID string, msg *models.WhatsappMessageModel) error,
 	runAutoPilot func(phoneNumberID string, companyID *string, msg *models.WhatsappMessageModel) error,
+	interactiveCallback func(phoneNumberID string, companyID *string, msg *objects.WebhookEntryChangeMessage) error,
 ) error {
 	// if w.accessToken == nil {
 	// 	return errors.New("access token not set")
@@ -144,6 +145,26 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 						// 	fmt.Println("ERROR CREATE WHATSAPP MESSAGE #2", err)
 						// 	continue
 						// }
+
+						if msg.Interactive != nil || msg.Location != nil {
+
+							if err := interactiveCallback(phoneNumberID, companyID, &msg); err != nil {
+								fmt.Println("ERROR INTERACTIVE CALLBACK", err)
+							}
+
+							if msg.Interactive != nil {
+								b, _ := json.Marshal(msg.Interactive)
+								waMsg.InteractiveMessage = b
+							}
+
+						}
+
+						if msg.Location != nil {
+							waMsg.Latitude = &msg.Location.Latitude
+							waMsg.Longitude = &msg.Location.Longitude
+							waMsg.Message = msg.Location.Address
+						}
+
 						err = getMessageData(phoneNumberID, &waMsg)
 						if err != nil {
 							fmt.Println("ERROR GET MESSAGE DATA", err)
@@ -172,7 +193,8 @@ func (w *WhatsAppAPIService) SendMessage(phoneNumberID string,
 	file []*models.FileModel,
 	contact *models.ContactModel,
 	quoteMsgID *string,
-	interactive *models.WhatsappInteractiveMessage,
+	// interactive *models.WhatsappInteractiveMessage,
+	param any,
 ) (*objects.WaResponse, error) {
 	if w.accessToken == nil {
 		return nil, errors.New("error send message, access token not set")
@@ -256,19 +278,50 @@ func (w *WhatsAppAPIService) SendMessage(phoneNumberID string,
 		}
 	}
 
-	if interactive != nil {
-		payload["type"] = "interactive"
-		var data map[string]any
-		json.Unmarshal(interactive.Data, &data)
-		data["type"] = interactive.Type
-		payload["interactive"] = data
+	switch v := param.(type) {
+	case *models.WhatsappInteractiveMessage:
+		if v != nil {
+			payload["type"] = "interactive"
+			var data map[string]any
+			json.Unmarshal(v.Data, &data)
+			data["type"] = v.Type
+			payload["interactive"] = data
+
+			delete(payload, "text")
+			delete(payload, "image")
+			delete(payload, "video")
+			delete(payload, "audio")
+			delete(payload, "document")
+			delete(payload, "contacts")
+			delete(payload, "location")
+
+		}
+	case *models.WhatsappContact:
+		var contacts []models.WhatsappContact
+		contacts = append(contacts, *v)
+		payload["type"] = "contacts"
+		payload["contacts"] = contacts
 
 		delete(payload, "text")
 		delete(payload, "image")
 		delete(payload, "video")
 		delete(payload, "audio")
 		delete(payload, "document")
+		delete(payload, "interactive")
+		delete(payload, "location")
 
+	case *models.WhatsAppLocation:
+		payload["type"] = "location"
+		payload["location"] = *v
+
+		delete(payload, "text")
+		delete(payload, "image")
+		delete(payload, "video")
+		delete(payload, "audio")
+		delete(payload, "document")
+		delete(payload, "interactive")
+		delete(payload, "contacts")
+	default:
 	}
 
 	// https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages

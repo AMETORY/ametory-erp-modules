@@ -420,13 +420,19 @@ func FormatRupiah(amount float64) string {
 }
 
 func NumToAlphabet(num int) string {
-	b := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	res := []rune{}
+	if num <= 0 {
+		return ""
+	}
+
+	result := ""
 	for num > 0 {
-		res = append(res, b[num%26-1])
+		// Mengurangi 1 untuk menyesuaikan indeks berbasis 0
+		num--
+		remainder := num % 26
+		result = string('A'+remainder) + result
 		num /= 26
 	}
-	return string(resverse(res))
+	return result
 }
 
 func resverse(r []rune) []rune {
@@ -769,7 +775,7 @@ type Contact struct {
 	Email     string
 }
 
-func InitLog() {
+func InitLog(callback func(*os.File) error) {
 	t := time.Now()
 	filename := t.Format("2006-01-02")
 	logDir := "log"
@@ -782,6 +788,5 @@ func InitLog() {
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
-	defer f.Close()
-	log.SetOutput(f)
+	callback(f)
 }
