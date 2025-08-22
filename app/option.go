@@ -3,6 +3,7 @@ package app
 import (
 	"log"
 
+	"github.com/AMETORY/ametory-erp-modules/app/chat_bot"
 	"github.com/AMETORY/ametory-erp-modules/auth"
 	"github.com/AMETORY/ametory-erp-modules/company"
 	"github.com/AMETORY/ametory-erp-modules/contact"
@@ -299,5 +300,11 @@ func WithPlanningBudget() AppContainerOption {
 	return func(c *AppContainer) {
 		c.PlanningBudgetService = planning_budget.NewPlanningBudgetService(c.erpContext)
 		log.Println("PlanningBudgetService initialized")
+	}
+}
+func WithChatBot() AppContainerOption {
+	return func(c *AppContainer) {
+		c.ChatBotService = chat_bot.NewChatBotService(c.erpContext, c.RedisService, c.AiGeneratorService)
+		log.Println("ChatBotService initialized")
 	}
 }

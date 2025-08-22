@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/AMETORY/ametory-erp-modules/app/chat_bot"
 	"github.com/AMETORY/ametory-erp-modules/app/flow_engine"
 	"github.com/AMETORY/ametory-erp-modules/auth"
 	"github.com/AMETORY/ametory-erp-modules/company"
@@ -74,6 +75,7 @@ type AppContainer struct {
 	MessageService              *message.MessageService
 	ProjectManagementService    *project.ProjectService
 	PlanningBudgetService       *planning_budget.PlanningBudgetService
+	ChatBotService              *chat_bot.ChatBotService
 	CrowdFundingService         *crowd_funding.CrowdFundingService
 	NotificationService         *notification.NotificationService
 	HRISService                 *hris.HRISservice

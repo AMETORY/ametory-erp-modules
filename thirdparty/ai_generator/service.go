@@ -14,10 +14,11 @@ import (
 )
 
 type AiGeneratorService struct {
-	ctx     *context.Context
-	db      *gorm.DB
-	factory GeneratorFactory
-	config  *GeneratorConfig
+	ctx       *context.Context
+	db        *gorm.DB
+	factory   GeneratorFactory
+	config    *GeneratorConfig
+	Functions map[string]any
 }
 
 func NewAiGeneratorService(ctx *context.Context, db *gorm.DB, skipMigration bool) *AiGeneratorService {
@@ -33,6 +34,10 @@ func NewAiGeneratorService(ctx *context.Context, db *gorm.DB, skipMigration bool
 		service.db.AutoMigrate(&models.AiAgentModel{}, &models.AiAgentHistory{})
 	}
 	return &service
+}
+
+func (e *AiGeneratorService) RegisterFunction(name string, fn any) {
+	e.Functions[name] = fn
 }
 
 func (s *AiGeneratorService) SetFactory(factory GeneratorFactory) {
@@ -207,9 +212,119 @@ func (s *AiGeneratorService) GetHistories(id, companyID *string, sessionCode *st
 }
 
 func (s *AiGeneratorService) DeleteHistory(id string) error {
+
 	err := s.db.Where("id = ?", id).Delete(&models.AiAgentHistory{}).Error
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *AiGeneratorService) GenerateContentAndParseResponse(
+	agent *models.AiAgentModel,
+	generator *AiGenerator,
+	systemInstruction,
+	sender,
+	redisKey,
+	userMsg string,
+	responseToUser func(sender, userMsg, response, redisKey string) error,
+	addToHistory func(sender, userMsg, response, redisKey string) error,
+) (*objects.AiResponse, error) {
+	if generator == nil {
+		return nil, fmt.Errorf(" generator is nil")
+	}
+
+	if agent == nil {
+		return nil, fmt.Errorf(" agent is nil")
+	}
+
+	limit := agent.HistoryLength
+	histories, err := s.GetHistories(&agent.ID, nil, &redisKey, nil, &limit)
+	if err != nil {
+
+		return nil, err
+	}
+
+	var his []AiMessage = []AiMessage{}
+	isModel := true
+	modelLimit := agent.HistoryLength
+	modelHistories, _ := s.GetHistories(&agent.ID, nil, nil, &isModel, &modelLimit)
+
+	for _, v := range modelHistories {
+		his = append(his, AiMessage{
+			Role:    "user",
+			Content: v.Input,
+		})
+
+		his = append(his, AiMessage{
+			Role:    "assistant",
+			Content: v.Output,
+		})
+	}
+
+	histories = ReverseHistories(histories)
+	for _, v := range histories {
+
+		his = append(his, AiMessage{
+			Role:    "user",
+			Content: v.Input,
+		})
+
+		his = append(his, AiMessage{
+			Role:    "assistant",
+			Content: v.Output,
+		})
+
+	}
+	gen := *generator
+	gen.SetSystemInstruction(systemInstruction)
+
+	resp, err := gen.Generate(userMsg, nil, his)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.ParseResponse(*resp, func(response string, command string, params map[string]any) {
+		fmt.Println("PARSED", response, command, params)
+	})
+
+	if err != nil {
+		fmt.Println("ERROR PARSE RESPONSE", err)
+	}
+
+	// PARSED RESPONSE
+	var parsedResponse objects.AiResponse
+	err = json.Unmarshal([]byte(resp.Content), &parsedResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	response := parsedResponse.Response
+	err = responseToUser(sender, userMsg, response, redisKey)
+	if err != nil {
+		return nil, err
+	}
+
+	addToHistory(sender, redisKey, userMsg, resp.Content)
+
+	if parsedResponse.Type == "command" {
+		s.ProcessCommand(parsedResponse)
+	}
+
+	return nil, nil
+
+}
+
+func (s *AiGeneratorService) ProcessCommand(parsedResponse objects.AiResponse) {
+	if s.Functions[parsedResponse.Command] != nil {
+		s.Functions[parsedResponse.Command].(func(data any))(parsedResponse.Params)
+	}
+}
+
+func ReverseHistories(histories []models.AiAgentHistory) []models.AiAgentHistory {
+	result := make([]models.AiAgentHistory, len(histories))
+	for i, h := range histories {
+		result[len(histories)-i-1] = h
+	}
+	return result
 }
