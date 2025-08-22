@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/mail"
 
+	"github.com/AMETORY/ametory-erp-modules/app/chat_bot"
 	"github.com/AMETORY/ametory-erp-modules/app/flow_engine"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty"
 	"github.com/AMETORY/ametory-erp-modules/thirdparty/ai_generator"
@@ -265,10 +266,27 @@ func WithXenditService(apiKey string) AppContainerOption {
 	}
 }
 
+// WithMetaService initializes the MetaService with the given facebookBaseURL and storageProvider.
+//
+// This option is used to interact with the Meta/Facebook service.
+//
+// It creates an instance of MetaService with the provided facebookBaseURL and storageProvider.
 func WithMetaService(facebookBaseURL, storageProvider string) AppContainerOption {
 	return func(c *AppContainer) {
 
 		c.MetaService = meta.NewMetaService(c.DB, c.erpContext, c.baseURL, facebookBaseURL, storageProvider)
 		log.Println("MetaService initialized")
+	}
+}
+
+// WithChatBotService initializes the ChatBotService with the given erpContext, RedisService and AiGeneratorService.
+//
+// This option is used to interact with the ChatBot service.
+//
+// It creates an instance of ChatBotService with the provided erpContext, RedisService and AiGeneratorService.
+func WithChatBotService() AppContainerOption {
+	return func(c *AppContainer) {
+		c.ChatBotService = chat_bot.NewChatBotService(c.erpContext, c.RedisService, c.AiGeneratorService)
+		log.Println("ChatBotService initialized")
 	}
 }

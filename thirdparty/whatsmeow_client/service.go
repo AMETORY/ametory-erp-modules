@@ -8,6 +8,9 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/AMETORY/ametory-erp-modules/shared/models"
+	"github.com/AMETORY/ametory-erp-modules/shared/objects"
 )
 
 type WhatsmeowService struct {
@@ -553,4 +556,100 @@ func (s *WhatsmeowService) GetGroupInfo(JID string, groupID string) (map[string]
 	}
 
 	return response, nil
+}
+
+func (s *WhatsmeowService) WhatsappWebhook(
+	jid string,
+	body objects.MsgObject,
+	redisKey string,
+	messageRead func(msgIds []string),
+	getThumbnail func(base64Str string) (*string, error),
+	getMedia func(baseUrl string, mediaPath string) (*string, error),
+	getQuotedMessage func(msgId string) (*models.WhatsappMessageModel, error),
+) (*models.WhatsappMessageModel, error) {
+
+	msgType, ok := body.Info["Type"].(string)
+	if ok && (msgType == "read" || msgType == "status") {
+		if msgType == "read" {
+			msgIDs, ok := body.Info["MessageIDs"].([]any)
+			if ok {
+				messageIds := make([]string, len(msgIDs))
+				for i, msgID := range msgIDs {
+					msgIDStr, ok := msgID.(string)
+					if ok {
+						messageIds[i] = msgIDStr
+					}
+				}
+				messageRead(messageIds)
+			}
+		}
+
+		return nil, nil
+	}
+
+	var fileUrl, mimeType string
+	if body.Message.Conversation != nil {
+	}
+	if body.Message.ImageMessage != nil {
+		mimeType = body.Message.ImageMessage.Mimetype
+	}
+	if body.Message.VideoMessage != nil {
+		mimeType = body.Message.VideoMessage.Mimetype
+	}
+
+	if body.Message.DocumentMessage != nil {
+		mimeType = body.Message.DocumentMessage.Mimetype
+	}
+
+	if body.Message.LocationMessage != nil {
+		path, err := getThumbnail(body.Message.LocationMessage.JPEGThumbnail)
+		if err == nil {
+			fileUrl = *path
+			mimeType = "image/jpeg"
+		}
+	}
+	if body.MediaPath != "" {
+		path, err := getMedia(s.BaseURL, body.MediaPath)
+		if err == nil {
+			fileUrl = *path
+		}
+	}
+
+	// sender := body.Sender
+	var userMsg, quotedMsgId string
+
+	if body.Message.Conversation != nil {
+		userMsg = *body.Message.Conversation
+	} else if body.Message.ExtendedTextMessage != nil {
+		userMsg = body.Message.ExtendedTextMessage.Text
+		quotedMsgId = body.Message.ExtendedTextMessage.ContextInfo.StanzaID
+	}
+
+	pushName, _ := body.Info["PushName"].(string)
+	messageID := body.Info["ID"].(string)
+	waData := models.WhatsappMessageModel{
+		Sender:    body.Sender,
+		Message:   userMsg,
+		JID:       jid,
+		MessageID: &messageID,
+		Session:   body.Sender,
+		MediaURL:  fileUrl,
+		MimeType:  mimeType,
+		User: &models.UserModel{
+			FullName: pushName,
+			ProfilePicture: &models.FileModel{
+				URL: body.ProfilePic,
+			},
+		},
+	}
+
+	if quotedMsgId != "" {
+		quotedMsg, err := getQuotedMessage(quotedMsgId)
+		if err == nil {
+			waData.QuotedMessageID = &quotedMsgId
+			waData.QuotedMessage = &quotedMsg.Message
+		}
+	}
+
+	return &waData, nil
 }

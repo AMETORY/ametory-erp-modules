@@ -41,7 +41,7 @@ func (e *ChatBotService) RunChatBot(
 	userMsg string,
 	chatbotFlow *models.ChatbotFlow,
 	responseToUser func(sender, userMsg, response, redisKey string),
-	generateAiContent func(generator *ai_generator.AiGenerator, sender, redisKey, userMsg string) (*objects.AiResponse, error),
+	generateAiContent func(generator *ai_generator.AiGenerator, agent *models.AiAgentModel, sender, redisKey, userMsg string) (*objects.AiResponse, error),
 ) error {
 
 	if chatbotFlow == nil {
@@ -114,6 +114,14 @@ func (e *ChatBotService) RunChatBot(
 				if option.Input == keyword {
 					if option.NextFlow == "" && option.Response != "" {
 						responseToUser(body.Sender, userMsg, option.Response, redisKey)
+						e.saveRedis(redisKeyState, map[string]any{
+							"flow":      lastFlow,
+							"key":       foundFlow,
+							"userInput": userMsg,
+							"step":      0,
+							"status":    "",
+						})
+						return nil
 					} else if option.NextFlow != "" {
 						foundFlow = option.NextFlow
 						found = true
@@ -128,14 +136,27 @@ func (e *ChatBotService) RunChatBot(
 	}
 
 	flow, ok := chatbotFlow.Flows[foundFlow]
-	if ok {
+	if ok && found {
 		if flow.Type == "agent" && flow.Agent != nil && flow.AgentID != nil {
 
 			generator, err := e.aiGenerator.GetGeneratorFromID(*flow.AgentID)
 			if err != nil {
 				return err
 			}
-			generateAiContent(&generator, body.Sender, redisKey, userMsg)
+			var agent models.AiAgentModel
+			e.ctx.DB.Where("id = ?", *flow.AgentID).First(&agent)
+			flow.Agent = &agent
+			_, err = generateAiContent(&generator, flow.Agent, body.Sender, redisKey, userMsg)
+			if err != nil {
+				return err
+			}
+			e.saveRedis(redisKeyState, map[string]any{
+				"flow":      flow,
+				"key":       foundFlow,
+				"userInput": userMsg,
+				"step":      0,
+				"status":    "",
+			})
 			return nil
 		}
 
@@ -266,27 +287,44 @@ func (e *ChatBotService) RunChatBot(
 			}
 
 		}
-	}
+	} else {
 
-	// RETURN FALLBACK RESPONSE
-	if !found && lastFlow == nil {
 		if chatbotFlow.FallbackResponseType == "text" {
 			responseToUser(body.Sender, userMsg, chatbotFlow.FallbackResponse, redisKey)
 			return nil
 		}
 		if chatbotFlow.FallbackResponseType == "flow" {
-			var fallbackFlow = chatbotFlow.Flows[chatbotFlow.InitialFlow]
+			var fallbackFlow = chatbotFlow.Flows[chatbotFlow.FallbackResponse]
+
 			if fallbackFlow.Type == "agent" && fallbackFlow.Agent != nil {
-				generator, err := e.aiGenerator.GetGeneratorFromID(*flow.AgentID)
+				generator, err := e.aiGenerator.GetGeneratorFromID(*fallbackFlow.AgentID)
 				if err != nil {
 					return err
 				}
-				generateAiContent(&generator, body.Sender, redisKey, userMsg)
+				var agent models.AiAgentModel
+				e.ctx.DB.Where("id = ?", *fallbackFlow.AgentID).First(&agent)
+				fmt.Println("FALLBACK FLOW", fallbackFlow.Type, fallbackFlow.Agent.SystemInstruction)
+				utils.LogJson(fallbackFlow.Agent)
+				fallbackFlow.Agent = &agent
+				_, err = generateAiContent(&generator, fallbackFlow.Agent, body.Sender, redisKey, userMsg)
+				if err != nil {
+					return err
+				}
+
+				e.saveRedis(redisKeyState, map[string]any{
+					"flow":           flow,
+					"key":            foundFlow,
+					"userInput":      userMsg,
+					"step":           0,
+					"status":         "",
+					"collected_data": make(map[string]any),
+				})
 				return nil
 			}
 
 		}
 	}
+
 	return nil
 }
 
