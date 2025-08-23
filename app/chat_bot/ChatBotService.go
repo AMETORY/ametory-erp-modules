@@ -45,7 +45,7 @@ func (e *ChatBotService) RunChatBot(
 	redisKey,
 	userMsg string,
 	chatbotFlow *models.ChatbotFlow,
-	responseToUser func(sender, userMsg, response, redisKey string),
+	responseToUser func(sender, userMsg, response, redisKey string, totalTokenCount int32),
 	generateAiContent func(generator *ai_generator.AiGenerator, agent *models.AiAgentModel, sender, redisKey, userMsg string) (*objects.AiResponse, error),
 ) error {
 
@@ -118,7 +118,7 @@ func (e *ChatBotService) RunChatBot(
 			for _, option := range lastFlow.Options {
 				if option.Input == keyword {
 					if option.NextFlow == "" && option.Response != "" {
-						responseToUser(body.Sender, userMsg, option.Response, redisKey)
+						responseToUser(body.Sender, userMsg, option.Response, redisKey, 0)
 						e.saveRedis(redisKeyState, map[string]any{
 							"flow":      lastFlow,
 							"key":       foundFlow,
@@ -166,7 +166,7 @@ func (e *ChatBotService) RunChatBot(
 		}
 
 		if flow.Type == "menu" {
-			responseToUser(body.Sender, userMsg, e.renderMenu(flow), redisKey)
+			responseToUser(body.Sender, userMsg, e.renderMenu(flow), redisKey, 0)
 			e.saveRedis(redisKeyState, map[string]any{
 				"flow":      flow,
 				"key":       foundFlow,
@@ -211,7 +211,7 @@ func (e *ChatBotService) RunChatBot(
 						}
 
 						if isFailed {
-							responseToUser(body.Sender, userMsg, errorMessage, redisKey)
+							responseToUser(body.Sender, userMsg, errorMessage, redisKey, 0)
 							e.saveRedis(redisKeyState, map[string]any{
 								"flow":      flow,
 								"key":       foundFlow,
@@ -249,7 +249,7 @@ func (e *ChatBotService) RunChatBot(
 						}
 						// SAVE FORM DATA
 
-						responseToUser(body.Sender, userMsg, flow.CompletionMessage, redisKey)
+						responseToUser(body.Sender, userMsg, flow.CompletionMessage, redisKey, 0)
 						if flow.BackToFlow != "" {
 							foundFlow = flow.BackToFlow
 							lastStep = 0
@@ -259,7 +259,7 @@ func (e *ChatBotService) RunChatBot(
 							}
 
 							if flow.Type == "menu" {
-								responseToUser(body.Sender, userMsg, e.renderMenu(flow), redisKey)
+								responseToUser(body.Sender, userMsg, e.renderMenu(flow), redisKey, 0)
 								e.saveRedis(redisKeyState, map[string]any{
 									"flow":      flow,
 									"key":       foundFlow,
@@ -280,7 +280,7 @@ func (e *ChatBotService) RunChatBot(
 				// NEXT STEP
 				// fmt.Println("NEXT STEP")
 				// utils.LogJson(currentStep)
-				responseToUser(body.Sender, userMsg, currentStep.Question, redisKey)
+				responseToUser(body.Sender, userMsg, currentStep.Question, redisKey, 0)
 				e.saveRedis(redisKeyState, map[string]any{
 					"flow":           flow,
 					"key":            foundFlow,
@@ -295,7 +295,7 @@ func (e *ChatBotService) RunChatBot(
 	} else {
 
 		if chatbotFlow.FallbackResponseType == "text" {
-			responseToUser(body.Sender, userMsg, chatbotFlow.FallbackResponse, redisKey)
+			responseToUser(body.Sender, userMsg, chatbotFlow.FallbackResponse, redisKey, 0)
 			return nil
 		}
 		if chatbotFlow.FallbackResponseType == "flow" {

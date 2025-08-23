@@ -53,6 +53,7 @@ type WhatsappMessageModel struct {
 	LocationMessage          *objects.LocationMessage  `json:"location_message" bson:"locationMessage" gorm:"-"`
 	EventMessage             *objects.EventMessage     `json:"event_message" bson:"eventMessage" gorm:"-"`
 	InteractiveMessage       json.RawMessage           `json:"interactive_message" bson:"interactiveMessage" gorm:"type:JSON"`
+	TotalTokenCount          int32                     `json:"total_token_count" bson:"totalTokenCount" gorm:"-"`
 }
 
 type WhatsappMessageReaction struct {

@@ -85,8 +85,9 @@ func (g *DeepSeekService) Generate(prompt string, attachment *AiAttachment, hist
 	utils.LogJson(resp.Usage)
 
 	var responseData AiMessage = AiMessage{
-		Role:    "model",
-		Content: resp.Choices[0].Message.Content,
+		Role:            "model",
+		Content:         resp.Choices[0].Message.Content,
+		TotalTokenCount: int32(resp.Usage.TotalTokens),
 	}
 
 	return &responseData, nil

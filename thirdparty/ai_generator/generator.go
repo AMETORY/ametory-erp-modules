@@ -15,9 +15,10 @@ type AiGenerator interface {
 }
 
 type AiMessage struct {
-	Role       string // Contoh: "user", "model", "system"
-	Content    string
-	Attachment *AiAttachment
+	Role            string // Contoh: "user", "model", "system"
+	Content         string
+	Attachment      *AiAttachment
+	TotalTokenCount int32
 }
 
 type AiAttachment struct {

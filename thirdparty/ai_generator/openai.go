@@ -75,8 +75,9 @@ func (g *OpenAiService) Generate(prompt string, attachment *AiAttachment, histor
 	}
 
 	var responseData AiMessage = AiMessage{
-		Role:    "model",
-		Content: resp.Choices[0].Message.Content,
+		Role:            "model",
+		Content:         resp.Choices[0].Message.Content,
+		TotalTokenCount: int32(resp.Usage.TotalTokens),
 	}
 
 	fmt.Println("USAGE TOKEN", resp.Usage.TotalTokens)

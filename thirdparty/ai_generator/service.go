@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/AMETORY/ametory-erp-modules/shared/models"
 	"github.com/AMETORY/ametory-erp-modules/shared/objects"
@@ -29,7 +30,8 @@ func NewAiGeneratorService(ctx *context.Context, db *gorm.DB, skipMigration bool
 		factory: func(config GeneratorConfig) (AiGenerator, error) {
 			return nil, nil
 		},
-		config: &GeneratorConfig{},
+		config:    &GeneratorConfig{},
+		Functions: make(map[string]any),
 	}
 	if !skipMigration {
 		service.db.AutoMigrate(&models.AiAgentModel{}, &models.AiAgentHistory{})
@@ -39,6 +41,11 @@ func NewAiGeneratorService(ctx *context.Context, db *gorm.DB, skipMigration bool
 
 func (e *AiGeneratorService) RegisterFunction(name string, fn any) {
 	e.Functions[name] = fn
+}
+func (e *AiGeneratorService) RegisterFunctions(name []string, fn any) {
+	for _, v := range name {
+		e.Functions[v] = fn
+	}
 }
 
 func (s *AiGeneratorService) SetFactory(factory GeneratorFactory) {
@@ -228,7 +235,7 @@ func (s *AiGeneratorService) GenerateContentAndParseResponse(
 	sender,
 	redisKey,
 	userMsg string,
-	responseToUser func(sender, userMsg, response, redisKey string) error,
+	responseToUser func(sender, userMsg, response, redisKey string, totalTokenCount int32) error,
 	addToHistory func(sender, userMsg, response, redisKey string) error,
 	processCommandResp func(resp string),
 	regenerateCommandResp bool,
@@ -287,13 +294,17 @@ func (s *AiGeneratorService) GenerateContentAndParseResponse(
 		return nil, err
 	}
 
-	err = s.ParseResponse(*resp, func(response string, command string, params map[string]any) {
-		fmt.Println("PARSED", response, command, params)
-	})
+	// fmt.Println("RESPONSE AI")
+	// utils.LogJson(resp.Content)
 
-	if err != nil {
-		fmt.Println("ERROR PARSE RESPONSE", err)
-	}
+	// err = s.ParseResponse(*resp, func(response string, command string, params map[string]any) {
+	// 	fmt.Println("PARSED", response, command)
+	// 	utils.LogJson(params)
+	// })
+
+	// if err != nil {
+	// 	fmt.Println("ERROR PARSE RESPONSE", err, *resp)
+	// }
 
 	// PARSED RESPONSE
 	var parsedResponse objects.AiResponse
@@ -302,19 +313,21 @@ func (s *AiGeneratorService) GenerateContentAndParseResponse(
 		return nil, err
 	}
 
+	parsedResponse.TotalTokenCount = resp.TotalTokenCount
 	response := parsedResponse.Response
-	err = responseToUser(sender, userMsg, response, redisKey)
+	err = responseToUser(sender, userMsg, response, redisKey, parsedResponse.TotalTokenCount)
 	if err != nil {
 		return nil, err
 	}
 	// sender, userMsg, response, redisKey string
 	addToHistory(sender, userMsg, resp.Content, redisKey)
-
+	fmt.Println("RESPONSE")
+	utils.LogJson(parsedResponse)
 	if parsedResponse.Type == "command" {
 		resp, err := s.ProcessCommand(parsedResponse)
 		if err == nil {
-			fmt.Println("PROCESS COMMAND")
-			utils.LogJson(resp)
+			// fmt.Println("PROCESS COMMAND")
+			// utils.LogJson(resp)
 			processCommandResp(resp)
 			if regenerateCommandResp {
 				return s.GenerateContentAndParseResponse(agent, generator, systemInstruction, sender, redisKey, resp, responseToUser, addToHistory, processCommandResp, false)
@@ -328,8 +341,15 @@ func (s *AiGeneratorService) GenerateContentAndParseResponse(
 }
 
 func (s *AiGeneratorService) ProcessCommand(parsedResponse objects.AiResponse) (string, error) {
-	if s.Functions[parsedResponse.Command] != nil {
-		return s.Functions[parsedResponse.Command].(func(data any) (string, error))(parsedResponse.Params)
+	fmt.Println("call function", parsedResponse.Command)
+	var params map[string]interface{} = parsedResponse.Params.(map[string]interface{})
+
+	_, ok := s.Functions[parsedResponse.Command].(func(map[string]interface{}) (string, error))
+	if ok {
+		fmt.Println("with params", params)
+		return s.Functions[parsedResponse.Command].(func(map[string]interface{}) (string, error))(params)
+	} else {
+		fmt.Println("REFLECT OF FN", reflect.TypeOf(s.Functions[parsedResponse.Command]))
 	}
 	return "", errors.New("command not found")
 }

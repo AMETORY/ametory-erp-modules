@@ -51,8 +51,15 @@ func (g *GeminiV2SService) Generate(prompt string, attachment *AiAttachment, his
 	fmt.Printf("SEND PROMPT %s with GEMINI(%s)\n", prompt, g.model)
 	var contents []*genai.Content
 	for _, v := range histories {
+		role := v.Role
+		if role == "assistant" {
+			role = "model"
+		}
+		if v.Content == "" {
+			continue
+		}
 		content := genai.Content{
-			Role: v.Role,
+			Role: role,
 			Parts: []*genai.Part{
 				{
 					Text: v.Content,
@@ -103,6 +110,8 @@ func (g *GeminiV2SService) Generate(prompt string, attachment *AiAttachment, his
 	if g.isJson {
 		config.ResponseMIMEType = "application/json"
 	}
+	// fmt.Println("API KEY", g.ApiKey)
+	// utils.LogJson(config)
 	resp, err := g.client.Models.GenerateContent(*g.ctx, g.model, contents, config)
 	if err != nil {
 		return nil, err
@@ -112,8 +121,9 @@ func (g *GeminiV2SService) Generate(prompt string, attachment *AiAttachment, his
 	utils.LogJson(resp.UsageMetadata)
 
 	var responseData AiMessage = AiMessage{
-		Role:    "model",
-		Content: resp.Text(),
+		Role:            "model",
+		Content:         resp.Text(),
+		TotalTokenCount: resp.UsageMetadata.TotalTokenCount,
 	}
 
 	return &responseData, nil
