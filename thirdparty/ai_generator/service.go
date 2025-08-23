@@ -3,6 +3,7 @@ package ai_generator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -229,6 +230,8 @@ func (s *AiGeneratorService) GenerateContentAndParseResponse(
 	userMsg string,
 	responseToUser func(sender, userMsg, response, redisKey string) error,
 	addToHistory func(sender, userMsg, response, redisKey string) error,
+	processCommandResp func(resp string),
+	regenerateCommandResp bool,
 ) (*objects.AiResponse, error) {
 	if generator == nil {
 		return nil, fmt.Errorf(" generator is nil")
@@ -304,21 +307,31 @@ func (s *AiGeneratorService) GenerateContentAndParseResponse(
 	if err != nil {
 		return nil, err
 	}
-
-	addToHistory(sender, redisKey, userMsg, resp.Content)
+	// sender, userMsg, response, redisKey string
+	addToHistory(sender, userMsg, resp.Content, redisKey)
 
 	if parsedResponse.Type == "command" {
-		s.ProcessCommand(parsedResponse)
+		resp, err := s.ProcessCommand(parsedResponse)
+		if err == nil {
+			fmt.Println("PROCESS COMMAND")
+			utils.LogJson(resp)
+			processCommandResp(resp)
+			if regenerateCommandResp {
+				return s.GenerateContentAndParseResponse(agent, generator, systemInstruction, sender, redisKey, resp, responseToUser, addToHistory, processCommandResp, false)
+			}
+		}
+
 	}
 
-	return nil, nil
+	return &parsedResponse, nil
 
 }
 
-func (s *AiGeneratorService) ProcessCommand(parsedResponse objects.AiResponse) {
+func (s *AiGeneratorService) ProcessCommand(parsedResponse objects.AiResponse) (string, error) {
 	if s.Functions[parsedResponse.Command] != nil {
-		s.Functions[parsedResponse.Command].(func(data any))(parsedResponse.Params)
+		return s.Functions[parsedResponse.Command].(func(data any) (string, error))(parsedResponse.Params)
 	}
+	return "", errors.New("command not found")
 }
 
 func ReverseHistories(histories []models.AiAgentHistory) []models.AiAgentHistory {

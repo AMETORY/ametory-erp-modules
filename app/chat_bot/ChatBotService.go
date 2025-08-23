@@ -34,6 +34,11 @@ func NewChatBotService(ctx *context.ERPContext, redisService *redis.RedisService
 func (e *ChatBotService) RegisterFunction(name string, fn any) {
 	e.Functions[name] = fn
 }
+func (e *ChatBotService) RegisterFunctions(names []string, fn any) {
+	for _, name := range names {
+		e.Functions[name] = fn
+	}
+}
 
 func (e *ChatBotService) RunChatBot(
 	body objects.MsgObject,

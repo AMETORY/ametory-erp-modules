@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/AMETORY/ametory-erp-modules/shared"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gorm.io/gorm"
 )
 
@@ -68,4 +69,11 @@ func (m *AiAgentHistory) BeforeCreate(tx *gorm.DB) error {
 		m.ID = uuid.New().String()
 	}
 	return nil
+}
+
+type AiAgentInstruction struct {
+	shared.BaseModel
+	MongoID     primitive.ObjectID `bson:"_id,omitempty" json:"object_id" gorm:"-"`
+	Title       string             `json:"title" bson:"title"`
+	Instruction string             `json:"instruction" bson:"instruction"`
 }
