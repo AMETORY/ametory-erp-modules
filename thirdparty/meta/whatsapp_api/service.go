@@ -50,7 +50,7 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	data objects.WhatsappApiWebhookRequest,
 	waSession string,
 	getContact func(phoneNumber, displayName string, companyID *string) (*models.ContactModel, error),
-	getSession func(phoneNumberID string, companyID *string) (*objects.WhatsappApiSession, error),
+	getSession func(phoneNumberID string, phoneNumber string, lastMessage string, companyID *string) (*objects.WhatsappApiSession, error),
 	getMessageData func(phoneNumberID string, msg *models.WhatsappMessageModel) error,
 	runAutoPilot func(phoneNumberID string, companyID *string, msg *models.WhatsappMessageModel) error,
 	interactiveCallback func(phoneNumberID string, companyID *string, msg *objects.WebhookEntryChangeMessage) error,
@@ -71,12 +71,18 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 				if len(change.Value.Contacts) > 0 {
 					phoneNumberID := change.Value.Metadata.PhoneNumberID
 					fmt.Println("PHONE NUMBER ID", phoneNumberID)
-					sessionData, err := getSession(phoneNumberID, companyID)
+					userPhoneNumber := change.Value.Contacts[0].WAID
+					lastMessage := change.Value.Messages[0].Text.Body
+					sessionData, err := getSession(phoneNumberID, userPhoneNumber, lastMessage, companyID)
+
 					if err == nil {
 						waSession = sessionData.Session
 						if sessionData.AccessToken != "" {
 							w.SetAccessToken(&sessionData.AccessToken)
 						}
+					} else {
+						fmt.Println("ERROR GET SESSION", err)
+						continue
 					}
 					if sessionData.CompanyID != "" {
 						companyID = &sessionData.CompanyID
@@ -328,6 +334,7 @@ func (w *WhatsAppAPIService) SendMessage(phoneNumberID string,
 
 	url := fmt.Sprintf("%s/%s/messages", w.facebookBaseURL, phoneNumberID)
 	fmt.Println("URL", url)
+	fmt.Println("TOKEN", fmt.Sprintf("Bearer %s", *w.accessToken))
 	utils.LogJson(payload)
 
 	jsonPayload, _ := json.Marshal(payload)
