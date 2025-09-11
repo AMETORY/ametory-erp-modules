@@ -50,7 +50,7 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	data objects.WhatsappApiWebhookRequest,
 	waSession string,
 	getContact func(phoneNumber, displayName string, companyID *string) (*models.ContactModel, error),
-	getSession func(phoneNumberID string, phoneNumber string, lastMessage string, companyID *string) (*objects.WhatsappApiSession, error),
+	getSession func(phoneNumberID string, phoneNumber string, displayName string, lastMessage string, companyID *string) (*objects.WhatsappApiSession, error),
 	getMessageData func(phoneNumberID string, msg *models.WhatsappMessageModel) error,
 	runAutoPilot func(phoneNumberID string, companyID *string, msg *models.WhatsappMessageModel) error,
 	interactiveCallback func(phoneNumberID string, companyID *string, msg *objects.WebhookEntryChangeMessage) error,
@@ -72,8 +72,9 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 					phoneNumberID := change.Value.Metadata.PhoneNumberID
 					fmt.Println("PHONE NUMBER ID", phoneNumberID)
 					userPhoneNumber := change.Value.Contacts[0].WAID
+					displayName := change.Value.Contacts[0].Profile.Name
 					lastMessage := change.Value.Messages[0].Text.Body
-					sessionData, err := getSession(phoneNumberID, userPhoneNumber, lastMessage, companyID)
+					sessionData, err := getSession(phoneNumberID, userPhoneNumber, displayName, lastMessage, companyID)
 
 					if err == nil {
 						waSession = sessionData.Session

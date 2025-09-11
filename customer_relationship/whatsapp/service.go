@@ -358,7 +358,9 @@ func (ws *WhatsappService) GetSessionMessageBySessionName(sessionName string, re
 	items := page.Items.(*[]models.WhatsappMessageSession)
 	newItems := make([]models.WhatsappMessageSession, 0)
 	for _, item := range *items {
-
+		if item.Contact == nil {
+			continue
+		}
 		profile, err := item.Contact.GetProfilePicture(ws.ctx.DB)
 		if err == nil {
 			item.Contact.ProfilePicture = profile
@@ -704,7 +706,11 @@ func (ws *WhatsappService) SendWhatsappMessage(client objects.ChatMessage,
 			return err
 		}
 		if resp != nil {
-			msgID = resp.(map[string]any)["data"].(map[string]any)["ID"].(string)
+			// msgID = resp.(map[string]any)["data"].(map[string]any)["ID"].(string)
+			respData, ok := resp.(map[string]any)["data"].(map[string]any)
+			if ok {
+				msgID, _ = respData["ID"].(string)
+			}
 		}
 
 	}
@@ -738,7 +744,10 @@ func (ws *WhatsappService) SendWhatsappMessage(client objects.ChatMessage,
 				log.Println(err)
 				return err
 			}
-			msgID = resp.(map[string]any)["data"].(map[string]any)["ID"].(string)
+			respData, ok := resp.(map[string]any)["data"].(map[string]any)
+			if ok {
+				msgID, _ = respData["ID"].(string)
+			}
 		}
 		msgFileData := *data
 		msgFileData.ID = utils.Uuid()
@@ -787,7 +796,10 @@ _%s_
 				log.Println(err)
 				return err
 			}
-			msgID = resp.(map[string]any)["data"].(map[string]any)["ID"].(string)
+			respData, ok := resp.(map[string]any)["data"].(map[string]any)
+			if ok {
+				msgID, _ = respData["ID"].(string)
+			}
 		}
 
 		msgProductData := *data
