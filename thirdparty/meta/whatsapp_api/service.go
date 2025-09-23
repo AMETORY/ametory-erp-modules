@@ -194,7 +194,132 @@ func (w *WhatsAppAPIService) WhatsappApiWebhook(
 	}
 	return nil
 }
+func (w *WhatsAppAPIService) SendTemplateMessage(phoneNumberID string, contact *models.ContactModel, waTemplate *objects.WhatsappAPITemplate, msgTemplate *models.MessageTemplate) (*objects.WaResponse, error) {
+	if w.accessToken == nil {
+		return nil, errors.New("error send message, access token not set")
+	}
 
+	components := []map[string]any{}
+	for _, v := range waTemplate.Components {
+		if v.Type == "HEADER" {
+			var header map[string]any = map[string]any{
+				"type": "header",
+			}
+
+			if v.Format == "IMAGE" {
+				header["parameters"] = []map[string]any{
+					{
+						"type": "image",
+						"image": map[string]any{
+							"link": msgTemplate.HeaderImageURL,
+						},
+					},
+				}
+			}
+			if v.Format == "TEXT" {
+				header["parameters"] = []map[string]any{
+					{
+						"type": "text",
+						"text": v.Text,
+					},
+				}
+			}
+
+			components = append(components, header)
+		}
+
+		if v.Type == "BODY" {
+
+			var body map[string]any = map[string]any{
+				"type": "body",
+				"text": v.Text,
+			}
+
+			if waTemplate.ParameterFormat == "NAMED" {
+				var bodyParams []map[string]any
+				msgTemplateParams := []map[string]any{}
+				json.Unmarshal(msgTemplate.WhatsappTemplateMappingParams, &msgTemplateParams)
+				for _, textParam := range v.Example.BodyTextNamedParams {
+					for _, m := range msgTemplateParams {
+						if m["param"] == "{{"+textParam.ParamName+"}}" {
+							textParam.Example = m["value"].(string)
+
+							var customData map[string]string
+							err := json.Unmarshal([]byte(contact.CustomData), &customData)
+							if err == nil {
+								customDataKey := strings.ReplaceAll(textParam.ParamName, "{{", "")
+								customDataKey = strings.ReplaceAll(customDataKey, "}}", "")
+								textParam.Example = customData[customDataKey]
+							}
+						}
+					}
+					bodyParams = append(bodyParams, map[string]any{
+						"type":           "text",
+						"parameter_name": textParam.ParamName,
+						"text":           textParam.Example,
+					})
+
+				}
+
+				body["parameters"] = bodyParams
+
+			}
+
+			components = append(components, body)
+		}
+	}
+	templatePayload := map[string]any{
+		"name": waTemplate.Name,
+		"language": map[string]any{
+			"code": waTemplate.Language,
+		},
+		"components": components,
+	}
+	payload := map[string]any{
+		"messaging_product": "whatsapp",
+		"recipient_type":    "individual",
+		"to":                contact.Phone,
+		"type":              "template",
+		"template":          templatePayload,
+	}
+
+	url := fmt.Sprintf("%s/%s/messages", w.facebookBaseURL, phoneNumberID)
+	fmt.Println("URL", url)
+	fmt.Println("TOKEN", fmt.Sprintf("Bearer %s", *w.accessToken))
+	utils.LogJson(payload)
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *w.accessToken))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to send template message, status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var waResponse objects.WaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&waResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %v", err)
+	}
+
+	return &waResponse, nil
+
+}
 func (w *WhatsAppAPIService) SendMessage(phoneNumberID string,
 	message string,
 	file []*models.FileModel,
@@ -607,4 +732,84 @@ func (w *WhatsAppAPIService) SendWhatsappApiImage(phoneNumberID string, contact 
 	}
 
 	return &waResponse.ID, nil
+}
+
+func (w *WhatsAppAPIService) GetAllMessageTemplates(wabaID string) (*objects.WhatsappAPITemplateResponse, error) {
+	if w.accessToken == nil {
+		return nil, errors.New("error get message templates, access token not set")
+	}
+
+	// The facebookBaseURL is expected to be like https://graph.facebook.com/v19.0
+	// So we construct the URL like: https://graph.facebook.com/v19.0/{{WABA-ID}}/message_templates
+	url := fmt.Sprintf("%s/%s/message_templates", w.facebookBaseURL, wabaID)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *w.accessToken))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get message templates, status code: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var result objects.WhatsappAPITemplateResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (w *WhatsAppAPIService) GetMessageTemplateByName(wabaID string, templateName string) (*objects.WhatsappAPITemplateResponse, error) {
+	if w.accessToken == nil {
+		return nil, errors.New("error get message template, access token not set")
+	}
+
+	url := fmt.Sprintf("%s/%s/message_templates?name=%s", w.facebookBaseURL, wabaID, templateName)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *w.accessToken))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get message template, status code: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var result objects.WhatsappAPITemplateResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
 }

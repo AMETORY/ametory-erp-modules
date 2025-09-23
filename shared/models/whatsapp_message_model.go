@@ -173,16 +173,20 @@ func (m *WhatsappMessageTemplate) AfterFind(tx *gorm.DB) error {
 
 type MessageTemplate struct {
 	shared.BaseModel
-	WhatsappMessageTemplateID *string                  `json:"whatsapp_message_template_id,omitempty" gorm:"column:whatsapp_message_template_id;constraint:OnDelete:CASCADE;"`
-	WhatsappMessageTemplate   *WhatsappMessageTemplate `gorm:"foreignKey:WhatsappMessageTemplateID" json:"whatsapp_message_template,omitempty"`
-	Type                      string                   `json:"type"`
-	Header                    string                   `json:"header"`
-	Body                      string                   `json:"body"`
-	Footer                    string                   `json:"footer"`
-	ButtonText                string                   `json:"button_text"`
-	ButtonUrl                 string                   `json:"button_url"`
-	Files                     []FileModel              `json:"files,omitempty" gorm:"-"`
-	Products                  []ProductModel           `gorm:"many2many:whatsapp_message_template_products" json:"products,omitempty"`
+	WhatsappMessageTemplateID     *string                  `json:"whatsapp_message_template_id,omitempty" gorm:"column:whatsapp_message_template_id;constraint:OnDelete:CASCADE;"`
+	WhatsappMessageTemplate       *WhatsappMessageTemplate `gorm:"foreignKey:WhatsappMessageTemplateID" json:"whatsapp_message_template,omitempty"`
+	Type                          string                   `json:"type"`
+	Header                        string                   `json:"header"`
+	Body                          string                   `json:"body"`
+	Footer                        string                   `json:"footer"`
+	ButtonText                    string                   `json:"button_text"`
+	ButtonUrl                     string                   `json:"button_url"`
+	Files                         []FileModel              `json:"files,omitempty" gorm:"-"`
+	Products                      []ProductModel           `gorm:"many2many:whatsapp_message_template_products" json:"products,omitempty"`
+	BusinessID                    *string                  `json:"business_id,omitempty"`
+	WhatsappTemplateID            *string                  `json:"whatsapp_template_id,omitempty"`
+	WhatsappTemplateMappingParams json.RawMessage          `json:"whatsapp_template_mapping_params" gorm:"column:whatsapp_template_mapping_params;type:JSON;default:'[]'"`
+	HeaderImageURL                *string                  `json:"header_image_url,omitempty"`
 }
 
 func (m *MessageTemplate) BeforeCreate(tx *gorm.DB) error {

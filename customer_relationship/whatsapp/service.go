@@ -479,6 +479,29 @@ func (s *WhatsappService) GetWhatsappMessageTemplates(request http.Request, sear
 	return page, nil
 }
 
+// GetAllWhatsappMessageTemplates retrieves all WhatsApp message templates from the database without pagination.
+//
+// It takes an HTTP request, a search string, and an optional member ID as parameters. The search string
+// filters the message templates by title. The function also allows filtering by company ID from the request
+// header and by member ID if provided.
+//
+// The function returns a slice of WhatsappMessageTemplate models and an error if the operation fails.
+func (s *WhatsappService) GetAllWhatsappMessageTemplates(request http.Request, search string, memberID *string) ([]models.WhatsappMessageTemplate, error) {
+	var templates []models.WhatsappMessageTemplate
+	stmt := s.db.Preload("Member").Preload("User")
+	if search != "" {
+		stmt = stmt.Where("title ILIKE ?", "%"+search+"%")
+	}
+	if request.Header.Get("ID-Company") != "" {
+		stmt = stmt.Where("company_id = ? or company_id is null", request.Header.Get("ID-Company"))
+	}
+	if memberID != nil {
+		stmt = stmt.Where("member_id = ?", *memberID)
+	}
+	err := stmt.Model(&models.WhatsappMessageTemplate{}).Find(&templates).Error
+	return templates, err
+}
+
 // GetWhatsappMessageTemplate retrieves a single WhatsApp message template by ID from the database.
 //
 // It takes the ID of the template as parameter and returns a WhatsappMessageTemplate model and an error if the
