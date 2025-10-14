@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -198,6 +199,15 @@ func (w *WhatsAppAPIService) SendTemplateMessage(phoneNumberID string, contact *
 	if w.accessToken == nil {
 		return nil, errors.New("error send message, access token not set")
 	}
+	if contact == nil {
+		return nil, errors.New("error send message, contact not found")
+	}
+	if waTemplate == nil {
+		return nil, errors.New("error send message, wa template not found")
+	}
+	if msgTemplate == nil {
+		return nil, errors.New("error send message, msg template not found")
+	}
 
 	components := []map[string]any{}
 	for _, v := range waTemplate.Components {
@@ -207,14 +217,38 @@ func (w *WhatsAppAPIService) SendTemplateMessage(phoneNumberID string, contact *
 			}
 
 			if v.Format == "IMAGE" {
-				header["parameters"] = []map[string]any{
-					{
-						"type": "image",
-						"image": map[string]any{
-							"link": msgTemplate.HeaderImageURL,
+				if msgTemplate.HeaderImageURL != nil {
+					header["parameters"] = []map[string]any{
+						{
+							"type": "image",
+							"image": map[string]any{
+								"link": strings.ReplaceAll(*msgTemplate.HeaderImageURL, "\u0026", "&"),
+							},
 						},
-					},
+					}
+					fmt.Println("TEMPLATE URL #1", *msgTemplate.HeaderImageURL)
+				} else {
+					var exampleHeader = ""
+					fmt.Println("TEMPLATE URL #2", v.Example.HeaderHandle)
+					for _, v := range waTemplate.Components {
+						if v.Type == "HEADER" && v.Example != nil && len(v.Example.HeaderHandle) > 0 {
+							exampleHeader = v.Example.HeaderHandle[0]
+							exampleHeader = strings.ReplaceAll(exampleHeader, "\u0026", "&")
+						}
+					}
+					fmt.Println("TEMPLATE URL #exampleHeader", exampleHeader)
+					if exampleHeader != "" {
+						header["parameters"] = []map[string]any{
+							{
+								"type": "image",
+								"image": map[string]any{
+									"link": exampleHeader,
+								},
+							},
+						}
+					}
 				}
+
 			}
 			if v.Format == "TEXT" {
 				header["parameters"] = []map[string]any{
@@ -232,26 +266,52 @@ func (w *WhatsAppAPIService) SendTemplateMessage(phoneNumberID string, contact *
 
 			var body map[string]any = map[string]any{
 				"type": "body",
-				"text": v.Text,
 			}
 
 			if waTemplate.ParameterFormat == "NAMED" {
 				var bodyParams []map[string]any
 				msgTemplateParams := []map[string]any{}
 				json.Unmarshal(msgTemplate.WhatsappTemplateMappingParams, &msgTemplateParams)
+
+				log.Println("v.Example.BodyTextNamedParams")
+				utils.SaveJson(v.Example.BodyTextNamedParams)
+				log.Println("msgTemplateParams")
+				utils.SaveJson(msgTemplateParams)
 				for _, textParam := range v.Example.BodyTextNamedParams {
 					for _, m := range msgTemplateParams {
-						if m["param"] == "{{"+textParam.ParamName+"}}" {
-							textParam.Example = m["value"].(string)
-
-							var customData map[string]string
-							err := json.Unmarshal([]byte(contact.CustomData), &customData)
-							if err == nil {
-								customDataKey := strings.ReplaceAll(textParam.ParamName, "{{", "")
-								customDataKey = strings.ReplaceAll(customDataKey, "}}", "")
-								textParam.Example = customData[customDataKey]
-							}
+						log.Println("COMPARE", m["param"], "<>", textParam.ParamName)
+						var valParams = ""
+						if strings.Contains(m["param"].(string), textParam.ParamName) {
+							valParams = m["value"].(string)
 						}
+
+						if valParams == "" {
+							continue
+						}
+						var customData map[string]string
+						err := json.Unmarshal([]byte(contact.CustomData), &customData)
+						if err != nil {
+							log.Println("ERROR UNMARSHAL CUSTOM DATA", err)
+							continue
+						}
+
+						var newCustomData = make(map[string]string, len(customData))
+						for k, v := range customData {
+							newCustomData[strings.ToLower(k)] = v
+						}
+
+						log.Println("CUSTOM DATA", newCustomData)
+						log.Println("VAL PARAMS", valParams)
+
+						if valParams == "{{user}}" {
+							textParam.Example = contact.Name
+						} else {
+							customDataKey := strings.ReplaceAll(valParams, "{{", "")
+							customDataKey = strings.ReplaceAll(customDataKey, "}}", "")
+							log.Println("customDataKey", customDataKey)
+							textParam.Example = newCustomData[customDataKey]
+						}
+
 					}
 					bodyParams = append(bodyParams, map[string]any{
 						"type":           "text",

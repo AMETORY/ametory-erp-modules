@@ -471,6 +471,11 @@ func (s *WhatsappService) GetWhatsappMessageTemplates(request http.Request, sear
 	if memberID != nil {
 		stmt = stmt.Where("member_id = ?", *memberID)
 	}
+	if request.URL.Query().Get("sort") != "" {
+		stmt = stmt.Order(request.URL.Query().Get("sort"))
+	} else {
+		stmt = stmt.Order("created_at DESC")
+	}
 	// request.URL.Query().Get("page")
 	stmt = stmt.Model(&models.WhatsappMessageTemplate{})
 	utils.FixRequest(&request)
